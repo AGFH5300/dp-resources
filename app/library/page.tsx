@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 import Link from 'next/link';
 import { requireApproved } from '@/lib/auth';
 import { breadcrumbsToRoot, isDriveConfigured, listDriveItems, normalizeSearch, rootFolderId } from '@/lib/drive';

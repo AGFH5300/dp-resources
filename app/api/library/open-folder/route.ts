@@ -2,6 +2,8 @@ import { requireApproved } from '@/lib/auth';
 import { recordActivity } from '@/lib/activity';
 import { assertInsideRoot, getDriveMetadata } from '@/lib/drive';
 import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const { user } = await requireApproved();
   const form = await req.formData();

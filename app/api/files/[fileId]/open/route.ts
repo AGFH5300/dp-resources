@@ -3,6 +3,7 @@ import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, 
 import { recordActivity } from '@/lib/activity';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_: Request, { params }: { params: Promise<{ fileId: string }> }) {
   const { user } = await requireApproved();
@@ -15,5 +16,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ fileId: st
   if (!media) return new Response('Unable to retrieve this file', { status: 502 });
   if ('unavailable' in media) return new Response('Preview is unavailable for this Google Workspace file type.', { status: 415 });
   await recordActivity({ userId: user.id, userEmail: user.email!, fileId, fileName: meta.name, action: 'file_opened' });
-  return new Response(media.stream, { headers: { 'content-type': media.contentType, 'content-disposition': `inline; filename="${safeDownloadName(meta.name, media.extension)}"` } });
+  return new Response(media.stream, { headers: { 'content-type': media.contentType, 'content-disposition': `inline; filename="${safeDownloadName(meta.name, media.extension)}"`, 'cache-control': 'private, no-store' } });
 }
