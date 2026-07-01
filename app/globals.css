@@ -1,2 +1,114 @@
-@import "tailwindcss";
-:root{color-scheme:light} body{background:#f8fafc;color:#0f172a} a{color:inherit}
+@import 'tailwindcss';
+
+:root {
+  --background: #fbf9f4;
+  --surface: #fbf9f4;
+  --surface-container: #f0eee9;
+  --surface-container-low: #f5f3ee;
+  --surface-container-high: #eae8e3;
+  --surface-container-highest: #e4e2dd;
+  --surface-container-lowest: #ffffff;
+  --surface-variant: #e4e2dd;
+  --primary: #00152a;
+  --secondary: #735b2b;
+  --primary-container: #d1e4ff;
+  --on-primary-container: #104978;
+  --text: #1b1c19;
+  --text-muted: #43474d;
+  --outline: #c3c6ce;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--background); color: var(--text); }
+
+.tsm-shell { max-width: 1536px; margin-inline: auto; padding-inline: 1.5rem; }
+@media (min-width: 768px) { .tsm-shell { padding-inline: 3rem; } }
+
+.tsm-ghost-border { border: 1px solid color-mix(in srgb, var(--outline) 40%, transparent); }
+.tsm-input {
+  width: 100%; background: transparent; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--outline) 40%, transparent);
+  padding: .25rem 0 .75rem; font-size: 1.125rem; color: var(--text);
+}
+.tsm-input:focus { outline: none; border-bottom: 2px solid var(--primary); }
+
+.tsm-btn-primary {
+  background: var(--primary); color: #fff; border: 1px solid var(--primary);
+  border-radius: var(--radius-xs); padding: .8rem 1.4rem; font-weight: 500;
+}
+.tsm-btn-secondary {
+  background: transparent; color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--outline) 40%, transparent);
+  border-radius: var(--radius-xs); padding: .8rem 1.4rem; font-weight: 500;
+}
+
+
+@keyframes tsm-autofill-start {
+  from { opacity: 1; }
+  to { opacity: 1; }
+}
+
+.tsm-input:-webkit-autofill {
+  animation-name: tsm-autofill-start;
+  animation-duration: 0.01s;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+.tsm-btn-primary:not(:disabled),
+.tsm-btn-secondary:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+.tsm-btn-primary:disabled,
+.tsm-btn-secondary:disabled {
+  cursor: not-allowed;
+}
+
+.tsm-btn-primary,
+.tsm-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
+}
+
+.tsm-btn-primary:not(:disabled):hover { opacity: .92; }
+.tsm-btn-secondary:not(:disabled):hover { border-color: var(--secondary); color: var(--secondary); }
+.tsm-btn-primary:focus-visible,
+.tsm-btn-secondary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--secondary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.tsm-btn-primary:disabled,
+.tsm-btn-secondary:disabled,
+button:disabled {
+  opacity: .6;
+}
+
+.tsm-btn-primary:disabled:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  opacity: .6;
+}
+
+.tsm-btn-secondary:disabled:hover {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--outline) 40%, transparent);
+  color: var(--primary);
+  opacity: .6;
+}
+
+button:disabled:hover {
+  opacity: .6;
+}

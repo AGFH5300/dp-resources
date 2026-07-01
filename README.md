@@ -5,54 +5,65 @@ Production Next.js portal for approved users to browse a private Google Drive li
 ## Stack
 
 - Next.js 15 App Router, React server components, TypeScript, Tailwind CSS
-- Supabase Auth shared with MYP Atlas, plus separate DP Resources membership and activity tables
+- Supabase Auth with DP Resources-only profile, membership, and activity tables
 - Google Drive API via a server-only service account
-- Deployable to Render
+- Deployable to Vercel or any Node 20+ host
 
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and fill in values:
 
-- `NEXT_PUBLIC_SUPABASE_URL`: existing Supabase project URL used by MYP Atlas.
+- `NEXT_PUBLIC_SUPABASE_URL`: DP Resources Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public anon key.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only service role key for admin operations, bootstrap admin sync, and activity writes.
 - `GOOGLE_DRIVE_FOLDER_ID`: root private Drive folder ID.
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account email.
 - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: service account private key, using `\n` for newlines in env storage.
-- `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a Render server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`, `is_approved = true`, and sets `approved_at` only when approval is first granted.
+- `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`, `is_approved = true`, and sets `approved_at` only when approval is first granted.
 
-## Supabase setup for the shared MYP Atlas project
+## Supabase setup for DP Resources authentication
 
-DP Resources intentionally shares the existing MYP Atlas Supabase Auth accounts so MYP Atlas users can log in with the same email/password account. DP Resources does **not** use, alter, or depend on MYP Atlas `public.profiles`, `profiles.role`, MYP tables, MYP triggers, or MYP policies for DP Resources permissions.
+DP Resources uses its own Supabase project and DP-only database objects. It does not depend on any external app tables, functions, triggers, migrations, or RPCs.
 
-1. Use the existing Supabase project that powers MYP Atlas.
-2. Open the Supabase SQL Editor and run the new DP Resources migration in `supabase/schema.sql` once.
-3. Do not run any SQL that drops, recreates, renames, or changes MYP Atlas tables, `public.profiles`, the existing MYP `handle_new_user()` function, or the existing MYP `on_auth_user_created` trigger.
-4. Configure Supabase Auth email/password signups as desired.
-5. Add the Render deployment URL to both the Supabase Auth Site URL and Redirect URLs. Also keep local development URLs there if needed.
+1. Open the Supabase SQL Editor for the DP Resources Supabase project.
+2. Run the SQL in `supabase/schema.sql` or apply the migration in `supabase/migrations/20260701000000_dp_resource_profiles_auth.sql` together with the existing DP Resources schema.
+3. In Supabase Auth, enable the Email provider.
+4. In Supabase Auth email templates, ensure the Confirm signup template visibly includes the one-time token.
+5. Use this exact HTML snippet in the Confirm signup email template if you need a minimal OTP template:
 
-The migration creates only DP Resources-owned objects:
+```html
+<h2>Verify your email</h2>
+<p>Your verification code is: <strong>{{ .Token }}</strong></p>
+```
 
+6. Add the deployed app URL and `http://localhost:3000` to Supabase Auth Site URL / Redirect URLs as appropriate. Include callback URLs such as `/auth/callback` for each host.
+
+The schema creates DP Resources-owned objects including:
+
+- `public.dp_resource_profiles`
 - `public.dp_resource_memberships`
 - `public.dp_resource_activity_logs`
+- `public.dp_resource_is_username_available(text)`
+- `public.dp_resource_is_email_available(text)`
 - `public.dp_resources_is_admin()`
 - `public.dp_resources_handle_new_user()`
 - `dp_resources_on_auth_user_created`
 
-Existing MYP auth users are backfilled into `public.dp_resource_memberships` as pending DP Resources users. Admins approve those users only inside DP Resources. New signups also receive a pending DP Resources membership through the separate DP Resources trigger, while the existing MYP trigger remains untouched. The DP Resources helper functions remain `SECURITY DEFINER` for trigger and RLS safety, but their execute grants are revoked from `public`, `anon`, and `authenticated` so they are not directly callable through Supabase RPC.
+New users sign up with username, full name, and email, receive a six-digit Supabase email OTP, verify it, set a password, and remain pending in `public.dp_resource_memberships` until an admin approves them. The browser only receives the public anon key; the service-role key stays in server-only code.
 
 ### SQL verification
 
 After running the migration, confirm the DP Resources tables exist and are populated as expected:
 
 ```sql
+select * from public.dp_resource_profiles;
 select * from public.dp_resource_memberships;
 select * from public.dp_resource_activity_logs;
 ```
 
 ### Admin bootstrap and recovery
 
-Set `ADMIN_EMAILS` in the Render environment before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote only that user's DP Resources membership. It does not touch the MYP Atlas profile table.
+Set `ADMIN_EMAILS` before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote only that user's DP Resources membership.
 
 If `ADMIN_EMAILS` was not configured and no approved DP Resources admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
 
@@ -75,8 +86,6 @@ where lower(email) = lower('admin@example.com');
 
 The app never sends raw Google Drive URLs to users. Folder navigation, file open, and download requests go through authenticated Next.js route handlers. Requested Drive IDs are accepted only after the server walks parent folders and confirms containment under `GOOGLE_DRIVE_FOLDER_ID`; outside IDs return `404` and are not logged.
 
-Google Docs export as PDF, Google Sheets export as XLSX, and Google Slides export as PDF. Unsupported Google-native MIME types return a clear unavailable response.
-
 ## Local run
 
 ```bash
@@ -95,21 +104,3 @@ npm run typecheck
 npm run test
 npm run build
 ```
-
-## Render deployment
-
-1. Create a Render Web Service from this repository.
-2. Use Node 20 or newer.
-3. Set build command to `npm run build`.
-4. Set start command to `npm run start`. Next.js respects Render's `PORT` automatically.
-5. Set every variable from `.env.example` in Render Environment. Store secrets only in Render-managed environment variables.
-6. Add the Render public URL to Supabase Auth Site URL and redirect URLs.
-7. Deploy.
-
-A `render.yaml` blueprint is included with secret values marked `sync: false`; it does not hardcode credentials.
-
-## Behavior when Drive is not configured
-
-- Admins see a clear Google Drive configuration warning.
-- Approved users see “Resources are not yet available.”
-- The app still builds successfully.
