@@ -20,6 +20,12 @@ describe('DP Resources shared-auth schema isolation', () => {
     expect(schema).not.toMatch(/create\s+trigger\s+on_auth_user_created/i);
   });
 
+  it('revokes direct RPC execution from DP Resources helper functions without touching service_role', () => {
+    expect(schema).toContain('revoke execute on function public.dp_resources_is_admin() from public, anon, authenticated;');
+    expect(schema).toContain('revoke execute on function public.dp_resources_handle_new_user() from public, anon, authenticated;');
+    expect(schema).not.toMatch(/revoke\s+execute\s+on\s+function\s+public\.dp_resources_(?:is_admin|handle_new_user)\(\)\s+from\s+service_role/i);
+  });
+
   it('backfills existing auth users as pending DP Resources members', () => {
     expect(schema).toContain("insert into public.dp_resource_memberships (id, email, role, is_approved)");
     expect(schema).toContain("select id, email, 'user', false");

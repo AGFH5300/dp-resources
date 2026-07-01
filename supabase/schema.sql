@@ -37,6 +37,8 @@ create or replace function public.dp_resources_is_admin() returns boolean langua
   )
 $$;
 
+revoke execute on function public.dp_resources_is_admin() from public, anon, authenticated;
+
 create or replace function public.dp_resources_handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.dp_resource_memberships (id, email, role, is_approved)
@@ -45,6 +47,8 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.dp_resources_handle_new_user() from public, anon, authenticated;
 
 do $$
 begin

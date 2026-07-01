@@ -39,7 +39,7 @@ The migration creates only DP Resources-owned objects:
 - `public.dp_resources_handle_new_user()`
 - `dp_resources_on_auth_user_created`
 
-Existing MYP auth users are backfilled into `public.dp_resource_memberships` as pending DP Resources users. Admins approve those users only inside DP Resources. New signups also receive a pending DP Resources membership through the separate DP Resources trigger, while the existing MYP trigger remains untouched.
+Existing MYP auth users are backfilled into `public.dp_resource_memberships` as pending DP Resources users. Admins approve those users only inside DP Resources. New signups also receive a pending DP Resources membership through the separate DP Resources trigger, while the existing MYP trigger remains untouched. The DP Resources helper functions remain `SECURITY DEFINER` for trigger and RLS safety, but their execute grants are revoked from `public`, `anon`, and `authenticated` so they are not directly callable through Supabase RPC.
 
 ### SQL verification
 
