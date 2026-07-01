@@ -11,7 +11,7 @@ export default async function VerifyOtpPage({ searchParams }: { searchParams: Pr
   const email = typeof emailParam === 'string' ? emailParam : ''
   const username = typeof usernameParam === 'string' ? usernameParam : ''
   const fullName = typeof fullNameParam === 'string' ? fullNameParam : ''
-  const next = typeof nextParam === 'string' && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/awaiting-approval'
+  const next = typeof nextParam === 'string' && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/library'
 
   return <VerifyOtpForm email={email} username={username} fullName={fullName} next={next} />
 }

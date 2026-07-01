@@ -99,7 +99,7 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email: normalizedEmail,
       token: sanitizedOtpCode,
-      type: 'email',
+      type: 'signup',
     })
 
     if (verifyError) {

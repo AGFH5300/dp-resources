@@ -41,7 +41,7 @@ const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 const VALIDATION_DEBOUNCE_MS = 600
 const AVAILABILITY_CACHE_SUCCESS_TTL_MS = 20 * 1000
 const AVAILABILITY_CACHE_ERROR_TTL_MS = 8 * 1000
-const DEFAULT_NEXT_PATH = '/awaiting-approval'
+const DEFAULT_NEXT_PATH = '/library'
 
 type CachedAvailabilityResult = {
   status: 'available' | 'invalid' | 'unavailable' | 'error'
@@ -767,7 +767,7 @@ export default function SignUpPage() {
     <AuthShell
       eyebrow="Create account"
       title="Set up your account in a few calm steps."
-      description="Enter your details, verify your email, then continue to a tailored approval flow."
+      description="Enter your details, verify your email, then continue to a secure library workspace."
       quote="The goal of education is not to increase the amount of knowledge but to create the possibilities for a child to invent and discover."
       attribution="Jean Piaget"
     >
@@ -879,7 +879,7 @@ export default function SignUpPage() {
       <p className="mt-8 border-t border-[#c3c6ce55] pt-6 text-center font-body text-sm text-[#43474d]">
         Already have an account?
         <Link
-          href={`/auth/login${nextPath !== '/awaiting-approval' ? `?next=${encodeURIComponent(nextPath)}` : ''}`}
+          href={`/auth/login${nextPath !== '/library' ? `?next=${encodeURIComponent(nextPath)}` : ''}`}
           onClick={() => {
             if (typeof window !== 'undefined') {
               window.sessionStorage.removeItem(SIGNUP_DRAFT_KEY)

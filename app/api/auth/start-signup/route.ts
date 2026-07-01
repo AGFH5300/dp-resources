@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   const username = payload.username?.trim() ?? ''
   const fullName = payload.fullName?.trim() ?? ''
   const email = payload.email?.trim().toLowerCase() ?? ''
-  const next = payload.next?.startsWith('/') && !payload.next.startsWith('//') ? payload.next : '/awaiting-approval'
+  const next = payload.next?.startsWith('/') && !payload.next.startsWith('//') ? payload.next : '/library'
   const origin = new URL(request.url).origin
 
   if (!USERNAME_PATTERN.test(username)) {
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       data: {
         username,
         full_name: fullName,
-        approval_completed: false,
+        signup_completed: false,
       },
       emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },

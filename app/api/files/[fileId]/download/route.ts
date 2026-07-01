@@ -1,4 +1,4 @@
-import { requireApproved } from '@/lib/auth';
+import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, safeDownloadName } from '@/lib/drive';
 import { recordActivity } from '@/lib/activity';
 
@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(_: Request, { params }: { params: Promise<{ fileId: string }> }) {
-  const { user } = await requireApproved();
+  const { user } = await requireMember();
   if (!isDriveConfigured()) return new Response('Resources are not yet available', { status: 503 });
   const { fileId } = await params;
   if (!(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });

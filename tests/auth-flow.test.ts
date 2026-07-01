@@ -45,12 +45,12 @@ describe('signup validation and availability', () => {
 })
 
 describe('OTP request and verification flow', () => {
-  it('requests Supabase email OTP and verifies six-digit email tokens', () => {
+  it('requests Supabase signup OTP and verifies six-digit email tokens', () => {
     expect(signupRoute).toContain('signInWithOtp')
     expect(signupRoute).toContain('shouldCreateUser: true')
     expect(verifyOtpForm).toContain('OTP_LENGTH = 6')
     expect(verifyOtpForm).toContain('verifyOtp')
-    expect(verifyOtpForm).toContain("type: 'email'")
+    expect(verifyOtpForm).toContain("type: 'signup'")
     expect(verifyOtpForm).toContain('router.push(`/auth/set-password?next=')
   })
 })
@@ -73,12 +73,11 @@ describe('DP-only schema and target code references', () => {
 const awaitingApprovalPage = readFileSync('app/awaiting-approval/page.tsx', 'utf8')
 const readme = readFileSync('README.md', 'utf8')
 
-describe('approval waiting redirect and OTP docs', () => {
-  it('redirects approved users away from awaiting approval to the library', () => {
-    expect(awaitingApprovalPage).toContain('await requireUser()')
-    expect(awaitingApprovalPage).toContain('membership?.is_approved')
+describe('compatibility redirect and OTP docs', () => {
+  it('redirects the compatibility page to the library', () => {
     expect(awaitingApprovalPage).toContain("redirect('/library')")
-    expect(awaitingApprovalPage).toContain('Awaiting approval')
+    expect(awaitingApprovalPage).not.toContain('is_approved')
+    expect(awaitingApprovalPage).not.toContain('Awaiting approval')
   })
 
   it('documents the Supabase Magic Link template token for email OTP', () => {
