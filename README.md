@@ -5,7 +5,7 @@ Production Next.js portal for approved users to browse a private Google Drive li
 ## Stack
 
 - Next.js 15 App Router, React server components, TypeScript, Tailwind CSS
-- Supabase Auth, Supabase Postgres profiles, and durable activity logs
+- Supabase Auth shared with MYP Atlas, plus separate DP Resources membership and activity tables
 - Google Drive API via a server-only service account
 - Deployable to Render
 
@@ -13,31 +13,51 @@ Production Next.js portal for approved users to browse a private Google Drive li
 
 Copy `.env.example` to `.env.local` and fill in values:
 
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_URL`: existing Supabase project URL used by MYP Atlas.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public anon key.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only service role key for admin operations, bootstrap admin sync, and activity writes.
 - `GOOGLE_DRIVE_FOLDER_ID`: root private Drive folder ID.
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account email.
 - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: service account private key, using `\n` for newlines in env storage.
-- `ADMIN_EMAILS`: comma-separated bootstrap admin emails. When one of these users signs in, server-only service-role code updates their profile to `role = 'admin'`, `is_approved = true`, and a non-null `approved_at`.
+- `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a Render server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`, `is_approved = true`, and sets `approved_at` only when approval is first granted.
 
-## Supabase setup
+## Supabase setup for the shared MYP Atlas project
 
-1. Create a Supabase project.
-2. Open SQL Editor and run `supabase/schema.sql`.
-3. Set Auth email/password signups as desired.
-4. Configure the Supabase Auth Site URL and redirect URLs for local development and your Render public URL.
+DP Resources intentionally shares the existing MYP Atlas Supabase Auth accounts so MYP Atlas users can log in with the same email/password account. DP Resources does **not** use, alter, or depend on MYP Atlas `public.profiles`, `profiles.role`, MYP tables, MYP triggers, or MYP policies for DP Resources permissions.
 
-New signups receive a `profiles` row automatically with `role = 'user'` and `is_approved = false`. Database authorization uses the authoritative `profiles.role` and `profiles.is_approved` values; it does not depend on database `current_setting` environment values.
+1. Use the existing Supabase project that powers MYP Atlas.
+2. Open the Supabase SQL Editor and run the new DP Resources migration in `supabase/schema.sql` once.
+3. Do not run any SQL that drops, recreates, renames, or changes MYP Atlas tables, `public.profiles`, the existing MYP `handle_new_user()` function, or the existing MYP `on_auth_user_created` trigger.
+4. Configure Supabase Auth email/password signups as desired.
+5. Add the Render deployment URL to both the Supabase Auth Site URL and Redirect URLs. Also keep local development URLs there if needed.
+
+The migration creates only DP Resources-owned objects:
+
+- `public.dp_resource_memberships`
+- `public.dp_resource_activity_logs`
+- `public.dp_resources_is_admin()`
+- `public.dp_resources_handle_new_user()`
+- `dp_resources_on_auth_user_created`
+
+Existing MYP auth users are backfilled into `public.dp_resource_memberships` as pending DP Resources users. Admins approve those users only inside DP Resources. New signups also receive a pending DP Resources membership through the separate DP Resources trigger, while the existing MYP trigger remains untouched.
+
+### SQL verification
+
+After running the migration, confirm the DP Resources tables exist and are populated as expected:
+
+```sql
+select * from public.dp_resource_memberships;
+select * from public.dp_resource_activity_logs;
+```
 
 ### Admin bootstrap and recovery
 
-Set `ADMIN_EMAILS` in the app environment before the first admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote that profile.
+Set `ADMIN_EMAILS` in the Render environment before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote only that user's DP Resources membership. It does not touch the MYP Atlas profile table.
 
-If `ADMIN_EMAILS` was not configured and no approved admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
+If `ADMIN_EMAILS` was not configured and no approved DP Resources admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
 
 ```sql
-update public.profiles
+update public.dp_resource_memberships
 set role = 'admin',
     is_approved = true,
     approved_at = coalesce(approved_at, now())
@@ -72,8 +92,8 @@ Open `http://localhost:3000`.
 npm install
 npm run lint
 npm run typecheck
-npm run build
 npm run test
+npm run build
 ```
 
 ## Render deployment

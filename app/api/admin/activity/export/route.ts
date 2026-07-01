@@ -4,7 +4,7 @@ import { applyActivityFilters } from '@/lib/admin-filters';
 export async function GET(req: Request) {
   await requireAdmin();
   const url = new URL(req.url);
-  let q = createSupabaseAdminClient().from('activity_logs').select('*').order('created_at', { ascending: false });
+  let q = createSupabaseAdminClient().from('dp_resource_activity_logs').select('*').order('created_at', { ascending: false });
   q = applyActivityFilters(q, url.searchParams);
   const { data = [], error } = await q;
   if (error) return new Response('Unable to export activity', { status: 500 });
