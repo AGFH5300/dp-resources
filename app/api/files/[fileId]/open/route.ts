@@ -1,0 +1,4 @@
+import { requireApproved } from '@/lib/auth';
+import { getDriveMetadata, getDriveStream, isDriveConfigured } from '@/lib/drive';
+import { recordActivity } from '@/lib/activity';
+export async function GET(_:Request,{params}:{params:Promise<{fileId:string}>}){const {user}=await requireApproved(); if(!isDriveConfigured()) return new Response('Resources are not yet available',{status:503}); const {fileId}=await params; const meta=await getDriveMetadata(fileId); if(!meta||meta.isFolder) return new Response('Not found',{status:404}); await recordActivity({userId:user.id,userEmail:user.email!,fileId,fileName:meta.name,action:'file_opened'}); const res=await getDriveStream(fileId); return new Response(res.data as unknown as BodyInit,{headers:{'content-type':meta.mimeType,'content-disposition':`inline; filename="${meta.name.replaceAll('"','')}"`}})}

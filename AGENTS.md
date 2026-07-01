@@ -1,47 +1,37 @@
 # DP Resources — Agent Instructions
 
+## Actual stack
+
+- Next.js 15+ with App Router and TypeScript.
+- Tailwind CSS via `app/globals.css`.
+- Supabase Auth using `@supabase/ssr` and `@supabase/supabase-js`.
+- Supabase Postgres tables are defined in `supabase/schema.sql`.
+- Google Drive API access uses `googleapis` from server-only utilities.
+- Vercel is the deployment target.
+
 ## Coding approach
 
-1. Think before coding.
+1. Think before coding: state assumptions, keep tradeoffs visible, and do not invent missing requirements.
+2. Simplicity first: avoid speculative features, unnecessary dependencies, and elaborate abstractions.
+3. Make surgical changes: preserve existing patterns and avoid unrelated refactors.
+4. Verify outcomes: run `npm run lint`, `npm run typecheck`, and `npm run build` before finishing.
 
-   * State material assumptions and surface meaningful tradeoffs.
-   * Choose the simplest correct approach.
-   * Do not silently invent missing requirements.
+## Security rules
 
-2. Simplicity first.
-
-   * Build only what was requested.
-   * Avoid speculative features, one-off abstractions, and unnecessary dependencies.
-   * Prefer a small clear implementation over an elaborate framework.
-
-3. Make surgical changes.
-
-   * Change only what the task requires.
-   * Preserve existing patterns and formatting.
-   * Remove only code or imports made unused by your own changes.
-   * Do not refactor unrelated areas.
-
-4. Verify outcomes.
-
-   * Turn requests into concrete success conditions.
-   * Run lint, type checks, and a production build before finishing.
-   * When a check cannot run, report the exact blocker.
-
-## DP Resources security rules
-
-* Never commit `.env.local`, credentials, API keys, service-account JSON, Supabase service-role keys, or production secrets.
-* Use environment variables for all private configuration.
-* Never expose raw Google Drive file or folder URLs to browser users.
-* Validate authentication and approval status server-side for every library, preview, open, and download route.
-* Validate admin permissions server-side for every admin page and mutation.
-* Do not rely solely on client-side authorization checks.
-* Record folder opens, file opens, and download starts through protected backend routes.
-* Use `download_started`, never `download_completed`, because the server cannot confirm a completed browser download.
+- Never commit `.env.local`, credentials, API keys, service-account JSON, Supabase service-role keys, or production secrets.
+- Use environment variables for all private configuration.
+- Never expose raw Google Drive file or folder URLs to browser users.
+- Validate authentication and approval status server-side for every library, preview/open, download, and profile route.
+- Validate admin permissions server-side for every admin page, mutation, and CSV export.
+- Do not rely solely on client-side authorization checks.
+- Record folder opens, file opens, and download starts through protected backend routes.
+- Use `download_started`, never `download_completed`.
+- Keep service-account credentials and Supabase service-role usage in server-only code.
 
 ## Product rules
 
-* New users are unapproved by default.
-* Unapproved users see an awaiting-approval screen.
-* Approved users access files only through the portal.
-* Normal users can see only their own profile and activity.
-* Only admins can approve or revoke users, view all activity logs, and export activity data.
+- New users are unapproved by default.
+- Unapproved users see an awaiting-approval screen.
+- Approved users access files only through the portal.
+- Normal users can see only their own profile and activity.
+- Only admins can approve or revoke users, view all activity logs, and export activity data.

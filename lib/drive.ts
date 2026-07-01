@@ -1,0 +1,9 @@
+import 'server-only';
+import { google } from 'googleapis';
+import type { DriveItem } from './types';
+export function isDriveConfigured(){return Boolean(process.env.GOOGLE_DRIVE_FOLDER_ID&&process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL&&process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)}
+function drive(){const key=(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY||'').replace(/\\n/g,'\n'); const auth=new google.auth.JWT({email:process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,key,scopes:['https://www.googleapis.com/auth/drive.readonly']}); return google.drive({version:'v3',auth});}
+export const rootFolderId=()=>process.env.GOOGLE_DRIVE_FOLDER_ID!;
+export async function listDriveItems(folderId=rootFolderId(), q=''){if(!isDriveConfigured()) return [] as DriveItem[]; const safe=q.replace(/'/g,"\\'"); const res=await drive().files.list({q:`'${folderId}' in parents and trashed=false${q?` and name contains '${safe}'`:''}`,fields:'files(id,name,mimeType,size,modifiedTime)',orderBy:'folder,name',pageSize:200,supportsAllDrives:true,includeItemsFromAllDrives:true}); return (res.data.files||[]).map(f=>({id:f.id!,name:f.name!,mimeType:f.mimeType!,size:f.size||undefined,modifiedTime:f.modifiedTime||undefined,isFolder:f.mimeType==='application/vnd.google-apps.folder'})).sort((a,b)=>Number(b.isFolder)-Number(a.isFolder)||a.name.localeCompare(b.name));}
+export async function getDriveMetadata(fileId:string){if(!isDriveConfigured()) return null; const res=await drive().files.get({fileId,fields:'id,name,mimeType,size,modifiedTime',supportsAllDrives:true}); const f=res.data; return {id:f.id!,name:f.name!,mimeType:f.mimeType!,size:f.size||undefined,modifiedTime:f.modifiedTime||undefined,isFolder:f.mimeType==='application/vnd.google-apps.folder'} as DriveItem;}
+export async function getDriveStream(fileId:string){return drive().files.get({fileId,alt:'media',supportsAllDrives:true},{responseType:'stream'});}

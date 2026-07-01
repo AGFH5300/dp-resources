@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export function Nav({admin=false}:{admin?:boolean}){return <header className="border-b bg-white"><nav className="mx-auto flex max-w-6xl items-center justify-between p-4"><Link href="/library" className="font-semibold">DP Resources</Link><div className="flex gap-4 text-sm"><Link href="/library">Library</Link><Link href="/profile">Profile</Link>{admin&&<Link href="/admin">Admin</Link>}<form action="/api/auth/signout" method="post"><button>Sign out</button></form></div></nav></header>}
