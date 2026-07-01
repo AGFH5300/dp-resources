@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 import { requireApproved } from '@/lib/auth';
 import { createSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { Nav } from '@/components/nav';

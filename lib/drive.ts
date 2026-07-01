@@ -27,7 +27,7 @@ export async function getDriveMetadata(fileId: string) {
   } catch { return null; }
 }
 
-async function getParents(fileId: string) {
+async function getParents(fileId: string): Promise<string[]> {
   const res = await drive().files.get({ fileId, fields: 'id,parents', supportsAllDrives: true });
   return res.data.parents || [];
 }
@@ -42,7 +42,7 @@ export async function isInsideRoot(fileId: string, maxDepth = 25) {
     for (const id of frontier) {
       if (seen.has(id)) continue;
       seen.add(id);
-      const parents = await getParents(id).catch(() => []);
+      const parents = await getParents(id).catch((): string[] => []);
       if (parents.includes(rootFolderId())) return true;
       next.push(...parents);
     }
@@ -71,7 +71,7 @@ export async function breadcrumbsToRoot(folderId: string) {
     if (!meta) break;
     crumbs.unshift(meta);
     if (current === rootFolderId()) break;
-    const parents = await getParents(current).catch(() => []);
+    const parents = await getParents(current).catch((): string[] => []);
     current = parents[0];
     if (!current) break;
   }

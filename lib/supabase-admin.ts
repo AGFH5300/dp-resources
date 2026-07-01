@@ -12,6 +12,14 @@ export function adminEmails() {
   return (process.env.ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
 }
 
+export function bootstrapAdminMembershipUpdate(existing: Pick<ResourceMembership, 'approved_at'> | null, now = new Date().toISOString()) {
+  return {
+    role: 'admin' as const,
+    is_approved: true,
+    approved_at: existing?.approved_at || now,
+  };
+}
+
 export async function syncBootstrapAdminResourceMembership(user: { id: string; email?: string | null }) {
   if (!user.email || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
   if (!adminEmails().includes(user.email.toLowerCase())) return;
@@ -19,20 +27,17 @@ export async function syncBootstrapAdminResourceMembership(user: { id: string; e
   const sb = createSupabaseAdminClient();
   const { data: existing, error: readError } = await sb
     .from('dp_resource_memberships')
-    .select('approved_at,is_approved')
+    .select('approved_at')
     .eq('id', user.id)
-    .maybeSingle<Pick<ResourceMembership, 'approved_at' | 'is_approved'>>();
+    .maybeSingle<Pick<ResourceMembership, 'approved_at'>>();
   if (readError) throw new Error(`Unable to read bootstrap admin membership: ${readError.message}`);
 
-  const firstApproval = !existing?.is_approved && !existing?.approved_at;
   const { error } = await sb
     .from('dp_resource_memberships')
     .upsert({
       id: user.id,
       email: user.email,
-      role: 'admin',
-      is_approved: true,
-      approved_at: firstApproval ? new Date().toISOString() : existing?.approved_at || new Date().toISOString(),
+      ...bootstrapAdminMembershipUpdate(existing),
     }, { onConflict: 'id' });
   if (error) throw new Error(`Unable to synchronize bootstrap admin membership: ${error.message}`);
 }

@@ -3,6 +3,7 @@ import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, 
 import { recordActivity } from '@/lib/activity';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_: Request, { params }: { params: Promise<{ fileId: string }> }) {
   const { user } = await requireApproved();
@@ -18,6 +19,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ fileId: st
   const headers = new Headers({
     'content-type': media.contentType || 'application/octet-stream',
     'content-disposition': `attachment; filename="${safeDownloadName(meta.name, media.extension)}"`,
+    'cache-control': 'private, no-store',
   });
   const length = media.headers?.['content-length'];
   if (length) headers.set('content-length', String(length));
