@@ -1,0 +1,5 @@
+import { requireApproved } from '@/lib/auth';
+import { createSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
+import { Nav } from '@/components/nav';
+import type { ActivityLog } from '@/lib/types';
+export default async function Profile(){const {user,profile}=await requireApproved(); const logs=isSupabaseConfigured()&&process.env.SUPABASE_SERVICE_ROLE_KEY?(await createSupabaseAdminClient().from('activity_logs').select('*').eq('user_id',user.id).order('created_at',{ascending:false}).limit(50)).data as ActivityLog[]|null:[]; return <><Nav admin={profile.role==='admin'}/><main className="mx-auto max-w-4xl p-4"><h1 className="text-3xl font-semibold">Profile</h1><p className="mt-2 text-slate-600">{profile.email}</p><h2 className="mt-8 text-xl font-semibold">Your activity</h2><div className="mt-4 rounded-xl border bg-white">{(logs||[]).map(l=><div className="border-b p-3 text-sm" key={l.id}>{l.action} — {l.file_name} <span className="text-slate-500">{new Date(l.created_at).toLocaleString()}</span></div>)}{(!logs||logs.length===0)&&<p className="p-4 text-slate-600">No activity yet.</p>}</div></main></>}
