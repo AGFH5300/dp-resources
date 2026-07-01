@@ -1,16 +1,16 @@
 import 'server-only';
-import type { Profile } from './types';
+import type { ResourceMembership } from './types';
 import { isSupabaseConfigured, createSupabaseServerClient } from './supabase-server';
-import { createSupabaseAdminClient, adminEmails, syncBootstrapAdminProfile } from './supabase-admin';
+import { createSupabaseAdminClient, adminEmails, syncBootstrapAdminResourceMembership } from './supabase-admin';
 
-export { isSupabaseConfigured, createSupabaseServerClient, createSupabaseAdminClient, adminEmails, syncBootstrapAdminProfile };
+export { isSupabaseConfigured, createSupabaseServerClient, createSupabaseAdminClient, adminEmails, syncBootstrapAdminResourceMembership };
 
-export async function getSessionProfile() {
-  if (!isSupabaseConfigured()) return { user: null, profile: null };
+export async function getSessionResourceMembership() {
+  if (!isSupabaseConfigured()) return { user: null, membership: null };
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) return { user: null, profile: null };
-  await syncBootstrapAdminProfile(user);
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single<Profile>();
-  return { user, profile };
+  if (!user?.email) return { user: null, membership: null };
+  await syncBootstrapAdminResourceMembership(user);
+  const { data: membership } = await supabase.from('dp_resource_memberships').select('*').eq('id', user.id).single<ResourceMembership>();
+  return { user, membership };
 }
