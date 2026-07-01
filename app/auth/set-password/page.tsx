@@ -11,7 +11,7 @@ import { safeInternalReturnPath } from '@/lib/auth-redirect'
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile'
 const INPUT_SETTLE_DELAY_MS = 600
 const MEANINGFUL_MATCH_LENGTH = 3
-const DEFAULT_NEXT_PATH = '/awaiting-approval'
+const DEFAULT_NEXT_PATH = '/library'
 
 const STRENGTH_LEVELS = [
   { label: 'Very Weak', color: '#b91c1c', barClass: 'bg-red-700' },
@@ -209,7 +209,7 @@ export default function SetPasswordPage() {
     <AuthShell
       eyebrow="Set password"
       title="Create your password and finish account setup."
-      description="After this step, you are logged in automatically and moved to approval."
+      description="After this step, you are logged in automatically and taken to the library."
     >
       <h1 className="font-headline text-4xl text-[#00152a]">Set your password</h1>
       <p className="mt-3 font-body text-[#43474d]">Create a password to finish signup. You will be logged in automatically.</p>

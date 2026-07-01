@@ -1,6 +1,6 @@
 # DP Resources
 
-Production Next.js portal for approved users to browse a private Google Drive library without exposing raw Drive URLs.
+Production Next.js portal for verified users to browse a private Google Drive library without exposing raw Drive URLs.
 
 ## Stack
 
@@ -19,7 +19,7 @@ Copy `.env.example` to `.env.local` and fill in values:
 - `GOOGLE_DRIVE_FOLDER_ID`: root private Drive folder ID.
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account email.
 - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: service account private key, using `\n` for newlines in env storage.
-- `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`, `is_approved = true`, and sets `approved_at` only when approval is first granted.
+- `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`. The legacy `is_approved` and `approved_at` fields may still be populated for backward compatibility, but they do not control access.
 
 ## Supabase setup for DP Resources authentication
 
@@ -49,7 +49,7 @@ The schema creates DP Resources-owned objects including:
 - `public.dp_resources_handle_new_user()`
 - `dp_resources_on_auth_user_created`
 
-New users sign up with username, full name, and email, receive a six-digit Supabase email OTP, verify it, set a password, and remain pending in `public.dp_resource_memberships` until an admin approves them. The browser only receives the public anon key; the service-role key stays in server-only code.
+New users sign up with username, full name, and email, receive a six-digit Supabase signup OTP, verify it, set a password, and go directly to the library. The browser only receives the public anon key; the service-role key stays in server-only code.
 
 ### SQL verification
 
@@ -65,7 +65,7 @@ select * from public.dp_resource_activity_logs;
 
 Set `ADMIN_EMAILS` before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote only that user's DP Resources membership.
 
-If `ADMIN_EMAILS` was not configured and no approved DP Resources admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
+If `ADMIN_EMAILS` was not configured and no DP Resources admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
 
 ```sql
 update public.dp_resource_memberships

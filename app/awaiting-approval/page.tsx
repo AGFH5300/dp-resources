@@ -1,7 +1,5 @@
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
-
 import { redirect } from 'next/navigation';
-import { requireUser } from '@/lib/auth';
 
-export default async function Awaiting(){const {membership}=await requireUser(); if(membership?.is_approved) redirect('/library'); return <main className="flex min-h-screen items-center justify-center p-6"><div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm"><h1 className="text-2xl font-semibold">Awaiting approval</h1><p className="mt-3 text-slate-600">Your account has been created and is waiting for an administrator to approve portal access.</p><form action="/api/auth/signout" method="post"><button className="mt-6 rounded-lg border px-4 py-2">Sign out</button></form></div></main>}
+export default function AwaitingApprovalCompatibility() {
+  redirect('/library');
+}
