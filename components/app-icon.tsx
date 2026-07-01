@@ -1,0 +1,73 @@
+import type { LucideProps } from 'lucide-react'
+import {
+  ArrowRight,
+  Atom,
+  BadgeCheck,
+  BarChart3,
+  Beaker,
+  BookOpen,
+  BookOpenCheck,
+  Bookmark,
+  Calculator,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Compass,
+  FileText,
+  Globe2,
+  GraduationCap,
+  Home,
+  Languages,
+  Library,
+  LogOut,
+  MailCheck,
+  Menu,
+  Settings,
+  Sparkles,
+  Target,
+} from 'lucide-react'
+
+const iconMap = {
+  dashboard: Home,
+  description: FileText,
+  category: Compass,
+  menu: Menu,
+  menu_book: BookOpen,
+  local_library: Library,
+  history_edu: FileText,
+  insights: BarChart3,
+  bar_chart: BarChart3,
+  settings: Settings,
+  logout: LogOut,
+  science: Beaker,
+  chemistry: Atom,
+  functions: Calculator,
+  calculate: Calculator,
+  math: Calculator,
+  public: Globe2,
+  globe: Globe2,
+  translate: Languages,
+  language: Languages,
+  bookmark: Bookmark,
+  history: Clock3,
+  auto_stories: BookOpenCheck,
+  arrow_right_alt: ArrowRight,
+  arrow_forward: ArrowRight,
+  play_circle: Sparkles,
+  filter_list: Settings,
+  check_circle: CheckCircle2,
+  mark_email_read: MailCheck,
+  workspace: Home,
+  atlas: GraduationCap,
+  complete: BadgeCheck,
+  chevron_right: ChevronRight,
+  target: Target,
+  explore: Compass,
+} as const
+
+type IconName = keyof typeof iconMap
+
+export function AppIcon({ name, className, ...props }: { name: string } & LucideProps) {
+  const Icon = iconMap[name as IconName] ?? BookOpen
+  return <Icon aria-hidden="true" className={className} {...props} />
+}
