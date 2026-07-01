@@ -29,25 +29,19 @@ create index if not exists activity_action_date_idx on public.activity_logs (act
 create index if not exists activity_file_id_idx on public.activity_logs (file_id);
 create index if not exists activity_file_name_idx on public.activity_logs (lower(file_name));
 
-create or replace function public.admin_emails() returns text[] language sql stable as $$
-  select coalesce(string_to_array(current_setting('app.admin_emails', true), ','), array[]::text[])
-$$;
-
 create or replace function public.is_admin() returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.profiles p
     where p.id = auth.uid()
       and p.role = 'admin'
-      and lower(p.email) = any (select lower(trim(x)) from unnest(public.admin_emails()) as x)
+      and p.is_approved = true
   )
 $$;
 
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, email, full_name, role, is_approved)
-  values (new.id, new.email, new.raw_user_meta_data->>'full_name',
-    case when lower(new.email) = any (select lower(trim(x)) from unnest(public.admin_emails()) as x) then 'admin' else 'user' end,
-    case when lower(new.email) = any (select lower(trim(x)) from unnest(public.admin_emails()) as x) then true else false end)
+  values (new.id, new.email, new.raw_user_meta_data->>'full_name', 'user', false)
   on conflict (id) do nothing;
   return new;
 end;
