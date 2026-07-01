@@ -1,1 +1,1 @@
-# dp-resources
+# DP Resources
