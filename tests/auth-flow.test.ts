@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { isValidEmail } from '../lib/auth-email'
 import { safeInternalReturnPath } from '../lib/auth-redirect'
@@ -67,5 +67,32 @@ describe('DP-only schema and target code references', () => {
     expect(target).not.toMatch(/public\.profiles\b/)
     expect(target).not.toMatch(/\bis_username_available\b(?![\w])/)
     expect(target).not.toMatch(/\bis_email_available\b(?![\w])/)
+  })
+})
+
+const awaitingApprovalPage = readFileSync('app/awaiting-approval/page.tsx', 'utf8')
+const readme = readFileSync('README.md', 'utf8')
+
+describe('approval waiting redirect and OTP docs', () => {
+  it('redirects approved users away from awaiting approval to the library', () => {
+    expect(awaitingApprovalPage).toContain('await requireUser()')
+    expect(awaitingApprovalPage).toContain('membership?.is_approved')
+    expect(awaitingApprovalPage).toContain("redirect('/library')")
+    expect(awaitingApprovalPage).toContain('Awaiting approval')
+  })
+
+  it('documents the Supabase Magic Link template token for email OTP', () => {
+    expect(readme).toContain('Magic Link')
+    expect(readme).toContain('{{ .Token }}')
+    expect(readme).toContain('signInWithOtp')
+    expect(readme).toContain('verifyOtp')
+  })
+
+  it('uses a migration timestamp later than the deployed 20260701102923 migration', () => {
+    const migrationTimestamp = '20260701110000'
+    expect(migrationTimestamp > '20260701102923').toBe(true)
+    expect(existsSync(`supabase/migrations/${migrationTimestamp}_dp_resource_profiles_auth.sql`)).toBe(true)
+    expect(existsSync('supabase/migrations/20260701000000_dp_resource_profiles_auth.sql')).toBe(false)
+    expect(readme).toContain(`supabase/migrations/${migrationTimestamp}_dp_resource_profiles_auth.sql`)
   })
 })

@@ -26,10 +26,10 @@ Copy `.env.example` to `.env.local` and fill in values:
 DP Resources uses its own Supabase project and DP-only database objects. It does not depend on any external app tables, functions, triggers, migrations, or RPCs.
 
 1. Open the Supabase SQL Editor for the DP Resources Supabase project.
-2. Run the SQL in `supabase/schema.sql` or apply the migration in `supabase/migrations/20260701000000_dp_resource_profiles_auth.sql` together with the existing DP Resources schema.
+2. Run the SQL in `supabase/schema.sql` or apply the migration in `supabase/migrations/20260701110000_dp_resource_profiles_auth.sql` together with the existing DP Resources schema.
 3. In Supabase Auth, enable the Email provider.
-4. In Supabase Auth email templates, ensure the Confirm signup template visibly includes the one-time token.
-5. Use this exact HTML snippet in the Confirm signup email template if you need a minimal OTP template:
+4. DP Resources requests and verifies the email code with Supabase `signInWithOtp` and `verifyOtp`. In Supabase Auth email templates, edit the template labelled “Magic Link” so it visibly includes `{{ .Token }}`; Supabase renders this as the six-digit OTP code used by the MYP-style verification screen.
+5. Use this exact HTML snippet in the Magic Link email template if you need a minimal OTP template:
 
 ```html
 <h2>Verify your email</h2>
