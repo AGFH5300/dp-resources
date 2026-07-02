@@ -1,7 +1,11 @@
 @import "tailwindcss";
 :root{--dp-navy:#0B1F3A;--dp-blue:#2563EB;--dp-teal:#0F766E;--dp-gold:#E6A52D;--dp-soft-sky:#F4F8FF;--dp-warm-surface:#FFFDF8;--dp-ink:#172033;}
 body{background:var(--dp-soft-sky);color:var(--dp-ink);}
-:focus-visible{outline:3px solid color-mix(in srgb,var(--dp-blue) 55%,transparent);outline-offset:2px;}
+
+:focus-visible{outline:2px solid color-mix(in srgb,var(--dp-navy) 70%,transparent);outline-offset:2px;}
+button:focus-visible,a[href]:focus-visible,[role="button"]:focus-visible,summary:focus-visible{outline:2px solid color-mix(in srgb,var(--dp-navy) 70%,transparent);outline-offset:2px;}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;border-color:color-mix(in srgb,var(--dp-navy) 42%,var(--outline));box-shadow:0 0 0 3px color-mix(in srgb,var(--dp-navy) 10%,transparent);}
+
 
 :root {
   --background: #fbf9f4;
@@ -88,7 +92,7 @@ button:disabled,
 .tsm-btn-secondary:not(:disabled):hover { border-color: var(--secondary); color: var(--secondary); }
 .tsm-btn-primary:focus-visible,
 .tsm-btn-secondary:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--secondary) 45%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--dp-navy) 70%, transparent);
   outline-offset: 2px;
 }
 
