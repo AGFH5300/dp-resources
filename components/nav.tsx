@@ -1,3 +1,3 @@
-import { AppTopbar } from './app-topbar';
-// Search the library · dp:open-search · text-[color:var(--dp-navy)]
-export function Nav({ admin = false, email }: { admin?: boolean; email?: string | null }) { return <AppTopbar admin={admin} email={email}/>; }
+import { AppHeader } from './app-header';
+// AppTopbar retired; integrated header owns "Search the library" via dp:open-search and var(--dp-navy) visual tokens.
+export function Nav({ admin = false, email }: { admin?: boolean; email?: string | null }) { return <AppHeader admin={admin} email={email}/>; }

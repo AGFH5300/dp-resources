@@ -1,0 +1,4 @@
+import { FileImage, FileSpreadsheet, FileText, FileType, Folder } from 'lucide-react';
+import { typeLabel } from '@/lib/resource-utils';
+import type { DriveItem } from '@/lib/types';
+export function ResourceTypeIcon({item}:{item:Pick<DriveItem,'isFolder'|'mimeType'>}){const t=typeLabel(item.mimeType,item.isFolder); if(item.isFolder)return <Folder className="size-5 text-[color:var(--dp-gold)]"/>; if(t.includes('Spreadsheet'))return <FileSpreadsheet className="size-5 text-teal-600"/>; if(t.includes('PDF'))return <FileText className="size-5 text-rose-500"/>; if(t.includes('Word'))return <FileText className="size-5 text-blue-600"/>; if(t.includes('Presentation'))return <FileText className="size-5 text-amber-600"/>; if(item.mimeType?.startsWith('image/'))return <FileImage className="size-5 text-violet-500"/>; return <FileType className="size-5 text-slate-500"/>}
