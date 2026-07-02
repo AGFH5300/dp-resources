@@ -167,3 +167,26 @@ begin
   end if;
 end;
 $$;
+
+create table if not exists public.dp_resource_onboarding_dismissals (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  key text not null,
+  dismissed_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+
+alter table public.dp_resource_onboarding_dismissals enable row level security;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'dp_resource_onboarding_dismissals' and policyname = 'onboarding users read own dismissals') then
+    create policy "onboarding users read own dismissals" on public.dp_resource_onboarding_dismissals
+      for select to authenticated using (auth.uid() = user_id or public.dp_resources_is_admin());
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'dp_resource_onboarding_dismissals' and policyname = 'onboarding users insert own dismissals') then
+    create policy "onboarding users insert own dismissals" on public.dp_resource_onboarding_dismissals
+      for insert to authenticated with check (auth.uid() = user_id);
+  end if;
+end;
+$$;
