@@ -1,0 +1,5 @@
+import { requireMember } from '@/lib/auth';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+import { normalizeResourceName } from '@/lib/resource-utils';
+export const dynamic='force-dynamic';
+export async function GET(req:Request){await requireMember(); const q=new URL(req.url).searchParams.get('q')||''; const needle=normalizeResourceName(q); if(needle.length<2)return Response.json({folders:[],files:[]}); const sb=createSupabaseAdminClient(); const safe = needle.replace(/[,%]/g, ''); const like=`%${safe}%`; const {data,error}=await sb.from('dp_resource_index').select('*').or(`normalized_name.ilike.${like},path.ilike.${like},mime_type.ilike.${like}`).order('is_folder',{ascending:false}).order('name').limit(50); if(error)return Response.json({error:'Search unavailable'},{status:500}); const rows=(data||[]).map((r:any)=>({...r, drive_url:undefined, webViewLink:undefined})); return Response.json({folders:rows.filter((r:any)=>r.is_folder),files:rows.filter((r:any)=>!r.is_folder)});}

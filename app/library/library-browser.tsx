@@ -1,132 +1,17 @@
 'use client';
-
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Download, ExternalLink, FileArchive, FileSpreadsheet, FileText, FileType, Folder, Presentation, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Download, Eye, FileSpreadsheet, FileText, FileType, Folder, Grid2X2, List, MoreHorizontal, Search, Share2, Star } from 'lucide-react';
 import type { DriveItem } from '@/lib/types';
-
-type Props = { items: DriveItem[]; crumbs: DriveItem[]; rootId: string };
-
-function hrefForFolder(id: string, rootId: string) {
-  return id === rootId ? '/library' : `/library?folder=${encodeURIComponent(id)}`;
-}
-
-function typeLabel(mimeType: string) {
-  if (mimeType.includes('pdf')) return 'PDF';
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'Spreadsheet';
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'Presentation';
-  if (mimeType.includes('document') || mimeType.includes('word')) return 'Word document';
-  if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'Archive';
-  if (mimeType.startsWith('image/')) return 'Image';
-  if (mimeType.startsWith('video/')) return 'Video';
-  return 'Resource file';
-}
-
-function FileIcon({ mimeType }: { mimeType: string }) {
-  const cls = 'size-5 text-slate-500';
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return <FileSpreadsheet className={cls} />;
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return <Presentation className={cls} />;
-  if (mimeType.includes('zip') || mimeType.includes('compressed')) return <FileArchive className={cls} />;
-  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('word')) return <FileText className={cls} />;
-  return <FileType className={cls} />;
-}
-
-function formatSize(size?: string) {
-  if (!size) return '—';
-  const bytes = Number(size);
-  if (!Number.isFinite(bytes)) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function trackFolder(item: DriveItem) {
-  const body = JSON.stringify({ folderId: item.id, folderName: item.name });
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/library/open-folder', new Blob([body], { type: 'application/json' }));
-    return;
-  }
-  fetch('/api/library/open-folder', { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(() => undefined);
-}
-
-export function LibraryBrowser({ items, crumbs, rootId }: Props) {
-  const [query, setQuery] = useState('');
-  const active = crumbs.at(-1);
-  const parent = crumbs.length > 1 ? crumbs.at(-2) : null;
-  const filtered = useMemo(() => items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase())), [items, query]);
-  const folders = filtered.filter((item) => item.isFolder);
-  const files = filtered.filter((item) => !item.isFolder);
-
-  return (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-          {crumbs.map((crumb, index) => (
-            <span key={crumb.id} className="inline-flex items-center gap-2">
-              {index > 0 ? <span className="text-slate-300">/</span> : null}
-              <Link href={hrefForFolder(crumb.id, rootId)} className="font-medium text-slate-600 hover:text-slate-950">
-                {index === 0 ? 'All resources' : crumb.name}
-              </Link>
-            </span>
-          ))}
-        </nav>
-        {parent ? (
-          <Link href={hrefForFolder(parent.id, rootId)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-            <ArrowLeft className="size-4" /> Back to {parent.id === rootId ? 'Library' : parent.name}
-          </Link>
-        ) : null}
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">{active?.name || 'Library'}</h1>
-            <p className="mt-2 text-sm text-slate-500">{filtered.length} {filtered.length === 1 ? 'item' : 'items'} in this folder</p>
-          </div>
-          <label className="relative block w-full md:max-w-sm">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Search this folder</span>
-            <Search className="pointer-events-none absolute bottom-3 left-3 size-4 text-slate-400" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:border-amber-700 focus:ring-4 focus:ring-amber-700/10" placeholder="Search resources" />
-          </label>
-        </div>
-      </div>
-
-      {folders.length ? (
-        <section aria-labelledby="folders-heading">
-          <h2 id="folders-heading" className="text-sm font-semibold uppercase tracking-wide text-slate-500">Folders</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {folders.map((folder) => (
-              <Link prefetch key={folder.id} href={hrefForFolder(folder.id, rootId)} onClick={() => trackFolder(folder)} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-700/40 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-amber-700/10">
-                <div className="flex items-start gap-3">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-800"><Folder className="size-5" /></span>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-950">{folder.name}</p>
-                    <p className="mt-1 text-sm text-slate-500 group-hover:text-amber-800">Open folder</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="files-heading">
-        <h2 id="files-heading" className="text-sm font-semibold uppercase tracking-wide text-slate-500">Files</h2>
-        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          {files.length ? files.map((file) => (
-            <div key={file.id} className="grid gap-3 border-b border-slate-100 p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100"><FileIcon mimeType={file.mimeType} /></span>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-950">{file.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{typeLabel(file.mimeType)} · {formatSize(file.size)} · {file.modifiedTime ? new Date(file.modifiedTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Modified date unavailable'}</p>
-                </div>
-              </div>
-              <div className="flex gap-2 md:justify-end">
-                <Link className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" href={`/api/files/${file.id}/open`}><ExternalLink className="size-4" /> Open</Link>
-                <Link className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800" href={`/api/files/${file.id}/download`}><Download className="size-4" /> Download</Link>
-              </div>
-            </div>
-          )) : <p className="p-6 text-sm text-slate-500">No files match this view.</p>}
-        </div>
-      </section>
-    </div>
-  );
-}
+import { formatDate, formatSize, resourceUrl, typeLabel } from '@/lib/resource-utils';
+type Props={items:DriveItem[]; crumbs:DriveItem[]; rootId:string};
+const hrefForFolder=(id:string,rootId:string)=>id===rootId?'/library':`/library?folder=${encodeURIComponent(id)}`;
+function Icon({item}:{item:DriveItem}){if(item.isFolder)return <Folder className="size-5 text-amber-700"/>; if(typeLabel(item.mimeType).includes('Spreadsheet'))return <FileSpreadsheet className="size-5 text-emerald-700"/>; if(typeLabel(item.mimeType).includes('PDF')||typeLabel(item.mimeType).includes('Word'))return <FileText className="size-5 text-slate-600"/>; return <FileType className="size-5 text-slate-500"/>}
+function remember(item:DriveItem,path:string){const rec={id:item.id,name:item.name,isFolder:item.isFolder,mimeType:item.mimeType,path,at:Date.now()}; const old=JSON.parse(localStorage.getItem('dp_recent')||'[]').filter((r:any)=>r.id!==item.id); localStorage.setItem('dp_recent',JSON.stringify([rec,...old].slice(0,12)));}
+export function LibraryBrowser({items,crumbs,rootId}:Props){const [query,setQuery]=useState(''); const [view,setView]=useState<'list'|'grid'>('list'); const [sort,setSort]=useState('name'); const [selected,setSelected]=useState<DriveItem|null>(null); const active=crumbs.at(-1); const parent=crumbs.length>1?crumbs.at(-2):null; const basePath=crumbs.map((c,i)=>i===0?'Library':c.name).join(' / ');
+useEffect(()=>{setView((localStorage.getItem('dp_view') as any)||'list')},[]); function setPersist(v:'list'|'grid'){setView(v);localStorage.setItem('dp_view',v)}
+const filtered=useMemo(()=>items.filter(i=>(i.name+' '+typeLabel(i.mimeType,i.isFolder)).toLowerCase().includes(query.toLowerCase())).sort((a,b)=>{const f=Number(b.isFolder)-Number(a.isFolder); if(f)return f; if(sort==='modified')return String(b.modifiedTime||'').localeCompare(String(a.modifiedTime||'')); if(sort==='type')return typeLabel(a.mimeType,a.isFolder).localeCompare(typeLabel(b.mimeType,b.isFolder)); if(sort==='size')return Number(b.size||0)-Number(a.size||0); return a.name.localeCompare(b.name)}),[items,query,sort]);
+return <div className="space-y-5"><nav className="flex flex-wrap items-center gap-2 text-sm text-slate-500" aria-label="Breadcrumb">{crumbs.map((c,i)=><span className="inline-flex items-center gap-2" key={c.id}>{i>0&&<span>/</span>}<Link className="font-medium hover:text-slate-950" href={hrefForFolder(c.id,rootId)}>{i===0?'Library':c.name}</Link></span>)}</nav>{parent&&<Link href={hrefForFolder(parent.id,rootId)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm"><ArrowLeft className="size-4"/>Back to {parent.id===rootId?'Library':parent.name}</Link>}
+<div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight text-slate-950">{active?.name||'Library'}</h1><p className="mt-1 text-sm text-slate-500">{filtered.length} items · local filter only</p></div><div className="flex flex-wrap gap-2"><label className="relative"><Search className="absolute left-3 top-3 size-4 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Filter this folder by name or type" className="w-72 rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm outline-none focus:ring-4 focus:ring-amber-700/10"/></label><select value={sort} onChange={e=>setSort(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="name">Name</option><option value="modified">Recently modified</option><option value="type">Type</option><option value="size">Size</option></select><button onClick={()=>setPersist('list')} className={`rounded-lg border px-3 ${view==='list'?'bg-slate-950 text-white':'bg-white'}`}><List className="size-4"/></button><button onClick={()=>setPersist('grid')} className={`rounded-lg border px-3 ${view==='grid'?'bg-slate-950 text-white':'bg-white'}`}><Grid2X2 className="size-4"/></button></div></div>
+{view==='grid'?<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{filtered.map(item=><Link key={item.id} onClick={()=>remember(item,basePath)} href={item.isFolder?hrefForFolder(item.id,rootId):resourceUrl({id:item.id,isFolder:false})} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:bg-slate-50"><Icon item={item}/><p className="mt-3 truncate font-medium">{item.name}</p><p className="text-xs text-slate-500">{typeLabel(item.mimeType,item.isFolder)}</p></Link>)}</div>:<div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="hidden grid-cols-[minmax(260px,1fr)_220px_140px_120px_100px_120px] gap-3 border-b bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid"><span>Name</span><span>Location / folder path</span><span>Type</span><span>Modified</span><span>Size</span><span>Actions</span></div>{filtered.map(item=><div key={item.id} onClick={()=>setSelected(item)} className={`grid gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 hover:bg-amber-50/40 md:grid-cols-[minmax(260px,1fr)_220px_140px_120px_100px_120px] md:items-center ${selected?.id===item.id?'bg-amber-50':''}`}><Link onClick={()=>remember(item,basePath)} href={item.isFolder?hrefForFolder(item.id,rootId):resourceUrl({id:item.id,isFolder:false})} className="flex min-w-0 items-center gap-3 font-medium text-slate-950"><Icon item={item}/><span className="truncate">{item.name}</span></Link><span className="truncate text-slate-500">{basePath}</span><span>{typeLabel(item.mimeType,item.isFolder)}</span><span className="text-slate-500">{formatDate(item.modifiedTime)}</span><span className="text-slate-500">{formatSize(item.size)}</span><span className="flex gap-1"><Link href={resourceUrl({id:item.id,isFolder:item.isFolder})} className="rounded-lg p-2 hover:bg-white" title="Preview/Open"><Eye className="size-4"/></Link>{!item.isFolder&&<Link href={`/api/files/${item.id}/download`} className="rounded-lg p-2 hover:bg-white"><Download className="size-4"/></Link>}<button onClick={(e)=>{e.preventDefault();navigator.clipboard?.writeText(location.origin+resourceUrl({id:item.id,isFolder:item.isFolder}));}} className="rounded-lg p-2 hover:bg-white"><Share2 className="size-4"/></button><button onClick={(e)=>{e.preventDefault();fetch('/api/favorites',{method:'POST',body:JSON.stringify({driveFileId:item.id})});}} className="rounded-lg p-2 hover:bg-white"><Star className="size-4"/></button></span></div>)}</div>}
+{selected&&<aside className="fixed right-4 top-28 z-30 w-80 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"><button onClick={()=>setSelected(null)} className="float-right"><MoreHorizontal className="size-5"/></button><Icon item={selected}/><h2 className="mt-3 font-semibold text-slate-950">{selected.name}</h2><dl className="mt-4 space-y-2 text-sm"><div><dt className="text-slate-500">Type</dt><dd>{typeLabel(selected.mimeType,selected.isFolder)}</dd></div><div><dt className="text-slate-500">Size</dt><dd>{formatSize(selected.size)}</dd></div><div><dt className="text-slate-500">Modified</dt><dd>{formatDate(selected.modifiedTime)}</dd></div><div><dt className="text-slate-500">Location</dt><dd>{basePath}</dd></div></dl><div className="mt-5 grid gap-2"><Link className="rounded-lg bg-slate-950 px-3 py-2 text-center text-sm font-medium text-white" href={resourceUrl({id:selected.id,isFolder:selected.isFolder})}>Preview/Open</Link><button onClick={()=>fetch('/api/favorites',{method:'POST',body:JSON.stringify({driveFileId:selected.id})})} className="rounded-lg border px-3 py-2 text-sm">Save</button><button onClick={()=>window.dispatchEvent(new CustomEvent('dp:report',{detail:{id:selected.id,name:selected.name,path:basePath}}))} className="rounded-lg border px-3 py-2 text-sm">Report issue</button></div></aside>}</div>}

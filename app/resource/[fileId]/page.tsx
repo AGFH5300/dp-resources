@@ -1,0 +1,9 @@
+export const dynamic='force-dynamic';
+import Link from 'next/link';
+import { Nav } from '@/components/nav';
+import { requireMember } from '@/lib/auth';
+import { assertInsideRoot, getDriveMetadata } from '@/lib/drive';
+import { typeLabel } from '@/lib/resource-utils';
+import { Download, Flag, Share2, Star } from 'lucide-react';
+import { ResourcePreview } from './resource-preview';
+export default async function Page({params}:{params:Promise<{fileId:string}>}){const {membership}=await requireMember(); const {fileId}=await params; if(!(await assertInsideRoot(fileId))) return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="p-8">Not found</main></>; const meta=await getDriveMetadata(fileId); if(!meta) return null; return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="mx-auto max-w-7xl px-4 py-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><Link href="/library" className="text-sm text-slate-500 hover:text-slate-950">Library</Link><h1 className="mt-1 text-2xl font-semibold">{meta.name}</h1><p className="text-sm text-slate-500">{typeLabel(meta.mimeType,meta.isFolder)}</p></div><div className="flex gap-2"><button className="rounded-lg border px-3 py-2 text-sm"><Share2 className="inline size-4"/> Share</button><button className="rounded-lg border px-3 py-2 text-sm"><Star className="inline size-4"/> Save</button><button className="rounded-lg border px-3 py-2 text-sm"><Flag className="inline size-4"/> Report issue</button>{!meta.isFolder&&<Link className="rounded-lg bg-slate-950 px-3 py-2 text-sm text-white" href={`/api/files/${fileId}/download`}><Download className="inline size-4"/> Download</Link>}</div></div><ResourcePreview fileId={fileId} mimeType={meta.mimeType} name={meta.name}/></main></>}

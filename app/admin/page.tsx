@@ -6,7 +6,7 @@ import { requireAdmin } from '@/lib/auth';
 import { applyActivityFilters } from '@/lib/admin-filters';
 import { isDriveConfigured } from '@/lib/drive';
 import { createSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
-import type { ActivityLog, ResourceMembership } from '@/lib/types';
+import type { ActivityLog, ResourceMembership, ResourceReport, SupportTicket } from '@/lib/types';
 
 async function countRows(table: 'dp_resource_memberships' | 'dp_resource_activity_logs', build: (q: any) => any) {
   const sb = createSupabaseAdminClient();
@@ -27,6 +27,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
   const { data: logs = [], error: logsError } = await activityQuery;
   if (logsError) throw new Error(logsError.message);
 
+  const { data: indexRows = [] } = await sb.from('dp_resource_index').select('indexed_at').order('indexed_at', { ascending: false }).limit(1);
+  const { count: indexCount = 0 } = await sb.from('dp_resource_index').select('id', { count: 'exact', head: true });
+  const { data: reports = [] } = await sb.from('dp_resource_reports').select('*').order('created_at', { ascending: false }).limit(25);
+  const { data: tickets = [] } = await sb.from('dp_support_tickets').select('*').order('created_at', { ascending: false }).limit(25);
   const today = new Date().toISOString().slice(0, 10);
   const [totalUsers, admins, openedToday, downloadsToday] = await Promise.all([
     countRows('dp_resource_memberships', (q) => q),
@@ -50,6 +54,17 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
               <p className="mt-2 text-3xl font-semibold text-slate-950">{value}</p>
             </div>
           ))}
+        </div>
+
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-semibold text-slate-950">Library index</h2>
+          <p className="mt-2 text-sm text-slate-500">{indexCount || 0} indexed resources. Last indexed: {(indexRows as any[])[0]?.indexed_at ? new Date((indexRows as any[])[0].indexed_at).toLocaleString() : 'Never'}</p>
+          <form action="/api/admin/index" method="post" className="mt-3"><button className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white">Sync library index</button></form>
+          <p className="mt-2 text-xs text-slate-500">Indexing runs in safe batches and preserves the configured Drive root boundary.</p>
+        </section>
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section><h2 className="text-xl font-semibold text-slate-950">Support inbox</h2><div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">{(tickets as SupportTicket[]).map((t) => <div className="border-b p-4 text-sm last:border-b-0" key={t.id}><b>{t.subject}</b><span className="ml-2 text-xs uppercase text-slate-500">{t.status}</span><p className="text-slate-500">{t.reporter_email} · {t.category}</p><p>{t.message}</p></div>)}</div></section>
+          <section><h2 className="text-xl font-semibold text-slate-950">Resource reports</h2><div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">{(reports as ResourceReport[]).map((r) => <div className="border-b p-4 text-sm last:border-b-0" key={r.id}><b>{r.resource_name || 'Resource'}</b><span className="ml-2 text-xs uppercase text-slate-500">{r.status}</span><p className="text-slate-500">{r.reporter_email} · {r.category} · {r.resource_path}</p><p>{r.message}</p></div>)}</div></section>
         </div>
         <h2 className="mt-8 text-xl font-semibold text-slate-950">Users</h2>
         <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
