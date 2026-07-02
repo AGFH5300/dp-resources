@@ -24,7 +24,7 @@ describe('Resource Workspace V2 hardening', () => {
   });
 
   it('enforces favorite owner isolation and report/ticket RLS in migration', () => {
-    const migration = read('supabase/migrations/20260701123000_resource_workspace_v2.sql');
+    const migration = read('supabase/migrations/20260702043000_resource_workspace_v2.sql');
     expect(migration).toContain('auth.uid() = user_id');
     expect(migration).toContain('auth.uid() = reporter_id');
     expect(migration).toContain('role = \'admin\'');
