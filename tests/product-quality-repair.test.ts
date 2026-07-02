@@ -56,11 +56,11 @@ describe('2026-07-02 QA regressions', () => {
     expect(actions).toContain("if(e.key==='Escape') close();");
     expect(actions).toContain('onMouseDown={e=>e.stopPropagation()}');
     expect(actions).not.toContain('{resource.resourceName} · {resource.driveFileId}');
-    expect(actions).toContain("catch { toast('Could not submit report', 'error'); }");
+    expect(actions).toContain("toast('Could not submit report', 'error');");
   });
   it('global search is a compact command palette with backdrop close and neutral active rows', () => {
     const search = read('components/global-search.tsx');
-    expect(search).toContain('max-w-[42rem]');
+    expect(search).toContain('max-w-2xl');
     expect(search).toContain('if(e.target===e.currentTarget)close();');
     expect(search).toContain('Folders');
     expect(search).toContain('Files');
@@ -71,5 +71,19 @@ describe('2026-07-02 QA regressions', () => {
     expect(read('app/resource/[fileId]/page.tsx')).toContain('ResourceActions');
     expect(read('app/resource/[fileId]/resource-preview.tsx')).not.toContain('ResourceActions');
     expect(read('app/resource/[fileId]/resource-preview.tsx')).not.toContain('Unable to load the PDF preview');
+  });
+});
+
+describe('spreadsheet resource labelling', () => {
+  it('classifies Office XLSX MIME before generic document', async () => {
+    const { typeLabel } = await import('../lib/resource-utils');
+    expect(typeLabel('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('Spreadsheet');
+  });
+  it('uses spreadsheet icon branch for the same MIME type', () => {
+    const icon = read('components/resource-type-icon.tsx');
+    const utils = read('lib/resource-utils.ts');
+    expect(utils.indexOf('spreadsheet')).toBeLessThan(utils.indexOf('document'));
+    expect(icon).toContain("t.includes('Spreadsheet')");
+    expect(icon).toContain('FileSpreadsheet');
   });
 });
