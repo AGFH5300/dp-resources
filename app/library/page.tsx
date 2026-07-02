@@ -15,7 +15,7 @@ export default async function Library({ searchParams }: { searchParams: Promise<
   return (
     <>
       <Nav admin={membership.role === 'admin'} email={membership.email} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:ml-60 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {!configured ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="text-2xl font-semibold text-slate-950">Resources are not available yet.</h1>
