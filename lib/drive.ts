@@ -145,6 +145,43 @@ export async function getDriveStream(fileId: string, mimeType: string) {
   return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: mimeType, headers: res.headers };
 }
 
+export type DriveIndexFolderCursor = { id: string; path: string; parent: string | null };
+
+export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCursor[]; maxFolders?: number; maxItems?: number }) {
+  const maxFolders = options.maxFolders ?? 12;
+  const maxItems = options.maxItems ?? 500;
+  const rootId = rootFolderId();
+  const queue: DriveIndexFolderCursor[] = [...options.queue];
+  if (!queue.length) queue.push({ id: rootId, path: 'Library', parent: null });
+  const first = queue[0];
+  if (first.id !== rootId && !(await assertInsideRoot(first.id))) throw new Error('Index cursor escaped the configured Drive root.');
+  const rows: Array<{ drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null }> = [];
+  let processedFolders = 0;
+  while (queue.length && processedFolders < maxFolders && rows.length < maxItems) {
+    const folder = queue.shift()!;
+    if (folder.id !== rootId && !(await assertInsideRoot(folder.id))) continue;
+    const { items } = await getFolderView(folder.id);
+    processedFolders += 1;
+    for (const item of items) {
+      const path = `${folder.path} / ${item.name}`;
+      rows.push({
+        drive_file_id: item.id,
+        parent_drive_file_id: folder.id,
+        name: item.name,
+        normalized_name: normalizeSearch(item.name),
+        path,
+        mime_type: item.mimeType,
+        is_folder: item.isFolder,
+        size_bytes: item.size ? Number(item.size) : null,
+        modified_at: item.modifiedTime || null,
+      });
+      if (item.isFolder) queue.push({ id: item.id, path, parent: folder.id });
+      if (rows.length >= maxItems) break;
+    }
+  }
+  return { rows, queue, complete: queue.length === 0, remainingFolders: queue.length, processedFolders };
+}
+
 export async function crawlDriveIndex(options: { maxItems?: number } = {}) {
   const maxItems = options.maxItems ?? 500;
   const rootId = rootFolderId();
