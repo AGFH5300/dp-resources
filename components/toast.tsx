@@ -1,17 +1,17 @@
 'use client';
-import { createContext, useContext, useMemo, useState } from 'react';
-
-type Toast = { id: number; message: string; tone?: 'success' | 'error' | 'info' };
-const ToastContext = createContext<(message: string, tone?: Toast['tone']) => void>(() => {});
-
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+type Tone = 'success' | 'error' | 'info';
+type Toast = { id: number; message: string; tone: Tone };
+const ToastContext = createContext<(message: string, tone?: Tone) => void>(() => {});
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const push = (message: string, tone: Toast['tone'] = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts((items) => [...items, { id, message, tone }]);
-    setTimeout(() => setToasts((items) => items.filter((t) => t.id !== id)), 3200);
-  };
-  const value = useMemo(() => push, []);
-  return <ToastContext.Provider value={value}>{children}<div className="fixed bottom-4 right-4 z-[70] space-y-2" aria-live="polite">{toasts.map(t => <div key={t.id} className={`rounded-xl border px-4 py-3 text-sm shadow-lg ${t.tone === 'error' ? 'border-red-200 bg-red-50 text-red-800' : t.tone === 'success' ? 'border-[color:var(--dp-teal)]/20 bg-teal-50 text-teal-800' : 'border-[color:var(--dp-blue)]/20 bg-blue-50 text-blue-900'}`}>{t.message}</div>)}</div></ToastContext.Provider>;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const dismiss = useCallback((id:number)=>setToasts(t=>t.filter(x=>x.id!==id)),[]);
+  const value = useCallback((message: string, tone: Tone = 'info') => { const id = Date.now() + Math.random(); setToasts(t => [...t, { id, message, tone }]); setTimeout(() => dismiss(id), 4500); }, [dismiss]);
+  const node = <div className="fixed right-3 top-20 z-[80] space-y-2 pb-20 md:right-5 md:top-[4.75rem] md:pb-0" aria-live="polite">{toasts.map(t => { const Icon=t.tone==='error'?AlertCircle:t.tone==='success'?CheckCircle2:Info; return <div key={t.id} className={`flex min-w-72 max-w-sm items-start gap-3 rounded-lg border px-3 py-3 text-sm shadow-lg ${t.tone==='error'?'border-red-200 bg-red-50 text-red-900':t.tone==='success'?'border-emerald-200 bg-emerald-50 text-emerald-900':'border-slate-200 bg-white text-slate-800'}`}><Icon className="mt-0.5 size-4 shrink-0"/><span className="flex-1">{t.message}</span><button aria-label="Dismiss notification" onClick={()=>dismiss(t.id)} className="rounded p-0.5 hover:bg-black/5"><X className="size-4"/></button></div>})}</div>;
+  return <ToastContext.Provider value={value}>{children}{mounted ? createPortal(node, document.body) : null}</ToastContext.Provider>;
 }
 export function useToast() { return useContext(ToastContext); }

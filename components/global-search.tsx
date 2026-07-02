@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { resourceUrl, typeLabel } from '@/lib/resource-utils';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
+import { EssentialMarker } from '@/components/essential-marker';
 import type { ResourceIndex } from '@/lib/types';
 
 type Result = ResourceIndex;
 type IndexState = 'unknown' | 'ready' | 'empty' | 'preparing';
 function mark(text: string, q: string) { const part = q.trim(); if (!part) return text; const idx = text.toLowerCase().indexOf(part.toLowerCase()); if (idx < 0) return text; return <>{text.slice(0, idx)}<mark className="bg-amber-100 text-amber-950">{text.slice(idx, idx + part.length)}</mark>{text.slice(idx + part.length)}</>; }
-function resultRow(r: Result, q: string, active: boolean, close: () => void) { return <Link onClick={close} key={r.drive_file_id} href={resourceUrl({drive_file_id:r.drive_file_id,is_folder:r.is_folder})} className={`grid grid-cols-[3px_1.25rem_1fr] items-center gap-3 rounded-md px-2 py-2 ${active?'bg-slate-100':'hover:bg-slate-50'}`}><span className={`h-8 rounded-full ${active?'bg-[color:var(--dp-navy)]':'bg-transparent'}`} /><ResourceTypeIcon item={{isFolder:r.is_folder,mimeType:r.mime_type}}/><span className="min-w-0"><span className="block truncate text-sm font-medium text-[color:var(--dp-navy)]">{mark(r.name,q)}</span><span className="block truncate text-xs text-[color:var(--dp-ink)]/60">{mark(r.path || 'Library',q)} · {typeLabel(r.mime_type,r.is_folder)}</span></span></Link>; }
+function resultRow(r: Result, q: string, active: boolean, close: () => void) { return <Link onClick={close} key={r.drive_file_id} href={resourceUrl({drive_file_id:r.drive_file_id,is_folder:r.is_folder})} className={`grid grid-cols-[3px_1.25rem_1fr] items-center gap-3 rounded-md px-2 py-2 ${active?'bg-slate-100':'hover:bg-slate-50'}`}><span className={`h-8 rounded-full ${active?'bg-[color:var(--dp-navy)]':'bg-transparent'}`} /><ResourceTypeIcon item={{isFolder:r.is_folder,mimeType:r.mime_type}}/><span className="min-w-0"><span className="block truncate text-sm font-medium text-[color:var(--dp-navy)]">{mark(r.name,q)} {r.featuredLabel&&<EssentialMarker label={r.featuredLabel}/>}</span><span className="block truncate text-xs text-[color:var(--dp-ink)]/60">{mark(r.path || 'Library',q)} · {typeLabel(r.mime_type,r.is_folder)}</span></span></Link>; }
 export function GlobalSearch() {
   const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const [indexState,setIndexState]=useState<IndexState>('preparing');
   const [folders, setFolders] = useState<Result[]>([]); const [files, setFiles] = useState<Result[]>([]); const [loading, setLoading] = useState(false); const [slow, setSlow] = useState(false); const [error, setError] = useState(''); const [active, setActive] = useState(0); const input = useRef<HTMLInputElement>(null);
