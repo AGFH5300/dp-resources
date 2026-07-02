@@ -1,4 +1,7 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+:root{--dp-navy:#0B1F3A;--dp-blue:#2563EB;--dp-teal:#0F766E;--dp-gold:#E6A52D;--dp-soft-sky:#F4F8FF;--dp-warm-surface:#FFFDF8;--dp-ink:#172033;}
+body{background:var(--dp-soft-sky);color:var(--dp-ink);}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--dp-blue) 55%,transparent);outline-offset:2px;}
 
 :root {
   --background: #fbf9f4;
@@ -23,7 +26,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { background: var(--background); color: var(--text); }
+body { background: var(--dp-soft-sky); color: var(--dp-ink); }
 
 .tsm-shell { max-width: 1536px; margin-inline: auto; padding-inline: 1.5rem; }
 @media (min-width: 768px) { .tsm-shell { padding-inline: 3rem; } }
