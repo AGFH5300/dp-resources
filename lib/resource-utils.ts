@@ -23,9 +23,9 @@ export function typeLabel(mimeType: string, isFolder = false) {
   if (isFolder || mimeType === FOLDER_MIME) return 'Folder';
   const lower = mimeType.toLowerCase();
   if (lower.includes('pdf')) return 'PDF';
-  if (lower.includes('word') || lower.includes('document')) return 'Word document';
   if (lower.includes('spreadsheet') || lower.includes('excel') || lower.includes('sheet')) return 'Spreadsheet';
   if (lower.includes('presentation') || lower.includes('powerpoint')) return 'Presentation';
+  if (lower.includes('word') || lower.includes('document')) return 'Word document';
   if (lower.startsWith('image/')) return 'Image';
   if (lower.startsWith('text/') || lower.includes('csv') || lower.includes('plain')) return 'Text file';
   return 'Other file';
