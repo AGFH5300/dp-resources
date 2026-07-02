@@ -1,0 +1,2 @@
+import { requireAdmin } from '@/lib/auth'; import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){await requireAdmin(); const {id}=await params; const {status}=await req.json(); const sb=createSupabaseAdminClient(); const {error}=await sb.from('dp_support_tickets').update({status,updated_at:new Date().toISOString()}).eq('id',id); if(error)return Response.json({error:error.message},{status:500}); return Response.json({ok:true});}

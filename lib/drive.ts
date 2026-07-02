@@ -144,3 +144,31 @@ export async function getDriveStream(fileId: string, mimeType: string) {
   const res = await drive().files.get({ fileId, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' });
   return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: mimeType, headers: res.headers };
 }
+
+export async function crawlDriveIndex(options: { maxItems?: number } = {}) {
+  const maxItems = options.maxItems ?? 500;
+  const rootId = rootFolderId();
+  const queue: Array<{ id: string; path: string; parent: string | null }> = [{ id: rootId, path: 'Library', parent: null }];
+  const rows: Array<{ drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null }> = [];
+  while (queue.length && rows.length < maxItems) {
+    const folder = queue.shift()!;
+    const { items } = await getFolderView(folder.id);
+    for (const item of items) {
+      const path = `${folder.path} / ${item.name}`;
+      rows.push({
+        drive_file_id: item.id,
+        parent_drive_file_id: folder.id,
+        name: item.name,
+        normalized_name: normalizeSearch(item.name),
+        path,
+        mime_type: item.mimeType,
+        is_folder: item.isFolder,
+        size_bytes: item.size ? Number(item.size) : null,
+        modified_at: item.modifiedTime || null,
+      });
+      if (item.isFolder && rows.length < maxItems) queue.push({ id: item.id, path, parent: folder.id });
+      if (rows.length >= maxItems) break;
+    }
+  }
+  return { rows, complete: queue.length === 0, remainingFolders: queue.length };
+}
