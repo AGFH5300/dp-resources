@@ -1,0 +1,634 @@
+DP RESOURCES — PRODUCT UI/UX VISION
+Authoritative implementation reference for Codex and future UI work.
+
+======================================================================
+0. PURPOSE OF THIS DOCUMENT
+======================================================================
+
+This file is the source of truth for the authenticated DP Resources product experience.
+
+The existing Login, Sign up, OTP verification, and Set Password pages are approved. Do not redesign, restyle, or replace them. Every authenticated screen must feel like the same product family as those pages: composed, academic, confident, and intentional.
+
+Previous main-app work failed because it treated the product as a generic dashboard and assembled common AI-generated patterns: floating pills, oversized hero areas, random cards, large empty surfaces, forced sidebars, premature inspectors, and decorative controls that did not belong to the actual product.
+
+DP Resources is NOT:
+- a generic SaaS dashboard
+- a marketing site
+- a Google Drive clone
+- a file-administration product
+- a "digital archive" product
+- a component gallery
+- a place for fake metrics, fake statuses, fake metadata, or invented workflows
+
+DP Resources IS:
+- a private academic resource workspace
+- a fast, beautiful way to browse a structured learning library
+- a place to open, preview, save, share internally, download, search, report issues, and ask for support
+- a desktop-first productivity experience that still works excellently on mobile
+
+The quality bar is: familiar enough to use immediately, distinctive enough to feel designed, and disciplined enough to avoid AI slop.
+
+======================================================================
+1. NON-NEGOTIABLE PRODUCT REALITY
+======================================================================
+
+The system is a read-only academic resource library.
+
+SUPPORTED USER ACTIONS:
+- browse folders
+- open a folder
+- preview a resource
+- download a resource
+- copy an internal DP Resources link
+- use native share where available
+- save / remove from Saved
+- search the indexed library
+- view selected-resource details deliberately
+- report an issue with a resource
+- submit a support request
+- view own tickets
+- for admins: manage indexing, triage reports and support tickets, see users and activity
+
+DO NOT DESIGN OR IMPLEMENT UNLESS EXPLICITLY REQUESTED:
+- upload
+- create folder
+- create file
+- edit resource content
+- delete
+- move to trash
+- move/rename files
+- public Google Drive links
+- public anonymous sharing
+- notifications centre
+- settings area unless it is a real product requirement
+- citations, bibliography export, print record, archival hashes, fake document authors
+- fake resource statuses such as Verified, Draft, Raw, Restricted, Archived
+- fake activity, fake counts, fake progress, fake support tickets, fake user data
+
+Use only real metadata available to the app: name, type, path/location, modified date, size, whether it is a folder, saved state, and relevant real activity.
+
+Never call the product "Digital Archive", "Academic Archive", "Root Archive", or "Root Directory". The product is DP Resources. The resource area is Library.
+
+======================================================================
+2. THE APPROVED INFORMATION ARCHITECTURE
+======================================================================
+
+Top-level authenticated routes:
+- Library
+- Recent
+- Saved
+- Support
+- Admin (admins only)
+- Profile/account menu
+
+Search is a global capability, not a primary page-navigation item on desktop.
+
+Desktop navigation must be integrated into one flat application header. There must be NO left sidebar, icon rail, persistent vertical navigation, or desktop drawer navigation.
+
+Mobile may use a compact top bar and bottom navigation. Admin belongs in the profile/menu area on mobile, not as a permanent bottom-nav destination.
+
+======================================================================
+3. DESKTOP APPLICATION SHELL — APPROVED DIRECTION
+======================================================================
+
+Use one integrated, flat, full-width desktop application header.
+
+Header structure:
+
+DP Resources | Library  Recent  Saved  Support  Admin | flexible space | Search library… ⌘K | Account
+
+Rules:
+- 64px to 72px high.
+- Full width, fixed/sticky at the top.
+- Flat surface with a thin lower divider.
+- No floating container around the header.
+- No detached navigation strip.
+- No navigation pills.
+- No large hero block above the workspace.
+- No heavy shadows.
+- No separate oversized page search bar.
+- Brand, nav links, global search, and account control must align on one baseline and feel like one product shell.
+
+Brand:
+- Compact DP Resources wordmark at the left.
+- It should carry the same sophistication as the approved auth pages.
+- It must not dominate the header or look like a dashboard logo block.
+
+Primary links:
+- Library, Recent, Saved, Support.
+- Admin shown only when the user has admin role.
+- Active link uses a subtle underline, 2px bottom border, or restrained tonal state.
+- Never use black filled pills, giant active blocks, or separate tab cards.
+
+Global Search:
+- One compact but prominent global search control in the header.
+- It opens the global command palette / search overlay.
+- It shows Cmd+K or Ctrl+K affordance.
+- It searches the full indexed library.
+- It must not be duplicated by another visually identical search field on Library, Recent, Saved, Support, or Admin.
+
+Account:
+- Compact avatar/profile control at far right.
+- Opens an account menu with relevant identity, Profile, Admin where relevant, and Sign out.
+- Sign out should not occupy prominent persistent visual space.
+
+======================================================================
+4. PAGE-LEVEL CONTEXT TOOLBAR
+======================================================================
+
+Below the main header, pages may use a compact contextual row when it is useful. This is not another navigation bar.
+
+Library context row:
+- Breadcrumbs at left.
+- Current folder name/context.
+- Back action when nested.
+- Filter.
+- Sort.
+- List/grid view switch.
+- Optional deliberate Details toggle.
+
+Example:
+Library / Additional Subjects / Islamic A                         Filter  Sort  List  Grid
+
+Support context row:
+- Page title or breadcrumb.
+- New request action.
+- No duplicated global search.
+
+Admin context row:
+- Section tabs: Library index, Resource reports, Support tickets, Users, Activity.
+- Tabs should be operational and restrained, not a dashboard navigation experiment.
+
+======================================================================
+5. LIBRARY IS THE PRODUCT
+======================================================================
+
+The Library is the visual and functional center of DP Resources.
+
+The intended feel:
+- familiar Google Drive-like resource browsing
+- cleaner and more considered than Google Drive
+- compact, information-dense, and fast
+- calm editorial typography around a highly practical file list
+- no dashboard clutter around the actual resources
+
+DO NOT turn Library into:
+- a grid of large cards by default
+- a landing page
+- a hero-led dashboard
+- a stack of rounded containers
+- an empty canvas with a table in the middle
+
+The default library presentation is a list-first file browser.
+
+Desktop list columns:
+- Name
+- Location / folder path where useful
+- Type
+- Modified
+- Size
+- Actions
+
+For root folders, columns may adapt intelligently (for example, number of items instead of size) only when that data is genuinely available.
+
+List design:
+- Use a full-width workspace with sensible content margins.
+- Avoid a large rounded outer card enclosing the whole list.
+- Use a subtle table header and thin row separators.
+- Use compact but comfortable row height, roughly 40–48px desktop.
+- File name is the primary visual element.
+- Metadata is quieter and secondary.
+- Long names and paths truncate cleanly.
+- Hover should be a gentle surface change, not a lift, shadow, or card animation.
+- Row actions appear on hover/focus but remain accessible.
+- Use a stable three-dot action button at the far right.
+
+Folder hierarchy:
+- Breadcrumbs are clickable.
+- Single click opens a folder immediately.
+- A compact contextual Back action appears in nested folders.
+- Do not use the phrase "Up one level".
+- Do not add fake folder counts or descriptions.
+
+======================================================================
+6. RESOURCE ICONS — KEEP THE EXISTING DP RESOURCES LANGUAGE
+======================================================================
+
+The existing Drive-like file icon language is a major strength and must remain.
+
+Use recognisable, coloured file-type icons consistently:
+- Folder: warm Drive-style gold / amber folder
+- PDF: restrained coral or red
+- Word document: academic blue
+- Spreadsheet: green / teal
+- Presentation: amber / orange
+- Image: muted violet
+- Text/other: neutral slate
+
+Rules:
+- Icons should remain compact and useful, not decorative oversized tiles.
+- Do not render every file type monochrome.
+- Do not wrap every icon in a large rounded square unless it adds real usefulness on mobile.
+- Folder icons should feel slightly more prominent than files, but still fit the list.
+- Do not invent fake file states or badges.
+
+======================================================================
+7. RESOURCE INTERACTION MODEL — NON-NEGOTIABLE
+======================================================================
+
+Normal click behaviour:
+- Single-clicking a folder row/name/icon opens that folder immediately.
+- Single-clicking a file row/name/icon opens its resource preview immediately.
+- Normal click must NEVER open a details drawer first.
+
+Context menu:
+- Right-click a resource row opens a compact pointer-positioned context menu.
+- The three-dot action opens the exact same menu.
+- On mobile, the three-dot action opens a bottom sheet instead.
+- Menu opens deliberately and closes on outside click or Escape.
+- Opening a second menu closes the first.
+- Menu must support keyboard focus and Escape.
+- Action buttons must stop propagation so they do not open a resource accidentally.
+
+Desktop context menu actions:
+- Open / Preview
+- Open in new tab
+- Download (for files)
+- Copy internal link
+- Save / Remove from Saved
+- View details
+- Report issue
+
+Do not show actions that do not exist.
+
+Details inspector:
+- Opens only through "View details" or a dedicated info action.
+- Never opens due to ordinary row click.
+- Can be a compact right-side inspector on wide desktop only when deliberately opened.
+- It must close via X and Escape.
+- On narrower screens, it becomes a modal or overlay.
+- It shows only real information: name, type, path, modified date, size, folder/file context, saved state, and valid actions.
+- No hashes, authors, fake statuses, print/citation controls, fake activity, or made-up metadata.
+
+======================================================================
+8. GLOBAL SEARCH
+======================================================================
+
+Search is a globally available command-palette experience, not a second Library filter bar.
+
+Trigger:
+- Header search control.
+- Cmd+K / Ctrl+K.
+
+Search overlay:
+- Opens centered over the existing page with a restrained backdrop.
+- Uses the same app shell typography and resource icons.
+- Shows a high-quality input at the top.
+- Shows recent searches or useful destinations before typing, only when real/user-appropriate.
+- Results grouped clearly into Folders and Files.
+- Each result shows name, icon, relevant path, and compact metadata.
+- Highlight matching text.
+- Arrow keys navigate.
+- Enter opens selected result.
+- Escape closes.
+- Include an explicit "View all results" path.
+
+Honest state copy:
+- Searching your library…
+- Still searching…
+- No matching resources.
+- Search is being prepared. Results may be incomplete.
+- Your administrator needs to sync the library before global search is available.
+- Retry when a search request fails.
+
+Library filtering:
+- Library has a compact Filter control, not a second oversized search input.
+- Filter can include type, date/modified state, sort, and clear filters.
+- A local "within this folder" text filter is allowed only inside the Filter popover and must be visually secondary to global search.
+
+======================================================================
+9. RESOURCE PREVIEW WORKSPACE
+======================================================================
+
+Resource preview must feel like a focused study/document workspace, not a browser iframe in a dashboard card.
+
+Desktop preview structure:
+- Compact top toolbar.
+- Back/close control.
+- Breadcrumb/path context.
+- File name and type.
+- Actions aligned right: Download, Share, Save, Report issue, Open in new tab where relevant.
+- Resource canvas is the focus.
+- No giant title block.
+- No large promotional background.
+
+PDF:
+- Branded viewer with page navigation, page count, zoom, fit width, loading, error state, and keyboard controls.
+- Preserve protected resource access; never expose raw Google Drive links.
+
+Spreadsheet:
+- Read-only spreadsheet workspace.
+- Sheet selector/tabs.
+- In-sheet search.
+- Sticky headers.
+- Horizontal scrolling.
+- Honest large-workbook notice when preview is truncated.
+- Download remains available.
+
+DOCX:
+- Read-only rendering when possible.
+- Graceful fallback if unsupported.
+
+Images:
+- Focused image preview with zoom.
+
+Mobile preview:
+- Compact header with close/back, file name, and path.
+- Content-first canvas.
+- Bottom action bar for Download, Save, Share, More.
+- More opens valid actions, including Report issue.
+- Do not label Share as Cite.
+- Do not show delete/move-to-trash.
+
+======================================================================
+10. RECENT AND SAVED
+======================================================================
+
+Recent:
+- A continuation-of-study page, not a dashboard.
+- Chronological groupings such as Today, Yesterday, Earlier this week when data warrants it.
+- Same Drive-style coloured icons and list model as Library.
+- Compact context information such as location/path and last opened time.
+- A useful intentional empty state.
+
+Saved:
+- User-owned saved folders and resources.
+- Same list-first language.
+- Easy remove-from-saved action via context menu/three-dot control.
+- May group folders and files sensibly.
+- No giant card grids by default.
+
+======================================================================
+11. SUPPORT CENTRE
+======================================================================
+
+Support must feel like a genuine part of the product, not an unfinished form or a marketing contact page.
+
+Desktop Support page:
+- Uses the integrated top app header.
+- Compact title and one concise explanatory sentence.
+- A visible "New request" action.
+- Four restrained category choices:
+  - Report a bug
+  - Request an improvement
+  - Content feedback
+  - Account help
+- Category choices preselect the category in the request form.
+- Below or alongside: "Your tickets" in a clear, compact list/table.
+
+Do not use a large hero area, huge empty space, fake tickets, or generic promotional copy.
+
+New support request:
+- Opens in a centered modal or a dedicated full-page form.
+- Fields:
+  - category
+  - subject
+  - detailed message
+  - optional linked resource context
+- Helpful, concise examples are acceptable.
+- Character count for the message is helpful.
+- Real loading state.
+- On error, preserve entered content and show useful recovery guidance.
+- On success, show confirmation and refresh ticket history.
+
+Ticket list:
+- Only real tickets.
+- Subject, category, date, last update where available, and status.
+- Statuses: Open, In review, Resolved.
+- Status chips should be quiet, accessible, and semantic.
+- Ticket detail can show original message, status timeline, relevant resource context, and real admin update/notes when available.
+
+======================================================================
+12. REPORT RESOURCE FLOW
+======================================================================
+
+Report issue must be available from:
+- resource context menu
+- deliberate details inspector
+- resource preview toolbar
+
+Report dialog:
+- Compact modal that feels like part of the file workspace.
+- Automatically displays resource name, type icon, and full path/location.
+- Categories:
+  - Broken file
+  - Incorrect resource
+  - Outdated content
+  - Duplicate
+  - Copyright or access concern
+  - Other
+- Message field.
+- Real loading, error, and success states.
+- Submit only after response succeeds.
+- The dialog does not close on API failure.
+
+======================================================================
+13. ADMIN OPERATIONS
+======================================================================
+
+Admin is an operational workspace, not a generic metric dashboard.
+
+Use the same top app header as the user area, with Admin active.
+
+Admin section tabs:
+- Library index
+- Resource reports
+- Support tickets
+- Users
+- Activity
+
+Visual direction:
+- compact page title
+- operational tabs
+- filters and clear table/list queues
+- useful status information
+- narrow, purposeful progress/status regions where real
+- avoid giant metric cards and bento dashboards
+
+Library index:
+- show real last indexed time, indexed count, progress/status, and Sync/Resume action.
+- show accurate state: idle, indexing, interrupted, complete, failed.
+- no invented percentages, ETAs, run IDs, or health labels.
+
+Reports/tickets:
+- dense triage table.
+- useful columns: item/subject, category, status, reporter, submitted/updated time, actions.
+- filters and status updates.
+- details open deliberately.
+- do not show fake automated logs, fake system errors, or fake queue counts.
+
+Users/activity:
+- display only real data the application has.
+- Do not create dashboard filler.
+
+======================================================================
+14. MOBILE EXPERIENCE
+======================================================================
+
+Mobile is not a squashed desktop table.
+
+Mobile top bar:
+- DP Resources wordmark.
+- Search trigger.
+- Profile/account/menu trigger.
+- compact and calm.
+
+Mobile bottom navigation:
+- Library
+- Search
+- Recent
+- Saved
+- Support
+
+Admin is in the profile/menu area for admins only.
+
+Mobile Library:
+- list-first resource browsing.
+- compact breadcrumb/filter row.
+- folders and files in a clean, touch-friendly list.
+- use same coloured Drive-style resource icons.
+- no fake business folders or documents.
+- avoid defaulting to large folder cards unless there is a deliberate limited quick-access section backed by real data.
+
+Mobile actions:
+- Three-dot button opens a bottom sheet.
+- Bottom sheet includes only valid actions:
+  Preview/Open
+  Download
+  Copy/share internal link
+  Save/remove from Saved
+  View details
+  Report issue
+- Tapping backdrop closes it.
+- Drag handle may be used.
+- No Move to Trash, Delete, Export Raw Data, Cite, or fake actions.
+
+======================================================================
+15. VISUAL PRINCIPLES
+======================================================================
+
+The desired visual personality:
+- premium academic workspace
+- editorial but practical
+- calm and information-rich
+- clean enough for productivity
+- distinctive without being theatrical
+- composed rather than decorative
+
+Use the approved auth pages as the primary visual DNA. Inspect the current auth components before changing fonts, spacing, tokens, or brand treatment in the main app.
+
+Typography:
+- Keep a restrained, editorial hierarchy.
+- A characterful display/headline treatment may be used sparingly for page titles only if it harmonises with the auth screens.
+- UI controls and lists must remain highly readable and compact.
+- Metadata may use a restrained mono style only where it improves scanability (file size, date, path, ticket ID).
+- Do not use three unrelated type systems.
+
+Colour:
+- Preserve the current auth palette as the source of truth.
+- Main app surfaces should be calm: warm-white or gently tinted neutral backgrounds, restrained dark ink/navey structural accents, and disciplined interaction colour.
+- Use the Drive-style file icon colour system as a functional exception.
+- Use colour semantically, never as a giant decorative block.
+- Avoid full-width gradients inside the main workspace.
+
+Surface and geometry:
+- Flat header, thin dividers, low elevation.
+- Standard controls roughly 6–8px radius.
+- Avoid pills except where an actual status chip or keyboard hint needs one.
+- Avoid rounded-card overload.
+- Avoid shadows on normal rows and ordinary controls.
+- Shadows are reserved for menus, dialogs, and intentional overlays.
+
+Spacing:
+- The workspace should feel dense enough for a serious file library.
+- Keep purposeful breathing room around page headers and section changes.
+- Do not create vast empty regions or oversized hero spaces.
+
+Motion:
+- Use short, quiet transitions for row hover, context menus, dialogs, and toasts.
+- No gratuitous lift/scale animation.
+- Respect reduced-motion preferences.
+
+======================================================================
+16. AI-SLOP ANTI-PATTERNS — DO NOT REINTRODUCE
+======================================================================
+
+Reject any implementation containing:
+- desktop sidebars or vertical nav rails
+- floating nav pills
+- detached second navigation bars
+- giant gradient hero banners
+- giant rounded dashboard cards
+- metric-card dashboards before real operational content
+- huge empty areas around a small table
+- forced context drawer on ordinary resource click
+- duplicate prominent search bars
+- fake archive terminology
+- fake resource metadata/statuses
+- raw MIME types in user-facing UI
+- excessive black-filled controls
+- every control styled as a large rounded button
+- defaulting to dense card grids instead of the file list
+- colourful decoration that does not communicate product meaning
+- buttons that exist visually but have no real handler
+- success messaging without verifying API success
+
+======================================================================
+17. IMPLEMENTATION EXPECTATIONS FOR CODEX
+======================================================================
+
+Before coding:
+- Read this file fully.
+- Inspect the approved auth pages and preserve their visual DNA.
+- Inspect existing working resource, auth, Drive, search, support, report, favorite, and preview behaviour.
+- Do not replace functioning backend capabilities with mock UI.
+- Do not create fake data for production surfaces.
+
+When implementing:
+- Reuse or refactor real product data and endpoints.
+- Build reusable components for app header, context toolbar, resource row, resource type icon, context menu, details inspector, global search overlay, support request form, report dialog, and mobile action sheet.
+- Keep interactions keyboard accessible.
+- Ensure all visible actions are functional and have states for loading, success, and failure.
+- Preserve authentication, Drive-root protection, internal sharing restrictions, and current backend rules.
+- Do not alter SMTP, Resend, Zoho, DNS, Replit configuration, Supabase authentication configuration, or database schema unless a separate task explicitly requires it.
+
+Before declaring success:
+- Run the app in a browser, signed in as a normal user and as an admin.
+- Test desktop at 1440x900 and 1920x1080.
+- Test mobile at a realistic phone width.
+- Verify normal folder/file click, context menu, outside close, Escape close, details opening, search, preview, Saved, Support request, report resource, and Admin triage.
+- Run typecheck, tests, lint, and production build.
+
+======================================================================
+18. ACCEPTANCE CHECKLIST
+======================================================================
+
+A build matches this vision only when all of the following are true:
+
+[ ] Auth pages remain unchanged.
+[ ] Desktop has one integrated top header, not a sidebar or floating nav.
+[ ] Header contains DP Resources, primary links, one global search control, and account control.
+[ ] Library remains list-first with the established coloured Drive-style file/folder icons.
+[ ] Normal click opens resources; it does not open a drawer.
+[ ] Right-click/three-dot opens an accessible context menu.
+[ ] Details opens only deliberately.
+[ ] There is no giant library hero or duplicate large search field.
+[ ] Search is global, polished, honest about index state, and keyboard friendly.
+[ ] Preview feels like a document workspace, not an iframe card.
+[ ] Recent and Saved use the same coherent file-browser language.
+[ ] Support has real category selection, request submission, error handling, success confirmation, and real ticket history.
+[ ] Report issue attaches real resource context and persists correctly.
+[ ] Admin is operational and table/queue oriented, not a fake metrics dashboard.
+[ ] Mobile uses bottom tabs for Library/Search/Recent/Saved/Support and profile/menu for Admin.
+[ ] No fake archive features, fake data, fake states, or inert buttons are introduced.
+[ ] The main app feels intentionally designed, cohesive with auth, and unmistakably like DP Resources.
