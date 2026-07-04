@@ -128,8 +128,9 @@ button:disabled:hover {
   color: #fff !important;
   box-shadow: 0 18px 40px rgb(15 23 42 / 0.22) !important;
 }
-.dp-sonner-success { background: #123f2a !important; }
-.dp-sonner-error { background: #6f1d1b !important; }
+.dp-sonner-success { background: #15803D !important; }
+.dp-sonner-error { background: #B91C1C !important; }
 .dp-sonner-toast [data-title], .dp-sonner-toast [data-description], .dp-sonner-icon { color: #fff !important; }
-.dp-sonner-close { background: rgb(255 255 255 / 0.12) !important; color: #fff !important; border-color: rgb(255 255 255 / 0.22) !important; }
+.dp-sonner-close { background: transparent !important; color: rgb(255 255 255 / 0.7) !important; border-color: transparent !important; inset-inline-start: auto !important; inset-inline-end: 8px !important; }
+.dp-sonner-close:hover { color: #fff !important; background: rgb(255 255 255 / 0.12) !important; }
 @media (max-width: 767px) { [data-sonner-toaster][data-position='bottom-right'] { bottom: calc(5.75rem + env(safe-area-inset-bottom)) !important; right: 0.75rem !important; left: 0.75rem !important; } }
