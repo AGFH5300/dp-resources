@@ -122,3 +122,14 @@ button:disabled:hover {
 
 .dp-docx-wrapper .docx-wrapper { background: transparent; padding: 0; }
 .dp-docx-wrapper .docx { margin: 0 auto 1rem; box-shadow: 0 1px 4px rgb(15 23 42 / 0.12); }
+
+.dp-sonner-toast {
+  border: 1px solid rgb(255 255 255 / 0.12) !important;
+  color: #fff !important;
+  box-shadow: 0 18px 40px rgb(15 23 42 / 0.22) !important;
+}
+.dp-sonner-success { background: #123f2a !important; }
+.dp-sonner-error { background: #6f1d1b !important; }
+.dp-sonner-toast [data-title], .dp-sonner-toast [data-description], .dp-sonner-icon { color: #fff !important; }
+.dp-sonner-close { background: rgb(255 255 255 / 0.12) !important; color: #fff !important; border-color: rgb(255 255 255 / 0.22) !important; }
+@media (max-width: 767px) { [data-sonner-toaster][data-position='bottom-right'] { bottom: calc(5.75rem + env(safe-area-inset-bottom)) !important; right: 0.75rem !important; left: 0.75rem !important; } }

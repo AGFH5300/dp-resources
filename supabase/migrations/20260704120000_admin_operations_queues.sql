@@ -1,0 +1,31 @@
+alter table public.dp_resource_reports add column if not exists assigned_to uuid null references auth.users(id);
+alter table public.dp_resource_reports add column if not exists assigned_at timestamptz null;
+alter table public.dp_resource_reports add column if not exists resolved_by uuid null references auth.users(id);
+alter table public.dp_resource_reports add column if not exists resolved_at timestamptz null;
+alter table public.dp_resource_reports add column if not exists resolution_note text null;
+alter table public.dp_resource_reports add column if not exists internal_notes text null;
+alter table public.dp_support_tickets add column if not exists assigned_to uuid null references auth.users(id);
+alter table public.dp_support_tickets add column if not exists assigned_at timestamptz null;
+alter table public.dp_support_tickets add column if not exists resolved_by uuid null references auth.users(id);
+alter table public.dp_support_tickets add column if not exists resolved_at timestamptz null;
+alter table public.dp_support_tickets add column if not exists resolution_note text null;
+alter table public.dp_support_tickets add column if not exists internal_notes text null;
+
+update public.dp_resource_reports set internal_notes = coalesce(internal_notes, admin_notes) where admin_notes is not null;
+update public.dp_support_tickets set internal_notes = coalesce(internal_notes, admin_notes) where admin_notes is not null;
+update public.dp_resource_reports set status = case lower(coalesce(status,'')) when 'in progress' then 'in_review' when 'reviewing' then 'in_review' when 'done' then 'resolved' when 'complete' then 'resolved' when 'closed' then 'closed' when 'resolved' then 'resolved' when 'in_review' then 'in_review' else 'open' end;
+update public.dp_support_tickets set status = case lower(coalesce(status,'')) when 'in progress' then 'in_review' when 'reviewing' then 'in_review' when 'done' then 'resolved' when 'complete' then 'resolved' when 'closed' then 'closed' when 'resolved' then 'resolved' when 'in_review' then 'in_review' else 'open' end;
+alter table public.dp_resource_reports alter column status set default 'open';
+alter table public.dp_support_tickets alter column status set default 'open';
+alter table public.dp_resource_reports drop constraint if exists dp_resource_reports_status_check;
+alter table public.dp_resource_reports add constraint dp_resource_reports_status_check check (status in ('open','in_review','resolved','closed'));
+alter table public.dp_support_tickets drop constraint if exists dp_support_tickets_status_check;
+alter table public.dp_support_tickets add constraint dp_support_tickets_status_check check (status in ('open','in_review','resolved','closed'));
+
+create index if not exists dp_resource_reports_status_created_idx on public.dp_resource_reports(status, created_at desc);
+create index if not exists dp_resource_reports_reporter_email_idx on public.dp_resource_reports(reporter_email);
+create index if not exists dp_resource_reports_drive_file_id_idx on public.dp_resource_reports(drive_file_id);
+create index if not exists dp_resource_reports_assigned_to_idx on public.dp_resource_reports(assigned_to);
+create index if not exists dp_support_tickets_status_created_idx on public.dp_support_tickets(status, created_at desc);
+create index if not exists dp_support_tickets_reporter_email_idx on public.dp_support_tickets(reporter_email);
+create index if not exists dp_support_tickets_assigned_to_idx on public.dp_support_tickets(assigned_to);
