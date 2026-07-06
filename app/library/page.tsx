@@ -5,15 +5,25 @@ import { requireMember } from '@/lib/auth';
 import { getFolderView, isDriveConfigured, rootFolderId } from '@/lib/drive';
 import { LibraryBrowser } from './library-browser';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
+import { getIndexedFolderView } from '@/lib/indexed-folder-view';
+import { devTiming, nowMs } from '@/lib/perf';
 
 export default async function Library({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const authStart = nowMs();
   const { membership } = await requireMember();
+  devTiming('library.auth', { ms: nowMs() - authStart });
   const sp = await searchParams;
   const folder = sp.folder || rootFolderId();
   const configured = isDriveConfigured();
-  const { items, crumbs } = configured ? await getFolderView(folder) : { items: [], crumbs: [] };
-  const featured = await getFeaturedResourceMap(items.map((item) => item.id));
-  const displayItems = items.map((item) => { const hit = featured.get(item.id); return hit ? { ...item, featuredLabel: hit.label, featuredPriority: hit.priority } : item; });
+  const lookupStart = nowMs();
+  const indexed = configured ? await getIndexedFolderView(folder) : null;
+  const live = !indexed && configured ? await getFolderView(folder) : null;
+  const { items, crumbs } = indexed || live || { items: [], crumbs: [] };
+  devTiming('library.folder_lookup', { ms: nowMs() - lookupStart, source: indexed ? 'index' : 'drive' });
+  const featuredStart = nowMs();
+  const featured = indexed ? new Map() : await getFeaturedResourceMap(items.map((item) => item.id));
+  const displayItems = indexed ? items : items.map((item) => { const hit = featured.get(item.id); return hit ? { ...item, featuredLabel: hit.label, featuredPriority: hit.priority } : item; });
+  devTiming('library.featured', { ms: nowMs() - featuredStart, skipped: Boolean(indexed) });
 
 
   return (
