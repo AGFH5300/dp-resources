@@ -36,10 +36,10 @@ describe('product quality repair', () => {
   });
   it('support form checks failed responses, preserves data, loads, and refreshes tickets', () => {
     const form = read('app/support/support-form.tsx');
-    expect(form).toContain('if(!res.ok) throw new Error');
+    expect(form).toContain('if(!res.ok||!json?.ticket) throw new Error');
     expect(form).toContain('setError');
-    expect(form).toContain('disabled={loading}');
-    expect(form).toContain('router.refresh()');
+    expect(form).toContain("requestState==='submitting'");
+    expect(form).toContain('setTickets(prev=>[ticket,...prev])');
     expect(form).toContain('value={message}');
   });
   it('uses DP colour tokens across nav, library, support, and preview', () => {
