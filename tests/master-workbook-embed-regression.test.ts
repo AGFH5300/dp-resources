@@ -4,29 +4,24 @@ import { readFileSync } from 'node:fs';
 const preview = () => readFileSync('app/resource/[fileId]/resource-preview.tsx', 'utf8');
 
 describe('master workbook Google Sheets embed regression', () => {
-  it('no selected gid leaves iframe src at the base embed URL exactly', () => {
+  it('keeps the iframe on the published embed URL without custom gid selection', () => {
     const source = preview();
 
-    expect(source).toContain("if(!gid)return base");
-    expect(source).toContain("const src=useMemo(()=>buildSheetUrl(url,validActive),[url,validActive])");
+    expect(source).toContain('src={url}');
+    expect(source).not.toContain('buildSheetUrl');
+    expect(source).not.toContain("searchParams.set('gid'");
+    expect(source).not.toContain('validActive');
+    expect(source).not.toContain('initialSheet');
   });
 
-  it('metadata failure does not mutate or replace the base embed URL', () => {
+  it('does not render or fetch a custom Worksheet selector', () => {
     const source = preview();
 
-    expect(source).toContain("catch(()=>{if(live)setSelectorUnavailable(true)}");
-    expect(source).toContain('Use the worksheet tabs inside the sheet.');
-    expect(source).not.toContain('nextTabs[0])setActive');
-    expect(source).not.toContain("useState(initialSheet||'')");
-  });
-
-  it('selected gid adds gid and single=true to the iframe src', () => {
-    const source = preview();
-
-    expect(source).toContain("url.searchParams.set('gid',gid)");
-    expect(source).toContain("url.searchParams.set('single','true')");
-    expect(source).toContain("url.searchParams.set('widget','true')");
-    expect(source).toContain("url.searchParams.set('headers','true')");
-    expect(source).toContain("url.searchParams.set('chrome','false')");
+    expect(source).toContain('Native Google Sheets preview');
+    expect(source).toContain('requestFullscreen');
+    expect(source).not.toContain('Worksheet');
+    expect(source).not.toContain('worksheet-tabs');
+    expect(source).not.toContain('Use the worksheet tabs inside the sheet.');
+    expect(source).not.toContain('AppSelect');
   });
 });
