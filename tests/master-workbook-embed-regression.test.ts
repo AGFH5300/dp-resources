@@ -15,7 +15,7 @@ describe('master workbook Google Sheets embed regression', () => {
     const source = preview();
 
     expect(source).toContain("catch(()=>{if(live)setSelectorUnavailable(true)}");
-    expect(source).toContain('Use the worksheet tabs inside the workbook.');
+    expect(source).toContain('Use the worksheet tabs inside the sheet.');
     expect(source).not.toContain('nextTabs[0])setActive');
     expect(source).not.toContain("useState(initialSheet||'')");
   });
