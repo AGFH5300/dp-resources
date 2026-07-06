@@ -47,10 +47,11 @@ function toItem(f: drive_v3.Schema$File): DriveItem {
   };
 }
 
-async function getRawMetadata(fileId: string) {
+async function getRawMetadataUncached(fileId: string) {
   const res = await drive().files.get({ fileId, fields: 'id,name,mimeType,size,modifiedTime,parents', supportsAllDrives: true });
   return res.data;
 }
+const getRawMetadata = unstable_cache(getRawMetadataUncached, ['drive-metadata-v2'], { revalidate: 90 });
 
 export function sheetsClient() {
   if (cachedSheets) return cachedSheets;

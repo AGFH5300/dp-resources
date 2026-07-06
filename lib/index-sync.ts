@@ -9,7 +9,7 @@ const LOCK_TTL_MS = 2 * 60 * 1000;
 type FolderQueueItem = { id: string; path: string; parent: string | null };
 export type IndexSyncState = {
   id: string;
-  status: 'idle' | 'indexing' | 'complete' | 'failed';
+  status: 'idle' | 'indexing' | 'complete' | 'paused' | 'failed';
   sync_run_id: string | null;
   folder_queue: FolderQueueItem[];
   processed_folders: number;
@@ -125,7 +125,7 @@ export async function runIndexSyncChunk() {
       if (cleanupError) throw new Error(cleanupError.message);
       await sb.from('dp_resource_index_sync_state').update({ ...next, status: 'complete', completed_at: new Date().toISOString(), error_message: null }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
     } else {
-      await sb.from('dp_resource_index_sync_state').update({ ...next, status: 'idle' }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+      await sb.from('dp_resource_index_sync_state').update({ ...next, status: 'paused' }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
     }
     return getIndexSyncStatus();
   } catch (e) {
