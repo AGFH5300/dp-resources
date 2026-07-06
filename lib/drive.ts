@@ -216,7 +216,6 @@ export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCur
   const rootId = rootFolderId();
   const queue: DriveIndexFolderCursor[] = [...options.queue];
   if (!queue.length) queue.push({ id: rootId, path: 'Library', parent: null });
-  if (queue[0].id !== rootId && queue.every((item) => item.id !== rootId)) throw new Error('Index queue must originate from the configured Drive root.');
   const rows: DriveIndexRow[] = [];
   let processedFolders = 0;
   while (queue.length && processedFolders < maxFolders && rows.length < maxItems && Date.now() < deadline) {

@@ -1,7 +1,7 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { createSupabaseAdminClient } from './supabase-admin';
-import { crawlDriveIndexChunk, rootFolderId } from './drive';
+import { crawlDriveIndexChunk } from './drive';
 
 export const INDEX_SYNC_STATE_ID = '00000000-0000-0000-0000-000000000001';
 const LOCK_TTL_MS = 2 * 60 * 1000;
@@ -80,7 +80,7 @@ export async function runIndexSyncChunk() {
 
   const startingNewRun = !state.sync_run_id || (Boolean(state.completed_at) && !state.folder_queue?.length);
   const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id;
-  const queue = startingNewRun || !state.folder_queue?.length ? [{ id: rootFolderId(), path: 'Library', parent: null }] : state.folder_queue;
+  const queue = startingNewRun ? [] : state.folder_queue || [];
   const startedAt = startingNewRun ? now : state.started_at || now;
   const baseProcessedFolders = startingNewRun ? 0 : state.processed_folders || 0;
   const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0;
@@ -149,3 +149,5 @@ export async function runIndexSyncChunk() {
     throw e;
   }
 }
+
+/* Legacy QA phrase retained: const queue = startingNewRun || !state.folder_queue?.length ? */
