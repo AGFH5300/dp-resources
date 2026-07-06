@@ -34,6 +34,18 @@ describe('support workflow and admin search pass',()=>{
     expect(admin).toContain('router.replace');
     expect(admin).toContain("q.set(k, '1')");
   });
+
+  it('support ticket inspector keeps internal notes but removes resolution note from support saves',()=>{
+    const admin=read('app/admin/admin-console.tsx');
+    const supportRoute=read('app/api/admin/support/[id]/route.ts');
+    expect(admin).toContain('Internal notes');
+    expect(admin).toContain('User-visible reply');
+    expect(admin).toContain('{isReport && <label className="text-xs font-semibold text-slate-600">Resolution note');
+    expect(admin).toContain("...(isReport ? { resolution_note:");
+    expect(supportRoute).toContain("'internal_notes'");
+    expect(supportRoute).not.toContain("'resolution_note'");
+    expect(supportRoute).not.toContain('update.resolution_note');
+  });
   it('migration creates message table, policies, and email/activity indexes',()=>{
     const m=read('supabase/migrations/20260706120000_support_messages_and_admin_search.sql');
     expect(m).toContain('create table if not exists public.dp_support_ticket_messages');
