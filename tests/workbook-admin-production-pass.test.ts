@@ -1,36 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import * as XLSX from 'xlsx';
-const read=(p:string)=>readFileSync(p,'utf8');
+import { readFileSync, existsSync } from 'node:fs';
+
+const read = (p: string) => readFileSync(p, 'utf8');
 
 describe('workbook and admin production pass',()=>{
-  it('parses a workbook containing a History sheet with SheetJS',()=>{
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['ok']]),'History');
-    const parsed=XLSX.read(XLSX.write(wb,{bookType:'xlsx',type:'buffer'}),{type:'buffer'});
-    expect(parsed.SheetNames).toContain('History');
+  it('removes local spreadsheet parsing and exposes protected worksheet metadata route',()=>{
+    expect(existsSync('app/api/resource/[fileId]/workbook/route.ts')).toBe(false);
+    const route=read('app/api/resource/[fileId]/worksheet-tabs/route.ts');
+    expect(route).toContain('requireMember');
+    expect(route).toContain('assertInsideRoot');
+    expect(route).toContain('spreadsheets.get');
+    expect(route).toContain('title');
+    expect(route).toContain('sheetId');
+    expect(route).toContain('hidden');
+    expect(read('package.json')).not.toContain('"xlsx"');
   });
-  it('workbook API uses SheetJS, node runtime, sheet-scoped loading, and JSON errors',()=>{
-    const route=read('app/api/resource/[fileId]/workbook/route.ts');
-    expect(route).toContain("export const runtime = 'nodejs'");
-    expect(route).toContain("import * as XLSX from 'xlsx'");
-    expect(route).not.toContain('exceljs');
-    expect(route).toContain('WORKBOOK_PARSE_FAILED');
-    expect(route).toContain('searchParams.get(\'sheet\')');
+
+  it('master workbook uses native Google Sheets embed controls without fake parsing controls',()=>{
+    const p=read('app/resource/[fileId]/resource-preview.tsx');
+    expect(p).toContain('Native Google Sheets workbook preview');
+    expect(p).toContain('Worksheet');
+    expect(p).toContain('requestFullscreen');
+    expect(p).toContain('Open in Google Sheets');
+    expect(p).toContain('Spreadsheet preview is unavailable.');
+    expect(p).not.toContain('SheetJsWorkbookPreview');
+    expect(p).not.toContain('/workbook');
   });
-  it('client safely reads workbook JSON and renders the History tab from metadata',()=>{
-    const preview=read('app/resource/[fileId]/resource-preview.tsx');
-    expect(preview).toContain('readJsonSafe');
-    expect(preview).toContain('encodeURIComponent(active)');
-    expect(preview).toContain('meta.sheetNames.map');
-    expect(preview).not.toContain('Unexpected end of JSON input');
-  });
-  it('admin queues use custom selects and PATCH case inspectors',()=>{
+
+  it('admin and library selects are app select based',()=>{
     const console=read('app/admin/admin-console.tsx');
+    const browser=read('app/library/library-browser.tsx');
     expect(console).toContain('AdminSelect');
-    expect(console).toContain("method:'PATCH'");
-    expect(console).toContain('Report updated');
-    expect(console).toContain('Support ticket updated');
+    expect(browser).toContain('AppSelect');
     expect(console).not.toContain('<select');
+    expect(browser).not.toContain('<select');
   });
 });

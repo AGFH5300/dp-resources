@@ -9,6 +9,7 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 export { normalizeSearch, safeDownloadName, workspaceExportFor };
 
 let cachedDrive: drive_v3.Drive | null = null;
+let cachedSheets: ReturnType<typeof google.sheets> | null = null;
 
 export function isDriveConfigured() {
   return Boolean(process.env.GOOGLE_DRIVE_FOLDER_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
@@ -16,15 +17,18 @@ export function isDriveConfigured() {
 
 export const rootFolderId = () => process.env.GOOGLE_DRIVE_FOLDER_ID!;
 
-function drive() {
-  if (cachedDrive) return cachedDrive;
+function driveAuth() {
   const key = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  const auth = new google.auth.JWT({
+  return new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    scopes: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
-  cachedDrive = google.drive({ version: 'v3', auth });
+}
+
+function drive() {
+  if (cachedDrive) return cachedDrive;
+  cachedDrive = google.drive({ version: 'v3', auth: driveAuth() });
   return cachedDrive;
 }
 
@@ -46,6 +50,12 @@ function toItem(f: drive_v3.Schema$File): DriveItem {
 async function getRawMetadata(fileId: string) {
   const res = await drive().files.get({ fileId, fields: 'id,name,mimeType,size,modifiedTime,parents', supportsAllDrives: true });
   return res.data;
+}
+
+export function sheetsClient() {
+  if (cachedSheets) return cachedSheets;
+  cachedSheets = google.sheets({ version: 'v4', auth: driveAuth() });
+  return cachedSheets;
 }
 
 export async function getDriveMetadata(fileId: string) {
