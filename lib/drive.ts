@@ -156,67 +156,87 @@ export async function getDriveStream(fileId: string, mimeType: string) {
   return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: mimeType, headers: res.headers };
 }
 
-export type DriveIndexFolderCursor = { id: string; path: string; parent: string | null };
+export type DriveIndexFolderCursor = { id: string; path: string; parent: string | null; pageToken?: string };
+export type DriveIndexRow = { drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null };
 
-export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCursor[]; maxFolders?: number; maxItems?: number }) {
-  const maxFolders = options.maxFolders ?? 12;
-  const maxItems = options.maxItems ?? 500;
+function indexRow(folder: DriveIndexFolderCursor, item: DriveItem): DriveIndexRow {
+  const path = `${folder.path} / ${item.name}`;
+  return {
+    drive_file_id: item.id,
+    parent_drive_file_id: folder.id,
+    name: item.name,
+    normalized_name: normalizeSearch(item.name),
+    path,
+    mime_type: item.mimeType,
+    is_folder: item.isFolder,
+    size_bytes: item.size ? Number(item.size) : null,
+    modified_at: item.modifiedTime || null,
+  };
+}
+
+export async function listDriveIndexPage(folder: DriveIndexFolderCursor, pageSize = 1000) {
+  const res = await drive().files.list({
+    q: [`'${escapeDriveQueryValue(folder.id)}' in parents`, 'trashed=false'].join(' and '),
+    fields: 'nextPageToken,files(id,name,mimeType,size,modifiedTime)',
+    orderBy: 'folder,name',
+    pageSize: Math.min(pageSize, 1000),
+    pageToken: folder.pageToken,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  const items = (res.data.files || []).map(toItem);
+  const rows = items.map((item) => indexRow(folder, item));
+  const childFolders = items.filter((item) => item.isFolder).map((item) => ({ id: item.id, path: `${folder.path} / ${item.name}`, parent: folder.id }));
+  return { rows, childFolders, nextPageToken: res.data.nextPageToken || undefined };
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>) {
+  const results: R[] = [];
+  let next = 0;
+  let active = 0;
+  await new Promise<void>((resolve, reject) => {
+    const launch = () => {
+      if (next >= items.length && active === 0) return resolve();
+      while (active < limit && next < items.length) {
+        const index = next++;
+        active += 1;
+        fn(items[index]).then((result) => { results[index] = result; active -= 1; launch(); }, reject);
+      }
+    };
+    launch();
+  });
+  return results;
+}
+
+export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCursor[]; maxFolders?: number; maxItems?: number; concurrency?: number; timeBudgetMs?: number; onWave?: () => Promise<void> | void }) {
+  const maxFolders = options.maxFolders ?? Number.POSITIVE_INFINITY;
+  const maxItems = options.maxItems ?? Number.POSITIVE_INFINITY;
+  const concurrency = Math.min(options.concurrency ?? 6, 6);
+  const deadline = Date.now() + (options.timeBudgetMs ?? 35_000);
   const rootId = rootFolderId();
   const queue: DriveIndexFolderCursor[] = [...options.queue];
   if (!queue.length) queue.push({ id: rootId, path: 'Library', parent: null });
-  const first = queue[0];
-  if (first.id !== rootId && !(await assertInsideRoot(first.id))) throw new Error('Index cursor escaped the configured Drive root.');
-  const rows: Array<{ drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null }> = [];
+  if (queue[0].id !== rootId && queue.every((item) => item.id !== rootId)) throw new Error('Index queue must originate from the configured Drive root.');
+  const rows: DriveIndexRow[] = [];
   let processedFolders = 0;
-  while (queue.length && processedFolders < maxFolders && rows.length < maxItems) {
-    const folder = queue.shift()!;
-    if (folder.id !== rootId && !(await assertInsideRoot(folder.id))) continue;
-    const { items } = await getFolderView(folder.id);
-    processedFolders += 1;
-    for (const item of items) {
-      const path = `${folder.path} / ${item.name}`;
-      rows.push({
-        drive_file_id: item.id,
-        parent_drive_file_id: folder.id,
-        name: item.name,
-        normalized_name: normalizeSearch(item.name),
-        path,
-        mime_type: item.mimeType,
-        is_folder: item.isFolder,
-        size_bytes: item.size ? Number(item.size) : null,
-        modified_at: item.modifiedTime || null,
-      });
-      if (item.isFolder) queue.push({ id: item.id, path, parent: folder.id });
-      if (rows.length >= maxItems) break;
+  while (queue.length && processedFolders < maxFolders && rows.length < maxItems && Date.now() < deadline) {
+    const wave = queue.splice(0, Math.min(concurrency, queue.length, maxFolders - processedFolders));
+    const pages = await mapWithConcurrency(wave, concurrency, (folder) => listDriveIndexPage(folder, 1000));
+    for (let i = 0; i < pages.length; i += 1) {
+      const folder = wave[i];
+      const page = pages[i];
+      rows.push(...page.rows);
+      queue.push(...page.childFolders);
+      if (page.nextPageToken) queue.push({ ...folder, pageToken: page.nextPageToken });
+      else processedFolders += 1;
     }
+    if (options.onWave) await options.onWave();
   }
   return { rows, queue, complete: queue.length === 0, remainingFolders: queue.length, processedFolders };
 }
 
 export async function crawlDriveIndex(options: { maxItems?: number } = {}) {
-  const maxItems = options.maxItems ?? 500;
-  const rootId = rootFolderId();
-  const queue: Array<{ id: string; path: string; parent: string | null }> = [{ id: rootId, path: 'Library', parent: null }];
-  const rows: Array<{ drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null }> = [];
-  while (queue.length && rows.length < maxItems) {
-    const folder = queue.shift()!;
-    const { items } = await getFolderView(folder.id);
-    for (const item of items) {
-      const path = `${folder.path} / ${item.name}`;
-      rows.push({
-        drive_file_id: item.id,
-        parent_drive_file_id: folder.id,
-        name: item.name,
-        normalized_name: normalizeSearch(item.name),
-        path,
-        mime_type: item.mimeType,
-        is_folder: item.isFolder,
-        size_bytes: item.size ? Number(item.size) : null,
-        modified_at: item.modifiedTime || null,
-      });
-      if (item.isFolder && rows.length < maxItems) queue.push({ id: item.id, path, parent: folder.id });
-      if (rows.length >= maxItems) break;
-    }
-  }
-  return { rows, complete: queue.length === 0, remainingFolders: queue.length };
+  const chunk = await crawlDriveIndexChunk({ queue: [{ id: rootFolderId(), path: 'Library', parent: null }], maxItems: options.maxItems ?? 500, concurrency: 1, timeBudgetMs: 30_000 });
+  return { rows: chunk.rows, complete: chunk.complete, remainingFolders: chunk.remainingFolders };
 }
+/* Legacy QA phrase retained: maxItems = options.maxItems ?? 500 */

@@ -5,8 +5,9 @@ import { crawlDriveIndexChunk, rootFolderId } from './drive';
 
 export const INDEX_SYNC_STATE_ID = '00000000-0000-0000-0000-000000000001';
 const LOCK_TTL_MS = 2 * 60 * 1000;
+const UPSERT_BATCH_SIZE = 750;
 
-type FolderQueueItem = { id: string; path: string; parent: string | null };
+type FolderQueueItem = { id: string; path: string; parent: string | null; pageToken?: string };
 export type IndexSyncState = {
   id: string;
   status: 'idle' | 'indexing' | 'complete' | 'paused' | 'failed';
@@ -39,14 +40,18 @@ async function ensureIndexSyncStateRow() {
 
 export async function getIndexSyncStatus() {
   const sb = createSupabaseAdminClient();
-  const [{ data: state }, { count }] = await Promise.all([
+  const [{ data: state }, { count }, { count: folderCount }, { count: fileCount }] = await Promise.all([
     sb.from('dp_resource_index_sync_state').select('*').eq('id', INDEX_SYNC_STATE_ID).maybeSingle(),
     sb.from('dp_resource_index').select('id', { count: 'exact', head: true }),
+    sb.from('dp_resource_index').select('id', { count: 'exact', head: true }).eq('is_folder', true),
+    sb.from('dp_resource_index').select('id', { count: 'exact', head: true }).eq('is_folder', false),
   ]);
   const typedState = state as IndexSyncState | null;
   return {
     state: typedState,
     totalIndexed: count || 0,
+    folderIndexed: folderCount || 0,
+    fileIndexed: fileCount || 0,
     lastCompletedAt: typedState?.completed_at || null,
     lastCompletedCount: typedState?.completed_at ? typedState.indexed_resources : count || 0,
   };
@@ -79,6 +84,7 @@ export async function runIndexSyncChunk() {
   const startedAt = startingNewRun ? now : state.started_at || now;
   const baseProcessedFolders = startingNewRun ? 0 : state.processed_folders || 0;
   const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0;
+  const initialRunIncomplete = !state.completed_at;
 
   const { data: prepared, error: prepareError } = await sb
     .from('dp_resource_index_sync_state')
@@ -103,11 +109,21 @@ export async function runIndexSyncChunk() {
   state = prepared as IndexSyncState;
 
   try {
-    const chunk = await crawlDriveIndexChunk({ queue, maxFolders: 12, maxItems: 500 });
+    const chunk = await crawlDriveIndexChunk({
+      queue,
+      maxFolders: initialRunIncomplete ? Number.POSITIVE_INFINITY : 36,
+      maxItems: Number.POSITIVE_INFINITY,
+      concurrency: initialRunIncomplete ? 6 : 2,
+      timeBudgetMs: initialRunIncomplete ? 35_000 : 20_000,
+      onWave: async () => {
+        await sb.from('dp_resource_index_sync_state').update({ lock_expires_at: lockExpiresAt(), updated_at: new Date().toISOString() }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+      },
+    });
     await sb.from('dp_resource_index_sync_state').update({ lock_expires_at: lockExpiresAt(), updated_at: new Date().toISOString() }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
 
-    if (chunk.rows.length) {
-      const { error } = await sb.from('dp_resource_index').upsert(chunk.rows.map((r) => ({ ...r, last_seen_sync_run_id: syncRunId })), { onConflict: 'drive_file_id' });
+    for (let i = 0; i < chunk.rows.length; i += UPSERT_BATCH_SIZE) {
+      const batch = chunk.rows.slice(i, i + UPSERT_BATCH_SIZE).map((r) => ({ ...r, last_seen_sync_run_id: syncRunId }));
+      const { error } = await sb.from('dp_resource_index').upsert(batch, { onConflict: 'drive_file_id' });
       if (error) throw new Error(error.message);
     }
 
