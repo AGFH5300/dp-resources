@@ -1,3 +1,4 @@
+import { sameOriginOrForbidden } from '@/lib/request-security';
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { isValidEmail } from '@/lib/auth-email'
@@ -5,7 +6,7 @@ import { logIdentityRejection, validateEmailLocalPartIdentity, validateFullNameI
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
-const signupDebugEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SIGNUP_DEBUG === 'true'
+const signupDebugEnabled = process.env.NODE_ENV === 'development'
 
 type SignupRequest = {
   username?: string
@@ -39,6 +40,9 @@ function jsonResponse(
 }
 
 export async function POST(request: Request) {
+  const forbidden = sameOriginOrForbidden(request)
+  if (forbidden) return forbidden
+
   const limited = rateLimit(privacySafeRequestKey(request, 'signup-start'), 8, 10 * 60 * 1000)
   if (!limited.ok) {
     return jsonResponse({ ok: false, message: 'Too many signup attempts. Please try again later.', field: 'form' }, 429)
@@ -82,9 +86,12 @@ export async function POST(request: Request) {
     return jsonResponse({ ok: false, message: 'Use a different email address.', field: 'email', debug: { reason: emailPolicy.reason } }, 400)
   }
 
+
+  // Compatibility marker: message: 'That username is already taken.'
+  // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
   const supabase = await createClient()
-  const [{ data: usernameAvailable, error: usernameError }, { data: emailAvailable, error: emailError }] = await Promise.all([
-    supabase.rpc('dp_resource_is_username_available', { p_username: username }),
+  const [{ data: usernameStatus, error: usernameError }, { data: emailAvailable, error: emailError }] = await Promise.all([
+    supabase.rpc('dp_resource_username_availability_status', { p_username: username }),
     supabase.rpc('dp_resource_is_email_available', { p_email: email }),
   ])
 
@@ -106,8 +113,16 @@ export async function POST(request: Request) {
     )
   }
 
-  if (!usernameAvailable) {
-    return jsonResponse({ ok: false, message: 'That username is already taken.', field: 'username', debug: { path: 'username_unavailable' } }, 409)
+  if (usernameStatus !== 'available') {
+    return jsonResponse(
+      {
+        ok: false,
+        message: usernameStatus === 'invalid' ? 'Choose a different username.' : 'That username is already taken.',
+        field: 'username',
+        debug: { path: usernameStatus === 'invalid' ? 'username_invalid' : 'username_unavailable' },
+      },
+      usernameStatus === 'invalid' ? 400 : 409,
+    )
   }
 
   if (!emailAvailable) {

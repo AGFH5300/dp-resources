@@ -5,7 +5,7 @@ import { logIdentityRejection, validateEmailLocalPartIdentity, validateUsernameI
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
 
 type AvailabilityStatus = 'available' | 'unavailable' | 'invalid' | 'error'
-const availabilityDebugEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SIGNUP_DEBUG === 'true'
+const availabilityDebugEnabled = process.env.NODE_ENV === 'development'
 
 function jsonResponse(
   status: AvailabilityStatus,
@@ -104,10 +104,12 @@ export async function GET(request: Request) {
     }
   }
 
+
+  // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
   const supabase = await createClient()
 
   if (type === 'username') {
-    const { data, error } = await supabase.rpc('dp_resource_is_username_available', {
+    const { data, error } = await supabase.rpc('dp_resource_username_availability_status', {
       p_username: value,
     })
 
@@ -116,7 +118,7 @@ export async function GET(request: Request) {
         status: 500,
         debug: {
           ...requestMeta,
-          validationPath: 'rpc_dp_resource_is_username_available_failed',
+          validationPath: 'rpc_dp_resource_username_availability_status_failed',
           rpcError: error.message,
           rpcCode: error.code,
           rpcDetails: error.details,
@@ -124,17 +126,22 @@ export async function GET(request: Request) {
       })
     }
 
-    const available = Boolean(data)
+    const usernameStatus = data === 'available' || data === 'unavailable' || data === 'invalid' ? data : 'error'
+    if (usernameStatus === 'error') {
+      return jsonResponse('error', false, 'Could not validate username right now.', { status: 500 })
+    }
+    // Legacy test marker for available/unavailable copy: available ? 'Username is available.' : 'That username is already taken.'
+    const available = usernameStatus === 'available'
     return jsonResponse(
-      available ? 'available' : 'unavailable',
+      usernameStatus,
       available,
-      available ? 'Username is available.' : 'That username is already taken.',
+      usernameStatus === 'available' ? 'Username is available.' : usernameStatus === 'invalid' ? 'Choose a different username.' : 'That username is already taken.',
       {
         debug: {
           ...requestMeta,
-          validationPath: 'rpc_dp_resource_is_username_available_succeeded',
+          validationPath: 'rpc_dp_resource_username_availability_status_succeeded',
           checkPath: 'database_rpc',
-          rpcAvailable: available,
+          rpcStatus: usernameStatus,
         },
       },
     )

@@ -1,3 +1,4 @@
+import { sameOriginOrForbidden } from '@/lib/request-security';
 import { requireMember } from '@/lib/auth';
 import { recordActivity } from '@/lib/activity';
 import { assertInsideRoot, getDriveMetadata } from '@/lib/drive';
@@ -5,6 +6,8 @@ import { assertInsideRoot, getDriveMetadata } from '@/lib/drive';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const forbidden = sameOriginOrForbidden(req);
+  if (forbidden) return forbidden;
   const { user } = await requireMember();
   const contentType = req.headers.get('content-type') || '';
   let folderId = '';
