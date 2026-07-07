@@ -20,7 +20,7 @@ export function ResourceContextMenu({item,rootId,path,x,y,onClose,onDetails,navi
  <button role="menuitem" className={row} onClick={()=>closeThen(()=>navigate(item,path,true))}><ExternalLink className="size-4 shrink-0"/>Open in new tab</button>
  {!item.isFolder&&<a role="menuitem" className={row} href={`/api/files/${item.id}/download`} onClick={onClose}><Download className="size-4 shrink-0"/>Download</a>}
  <ShareButton resource={{driveFileId:item.id,resourceName:item.name,resourcePath:path,isFolder:item.isFolder}} className={row} onBegin={onClose}/>
- <SaveButton driveFileId={item.id} name={item.name} className={row} label="Save / Unsave" onBegin={onClose}/>
+ <SaveButton driveFileId={item.id} name={item.name} className={row} onBegin={onClose}/>
  <button role="menuitem" className={row} onClick={()=>{onDetails();onClose();}}><Info className="size-4 shrink-0"/>Details</button>
  <ReportResourceDialog resource={{driveFileId:item.id,resourceName:item.name,resourcePath:path,isFolder:item.isFolder}} className={row}/>
  </div></>; return mounted?createPortal(menu,document.body):null}

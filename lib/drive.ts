@@ -145,14 +145,14 @@ export function nodeToWebStream(stream: NodeJS.ReadableStream) {
   return Readable.toWeb(stream as Readable) as ReadableStream;
 }
 
-export async function getDriveStream(fileId: string, mimeType: string) {
+export async function getDriveStream(fileId: string, mimeType: string, range?: string | null) {
   const exportSpec = workspaceExportFor(mimeType);
   if (mimeType.startsWith('application/vnd.google-apps.') && !exportSpec) return { unavailable: true as const };
   if (exportSpec) {
     const res = await drive().files.export({ fileId, mimeType: exportSpec.mimeType }, { responseType: 'stream' });
     return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: exportSpec.mimeType, extension: exportSpec.extension, headers: res.headers };
   }
-  const res = await drive().files.get({ fileId, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' });
+  const res = await drive().files.get({ fileId, alt: 'media', supportsAllDrives: true }, { responseType: 'stream', headers: range ? { Range: range } : undefined, validateStatus: (s) => s >= 200 && s < 300 });
   return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: mimeType, headers: res.headers };
 }
 

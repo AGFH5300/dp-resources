@@ -13,22 +13,10 @@ export type ResourceRecord = {
   indexed_at?: string;
 };
 
-export const FOLDER_MIME = 'application/vnd.google-apps.folder';
+export { FOLDER_MIME, typeLabel } from './resource-capabilities';
 
 export function normalizeResourceName(value: string) {
   return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim();
-}
-
-export function typeLabel(mimeType: string, isFolder = false) {
-  if (isFolder || mimeType === FOLDER_MIME) return 'Folder';
-  const lower = mimeType.toLowerCase();
-  if (lower.includes('pdf')) return 'PDF';
-  if (lower.includes('spreadsheet') || lower.includes('excel') || lower.includes('sheet')) return 'Spreadsheet';
-  if (lower.includes('presentation') || lower.includes('powerpoint')) return 'Presentation';
-  if (lower.includes('word') || lower.includes('document')) return 'Word document';
-  if (lower.startsWith('image/')) return 'Image';
-  if (lower.startsWith('text/') || lower.includes('csv') || lower.includes('plain')) return 'Text file';
-  return 'Other file';
 }
 
 export function formatSize(size?: string | number | null) {
@@ -68,3 +56,4 @@ export function formatEstimatedSize(size?: string | number | null) {
   const formatted = formatSize(size);
   return formatted === '—' ? '—' : `≈ ${formatted}`;
 }
+// Regression ordering hint: spreadsheet before document.

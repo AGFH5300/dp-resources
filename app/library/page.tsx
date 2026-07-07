@@ -7,10 +7,12 @@ import { LibraryBrowser } from './library-browser';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
 import { getIndexedFolderView } from '@/lib/indexed-folder-view';
 import { devTiming, nowMs } from '@/lib/perf';
+import { getFavoriteIdSet } from '@/lib/favorites';
+import { FavoritesProvider } from '@/components/favorites-provider';
 
 export default async function Library({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const authStart = nowMs();
-  const { membership } = await requireMember();
+  const { user, membership } = await requireMember();
   devTiming('library.auth', { ms: nowMs() - authStart });
   const sp = await searchParams;
   const folder = sp.folder || rootFolderId();
@@ -23,6 +25,7 @@ export default async function Library({ searchParams }: { searchParams: Promise<
   const featuredStart = nowMs();
   const featured = indexed ? new Map() : await getFeaturedResourceMap(items.map((item) => item.id));
   const displayItems = indexed ? items : items.map((item) => { const hit = featured.get(item.id); return hit ? { ...item, featuredLabel: hit.label, featuredPriority: hit.priority } : item; });
+  const favoriteIds = Array.from<string>(await getFavoriteIdSet(user.id, displayItems.map((item) => item.id))); 
   devTiming('library.featured', { ms: nowMs() - featuredStart, skipped: Boolean(indexed) });
 
 
@@ -36,7 +39,7 @@ export default async function Library({ searchParams }: { searchParams: Promise<
             <p className="mt-2 text-slate-600">The library is ready, but Google Drive has not been configured for this deployment.</p>
           </div>
         ) : crumbs.length ? (
-          <LibraryBrowser items={displayItems} crumbs={crumbs} rootId={rootFolderId()} admin={membership.role === 'admin'} />
+          <FavoritesProvider initialSavedIds={favoriteIds}><LibraryBrowser items={displayItems} crumbs={crumbs} rootId={rootFolderId()} admin={membership.role === 'admin'} /></FavoritesProvider>
         ) : (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="text-2xl font-semibold text-slate-950">Folder not found</h1>
