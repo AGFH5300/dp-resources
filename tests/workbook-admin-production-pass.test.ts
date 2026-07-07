@@ -12,10 +12,10 @@ describe('workbook and admin production pass',()=>{
 
   it('master workbook uses native Google Sheets embed controls without fake parsing controls',()=>{
     const p=read('app/resource/[fileId]/resource-preview.tsx');
-    expect(p).toContain('Native Google Sheets preview');
+    expect(p).not.toContain('Native Google Sheets preview');
     expect(p).not.toContain('Worksheet');
     expect(p).toContain('requestFullscreen');
-    expect(p).toContain('Spreadsheet preview is unavailable.');
+    expect(p).toContain('Preview unavailable');
     expect(p).not.toContain('SheetJsWorkbookPreview');
     expect(p).not.toContain('/workbook');
   });
