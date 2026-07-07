@@ -5,8 +5,24 @@ const read=(p:string)=>readFileSync(p,'utf8');
 describe('search consistency and PPTX PDF viewer regressions',()=>{
   it('normalizes filename and MIME separators in the generated search vector without ILIKE fallback',()=>{
     const sql=read('supabase/migrations/20260707184500_separator_normalized_resource_search_vector.sql');
-    expect(sql).toContain("regexp_replace(coalesce(name,''), '[^[:alnum:]]+', ' ', 'g')");
-    expect(sql).toContain("regexp_replace(coalesce(mime_type,''), '[^[:alnum:]]+', ' ', 'g')");
+    expect(sql).not.toMatch(/regexp_replace/i);
+    expect(sql).not.toContain('concat_ws');
+    expect(sql).toContain('to_tsvector(');
+    expect(sql).toContain("'simple'");
+    expect(sql).toContain("coalesce(name,'') || ' ' ||");
+    expect(sql).toContain("coalesce(path,'') || ' ' ||");
+    expect(sql).toContain("coalesce(mime_type,'') || ' ' ||");
+    for (const separator of ['.', '/', '_', '-', ':', ',', ';', '(', ')', '[', ']', '{', '}']) {
+      expect(sql).toContain(`'${separator}', ' '`);
+    }
+    for (const term of ['mp4', 'pdf', 'docx', 'pptx', 'xlsx', 'mp3', 'png']) {
+      expect([`en.${term}`, `video/${term}`, `some_file-name.${term}`, `chemistry:hl.${term}`].map(value =>
+        ['.', '/', '_', '-', ':', ',', ';', '(', ')', '[', ']', '{', '}'].reduce(
+          (normalized, separator) => normalized.replaceAll(separator, ' '),
+          value,
+        ).split(/\s+/),
+      ).every(tokens => tokens.includes(term))).toBe(true);
+    }
     expect(sql).toContain('using gin (search_vector)');
     expect(read('supabase/migrations/20260707143000_token_search_resources_rpc.sql')).not.toMatch(/ilike/i);
   });

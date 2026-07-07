@@ -1,5 +1,8 @@
 -- Index filename and MIME separators in both original and normalized forms so extension searches remain GIN-backed.
 
+-- The generated expression must use only immutable operations. Keep separator
+-- normalization explicit because generated columns reject non-immutable helpers.
+
 drop index if exists public.dp_resource_index_search_idx;
 
 alter table public.dp_resource_index
@@ -9,15 +12,12 @@ alter table public.dp_resource_index
   add column search_vector tsvector generated always as (
     to_tsvector(
       'simple',
-      concat_ws(
-        ' ',
-        coalesce(name,''),
-        regexp_replace(coalesce(name,''), '[^[:alnum:]]+', ' ', 'g'),
-        coalesce(path,''),
-        regexp_replace(coalesce(path,''), '[^[:alnum:]]+', ' ', 'g'),
-        coalesce(mime_type,''),
-        regexp_replace(coalesce(mime_type,''), '[^[:alnum:]]+', ' ', 'g')
-      )
+      coalesce(name,'') || ' ' ||
+      replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(coalesce(name,''), '.', ' '), '/', ' '), '_', ' '), '-', ' '), ':', ' '), ',', ' '), ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' '), '{', ' '), '}', ' ') || ' ' ||
+      coalesce(path,'') || ' ' ||
+      replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(coalesce(path,''), '.', ' '), '/', ' '), '_', ' '), '-', ' '), ':', ' '), ',', ' '), ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' '), '{', ' '), '}', ' ') || ' ' ||
+      coalesce(mime_type,'') || ' ' ||
+      replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(coalesce(mime_type,''), '.', ' '), '/', ' '), '_', ' '), '-', ' '), ':', ' '), ',', ' '), ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' '), '{', ' '), '}', ' ')
     )
   ) stored;
 
