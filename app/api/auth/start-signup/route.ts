@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const forbidden = sameOriginOrForbidden(request)
   if (forbidden) return forbidden
 
-  const limited = rateLimit(privacySafeRequestKey(request, 'signup-start'), 8, 10 * 60 * 1000)
+  const limited = await rateLimit(privacySafeRequestKey(request, 'signup-start'), 8, 10 * 60 * 1000, 'signup-start')
   if (!limited.ok) {
     return jsonResponse({ ok: false, message: 'Too many signup attempts. Please try again later.', field: 'form' }, 429)
   }

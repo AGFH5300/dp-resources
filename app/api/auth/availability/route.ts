@@ -40,7 +40,7 @@ function jsonResponse(
 }
 
 export async function GET(request: Request) {
-  const limited = rateLimit(privacySafeRequestKey(request, 'signup-availability'), 60, 10 * 60 * 1000)
+  const limited = await rateLimit(privacySafeRequestKey(request, 'signup-availability'), 60, 10 * 60 * 1000, 'signup-availability')
   if (!limited.ok) return jsonResponse('error', false, 'Too many checks. Please try again later.', { status: 429 })
 
   const { searchParams } = new URL(request.url)

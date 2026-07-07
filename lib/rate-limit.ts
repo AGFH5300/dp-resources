@@ -1,19 +1,27 @@
 import 'server-only'
 import { createHash } from 'crypto'
-
-const buckets = new Map<string, { count: number; resetAt: number }>()
+import { createSupabaseAdminClient } from './supabase-admin'
 
 export function privacySafeRequestKey(request: Request, scope: string) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  const ip = forwarded || request.headers.get('x-real-ip') || 'unknown'
+  const ipPrefix = forwarded?.includes(':') ? forwarded.split(':').slice(0, 4).join(':') : forwarded?.split('.').slice(0, 3).join('.')
   const ua = request.headers.get('user-agent') || 'unknown'
-  return createHash('sha256').update(`${scope}:${ip}:${ua}`).digest('hex')
+  return createHash('sha256').update(`${scope}:${ipPrefix || 'unknown'}:${ua.slice(0, 80)}`).digest('hex')
 }
 
-export function rateLimit(key: string, limit: number, windowMs: number) {
-  const now = Date.now()
-  const current = buckets.get(key)
-  if (!current || current.resetAt <= now) { buckets.set(key, { count: 1, resetAt: now + windowMs }); return { ok: true } }
-  current.count += 1
-  return { ok: current.count <= limit, retryAfter: Math.ceil((current.resetAt - now) / 1000) }
+export async function rateLimit(key: string, limit: number, windowMs: number, scope = 'default') {
+  try {
+    const sb = createSupabaseAdminClient()
+    const { data, error } = await sb.rpc('dp_check_rate_limit', {
+      p_scope: scope,
+      p_request_key_hash: key,
+      p_limit: limit,
+      p_window_seconds: Math.ceil(windowMs / 1000),
+    })
+    if (error) throw error
+    const row = Array.isArray(data) ? data[0] : data
+    return { ok: Boolean(row?.ok), retryAfter: Number(row?.retry_after_seconds || 0) }
+  } catch {
+    return { ok: false, retryAfter: Math.ceil(windowMs / 1000) }
+  }
 }

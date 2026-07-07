@@ -5,6 +5,7 @@ import { recordActivity } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
 import { needsRangeSupport } from '@/lib/resource-capabilities';
 import { ifRangeMatches, parseSingleByteRange } from '@/lib/range-requests';
+import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const authMs = nowMs() - authStart;
   if (!isDriveConfigured()) return new Response('Resources are not yet available', { status: 503 });
   const { fileId } = await params;
+  const limited = await rateLimit(privacySafeRequestKey(req, 'resource-content'), 120, 10 * 60 * 1000, 'resource-content');
+  if (!limited.ok) return new Response('Too many requests. Please try again later.', { status: 429 });
   const validateStart = nowMs();
   if (!(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
   const meta = await getDriveMetadata(fileId);
