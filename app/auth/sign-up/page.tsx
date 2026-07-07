@@ -38,6 +38,8 @@ type AvailabilityFieldState = FieldState & {
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile'
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
+const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/
+const USERNAME_REPEATED_UNDERSCORE_PATTERN = /__/
 const VALIDATION_DEBOUNCE_MS = 600
 const AVAILABILITY_CACHE_SUCCESS_TTL_MS = 20 * 1000
 const AVAILABILITY_CACHE_ERROR_TTL_MS = 8 * 1000
@@ -238,7 +240,7 @@ export default function SignUpPage() {
       return false
     }
 
-    if (!USERNAME_PATTERN.test(trimmed)) {
+    if (!USERNAME_PATTERN.test(trimmed) || USERNAME_EDGE_UNDERSCORE_PATTERN.test(trimmed) || USERNAME_REPEATED_UNDERSCORE_PATTERN.test(trimmed)) {
       setUsernameField((previous) => ({
         ...previous,
         status: 'invalid',
@@ -730,7 +732,7 @@ export default function SignUpPage() {
           next: nextPathRef.current,
         }),
       })
-      const result = (await response.json()) as { ok?: boolean; message?: string; field?: 'username' | 'email' | 'form' }
+      const result = (await response.json()) as { ok?: boolean; message?: string; field?: 'username' | 'email' | 'fullName' | 'form' }
 
       if (!response.ok || !result.ok) {
         const message = result.message || 'Something went wrong while creating your account. Please try again.'
@@ -738,6 +740,8 @@ export default function SignUpPage() {
           setUsernameField((previous) => ({ ...previous, status: 'invalid', error: message, isChecking: false, isAvailable: false, errorKind: 'unavailable' }))
         } else if (result.field === 'email') {
           setEmailField((previous) => ({ ...previous, status: 'invalid', error: message, isChecking: false, isAvailable: false, errorKind: 'unavailable' }))
+        } else if (result.field === 'fullName') {
+          setFullNameField((previous) => ({ ...previous, status: 'invalid', error: message }))
         }
         setError(message)
         return

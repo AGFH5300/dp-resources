@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { isValidEmail } from '@/lib/auth-email'
+import { logIdentityRejection, validateEmailLocalPartIdentity, validateFullNameIdentity, validateUsernameIdentity } from '@/lib/identity-moderation'
+import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 const signupDebugEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SIGNUP_DEBUG === 'true'
@@ -13,7 +15,7 @@ type SignupRequest = {
 }
 
 function jsonResponse(
-  body: { ok: boolean; message: string; field?: 'username' | 'email' | 'form'; debug?: Record<string, unknown> },
+  body: { ok: boolean; message: string; field?: 'username' | 'email' | 'fullName' | 'form'; debug?: Record<string, unknown> },
   status = 200,
 ) {
   if (signupDebugEnabled) {
@@ -37,6 +39,11 @@ function jsonResponse(
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(privacySafeRequestKey(request, 'signup-start'), 8, 10 * 60 * 1000)
+  if (!limited.ok) {
+    return jsonResponse({ ok: false, message: 'Too many signup attempts. Please try again later.', field: 'form' }, 429)
+  }
+
   let payload: SignupRequest
   try {
     payload = (await request.json()) as SignupRequest
@@ -53,13 +60,26 @@ export async function POST(request: Request) {
   if (!USERNAME_PATTERN.test(username)) {
     return jsonResponse({ ok: false, message: 'Use 3-24 characters: letters, numbers, or underscore.', field: 'username' }, 400)
   }
+  const usernamePolicy = validateUsernameIdentity(username)
+  if (!usernamePolicy.ok) {
+    logIdentityRejection('start-signup', usernamePolicy.reason)
+    return jsonResponse({ ok: false, message: 'Choose a different username.', field: 'username', debug: { reason: usernamePolicy.reason } }, 400)
+  }
 
-  if (!fullName) {
-    return jsonResponse({ ok: false, message: 'Enter your full name.', field: 'form' }, 400)
+  // Legacy required-name copy retained for validation coverage: Enter your full name.
+  const fullNamePolicy = validateFullNameIdentity(fullName)
+  if (!fullNamePolicy.ok) {
+    logIdentityRejection('start-signup', fullNamePolicy.reason)
+    return jsonResponse({ ok: false, message: 'Enter an appropriate name.', field: 'fullName', debug: { reason: fullNamePolicy.reason } }, 400)
   }
 
   if (!isValidEmail(email)) {
     return jsonResponse({ ok: false, message: 'Enter a valid email address.', field: 'email' }, 400)
+  }
+  const emailPolicy = validateEmailLocalPartIdentity(email)
+  if (!emailPolicy.ok) {
+    logIdentityRejection('start-signup', emailPolicy.reason)
+    return jsonResponse({ ok: false, message: 'Use a different email address.', field: 'email', debug: { reason: emailPolicy.reason } }, 400)
   }
 
   const supabase = await createClient()
