@@ -24,22 +24,12 @@ export async function getIndexedFolderSizeSummaries(folderIds: string[]) {
     return new Map<string, number>();
   }
 
-  const { data: folders = [] } = await sb.from('dp_resource_index').select('drive_file_id,name,path').in('drive_file_id', unique).eq('is_folder', true);
-  if (!(folders || []).length) return new Map<string, number>();
-
-  const or = ((folders || []) as any[]).map((f) => `path.like.${String(f.path).replace(/[,%]/g, '')} / %`).join(',');
-  const { data: files = [] } = or
-    ? await sb.from('dp_resource_index').select('path,size_bytes').eq('is_folder', false).not('size_bytes', 'is', null).or(or)
-    : { data: [] as any[] };
+  const { data: summaries = [] } = await sb.rpc('dp_folder_size_summaries', { folder_ids: unique });
 
   const result = new Map<string, number>();
-  for (const folder of (folders || []) as any[]) {
-    const prefix = `${folder.path} / `;
-    let total = 0;
-    for (const file of files as any[]) {
-      if (typeof file.path === 'string' && file.path.startsWith(prefix) && file.size_bytes != null) total += Number(file.size_bytes);
-    }
-    if (total > 0) result.set(folder.drive_file_id, total);
+  for (const summary of (summaries || []) as any[]) {
+    const total = Number(summary.total_known_bytes ?? 0);
+    if (total > 0) result.set(String(summary.folder_id), total);
   }
   cache.set(key, { at: Date.now(), values: result });
   return result;
