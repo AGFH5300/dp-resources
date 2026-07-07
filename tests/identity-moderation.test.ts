@@ -29,6 +29,11 @@ describe('signup enforcement wiring', () => {
   const signup = readFileSync('app/api/auth/start-signup/route.ts', 'utf8')
   const availability = readFileSync('app/api/auth/availability/route.ts', 'utf8')
   const schema = readFileSync('supabase/migrations/20260707000000_identity_moderation.sql', 'utf8')
+  const currentSchema = readFileSync('supabase/schema.sql', 'utf8')
+  const usernameRepairMigration = readFileSync(
+    'supabase/migrations/20260707203000_fix_username_literal_double_underscore.sql',
+    'utf8',
+  )
   it('blocks before OTP is sent and availability is neutral', () => {
     expect(signup.indexOf('validateUsernameIdentity')).toBeLessThan(signup.indexOf('signInWithOtp'))
     expect(signup).toContain('validateFullNameIdentity')
@@ -68,5 +73,20 @@ describe('signup enforcement wiring', () => {
     expect(signup).toContain('Choose a different username.')
     expect(signup).toContain('Enter an appropriate name.')
     expect(signup).toContain('Use a different email address.')
+  })
+
+  it('repairs database username validation for literal repeated underscores only', () => {
+    expect(currentSchema).toContain('create or replace function public.dp_identity_validate_username')
+    expect(usernameRepairMigration).toContain('create or replace function public.dp_identity_validate_username')
+    expect(currentSchema).toContain("position('__' in p_username) > 0")
+    expect(usernameRepairMigration).toContain("position('__' in p_username) > 0")
+    expect(currentSchema).not.toContain("like '%__%'")
+    expect(usernameRepairMigration).not.toContain("like '%__%'")
+
+    expect(validateUsernameIdentity('normaluser').ok).toBe(true)
+    expect(validateUsernameIdentity('student_2026').ok).toBe(true)
+    expect(validateUsernameIdentity('a__b').ok).toBe(false)
+    expect(validateUsernameIdentity('_student').ok).toBe(false)
+    expect(validateUsernameIdentity('student_').ok).toBe(false)
   })
 })
