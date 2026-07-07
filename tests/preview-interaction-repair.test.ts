@@ -12,7 +12,7 @@ describe('preview quality and interaction repair',()=>{
     const s=read('components/global-search.tsx');
     expect(s).toContain('const openSearch=()=>{clearState();setOpen(true);};');
     expect(s).toContain('const resetSearch=()=>{clearState();setOpen(false);};');
-    expect(s).toContain('resetSearch(); location.href=href;');
+    expect(s).toContain('router.push(href)');
   });
   it('range parser validates single byte ranges and rejects bad requests',()=>{
     expect(parseSingleByteRange('bytes=0-99', 1000)).toMatchObject({kind:'range', header:'bytes=0-99'});

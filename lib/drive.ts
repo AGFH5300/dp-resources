@@ -17,12 +17,27 @@ export function isDriveConfigured() {
 
 export const rootFolderId = () => process.env.GOOGLE_DRIVE_FOLDER_ID!;
 
-function driveAuth() {
+export function driveAuth() {
   const key = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
   return new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key,
     scopes: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+}
+
+export async function getDriveAccessToken() {
+  const token = await driveAuth().getAccessToken();
+  const value = typeof token === 'string' ? token : token?.token;
+  if (!value) throw new Error('Unable to authorize Drive request');
+  return value;
+}
+
+export async function getDriveMediaFetch(fileId: string, range?: string | null) {
+  const token = await getDriveAccessToken();
+  return fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
+    headers: { authorization: `Bearer ${token}`, ...(range ? { range } : {}) },
+    cache: 'no-store',
   });
 }
 
