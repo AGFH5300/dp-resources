@@ -3,6 +3,7 @@ import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, 
 import { recordActivity } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
 import { needsRangeSupport } from '@/lib/resource-capabilities';
+import { ifRangeMatches, parseSingleByteRange } from '@/lib/range-requests';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,11 +26,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     'vary': 'Cookie',
     'server-timing': [serverTiming('auth', authMs), serverTiming('validate', validateMs)].join(', '),
   });
-  if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
-  const streamStart = nowMs();
+  const rangeCapable = needsRangeSupport(meta.mimeType, meta.name);
   const requestedRange = req.headers.get('range');
-  const useRange = requestedRange && needsRangeSupport(meta.mimeType, meta.name) && /^bytes=\d*-\d*(,\s*\d*-\d*)?$/.test(requestedRange);
-  const media = await getDriveStream(fileId, meta.mimeType, useRange ? requestedRange : undefined).catch(() => null);
+  const rangeDecision = requestedRange && rangeCapable ? parseSingleByteRange(requestedRange, meta.size) : { kind: 'none' as const };
+  if (rangeDecision.kind === 'invalid') {
+    headers.set('content-range', `bytes */${rangeDecision.total}`);
+    headers.set('accept-ranges', 'bytes');
+    return new Response(null, { status: 416, headers });
+  }
+  const shouldServeRange = rangeDecision.kind === 'range' && ifRangeMatches(req.headers.get('if-range'), etag);
+  if (!requestedRange && req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+  const streamStart = nowMs();
+  const media = await getDriveStream(fileId, meta.mimeType, shouldServeRange ? rangeDecision.header : undefined).catch(() => null);
   if (!media) return new Response('Unable to retrieve this file', { status: 502 });
   if ('unavailable' in media) return new Response('Preview is unavailable for this Google Workspace file type.', { status: 415 });
   const streamMs = nowMs() - streamStart;
@@ -39,10 +47,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const mediaHeaders = media.headers || {};
   const contentRange = mediaHeaders['content-range'];
   const contentLength = mediaHeaders['content-length'];
-  if (needsRangeSupport(meta.mimeType, meta.name)) headers.set('accept-ranges', 'bytes');
+  if (rangeCapable) headers.set('accept-ranges', 'bytes');
   if (contentRange) headers.set('content-range', String(contentRange));
   if (contentLength) headers.set('content-length', String(contentLength));
   headers.set('content-disposition', `inline; filename="${safeDownloadName(meta.name, media.extension)}"`);
   headers.set('server-timing', [serverTiming('auth', authMs), serverTiming('validate', validateMs), serverTiming('stream', streamMs)].join(', '));
-  return new Response(media.stream, { status: contentRange ? 206 : 200, headers });
+  return new Response(media.stream, { status: shouldServeRange && contentRange ? 206 : 200, headers });
 }

@@ -1,4 +1,4 @@
-export type PreviewMode = 'folder' | 'pdf' | 'docx' | 'image' | 'master-xlsx' | 'xlsx' | 'audio' | 'video' | 'pptx-outline' | 'text' | 'download-fallback';
+export type PreviewMode = 'folder' | 'pdf' | 'docx' | 'image' | 'master-xlsx' | 'xlsx' | 'audio' | 'video' | 'text' | 'download-fallback';
 export type ResourceCapability = { previewMode: PreviewMode; label: string; icon: 'folder'|'pdf'|'word'|'spreadsheet'|'presentation'|'image'|'audio'|'video'|'text'|'other'; needsRange: boolean; generic: boolean; mimeTypes: string[]; extensions: string[] };
 export const FOLDER_MIME = 'application/vnd.google-apps.folder';
 export const MASTER_WORKBOOK_FILE_ID = '1T1VS7tOJMEmPa9NXYOXdegBzYsNOSUOE';
@@ -10,7 +10,7 @@ export const resourceCapabilities: ResourceCapability[] = [
   { previewMode:'pdf', label:'PDF', icon:'pdf', needsRange:false, generic:false, mimeTypes:['application/pdf'], extensions:['pdf'] },
   { previewMode:'docx', label:'Word document', icon:'word', needsRange:false, generic:false, mimeTypes:[DOCX], extensions:['docx'] },
   { previewMode:'xlsx', label:'Spreadsheet', icon:'spreadsheet', needsRange:false, generic:false, mimeTypes:[XLSX], extensions:['xlsx'] },
-  { previewMode:'pptx-outline', label:'Presentation', icon:'presentation', needsRange:false, generic:false, mimeTypes:[PPTX], extensions:['pptx'] },
+  { previewMode:'download-fallback', label:'Presentation', icon:'presentation', needsRange:false, generic:true, mimeTypes:[PPTX], extensions:['pptx'] },
   { previewMode:'audio', label:'Audio', icon:'audio', needsRange:true, generic:false, mimeTypes:['audio/mpeg'], extensions:['mp3'] },
   { previewMode:'video', label:'Video', icon:'video', needsRange:true, generic:false, mimeTypes:['video/mp4'], extensions:['mp4'] },
   { previewMode:'image', label:'Image', icon:'image', needsRange:false, generic:false, mimeTypes:['image/png'], extensions:['png'] },

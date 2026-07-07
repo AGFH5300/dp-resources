@@ -17,7 +17,7 @@ describe('master workbook Google Sheets embed regression', () => {
   it('does not render or fetch a custom Worksheet selector', () => {
     const source = preview();
 
-    expect(source).toContain('Native Google Sheets preview');
+    expect(source).not.toContain('Native Google Sheets preview');
     expect(source).toContain('requestFullscreen');
     expect(source).not.toContain('Worksheet');
     expect(source).not.toContain('worksheet-tabs');
