@@ -3,6 +3,7 @@ import type { DriveItem, ResourceIndex } from './types';
 import { createSupabaseAdminClient } from './supabase-admin';
 import { rootFolderId } from './drive';
 import { getFeaturedResourceMap } from './featured-resources';
+import { getIndexedFolderSizeSummaries } from './folder-summaries';
 
 function toDriveItem(row: ResourceIndex): DriveItem {
   return { id: row.drive_file_id, name: row.name, mimeType: row.mime_type, size: row.size_bytes == null ? undefined : String(row.size_bytes), modifiedTime: row.modified_at || undefined, isFolder: row.is_folder };
@@ -40,8 +41,9 @@ export async function getIndexedFolderView(folderId = rootFolderId()) {
     for (const id of ids) { const row = byId.get(id); if (row) crumbs.push(toDriveItem(row)); }
   }
 
+  const folderSummaries = await getIndexedFolderSizeSummaries(((rows || []) as ResourceIndex[]).filter((r) => r.is_folder).map((r) => r.drive_file_id));
   const featured = await getFeaturedResourceMap((rows || []).map((r: any) => r.drive_file_id));
-  const items = ((rows || []) as ResourceIndex[]).map((r) => { const hit = featured.get(r.drive_file_id); return hit ? { ...toDriveItem(r), featuredLabel: hit.label, featuredPriority: hit.priority } : toDriveItem(r); })
+  const items = ((rows || []) as ResourceIndex[]).map((r) => { const hit = featured.get(r.drive_file_id); const base = toDriveItem(r); const withSize = r.is_folder && folderSummaries.has(r.drive_file_id) ? { ...base, estimatedSize: folderSummaries.get(r.drive_file_id) } : base; return hit ? { ...withSize, featuredLabel: hit.label, featuredPriority: hit.priority } : withSize; })
     .sort((a, b) => Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name));
   return { items, crumbs };
 }
