@@ -41,6 +41,7 @@ const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/
 const USERNAME_REPEATED_UNDERSCORE_PATTERN = /__/
 const VALIDATION_DEBOUNCE_MS = 600
+const AVAILABILITY_CACHE_VERSION = 'username-status-v2'
 const AVAILABILITY_CACHE_SUCCESS_TTL_MS = 20 * 1000
 const AVAILABILITY_CACHE_ERROR_TTL_MS = 8 * 1000
 const DEFAULT_NEXT_PATH = '/library'
@@ -258,7 +259,7 @@ export default function SignUpPage() {
       return usernameField.status === 'valid'
     }
 
-    const cacheKey = `username:${trimmed}`
+    const cacheKey = `${AVAILABILITY_CACHE_VERSION}:username:${trimmed}`
     const cached = trigger === 'submit' ? null : getCachedAvailabilityResult(cacheKey)
     if (cached) {
       const isValid = cached.status === 'available' && cached.available
@@ -442,7 +443,7 @@ export default function SignUpPage() {
       return emailField.status === 'valid'
     }
 
-    const cacheKey = `email:${trimmed}`
+    const cacheKey = `${AVAILABILITY_CACHE_VERSION}:email:${trimmed}`
     const cached = trigger === 'submit' ? null : getCachedAvailabilityResult(cacheKey)
     if (cached) {
       const isValid = cached.status === 'available' && cached.available
