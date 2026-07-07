@@ -20,8 +20,8 @@ describe('library clarity repair', () => {
   it('desktop menu is portaled and collision aware', () => {
     const s = read('app/library/library-browser.tsx');
     expect(s).toContain('createPortal(menu,document.body)');
-    expect(s).toContain('window.innerWidth-rect.width-margin');
-    expect(s).toContain('y-rect.height');
+    expect(s).toContain('useLayoutEffect');
+    expect(s).toContain('window.visualViewport');
     expect(s).toContain("window.addEventListener('resize',place)");
   });
   it('root hides breadcrumb while nested folder shows breadcrumb plus heading', () => {
@@ -38,9 +38,9 @@ describe('library clarity repair', () => {
   });
   it('folder summaries are batched from indexed descendants and incomplete index returns no estimate', () => {
     const s = read('lib/folder-summaries.ts');
-    expect(s).toContain(".in('drive_file_id', unique)");
-    expect(s).toContain(".eq('is_folder', false)");
-    expect(s).toContain('file.path.startsWith(prefix)');
+    expect(s).toContain("sb.rpc('dp_folder_size_summaries', { folder_ids: unique })");
+    expect(s).not.toContain(".select('path,size_bytes')");
+    expect(s).not.toContain('file.path.startsWith(prefix)');
     expect(s).toContain('!syncComplete(state)');
     expect(read('app/library/page.tsx')).not.toContain('crawlDriveIndex');
   });
