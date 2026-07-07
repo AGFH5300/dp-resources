@@ -63,3 +63,8 @@ export function resourceUrl(item: { drive_file_id?: string; id?: string; is_fold
   const id = item.drive_file_id || item.id || '';
   return (item.is_folder || item.isFolder) ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`;
 }
+
+export function formatEstimatedSize(size?: string | number | null) {
+  const formatted = formatSize(size);
+  return formatted === '—' ? '—' : `≈ ${formatted}`;
+}
