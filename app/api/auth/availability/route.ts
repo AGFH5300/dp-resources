@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { isValidEmail } from '@/lib/auth-email'
+import { logIdentityRejection, validateEmailLocalPartIdentity, validateUsernameIdentity } from '@/lib/identity-moderation'
+import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 type AvailabilityStatus = 'available' | 'unavailable' | 'invalid' | 'error'
@@ -39,6 +41,9 @@ function jsonResponse(
 }
 
 export async function GET(request: Request) {
+  const limited = rateLimit(privacySafeRequestKey(request, 'signup-availability'), 60, 10 * 60 * 1000)
+  if (!limited.ok) return jsonResponse('error', false, 'Too many checks. Please try again later.', { status: 429 })
+
   const { searchParams } = new URL(request.url)
   const rawType = searchParams.get('type') ?? searchParams.get('field')
   const rawValue = searchParams.get('value') ?? searchParams.get('query')
@@ -80,11 +85,29 @@ export async function GET(request: Request) {
       debug: { ...requestMeta, validationPath: 'username_pattern_failed' },
     })
   }
+  if (type === 'username') {
+    const usernamePolicy = validateUsernameIdentity(value)
+    if (!usernamePolicy.ok) {
+      logIdentityRejection('availability', usernamePolicy.reason)
+      return jsonResponse('invalid', false, 'That username cannot be used.', {
+        debug: { ...requestMeta, validationPath: 'username_policy_failed', reason: usernamePolicy.reason },
+      })
+    }
+  }
 
   if (type === 'email' && !isValidEmail(value)) {
     return jsonResponse('invalid', false, 'Enter a valid email address.', {
       debug: { ...requestMeta, validationPath: 'email_pattern_failed' },
     })
+  }
+  if (type === 'email') {
+    const emailPolicy = validateEmailLocalPartIdentity(value)
+    if (!emailPolicy.ok) {
+      logIdentityRejection('availability', emailPolicy.reason)
+      return jsonResponse('invalid', false, 'Use a different email address.', {
+        debug: { ...requestMeta, validationPath: 'email_policy_failed', reason: emailPolicy.reason },
+      })
+    }
   }
 
   const supabase = await createClient()
