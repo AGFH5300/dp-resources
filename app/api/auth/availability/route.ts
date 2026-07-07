@@ -4,7 +4,6 @@ import { isValidEmail } from '@/lib/auth-email'
 import { logIdentityRejection, validateEmailLocalPartIdentity, validateUsernameIdentity } from '@/lib/identity-moderation'
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
 
-const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 type AvailabilityStatus = 'available' | 'unavailable' | 'invalid' | 'error'
 const availabilityDebugEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SIGNUP_DEBUG === 'true'
 
@@ -80,17 +79,12 @@ export async function GET(request: Request) {
     })
   }
 
-  if (type === 'username' && !USERNAME_PATTERN.test(value)) {
-    return jsonResponse('invalid', false, 'Use 3-24 characters: letters, numbers, or underscore.', {
-      debug: { ...requestMeta, validationPath: 'username_pattern_failed' },
-    })
-  }
   if (type === 'username') {
     const usernamePolicy = validateUsernameIdentity(value)
     if (!usernamePolicy.ok) {
       logIdentityRejection('availability', usernamePolicy.reason)
-      return jsonResponse('invalid', false, 'That username cannot be used.', {
-        debug: { ...requestMeta, validationPath: 'username_policy_failed', reason: usernamePolicy.reason },
+      return jsonResponse('invalid', false, 'Choose a different username.', {
+        debug: { ...requestMeta, validationPath: 'username_identity_failed' },
       })
     }
   }

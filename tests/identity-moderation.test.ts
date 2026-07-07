@@ -33,8 +33,23 @@ describe('signup enforcement wiring', () => {
     expect(signup.indexOf('validateUsernameIdentity')).toBeLessThan(signup.indexOf('signInWithOtp'))
     expect(signup).toContain('validateFullNameIdentity')
     expect(signup).toContain('validateEmailLocalPartIdentity')
-    expect(availability).toContain('That username cannot be used.')
+    expect(availability).toContain('Choose a different username.')
   })
+
+  it('distinguishes moderated usernames from genuine duplicates without leaking policy details', () => {
+    const firstUsernameRpc = availability.indexOf('dp_resource_is_username_available')
+    const identityCheck = availability.indexOf('validateUsernameIdentity(value)')
+    expect(identityCheck).toBeGreaterThanOrEqual(0)
+    expect(identityCheck).toBeLessThan(firstUsernameRpc)
+    expect(availability).toContain("return jsonResponse('invalid', false, 'Choose a different username.'")
+    expect(availability).toContain("available ? 'Username is available.' : 'That username is already taken.'")
+    expect(availability).not.toContain('That username cannot be used.')
+    expect(availability).not.toContain('usernamePolicy.reason }')
+    expect(signup).toContain("message: 'Choose a different username.'")
+    expect(signup).toContain("message: 'That username is already taken.'")
+    expect(signup).not.toContain('debug: { reason: usernamePolicy.reason }')
+  })
+
   it('adds rate limiting without raw identity keys', () => {
     expect(signup).toContain('privacySafeRequestKey')
     expect(availability).toContain('rateLimit')

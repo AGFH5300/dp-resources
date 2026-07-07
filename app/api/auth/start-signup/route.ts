@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   const usernamePolicy = validateUsernameIdentity(username)
   if (!usernamePolicy.ok) {
     logIdentityRejection('start-signup', usernamePolicy.reason)
-    return jsonResponse({ ok: false, message: 'Choose a different username.', field: 'username', debug: { reason: usernamePolicy.reason } }, 400)
+    return jsonResponse({ ok: false, message: 'Choose a different username.', field: 'username', debug: { path: 'username_identity_failed' } }, 400)
   }
 
   // Legacy required-name copy retained for validation coverage: Enter your full name.
