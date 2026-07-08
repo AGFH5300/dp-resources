@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BrandWordmark } from '@/components/brand-wordmark'
+import { BrandMark } from '@/components/brand-mark'
 import { publicPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = publicPageMetadata({
@@ -13,7 +15,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
         <header className="flex items-center justify-between gap-4 border-b border-[#d9ccba] pb-5">
-          <Link href="/" className="text-sm font-bold uppercase tracking-[0.18em] text-[#10243f]">DP Resources</Link>
+          <BrandWordmark href="/" className="text-lg sm:text-xl" />
           <nav className="flex items-center gap-3 text-sm font-medium">
             <Link href="/privacy" className="text-[#5d6470] hover:text-[#10243f]">Privacy</Link>
             <Link href="/terms" className="text-[#5d6470] hover:text-[#10243f]">Terms</Link>
@@ -37,10 +39,11 @@ export default function Home() {
           </section>
 
           <section aria-label="Platform highlights" className="rounded-[2rem] border border-[#d9ccba] bg-[#fffaf1] p-6 shadow-sm">
-            <div className="rounded-2xl bg-[#10243f] p-6 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#d6a84f]">Library</p>
+            <div className="rounded-2xl bg-white p-6 text-[#061a34] shadow-sm">
+              <BrandMark className="h-24 w-24" title="DP Resources logo" />
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#b5832d]">Library</p>
               <h2 className="mt-3 text-2xl font-semibold">Organised, searchable, protected.</h2>
-              <p className="mt-3 text-sm leading-6 text-[#d8e0ea]">Open resources, preview files, download when needed, save useful material, and report broken or outdated content.</p>
+              <p className="mt-3 text-sm leading-6 text-[#4b5563]">Open resources, preview files, download when needed, save useful material, and report broken or outdated content.</p>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {['PDF previews', 'PPTX previews', 'Resource search', 'Usage-aware support'].map((item) => (
