@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: ['/opengraph-image'],
   },
-  manifest: '/site.webmanifest',
+  manifest: '/manifest.webmanifest',
   robots: {
     index: true,
     follow: true,
