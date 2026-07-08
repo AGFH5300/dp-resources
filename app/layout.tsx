@@ -60,5 +60,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body>{children}<SiteFooter /><GlobalSearch /><AppToaster /></body></html>;
+  return <html lang="en"><body><div className="flex min-h-dvh flex-col bg-[#f6f1e8]"><div className="flex-1 bg-white">{children}</div><SiteFooter /></div><GlobalSearch /><AppToaster /></body></html>;
 }
