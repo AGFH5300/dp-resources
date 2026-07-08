@@ -17,8 +17,42 @@ export function isDriveConfigured() {
 
 export const rootFolderId = () => process.env.GOOGLE_DRIVE_FOLDER_ID!;
 
+export function normalizeServiceAccountPrivateKey(raw = '') {
+  let key = raw.trim();
+
+  // Render env values are sometimes pasted with wrapping quotes. Keep the actual
+  // secret server-side, but normalize common safe formatting mistakes here.
+  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1).trim();
+  }
+
+  key = key
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\\+\n/g, '\n')
+    .replace(/\n\\+/g, '\n')
+    .replace(/\\+$/g, '')
+    .trim();
+
+  // A valid PEM private key should not contain any remaining backslash chars.
+  // This catches values pasted as -----BEGIN...-----\\n... or with a trailing \\.
+  key = key.replace(/\\/g, '').trim();
+
+  return key;
+}
+
+function assertServiceAccountKeyLooksValid(key: string) {
+  if (!key.includes('-----BEGIN PRIVATE KEY-----') || !key.includes('-----END PRIVATE KEY-----')) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is not a valid PEM private key. Paste the private_key value from the service account JSON, without wrapping quotes.');
+  }
+}
+
 export function driveAuth() {
-  const key = (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  const key = normalizeServiceAccountPrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '');
+  assertServiceAccountKeyLooksValid(key);
   return new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key,
@@ -27,10 +61,15 @@ export function driveAuth() {
 }
 
 export async function getDriveAccessToken() {
-  const token = await driveAuth().getAccessToken();
-  const value = typeof token === 'string' ? token : token?.token;
-  if (!value) throw new Error('Unable to authorize Drive request');
-  return value;
+  try {
+    const token = await driveAuth().getAccessToken();
+    const value = typeof token === 'string' ? token : token?.token;
+    if (!value) throw new Error('Unable to authorize Drive request');
+    return value;
+  } catch (error) {
+    console.error('Google Drive auth failed', { message: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
 }
 
 export async function getDriveMediaFetch(fileId: string, range?: string | null) {
@@ -48,7 +87,7 @@ function drive() {
 }
 
 function escapeDriveQueryValue(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return value.replace(/\/g, '\\').replace(/'/g, "\\'");
 }
 
 function toItem(f: drive_v3.Schema$File): DriveItem {
@@ -78,7 +117,8 @@ export async function getDriveMetadata(fileId: string) {
   if (!isDriveConfigured()) return null;
   try {
     return toItem(await getRawMetadata(fileId));
-  } catch {
+  } catch (error) {
+    console.error('Google Drive metadata fetch failed', { fileId, message: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
