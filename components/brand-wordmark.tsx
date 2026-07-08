@@ -3,9 +3,12 @@ import { BrandMark } from '@/components/brand-mark'
 
 export function BrandWordmark({ href = '/auth/login', className = '' }: { href?: string; className?: string }) {
   return (
-    <Link href={href} aria-label="DP Resources" className={`inline-flex items-center gap-2 font-headline tracking-tight text-[#00152a] ${className}`.trim()}>
-      <BrandMark className="h-7 w-auto" />
-      <span>DP Resources</span>
+    <Link href={href} aria-label="DP Resources" className={`inline-flex items-center gap-2.5 font-sans tracking-tight text-[#061a34] ${className}`.trim()}>
+      <BrandMark className="h-[1.75em] w-[1.75em]" />
+      <span className="whitespace-nowrap leading-none">
+        <span className="font-extrabold">DP</span>{' '}
+        <span className="font-medium">Resources</span>
+      </span>
     </Link>
   )
 }
