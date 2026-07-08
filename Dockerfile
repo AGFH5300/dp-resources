@@ -8,11 +8,16 @@ RUN npm ci
 
 FROM node:24-bookworm-slim AS builder
 WORKDIR /app
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# NEXT_PUBLIC_* values are compiled into the browser bundle during `next build`.
+# Keep public Supabase defaults here so Docker deploys still build a working client
+# even when the host runtime env vars are not forwarded as Docker build args.
+ARG NEXT_PUBLIC_SUPABASE_URL=https://vwreomwieplqqdrmjcuc.supabase.co
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cmVvbXdpZXBscXFkcm1qY3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTY3NzAsImV4cCI6MjA5ODQ3Mjc3MH0.u4Hm7ilIctrC5_enC2T5piifhEuIjpxCWbd7170bzu0
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3cmVvbXdpZXBscXFkcm1qY3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTY3NzAsImV4cCI6MjA5ODQ3Mjc3MH0.u4Hm7ilIctrC5_enC2T5piifhEuIjpxCWbd7170bzu0
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public && npm run build
