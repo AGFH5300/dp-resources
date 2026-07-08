@@ -1,13 +1,25 @@
 import { sameOriginOrForbidden } from '@/lib/request-security'
 import { requireMember } from '@/lib/auth'
+import { assertInsideRoot } from '@/lib/drive'
 import { createClient } from '@/lib/supabase-server'
+
+const DRIVE_ID_RE = /^[A-Za-z0-9_-]{8,256}$/
 
 export async function POST(req: Request) {
   const forbidden = sameOriginOrForbidden(req); if (forbidden) return forbidden
   await requireMember()
   const body = await req.json().catch(() => null)
-  const fileId = String(body?.fileId || '')
-  if (!fileId) return Response.json({ error: 'Unable to start tracking.' }, { status: 400 })
+  const fileId = String(body?.fileId || '').trim()
+  if (!DRIVE_ID_RE.test(fileId)) return Response.json({ error: 'Resource not found.' }, { status: 404 })
+
+  let insideRoot = false
+  try {
+    insideRoot = await assertInsideRoot(fileId)
+  } catch {
+    insideRoot = false
+  }
+  if (!insideRoot) return Response.json({ error: 'Resource not found.' }, { status: 404 })
+
   const sb = await createClient()
   const { data, error } = await sb.rpc('dp_resource_usage_start', { p_file_id: fileId })
   if (error) return Response.json({ error: 'Unable to start tracking.' }, { status: 400 })
