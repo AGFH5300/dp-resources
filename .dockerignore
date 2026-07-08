@@ -1,0 +1,22 @@
+node_modules
+.next
+.git
+.env*
+coverage
+screenshots
+
+# Local output/cache folders
+.cache
+.tmp
+tmp
+temp
+out
+dist
+build
+.vercel
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
