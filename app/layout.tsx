@@ -2,6 +2,7 @@ import './globals.css';
 import { AppToaster } from '@/components/sonner-provider';
 import type { Metadata, Viewport } from 'next';
 import { GlobalSearch } from '@/components/global-search';
+import { SiteFooter } from '@/components/site-footer';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 
 export const metadata: Metadata = {
@@ -59,5 +60,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body>{children}<GlobalSearch /><AppToaster /></body></html>;
+  return <html lang="en"><body>{children}<SiteFooter /><GlobalSearch /><AppToaster /></body></html>;
 }
