@@ -15,6 +15,20 @@ describe('Render Dockerfile contract', () => {
     expect(file).toContain('COPY --from=builder /app/public ./public');
   });
 
+  it('makes public Supabase env vars available during the Next build only', () => {
+    const file = dockerfile();
+    const builderStage = file.split('FROM node:24-bookworm-slim AS builder')[1]?.split('FROM node:24-bookworm-slim AS runner')[0] ?? '';
+
+    expect(builderStage).toContain('ARG NEXT_PUBLIC_SUPABASE_URL');
+    expect(builderStage).toContain('ARG NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    expect(builderStage).toContain('NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL');
+    expect(builderStage).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    expect(file).not.toContain('ARG SUPABASE_SERVICE_ROLE_KEY');
+    expect(file).not.toContain('ARG GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
+    expect(file).not.toContain('ARG GOOGLE_SERVICE_ACCOUNT_EMAIL');
+    expect(file).not.toContain('ARG GOOGLE_DRIVE_FOLDER_ID');
+  });
+
   it('preserves the runtime requirements for Render', () => {
     const file = dockerfile();
 
