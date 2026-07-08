@@ -11,7 +11,7 @@ export function AppSelect({ name, value, defaultValue, onValueChange, options, p
       <Select.Icon><ChevronDown className="size-4 text-slate-500" /></Select.Icon>
     </Select.Trigger>
     <Select.Portal>
-      <Select.Content position="popper" sideOffset={5} className="z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg outline-none ring-0">
+      <Select.Content position="popper" sideOffset={5} className="z-[90] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg outline-none ring-0">
         <Select.Viewport>{options.map(o => <Select.Item key={o.value} value={o.value} className="relative cursor-default select-none py-2 pl-8 pr-3 text-slate-800 outline-none data-[highlighted]:bg-slate-100 data-[state=checked]:bg-slate-50 data-[highlighted]:text-slate-950">
           <Select.ItemIndicator className="absolute left-2 top-2.5 text-slate-600"><Check className="size-4" /></Select.ItemIndicator>
           <Select.ItemText>{o.label}</Select.ItemText>
