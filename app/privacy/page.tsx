@@ -1,4 +1,12 @@
+import type { Metadata } from 'next'
 import { Nav } from '@/components/nav'
+import { publicPageMetadata } from '@/lib/seo'
+
+export const metadata: Metadata = publicPageMetadata({
+  title: 'Privacy Policy',
+  description: 'How DP Resources handles account details, resource usage analytics, support messages, and privacy-related requests.',
+  path: '/privacy',
+})
 
 const sections = [
   {
