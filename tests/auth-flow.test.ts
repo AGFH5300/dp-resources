@@ -10,9 +10,12 @@ const availabilityRoute = readFileSync('app/api/auth/availability/route.ts', 'ut
 const verifyOtpForm = readFileSync('app/auth/verify-otp/verify-otp-form.tsx', 'utf8')
 const schema = readFileSync('supabase/schema.sql', 'utf8')
 
-describe('auth redirects', () => {
-  it('redirects root and legacy auth entry points to the new routes', () => {
-    expect(rootPage).toContain("redirect('/auth/login')")
+describe('auth redirects and public entry points', () => {
+  it('keeps the public homepage indexable while redirecting legacy auth entry points', () => {
+    expect(rootPage).toContain('Private DP Study Resource Library')
+    expect(rootPage).toContain('href="/auth/sign-up"')
+    expect(rootPage).toContain('Sign up')
+    expect(rootPage).not.toContain("redirect('/auth/login')")
     expect(authPage).toContain("params.mode === 'signup' ? '/auth/sign-up' : '/auth/login'")
   })
 })
@@ -22,7 +25,7 @@ describe('safe next-path handling', () => {
     expect(safeInternalReturnPath('/library?folder=abc#top', '/library')).toBe('/library?folder=abc#top')
     expect(safeInternalReturnPath('https://evil.example', '/library')).toBe('/library')
     expect(safeInternalReturnPath('//evil.example/path', '/library')).toBe('/library')
-    expect(safeInternalReturnPath('/\\evil', '/library')).toBe('/library')
+    expect(safeInternalReturnPath('/\evil', '/library')).toBe('/library')
     expect(safeInternalReturnPath('%252F%252Fevil.example', '/library')).toBe('/library')
   })
 })
