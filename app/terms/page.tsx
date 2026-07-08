@@ -1,4 +1,12 @@
+import type { Metadata } from 'next'
 import { Nav } from '@/components/nav'
+import { publicPageMetadata } from '@/lib/seo'
+
+export const metadata: Metadata = publicPageMetadata({
+  title: 'Terms of Use',
+  description: 'Terms for using DP Resources, including account use, protected resource access, reports, support, and platform records.',
+  path: '/terms',
+})
 
 const sections = [
   {
