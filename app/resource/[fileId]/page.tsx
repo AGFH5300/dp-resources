@@ -1,5 +1,6 @@
 export const dynamic='force-dynamic';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, breadcrumbsToRoot, getDriveMetadata } from '@/lib/drive';
@@ -11,6 +12,9 @@ import { getFavoriteIdSet } from '@/lib/favorites';
 import { FavoritesProvider } from '@/components/favorites-provider';
 import { MASTER_WORKBOOK_FILE_ID } from '@/lib/resource-capabilities';
 import { ResourceUsageTracker } from './usage-tracker';
+import { privatePageMetadata } from '@/lib/seo';
+
+export const metadata: Metadata = privatePageMetadata('Resource');
 
 export default async function Page({params}:{params:Promise<{fileId:string}>}){
   const {user,membership}=await requireMember();
