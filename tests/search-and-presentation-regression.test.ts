@@ -36,14 +36,19 @@ describe('search consistency and PPTX PDF viewer regressions',()=>{
     expect(s).toContain('setRetryNonce(n=>n+1)');
     expect(s).toContain('Search timed out. Please retry.');
   });
-  it('PPTX viewer uses PDF.js canvas rendering, real page count, and no iframe',()=>{
+  it('PPTX viewer uses short polling, PDF.js canvas rendering, real page count, and no iframe',()=>{
     const s=read('app/resource/[fileId]/resource-preview.tsx');
     const viewer=s.slice(s.indexOf('function PresentationViewer'), s.indexOf('function PdfViewer'));
     expect(viewer).toContain("import('pdfjs-dist')");
+    expect(viewer).toContain('`${url}?prepare=1`');
+    expect(viewer).toContain('res.status === 202');
+    expect(viewer).toContain('await wait(2000)');
+    expect(viewer).toContain('pdfjs.getDocument({ data: new Uint8Array(buffer) })');
     expect(viewer).toContain('doc.numPages');
     expect(viewer).toContain('<canvas');
     expect(viewer).not.toContain('<iframe');
     expect(viewer).not.toContain('setPages(1)');
+    expect(viewer).not.toContain('withCredentials: true');
   });
   it('PPTX viewer supports selecting slide 5 and bounded left/right navigation',()=>{
     const source=read('app/resource/[fileId]/resource-preview.tsx');
@@ -54,7 +59,7 @@ describe('search consistency and PPTX PDF viewer regressions',()=>{
     expect(compact).toContain('Math.min(pages||1,p+1)');
     expect(compact).toContain('page>=pages');
   });
-  it('conversion uses isolated LibreOffice profile, PDF header validation, longer timeout, fallback conversion, and authenticated private ranges',()=>{
+  it('conversion uses async 202 processing, isolated LibreOffice profile, PDF validation, fallback conversion, and authenticated private ranges',()=>{
     const s=read('app/api/resource/[fileId]/presentation-pdf/route.ts');
     expect(s).toContain("mkdtemp(path.join(tmpdir(),'dp-pptx-profile-'))");
     expect(s).toContain('-env:UserInstallation=${pathToFileURL(profileDir).href}');
@@ -62,6 +67,10 @@ describe('search consistency and PPTX PDF viewer regressions',()=>{
     expect(s).toContain("'pdf'");
     expect(s).toContain("toString('utf8')==='%PDF-'");
     expect(s).toContain('CONVERSION_TIMEOUT_MS=180_000');
+    expect(s).toContain('startConversionInBackground(fileId,modified)');
+    expect(s).toContain("status:'processing'");
+    expect(s).toContain('202');
+    expect(s).not.toContain('const pdf=await convert(fileId');
     expect(s).toContain("'accept-ranges':'bytes'");
     expect(s).toContain('status:206');
     expect(s).toContain('status:416');
