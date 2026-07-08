@@ -7,8 +7,8 @@ export const contentType = 'image/png'
 export default function Icon() {
   return new ImageResponse(
     (
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-        <img src="https://dp.resources.anshgupta.cc/brand/dp-logo.png" alt="DP Resources" width="74" height="74" style={{ width: 74, height: 74, objectFit: 'contain' }} />
+      <div style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+        <img src="https://dp.resources.anshgupta.cc/brand/dp-logo.png" alt="DP Resources" width="23" height="23" style={{ width: 23, height: 23, objectFit: 'contain', display: 'block' }} />
       </div>
     ),
     size,
