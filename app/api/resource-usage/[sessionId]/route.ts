@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ sessio
 
   const { data: session } = await sb
     .from('dp_resource_usage_sessions')
-    .select('last_heartbeat_at, ended_at')
+    .select('last_heartbeat_at, ended_at, active_seconds, heartbeat_count')
     .eq('id', sessionId)
     .eq('user_id', user.id)
     .maybeSingle()
@@ -35,21 +35,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ sessio
     ? Math.min(60, Math.max(0, Math.floor((now - last) / 1000)))
     : 0
 
-  await sb.rpc('dp_resource_usage_heartbeat_admin_safe', { p_session_id: sessionId, p_user_id: user.id, p_page_visible: pageVisible, p_delta_seconds: deltaSeconds }).then(async ({ error }) => {
-    if (!error) return
-    const { data: current } = await sb.from('dp_resource_usage_sessions').select('active_seconds, heartbeat_count').eq('id', sessionId).eq('user_id', user.id).maybeSingle()
-    await sb
-      .from('dp_resource_usage_sessions')
-      .update({
-        active_seconds: Number(current?.active_seconds || 0) + deltaSeconds,
-        heartbeat_count: Number(current?.heartbeat_count || 0) + 1,
-        last_heartbeat_at: new Date().toISOString(),
-        page_visible: pageVisible,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId)
-      .eq('user_id', user.id)
-  })
+  await sb
+    .from('dp_resource_usage_sessions')
+    .update({
+      active_seconds: Number(session.active_seconds || 0) + deltaSeconds,
+      heartbeat_count: Number(session.heartbeat_count || 0) + 1,
+      last_heartbeat_at: new Date().toISOString(),
+      page_visible: pageVisible,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
 
   return Response.json({ ok: true })
 }
