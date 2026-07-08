@@ -30,6 +30,7 @@ describe('PPTX viewer containment', () => {
     expect(source).toContain('PresentationLoadingOverlay')
     expect(source).toContain('Preparing presentation preview')
     expect(source).toContain('Converting presentation to PDF')
-    expect(source).toContain('Large PPTX files can take a short moment')
+    expect(source).toContain('Large PPTX files can take a short moment to load.')
+    expect(source).not.toContain('while LibreOffice converts')
   })
 })
