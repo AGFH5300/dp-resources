@@ -16,11 +16,12 @@ export default async function Page({params}:{params:Promise<{fileId:string}>}){
   const {user,membership}=await requireMember();
   const {fileId}=await params;
   const indexedMeta=await getIndexedResourceShell(fileId);
-  if(!(await assertInsideRoot(fileId))) return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="p-8">Not found</main></>;
+  const insideRoot=indexedMeta ? true : await assertInsideRoot(fileId);
+  if(!insideRoot) return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="p-8">Not found</main></>;
   const meta=indexedMeta || await getDriveMetadata(fileId);
-  if(!meta) return null;
+  if(!meta) return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="p-8">Not found</main></>;
   const favoriteIds=Array.from<string>(await getFavoriteIdSet(user.id,[fileId]));
-  const crumbs=await breadcrumbsToRoot(fileId);
+  const crumbs=await breadcrumbsToRoot(fileId).catch(()=>[]);
   const folderCrumbs=crumbs.filter((crumb)=>crumb.isFolder);
   return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="mx-auto max-w-7xl px-4 py-5"><div className="mb-3 border-b border-slate-200 pb-3"><nav aria-label="Resource path" className="flex flex-wrap items-center gap-1 text-sm text-slate-500"><Link href="/library" className="font-medium text-[color:var(--dp-blue)] hover:underline">Library</Link>{folderCrumbs.slice(1).map((crumb)=><span key={crumb.id} className="inline-flex items-center gap-1"><span>/</span><Link href={`/library?folder=${encodeURIComponent(crumb.id)}`} className="font-medium text-[color:var(--dp-blue)] hover:underline">{crumb.name}</Link></span>)}<span>/</span><span className="truncate font-medium text-slate-700">{meta.name}</span></nav><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><h1 className="truncate text-lg font-semibold text-[color:var(--dp-navy)]">{meta.name}</h1><span className="mt-1 inline-flex items-center gap-2"><span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{typeLabel(meta.mimeType,meta.isFolder)}</span></span></div><FavoritesProvider initialSavedIds={favoriteIds}><ResourceActions resource={{driveFileId:fileId,resourceName:meta.name,resourcePath:indexedMeta?.path || 'Library', mimeType: meta.mimeType}} downloadHref={!meta.isFolder?`/api/files/${fileId}/download`:undefined} initialSaved={favoriteIds.includes(fileId)}/></FavoritesProvider></div></div><ResourceUsageTracker fileId={fileId}/><ResourcePreview fileId={fileId} mimeType={meta.mimeType} name={meta.name} sheetEmbedUrl={fileId===MASTER_WORKBOOK_FILE_ID?process.env.RESOURCE_LIBRARY_GOOGLE_SHEET_EMBED_URL:undefined}/></main></>;
 }
