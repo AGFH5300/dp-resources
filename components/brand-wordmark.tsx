@@ -6,7 +6,7 @@ export function BrandWordmark({ href = '/auth/login', className = '' }: { href?:
       <img
         src="/brand/dp-wordmark.png"
         alt="DP Resources"
-        className="h-[2.35em] w-auto object-contain"
+        className="h-[3.1em] w-auto object-contain"
       />
     </Link>
   )
