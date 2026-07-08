@@ -7,7 +7,7 @@ const csp = [
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co blob:",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
-  "frame-src 'self' https://docs.google.com https://drive.google.com",
+  "frame-src 'self' blob: https://docs.google.com https://drive.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
