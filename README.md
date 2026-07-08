@@ -7,14 +7,14 @@ Production Next.js portal for verified users to browse a private Google Drive li
 - Next.js 15 App Router, React server components, TypeScript, Tailwind CSS
 - Supabase Auth with DP Resources-only profile, membership, and activity tables
 - Google Drive API via a server-only service account
-- Deployable to Vercel or any Node 20+ host
+- Docker/Render deployment support
 
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and fill in values:
 
 - `NEXT_PUBLIC_SUPABASE_URL`: DP Resources Supabase project URL.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public anon key.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public anon key. `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is also accepted for compatibility with newer Supabase naming.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only service role key for admin operations, bootstrap admin sync, and activity writes.
 - `GOOGLE_DRIVE_FOLDER_ID`: root private Drive folder ID.
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account email.
@@ -63,7 +63,7 @@ select * from public.dp_resource_activity_logs;
 
 ### Admin bootstrap and recovery
 
-Set `ADMIN_EMAILS` before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to approve and promote only that user's DP Resources membership.
+Set `ADMIN_EMAILS` before the first DP Resources admin signs in. On sign-in, the server verifies the authenticated email against this allowlist and uses the Supabase service-role key server-side to promote only that user's DP Resources membership to `role = 'admin'`.
 
 If `ADMIN_EMAILS` was not configured and no DP Resources admin exists, recover by running this SQL in Supabase SQL Editor, replacing the email first:
 
@@ -83,8 +83,9 @@ where lower(email) = lower('admin@example.com');
 4. Copy the service account email and private key into environment variables.
 5. Share the private Drive root folder with the service account email as a viewer.
 6. Set `GOOGLE_DRIVE_FOLDER_ID` to that root folder ID.
+7. Run or trigger the resource index sync before production smoke testing.
 
-The app never sends raw Google Drive URLs to users. Folder navigation, file open, and download requests go through authenticated Next.js route handlers. Requested Drive IDs are accepted only after the server walks parent folders and confirms containment under `GOOGLE_DRIVE_FOLDER_ID`; outside IDs return `404` and are not logged.
+The app never sends raw Google Drive URLs to users. Folder navigation, file open, preview, and download requests go through authenticated Next.js route handlers. Requested Drive IDs are accepted only if they exist in the completed DP Resources index or the server can confirm containment under `GOOGLE_DRIVE_FOLDER_ID`; outside IDs return `404` and are not logged.
 
 ## Local run
 
