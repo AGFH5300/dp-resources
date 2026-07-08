@@ -32,7 +32,7 @@ describe('missing membership repair fallback', () => {
       role: 'user',
       is_approved: false,
     });
-    expect(sessionHelperSource).toContain("ignoreDuplicates: true");
+    expect(sessionHelperSource).toContain('ignoreDuplicates: true');
     expect(sessionHelperSource).toContain("onConflict: 'id'");
     expect(sessionHelperSource).not.toContain('approved_at: null');
   });
@@ -40,10 +40,14 @@ describe('missing membership repair fallback', () => {
 
 describe('middleware missing configuration resilience', () => {
   it('returns before creating a Supabase SSR client when public configuration is absent', () => {
-    const guardIndex = middlewareSource.indexOf('!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    const configIndex = middlewareSource.indexOf('getSupabasePublicConfig()');
+    const guardIndex = middlewareSource.indexOf('!supabaseUrl || !supabaseKey');
     const returnIndex = middlewareSource.indexOf('return NextResponse.next()', guardIndex);
     const createClientIndex = middlewareSource.indexOf('createServerClient(');
-    expect(guardIndex).toBeGreaterThan(-1);
+
+    expect(middlewareSource).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
+    expect(configIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeGreaterThan(configIndex);
     expect(returnIndex).toBeGreaterThan(guardIndex);
     expect(createClientIndex).toBeGreaterThan(returnIndex);
   });
