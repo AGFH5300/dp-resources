@@ -102,6 +102,8 @@ function PresentationLoadingOverlay({ progress, status, pages }: { progress: num
   return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{Math.round(progress)}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-all duration-500" style={{ width: `${Math.max(8, Math.min(progress, 100))}%` }} /></div><p className="mt-3 text-xs leading-5 text-slate-500">{pages ? `Rendering slide view for ${pages} slide${pages === 1 ? '' : 's'}.` : 'Large PPTX files can take a short moment to load.'}</p></div></div>;
 }
 
+const wait = (ms:number) => new Promise(resolve => setTimeout(resolve, ms));
+
 function PresentationViewer({ url, fileId, name }: { url: string; fileId: string; name: string }) {
   const wrap = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -133,7 +135,18 @@ function PresentationViewer({ url, fileId, name }: { url: string; fileId: string
         }, 650);
         const pdfjs = await import('pdfjs-dist');
         pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).toString();
-        task = pdfjs.getDocument({ url, withCredentials: true });
+        let buffer: ArrayBuffer | null = null;
+        for (let attempt = 0; attempt < 100 && !cancelled; attempt++) {
+          const res = await fetch(attempt === 0 ? `${url}?prepare=1` : url, { credentials: 'same-origin' });
+          if (res.status === 202) { await wait(2000); continue; }
+          if (!res.ok) throw new Error('Presentation preview failed');
+          const type = res.headers.get('content-type') || '';
+          if (!type.includes('pdf')) { await wait(2000); continue; }
+          buffer = await res.arrayBuffer();
+          break;
+        }
+        if (!buffer) throw new Error('Presentation preview timed out');
+        task = pdfjs.getDocument({ data: new Uint8Array(buffer) });
         const doc = await task.promise;
         if (cancelled) return;
         setPdf(doc);
