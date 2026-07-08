@@ -2,16 +2,16 @@ import { sameOriginOrForbidden } from '@/lib/request-security'
 import { requireMember } from '@/lib/auth'
 import { assertInsideRoot } from '@/lib/drive'
 import { getIndexedResourceShell } from '@/lib/indexed-resource'
-import { createClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 const DRIVE_ID_RE = /^[A-Za-z0-9_-]{8,256}$/
 
 export async function POST(req: Request) {
   const forbidden = sameOriginOrForbidden(req); if (forbidden) return forbidden
-  await requireMember()
+  const { user } = await requireMember()
   const body = await req.json().catch(() => null)
   const fileId = String(body?.fileId || '').trim()
-  if (!DRIVE_ID_RE.test(fileId)) return Response.json({ error: 'Resource not found.' }, { status: 404 })
+  if (!DRIVE_ID_RE.test(fileId)) return Response.json({ ok: false }, { status: 200 })
 
   let allowedResource = false
   try {
@@ -19,10 +19,15 @@ export async function POST(req: Request) {
   } catch {
     allowedResource = false
   }
-  if (!allowedResource) return Response.json({ error: 'Resource not found.' }, { status: 404 })
+  if (!allowedResource) return Response.json({ ok: false }, { status: 200 })
 
-  const sb = await createClient()
-  const { data, error } = await sb.rpc('dp_resource_usage_start', { p_file_id: fileId })
-  if (error) return Response.json({ error: 'Unable to start tracking.' }, { status: 400 })
-  return Response.json({ sessionId: data })
+  const sb = createSupabaseAdminClient()
+  const { data, error } = await sb
+    .from('dp_resource_usage_sessions')
+    .insert({ user_id: user.id, file_id: fileId })
+    .select('id')
+    .single()
+
+  if (error || !data?.id) return Response.json({ ok: false }, { status: 200 })
+  return Response.json({ sessionId: data.id })
 }
