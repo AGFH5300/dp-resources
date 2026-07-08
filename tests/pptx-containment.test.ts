@@ -26,4 +26,10 @@ describe('PPTX viewer containment', () => {
     expect(viewer).toContain('(stageSize.height-32)/base.height')
     expect(viewer).toContain('className="max-h-full max-w-full bg-white shadow"')
   })
+  it('shows a visible staged loading progress bar during server conversion', () => {
+    expect(source).toContain('PresentationLoadingOverlay')
+    expect(source).toContain('Preparing presentation preview')
+    expect(source).toContain('Converting presentation to PDF')
+    expect(source).toContain('Large PPTX files can take a short moment')
+  })
 })
