@@ -54,12 +54,12 @@ describe('Next config runtime contract', () => {
     expect(existsSync('next.config.mjs')).toBe(true);
   });
 
-  it('preserves security headers and Google Drive frame policy', () => {
+  it('preserves security headers and Google Drive/blob frame policy', () => {
     const file = nextConfig();
 
     expect(file).toContain('Content-Security-Policy');
     expect(file).toContain("frame-ancestors 'none'");
-    expect(file).toContain("frame-src 'self' https://docs.google.com https://drive.google.com");
+    expect(file).toContain("frame-src 'self' blob: https://docs.google.com https://drive.google.com");
     expect(file).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
     expect(file).toContain("{ key: 'X-Content-Type-Options', value: 'nosniff' }");
     expect(file).toContain("{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }");
