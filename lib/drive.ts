@@ -27,9 +27,9 @@ export function normalizeServiceAccountPrivateKey(raw = '') {
   }
 
   key = key
-    .replace(/\\r\\n/g, '\n')
-    .replace(/\\\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
     .replace(/\\n/g, '\n')
+    .replace(/\n/g, '\n')
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\\+\n/g, '\n')
@@ -87,7 +87,7 @@ function drive() {
 }
 
 function escapeDriveQueryValue(value: string) {
-  return value.replace(/\/g, '\\').replace(/'/g, "\\'");
+  return value.replaceAll(String.fromCharCode(92), String.fromCharCode(92, 92)).replaceAll("'", String.fromCharCode(92, 39));
 }
 
 function toItem(f: drive_v3.Schema$File): DriveItem {
