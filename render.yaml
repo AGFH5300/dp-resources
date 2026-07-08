@@ -1,13 +1,14 @@
 services:
   - type: web
     name: dp-resources
-    runtime: node
+    runtime: docker
     plan: starter
-    buildCommand: npm run build
-    startCommand: npm run start
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: NODE_VERSION
-        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
