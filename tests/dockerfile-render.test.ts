@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const dockerfile = () => readFileSync('Dockerfile', 'utf8');
+const nextConfig = () => readFileSync('next.config.mjs', 'utf8');
 
 describe('Render Dockerfile contract', () => {
   it('keeps the builder public directory available for runner copy', () => {
@@ -21,5 +22,33 @@ describe('Render Dockerfile contract', () => {
     expect(file).toContain('libreoffice-impress');
     expect(file).toContain('EXPOSE 10000');
     expect(file).toContain('npm run start -- -H 0.0.0.0 -p ${PORT:-10000}');
+  });
+
+  it('keeps production installs free of dev-only TypeScript runtime requirements', () => {
+    const file = dockerfile();
+    const runnerStage = file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
+
+    expect(file).toContain('RUN npm ci --omit=dev && npm cache clean --force');
+    expect(file).toContain('COPY --from=builder /app/next.config.* ./');
+    expect(runnerStage).not.toMatch(/npm\s+(?:install|i|add)\s+[^\n]*typescript/i);
+  });
+});
+
+describe('Next config runtime contract', () => {
+  it('uses a JavaScript config file instead of a TypeScript config file', () => {
+    expect(existsSync('next.config.ts')).toBe(false);
+    expect(existsSync('next.config.mjs')).toBe(true);
+  });
+
+  it('preserves security headers and Google Drive frame policy', () => {
+    const file = nextConfig();
+
+    expect(file).toContain('Content-Security-Policy');
+    expect(file).toContain("frame-ancestors 'none'");
+    expect(file).toContain("frame-src 'self' https://docs.google.com https://drive.google.com");
+    expect(file).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
+    expect(file).toContain("{ key: 'X-Content-Type-Options', value: 'nosniff' }");
+    expect(file).toContain("{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }");
+    expect(file).toContain("{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }");
   });
 });

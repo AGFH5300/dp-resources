@@ -1,5 +1,3 @@
-import type { NextConfig } from 'next';
-
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
@@ -15,7 +13,7 @@ const csp = [
   "form-action 'self'",
 ].join('; ');
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   async headers() {
     return [{
       source: '/(.*)',
@@ -29,4 +27,5 @@ const nextConfig: NextConfig = {
     }];
   },
 };
+
 export default nextConfig;
