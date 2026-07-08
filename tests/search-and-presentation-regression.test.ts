@@ -46,20 +46,22 @@ describe('search consistency and PPTX PDF viewer regressions',()=>{
     expect(viewer).not.toContain('setPages(1)');
   });
   it('PPTX viewer supports selecting slide 5 and bounded left/right navigation',()=>{
-    const viewer=read('app/resource/[fileId]/resource-preview.tsx').slice(read('app/resource/[fileId]/resource-preview.tsx').indexOf('function PresentationViewer'));
-    expect(viewer).toContain('Array.from({length:maxPicker}');
-    expect(viewer).toContain('onClick={()=>setPage(n)}');
-    expect(viewer).toContain('Math.max(1,p-1)');
-    expect(viewer).toContain('Math.min(pages||1,p+1)');
-    expect(viewer).toContain('page>=pages');
+    const source=read('app/resource/[fileId]/resource-preview.tsx');
+    const compact=source.slice(source.indexOf('function PresentationViewer')).replace(/\s+/g,'');
+    expect(compact).toContain('Array.from({length:maxPicker}');
+    expect(compact).toContain('onClick={()=>setPage(n)}');
+    expect(compact).toContain('Math.max(1,p-1)');
+    expect(compact).toContain('Math.min(pages||1,p+1)');
+    expect(compact).toContain('page>=pages');
   });
-  it('conversion uses isolated LibreOffice profile, PDF header validation, timeout, and authenticated private ranges',()=>{
+  it('conversion uses isolated LibreOffice profile, PDF header validation, longer timeout, fallback conversion, and authenticated private ranges',()=>{
     const s=read('app/api/resource/[fileId]/presentation-pdf/route.ts');
     expect(s).toContain("mkdtemp(path.join(tmpdir(),'dp-pptx-profile-'))");
     expect(s).toContain('-env:UserInstallation=${pathToFileURL(profileDir).href}');
     expect(s).toContain("'pdf:impress_pdf_Export'");
+    expect(s).toContain("'pdf'");
     expect(s).toContain("toString('utf8')==='%PDF-'");
-    expect(s).toContain('CONVERSION_TIMEOUT_MS=60_000');
+    expect(s).toContain('CONVERSION_TIMEOUT_MS=180_000');
     expect(s).toContain("'accept-ranges':'bytes'");
     expect(s).toContain('status:206');
     expect(s).toContain('status:416');
