@@ -1,5 +1,6 @@
 import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, safeDownloadName } from '@/lib/drive';
+import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { fetchDriveMediaResponse } from '@/lib/media-range';
 import { recordActivity } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
@@ -19,8 +20,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const limited = await rateLimit(privacySafeRequestKey(req, 'resource-content'), 120, 10 * 60 * 1000, 'resource-content');
   if (!limited.ok) return new Response('Too many requests. Please try again later.', { status: 429 });
   const validateStart = nowMs();
-  if (!(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
-  const meta = await getDriveMetadata(fileId);
+  const indexedMeta = await getIndexedResourceShell(fileId);
+  if (!indexedMeta && !(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
+  const meta = indexedMeta || await getDriveMetadata(fileId);
   const validateMs = nowMs() - validateStart;
   if (!meta || meta.isFolder) return new Response('Not found', { status: 404 });
   const etag = etagFor([fileId, meta.modifiedTime, meta.size]);
