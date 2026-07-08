@@ -8,7 +8,7 @@ export default function AppleIcon() {
   return new ImageResponse(
     (
       <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
-        <img src="https://dp.resources.anshgupta.cc/brand/dp-logo.png" alt="DP Resources" width="130" height="130" style={{ width: 130, height: 130, objectFit: 'contain', display: 'block' }} />
+        <img src="https://dp.resources.anshgupta.cc/brand/dp-logo.png" alt="DP Resources" width="144" height="144" style={{ width: 144, height: 144, objectFit: 'contain', display: 'block' }} />
       </div>
     ),
     size,
