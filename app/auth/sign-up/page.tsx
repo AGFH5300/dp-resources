@@ -771,13 +771,13 @@ export default function SignUpPage() {
   return (
     <AuthShell
       eyebrow="Create account"
-      title="Set up your account in a few calm steps."
-      description="Enter your details, verify your email, then continue to a secure library workspace."
+      title="Set up your free account in a few steps."
+      description="Enter your details, verify your email, then continue to a massive resource library."
       quote="The goal of education is not to increase the amount of knowledge but to create the possibilities for a child to invent and discover."
       attribution="Jean Piaget"
     >
       <h1 className="font-headline text-4xl text-[#00152a]">Create account</h1>
-      <p className="mt-3 font-body text-[#43474d]">Create your account to start structured, source-based revision.</p>
+      <p className="mt-3 font-body text-[#43474d]">Create your account to access the library.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-6" noValidate autoComplete="off">
         <input type="text" name="fake_username" autoComplete="username" className="hidden" tabIndex={-1} aria-label="Autofill username placeholder" />
