@@ -25,7 +25,7 @@ describe('preview quality and interaction repair',()=>{
   it('routes handle ranges before 304 and use safe If-Range fallback',()=>{
     for (const f of ['app/api/resource/[fileId]/content/route.ts','app/api/files/[fileId]/open/route.ts']) {
       const s=read(f);
-      expect(s.indexOf('parseSingleByteRange')).toBeLessThan(s.indexOf("if-none-match"));
+      expect(s.indexOf('parseSingleByteRange')).toBeLessThan(s.indexOf('if-none-match'));
       expect(s).toContain("if (!requestedRange && req.headers.get('if-none-match') === etag)");
       expect(s).toContain('shouldServeRange && contentRange ? 206 : 200');
     }
@@ -36,10 +36,11 @@ describe('preview quality and interaction repair',()=>{
   });
   it('image preview supports pointer panning and fit reset',()=>{
     const s=read('app/resource/[fileId]/resource-preview.tsx');
+    const compact=s.replace(/\s+/g,'');
     expect(s).toContain('onPointerDown');
     expect(s).toContain('onPointerMove');
     expect(s).toContain('touchAction');
     expect(s).toContain('Fit image');
-    expect(s).toContain('setPan({x:0,y:0})');
+    expect(compact).toContain('setPan({x:0,y:0})');
   });
 });
