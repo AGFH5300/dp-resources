@@ -31,7 +31,7 @@ export default function Home() {
               DP Resources gives signed-in users a clean, account-based way to access organised study materials, documents, presentations, spreadsheets, and supporting school resources from one secure portal.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/auth/sign-up" className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]">Request access</Link>
+              <Link href="/auth/sign-up" className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]">Sign up</Link>
               <Link href="/auth/login" className="rounded-full border border-[#d9ccba] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#10243f] hover:border-[#10243f]">Log in</Link>
             </div>
           </section>
