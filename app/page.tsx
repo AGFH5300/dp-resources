@@ -28,7 +28,7 @@ export default function Home() {
               A focused study library for DP resources.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4b5563]">
-              DP Resources gives approved users a clean, account-based way to access organised study materials, documents, presentations, spreadsheets, and supporting school resources from one secure portal.
+              DP Resources gives signed-in users a clean, account-based way to access organised study materials, documents, presentations, spreadsheets, and supporting school resources from one secure portal.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/auth/sign-up" className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]">Request access</Link>
