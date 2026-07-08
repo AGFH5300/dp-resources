@@ -48,7 +48,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Sign in"
       title="Pick up exactly where you left off."
-      description="Open your resource folders, recent files, and library materials in one place."
+      description="Open recent folders, files and resources."
       quote="We do not learn from experience... we learn from reflecting on experience."
       attribution="John Dewey"
     >
