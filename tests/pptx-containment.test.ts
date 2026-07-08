@@ -4,10 +4,11 @@ import { readFileSync } from 'fs'
 describe('PPTX viewer containment', () => {
   const source = readFileSync('app/resource/[fileId]/resource-preview.tsx', 'utf8')
   const viewer = source.slice(source.indexOf('function PresentationViewer'), source.indexOf('function PdfViewer'))
-  it('has bounded normal-page height and overflow-hidden shell', () => {
+  it('has bounded normal-page height and overflow-hidden shell without an extra top border', () => {
     expect(viewer).toContain('h-[min(78dvh,calc(100dvh-9rem))]')
     expect(viewer).toContain('min-h-[520px]')
     expect(viewer).toContain('overflow-hidden')
+    expect(viewer).not.toContain('border-y border-slate-200')
   })
   it('uses fixed header and grid columns with min-h-0', () => {
     expect(viewer).toContain('shrink-0 flex items-center')
@@ -32,5 +33,9 @@ describe('PPTX viewer containment', () => {
     expect(source).toContain('Converting presentation to PDF')
     expect(source).toContain('Large PPTX files can take a short moment to load.')
     expect(source).not.toContain('while LibreOffice converts')
+  })
+  it('does not duplicate the top-level resource download button inside the PPTX toolbar', () => {
+    expect(viewer).not.toContain('>Download</a>')
+    expect(viewer).not.toContain('/api/files/${fileId}/download')
   })
 })
