@@ -20,7 +20,7 @@ const sections = [
   },
   {
     title: 'What we do not record',
-    body: 'DP Resources does not record keystrokes, screenshots, screen recordings, cursor paths, private browser activity, or exact scroll trails.',
+    body: 'DP Resources does not record keystrokes, screenshots, screen recordings, cursor paths, browser activity outside DP Resources, or exact scroll trails.',
   },
   {
     title: 'Admin access',
@@ -53,7 +53,7 @@ export default function PrivacyPage(){
       <section className="rounded-3xl border border-[#e5dccd] bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#b5832d]">Privacy</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#10243f] sm:text-4xl">Clear, limited platform records.</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">DP Resources is a private school resource platform. Users need an account to access protected resources. The platform keeps only the records needed to operate the library, support users, and keep resources safe and reliable.</p>
+        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">DP Resources is a free study resource platform. Users need an account so the platform can save preferences, manage support requests, and keep the library reliable. The platform keeps only the records needed to operate the library, support users, and improve resources.</p>
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
