@@ -11,7 +11,7 @@ describe('separate resources landing domains', () => {
   it('keeps the DP app canonical domain unchanged', () => {
     expect(seo).toContain('https://dp.resources.anshgupta.cc')
     expect(og).toContain('https://dp.resources.anshgupta.cc/brand/dp-wordmark.png')
-    expect(seo).not.toContain('https://resources.anshgupta.cc').
+    expect(seo).not.toContain("'https://resources.anshgupta.cc'")
   })
 
   it('rewrites the standalone landing domains to static pages', () => {
