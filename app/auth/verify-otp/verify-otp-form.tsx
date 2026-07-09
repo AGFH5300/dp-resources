@@ -181,7 +181,7 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
               <img
-                src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
+                src="/brand/gmail-icon.svg"
                 alt=""
                 className="size-7 object-contain"
               />
@@ -200,7 +200,7 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
               <img
-                src="https://res-1.cdn.office.net/files/fabric-cdn-prod_20221201.001/assets/brand-icons/product/svg/outlook_48x1.svg"
+                src="/brand/outlook-icon.svg"
                 alt=""
                 className="size-7 object-contain"
               />
