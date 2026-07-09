@@ -5,18 +5,18 @@ import { publicPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Terms of Use',
-  description: 'Terms for using DP Resources, including account use, protected resource access, reports, support, and platform records.',
+  description: 'Terms for using DP Resources, including account use, free resource access, reports, support, and platform records.',
   path: '/terms',
 })
 
 const sections = [
   {
     title: 'Account use',
-    body: 'Use your own account only. Do not share login details, OTP codes, passwords, or protected resource links with people who should not have access.',
+    body: 'Use your own account only. Do not share login details, OTP codes, passwords, or account sessions with anyone else.',
   },
   {
     title: 'Resource access',
-    body: 'Resources are provided through the DP Resources portal for study and school-related use. Do not misuse, mass-download, redistribute, or publicly repost protected resources.',
+    body: 'Resources are provided through the DP Resources portal for study and school-related use. Do not misuse, mass-download, redistribute, or publicly repost resources from the platform.',
   },
   {
     title: 'Reports and support',
@@ -57,7 +57,7 @@ export default function TermsPage(){
       <section className="rounded-3xl border border-[#e5dccd] bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#b5832d]">Terms</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#10243f] sm:text-4xl">Use DP Resources responsibly.</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">DP Resources provides account-based access to a protected school resource library. By using the platform, you agree to use it fairly, safely, and only for appropriate study or school-related purposes.</p>
+        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">DP Resources provides free account-based access to a study resource library. By using the platform, you agree to use it fairly, safely, and only for appropriate study or school-related purposes.</p>
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
