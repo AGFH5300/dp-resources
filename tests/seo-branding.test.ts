@@ -7,9 +7,10 @@ describe('SEO and branding assets', () => {
   it('uses clean public logo and favicon paths instead of generated icon routes', () => {
     expect(existsSync('public/brand/dp-logo.png')).toBe(true)
     expect(existsSync('public/brand/dp-wordmark.png')).toBe(true)
+    expect(existsSync('public/brand/dp-favicon.png')).toBe(true)
     expect(existsSync('app/icon.tsx')).toBe(false)
     expect(existsSync('app/apple-icon.tsx')).toBe(false)
-    expect(existsSync('app/brand/dp-favicon.png/route.ts')).toBe(true)
+    expect(existsSync('app/brand/dp-favicon.png/route.ts')).toBe(false)
     expect(existsSync('app/ChatGPT Image Jul 8, 2026, 11_40_32 PM.png')).toBe(false)
     expect(existsSync('app/ChatGPT Image Jul 8, 2026, 11_39_05 PM.png')).toBe(false)
 
