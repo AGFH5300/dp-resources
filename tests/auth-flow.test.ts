@@ -4,9 +4,13 @@ import { isValidEmail } from '../lib/auth-email'
 import { safeInternalReturnPath } from '../lib/auth-redirect'
 
 const rootPage = readFileSync('app/page.tsx', 'utf8')
-const authPage = readFileSync('app/auth/page.tsx', 'utf8')
+const rootLayout = readFileSync('app/layout.tsx', 'utf8')
+const seo = readFileSync('lib/seo.ts', 'utf8')
+const privacyPage = readFileSync('app/privacy/page.tsx', 'utf8')
+const termsPage = readFileSync('app/terms/page.tsx', 'utf8')
 const loginLayout = readFileSync('app/auth/login/layout.tsx', 'utf8')
 const signUpLayout = readFileSync('app/auth/sign-up/layout.tsx', 'utf8')
+const authPage = readFileSync('app/auth/page.tsx', 'utf8')
 const signupRoute = readFileSync('app/api/auth/start-signup/route.ts', 'utf8')
 const availabilityRoute = readFileSync('app/api/auth/availability/route.ts', 'utf8')
 const verifyOtpForm = readFileSync('app/auth/verify-otp/verify-otp-form.tsx', 'utf8')
@@ -14,11 +18,17 @@ const schema = readFileSync('supabase/schema.sql', 'utf8')
 
 describe('auth redirects and public entry points', () => {
   it('keeps the public homepage indexable while redirecting legacy auth entry points', () => {
-    expect(rootPage).toContain('Private DP Study Resource Library')
+    expect(rootPage).toContain('Free DP Study Resource Library')
     expect(rootPage).toContain('href="/auth/sign-up"')
     expect(rootPage).toContain('Sign up')
     expect(rootPage).not.toContain("redirect('/auth/login')")
     expect(authPage).toContain("params.mode === 'signup' ? '/auth/sign-up' : '/auth/login'")
+  })
+
+  it('uses free/open public wording instead of gated marketing language', () => {
+    const publicCopy = [rootPage, rootLayout, seo, privacyPage, termsPage, loginLayout, signUpLayout].join('\n')
+    expect(publicCopy).toContain('free')
+    expect(publicCopy).not.toMatch(/private|restricted|protected|request access/i)
   })
 
   it('redirects already signed-in users away from login and signup forms', () => {
