@@ -34,7 +34,7 @@ describe('safe next-path handling', () => {
     expect(safeInternalReturnPath('/library?folder=abc#top', '/library')).toBe('/library?folder=abc#top')
     expect(safeInternalReturnPath('https://evil.example', '/library')).toBe('/library')
     expect(safeInternalReturnPath('//evil.example/path', '/library')).toBe('/library')
-    expect(safeInternalReturnPath('/\evil', '/library')).toBe('/library')
+    expect(safeInternalReturnPath(String.raw`/\evil`, '/library')).toBe('/library')
     expect(safeInternalReturnPath('%252F%252Fevil.example', '/library')).toBe('/library')
   })
 })
