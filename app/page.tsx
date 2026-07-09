@@ -14,12 +14,12 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
-        <header className="flex items-center justify-between gap-4 border-b border-[#d9ccba] pb-5">
+        <header className="flex items-center justify-between gap-3 border-b border-[#d9ccba] pb-5 sm:gap-4">
           <BrandWordmark href="/" className="text-lg sm:text-xl" />
-          <nav className="flex items-center gap-3 text-sm font-medium">
-            <Link href="/privacy" className="text-[#5d6470] hover:text-[#10243f]">Privacy</Link>
-            <Link href="/terms" className="text-[#5d6470] hover:text-[#10243f]">Terms</Link>
-            <Link href="/auth/login" className="rounded-full border border-[#10243f] px-4 py-2 text-[#10243f] hover:bg-white">Log in</Link>
+          <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-3">
+            <Link href="/privacy" className="whitespace-nowrap text-[#5d6470] hover:text-[#10243f]">Privacy</Link>
+            <Link href="/terms" className="whitespace-nowrap text-[#5d6470] hover:text-[#10243f]">Terms</Link>
+            <Link href="/auth/login" className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4">Log in</Link>
           </nav>
         </header>
 
@@ -34,7 +34,7 @@ export default function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/auth/sign-up" className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]">Sign up</Link>
-              <Link href="/auth/login" className="rounded-full border border-[#d9ccba] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#10243f] hover:border-[#10243f]">Log in</Link>
+              <Link href="/auth/login" className="whitespace-nowrap rounded-full border border-[#d9ccba] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#10243f] hover:border-[#10243f]">Log in</Link>
             </div>
           </section>
 
