@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
   title: {
-    default: 'DP Resources | Private DP Study Resource Library',
+    default: 'DP Resources | Free DP Study Resource Library',
     template: '%s | DP Resources',
   },
   description: SITE_DESCRIPTION,
