@@ -1,20 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Outlook">
-  <rect width="256" height="256" rx="48" fill="#F3F8FF"/>
-  <path fill="#0078D4" d="M103 54h88c13.255 0 24 10.745 24 24v100c0 13.255-10.745 24-24 24h-88V54Z"/>
-  <path fill="#28A8EA" d="M103 78h96v42h-96V78Z"/>
-  <path fill="#50D9FF" d="M103 120h96v42h-96v-42Z"/>
-  <path fill="#0078D4" d="M103 162h96v16c0 4.418-3.582 8-8 8h-88v-24Z"/>
-  <path fill="#0A2767" d="M199 88v92c0 4.418-3.582 8-8 8h-88l96-100Z" opacity=".18"/>
-  <path fill="#fff" d="M110 96h82v72h-82V96Z" opacity=".92"/>
-  <path fill="#0078D4" d="m110 101 41 34 41-34v-5h-82v5Z"/>
-  <path fill="#005A9E" d="m110 168 33-33-33-28v61Zm82 0-33-33 33-28v61Z" opacity=".75"/>
-  <rect x="41" y="70" width="102" height="116" rx="10" fill="#0078D4"/>
-  <rect x="41" y="70" width="102" height="116" rx="10" fill="url(#a)"/>
-  <path fill="#fff" d="M92 157c-19.02 0-31-14.72-31-29s11.98-29 31-29 31 14.72 31 29-11.98 29-31 29Zm0-13.25c9.08 0 15.25-6.6 15.25-15.75S101.08 112.25 92 112.25 76.75 118.85 76.75 128 82.92 143.75 92 143.75Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Outlook">
   <defs>
-    <linearGradient id="a" x1="41" x2="143" y1="70" y2="186" gradientUnits="userSpaceOnUse">
+    <linearGradient id="front" x1="7" x2="27" y1="11" y2="37" gradientUnits="userSpaceOnUse">
       <stop stop-color="#0A84E8"/>
-      <stop offset="1" stop-color="#004E9A"/>
+      <stop offset="1" stop-color="#005A9E"/>
     </linearGradient>
   </defs>
+  <path fill="#0078D4" d="M20 8h18.5A3.5 3.5 0 0 1 42 11.5v25A3.5 3.5 0 0 1 38.5 40H20V8Z"/>
+  <path fill="#50D9FF" d="M22 11h16a1 1 0 0 1 1 1v8H22v-9Z"/>
+  <path fill="#0078D4" d="M22 20h17v8H22v-8Z"/>
+  <path fill="#0A5CAB" d="M22 28h17v8a1 1 0 0 1-1 1H22v-9Z"/>
+  <path fill="#fff" d="M23 15h15v18H23V15Z" opacity=".96"/>
+  <path fill="#0078D4" d="m23 16.5 7.5 6.5 7.5-6.5V15H23v1.5Z"/>
+  <path fill="#005A9E" d="m23 33 6.3-6.6L23 21.2V33Zm15 0-6.3-6.6 6.3-5.2V33Z" opacity=".75"/>
+  <rect x="5" y="12" width="22" height="24" rx="3" fill="url(#front)"/>
+  <path fill="#fff" d="M16 29.8c-4.1 0-6.8-3.1-6.8-6.8s2.7-6.8 6.8-6.8 6.8 3.1 6.8 6.8-2.7 6.8-6.8 6.8Zm0-3.1c2 0 3.3-1.5 3.3-3.7s-1.3-3.7-3.3-3.7-3.3 1.5-3.3 3.7 1.3 3.7 3.3 3.7Z"/>
 </svg>
