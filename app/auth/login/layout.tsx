@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { publicPageMetadata } from '@/lib/seo'
+import { getSessionResourceMembership } from '@/lib/supabase'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Log in',
@@ -7,6 +9,9 @@ export const metadata: Metadata = publicPageMetadata({
   path: '/auth/login',
 })
 
-export default function LoginLayout({ children }: { children: React.ReactNode }) {
+export default async function LoginLayout({ children }: { children: React.ReactNode }) {
+  const { user } = await getSessionResourceMembership()
+  if (user) redirect('/library')
+
   return children
 }
