@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   publisher: 'DP Resources',
   category: 'education',
   alternates: { canonical: '/' },
+  icons: {
+    icon: [{ url: '/brand/dp-favicon.png', type: 'image/png' }],
+    shortcut: ['/brand/dp-favicon.png'],
+    apple: [{ url: '/brand/dp-favicon.png', type: 'image/png' }],
+  },
   openGraph: {
     title: 'DP Resources',
     description: SITE_DESCRIPTION,
