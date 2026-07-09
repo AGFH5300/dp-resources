@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const SITE_NAME = 'DP Resources'
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://dp.resources.anshgupta.cc').replace(/\/$/, '')
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://resources.anshgupta.cc').replace(/\/$/, '')
 export const SITE_DESCRIPTION = 'A free, account-based DP resource library for study materials, notes, documents, and school resources.'
 
 export function absoluteUrl(path = '/') {
