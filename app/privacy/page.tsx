@@ -1,5 +1,6 @@
+import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Nav } from '@/components/nav'
+import { BrandWordmark } from '@/components/brand-wordmark'
 import { publicPageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = publicPageMetadata({
@@ -31,24 +32,38 @@ const sections = [
   },
 ]
 
+function LegalHeader() {
+  return (
+    <header className="border-b border-[#e5dccd] bg-[#f6f1e8] px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+        <BrandWordmark href="/" className="text-base sm:text-lg" />
+        <nav className="flex items-center gap-3 text-sm font-medium">
+          <Link href="/terms" className="text-slate-600 hover:text-[#10243f]">Terms</Link>
+          <Link href="/auth/login" className="rounded-full border border-[#10243f] px-4 py-2 text-[#10243f] hover:bg-white">Log in</Link>
+        </nav>
+      </div>
+    </header>
+  )
+}
+
 export default function PrivacyPage(){
-  return <>
-    <Nav/>
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[color:var(--dp-blue)]">Privacy</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[color:var(--dp-navy)] sm:text-4xl">Clear, limited platform records.</h1>
+  return <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
+    <LegalHeader />
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="rounded-3xl border border-[#e5dccd] bg-white p-6 shadow-sm sm:p-8">
+        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#b5832d]">Privacy</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#10243f] sm:text-4xl">Clear, limited platform records.</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">DP Resources is a private school resource platform. Users need an account to access protected resources. The platform keeps only the records needed to operate the library, support users, and keep resources safe and reliable.</p>
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
         {sections.map((section)=>(
-          <article key={section.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-[color:var(--dp-navy)]">{section.title}</h2>
+          <article key={section.title} className="rounded-2xl border border-[#e5dccd] bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-[#10243f]">{section.title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{section.body}</p>
           </article>
         ))}
       </section>
-    </main>
-  </>
+    </div>
+  </main>
 }
