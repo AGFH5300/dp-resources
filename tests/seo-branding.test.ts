@@ -4,22 +4,25 @@ import { describe, expect, it } from 'vitest'
 const read = (path: string) => readFileSync(path, 'utf8')
 
 describe('SEO and branding assets', () => {
-  it('uses clean public logo asset paths instead of temporary upload names', () => {
+  it('uses clean public logo and favicon paths instead of generated icon routes', () => {
     expect(existsSync('public/brand/dp-logo.png')).toBe(true)
     expect(existsSync('public/brand/dp-wordmark.png')).toBe(true)
+    expect(existsSync('app/icon.tsx')).toBe(false)
+    expect(existsSync('app/apple-icon.tsx')).toBe(false)
+    expect(existsSync('app/brand/dp-favicon.png/route.ts')).toBe(true)
     expect(existsSync('app/ChatGPT Image Jul 8, 2026, 11_40_32 PM.png')).toBe(false)
     expect(existsSync('app/ChatGPT Image Jul 8, 2026, 11_39_05 PM.png')).toBe(false)
 
     const target = [
       read('components/brand-mark.tsx'),
       read('components/brand-wordmark.tsx'),
-      read('app/icon.tsx'),
-      read('app/apple-icon.tsx'),
+      read('app/layout.tsx'),
       read('app/opengraph-image.tsx'),
     ].join('\n')
 
     expect(target).toContain('/brand/dp-logo.png')
     expect(target).toContain('/brand/dp-wordmark.png')
+    expect(target).toContain('/brand/dp-favicon.png')
     expect(target).not.toContain('ChatGPT Image Jul')
   })
 
