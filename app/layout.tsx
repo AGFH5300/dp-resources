@@ -5,6 +5,8 @@ import { GlobalSearch } from '@/components/global-search';
 import { SiteFooter } from '@/components/site-footer';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 
+const FAVICON_URL = '/brand/dp-favicon.png?v=134a33c'
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
@@ -26,9 +28,9 @@ export const metadata: Metadata = {
   category: 'education',
   alternates: { canonical: '/' },
   icons: {
-    icon: [{ url: '/brand/dp-favicon.png', type: 'image/png' }],
-    shortcut: ['/brand/dp-favicon.png'],
-    apple: [{ url: '/brand/dp-favicon.png', type: 'image/png' }],
+    icon: [{ url: FAVICON_URL, type: 'image/png' }],
+    shortcut: [FAVICON_URL],
+    apple: [{ url: FAVICON_URL, type: 'image/png' }],
   },
   openGraph: {
     title: 'DP Resources',
