@@ -74,6 +74,16 @@ describe('OTP request and verification flow', () => {
     expect(verifyOtpForm).toContain("type: 'signup'")
     expect(verifyOtpForm).toContain('router.push(`/auth/set-password?next=')
   })
+
+  it('shows inbox shortcuts and spam guidance on the OTP screen', () => {
+    expect(verifyOtpForm).toContain('https://mail.google.com/mail/u/0/#inbox')
+    expect(verifyOtpForm).toContain('https://outlook.live.com/mail/0/inbox')
+    expect(verifyOtpForm).toContain('mailto:')
+    expect(verifyOtpForm).toContain('Gmail')
+    expect(verifyOtpForm).toContain('Outlook')
+    expect(verifyOtpForm).toContain('Email app')
+    expect(verifyOtpForm).toContain('check your spam or junk folder')
+  })
 })
 
 describe('DP-only schema and target code references', () => {
