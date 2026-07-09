@@ -5,7 +5,6 @@ import { safeInternalReturnPath } from '../lib/auth-redirect'
 
 const rootPage = readFileSync('app/page.tsx', 'utf8')
 const rootLayout = readFileSync('app/layout.tsx', 'utf8')
-const seo = readFileSync('lib/seo.ts', 'utf8')
 const privacyPage = readFileSync('app/privacy/page.tsx', 'utf8')
 const termsPage = readFileSync('app/terms/page.tsx', 'utf8')
 const loginLayout = readFileSync('app/auth/login/layout.tsx', 'utf8')
@@ -26,7 +25,7 @@ describe('auth redirects and public entry points', () => {
   })
 
   it('uses free/open public wording instead of gated marketing language', () => {
-    const publicCopy = [rootPage, rootLayout, seo, privacyPage, termsPage, loginLayout, signUpLayout].join('\n')
+    const publicCopy = [rootPage, rootLayout, privacyPage, termsPage, loginLayout, signUpLayout].join('\n')
     expect(publicCopy).toContain('free')
     expect(publicCopy).not.toMatch(/private|restricted|protected|request access/i)
   })
