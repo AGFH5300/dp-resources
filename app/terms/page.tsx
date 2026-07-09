@@ -39,11 +39,11 @@ const sections = [
 function LegalHeader() {
   return (
     <header className="border-b border-[#e5dccd] bg-[#f6f1e8] px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 sm:gap-4">
         <BrandWordmark href="/" className="text-base sm:text-lg" />
-        <nav className="flex items-center gap-3 text-sm font-medium">
-          <Link href="/privacy" className="text-slate-600 hover:text-[#10243f]">Privacy</Link>
-          <Link href="/auth/login" className="rounded-full border border-[#10243f] px-4 py-2 text-[#10243f] hover:bg-white">Log in</Link>
+        <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-3">
+          <Link href="/privacy" className="whitespace-nowrap text-slate-600 hover:text-[#10243f]">Privacy</Link>
+          <Link href="/auth/login" className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4">Log in</Link>
         </nav>
       </div>
     </header>
