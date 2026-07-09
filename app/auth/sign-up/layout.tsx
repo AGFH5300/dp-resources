@@ -5,7 +5,7 @@ import { getSessionResourceMembership } from '@/lib/supabase'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Sign up',
-  description: 'Create a DP Resources account to access the private resource library.',
+  description: 'Create a free DP Resources account to access the study resource library.',
   path: '/auth/sign-up',
 })
 
