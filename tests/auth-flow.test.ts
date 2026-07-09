@@ -5,6 +5,8 @@ import { safeInternalReturnPath } from '../lib/auth-redirect'
 
 const rootPage = readFileSync('app/page.tsx', 'utf8')
 const authPage = readFileSync('app/auth/page.tsx', 'utf8')
+const loginLayout = readFileSync('app/auth/login/layout.tsx', 'utf8')
+const signUpLayout = readFileSync('app/auth/sign-up/layout.tsx', 'utf8')
 const signupRoute = readFileSync('app/api/auth/start-signup/route.ts', 'utf8')
 const availabilityRoute = readFileSync('app/api/auth/availability/route.ts', 'utf8')
 const verifyOtpForm = readFileSync('app/auth/verify-otp/verify-otp-form.tsx', 'utf8')
@@ -17,6 +19,13 @@ describe('auth redirects and public entry points', () => {
     expect(rootPage).toContain('Sign up')
     expect(rootPage).not.toContain("redirect('/auth/login')")
     expect(authPage).toContain("params.mode === 'signup' ? '/auth/sign-up' : '/auth/login'")
+  })
+
+  it('redirects already signed-in users away from login and signup forms', () => {
+    for (const layout of [loginLayout, signUpLayout]) {
+      expect(layout).toContain('getSessionResourceMembership')
+      expect(layout).toContain('if (user) redirect(\'/library\')')
+    }
   })
 })
 
