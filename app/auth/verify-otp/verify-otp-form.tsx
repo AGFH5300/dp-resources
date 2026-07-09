@@ -11,31 +11,9 @@ const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile'
 const OTP_LENGTH = 6
 const EMPTY_OTP = ' '.repeat(OTP_LENGTH)
 
-function GmailLogo() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0">
-      <path fill="#EA4335" d="M3.5 6.5 12 13l8.5-6.5v10.25A2.25 2.25 0 0 1 18.25 19H5.75a2.25 2.25 0 0 1-2.25-2.25V6.5Z" />
-      <path fill="#FBBC04" d="M3.5 6.5 12 13v3L3.5 9.5v-3Z" />
-      <path fill="#34A853" d="M20.5 6.5 12 13v3l8.5-6.5v-3Z" />
-      <path fill="#C5221F" d="M5.75 5h12.5c.57 0 1.09.21 1.48.56L12 11.5 4.27 5.56A2.23 2.23 0 0 1 5.75 5Z" />
-    </svg>
-  )
-}
-
-function OutlookLogo() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0">
-      <path fill="#0078D4" d="M4 5.75A2.75 2.75 0 0 1 6.75 3h10.5A2.75 2.75 0 0 1 20 5.75v12.5A2.75 2.75 0 0 1 17.25 21H6.75A2.75 2.75 0 0 1 4 18.25V5.75Z" />
-      <path fill="#50A7F9" d="M9 6.5h8.25c.41 0 .75.34.75.75v9.5c0 .41-.34.75-.75.75H9v-11Z" />
-      <path fill="#0A63B8" d="M2.5 7.5 10.75 6v12L2.5 16.5v-9Z" />
-      <path fill="#fff" d="M6.4 14.85c-1.47 0-2.4-1.14-2.4-2.85s.93-2.85 2.4-2.85S8.8 10.29 8.8 12s-.93 2.85-2.4 2.85Zm0-1.1c.72 0 1.12-.66 1.12-1.75s-.4-1.75-1.12-1.75-1.12.66-1.12 1.75.4 1.75 1.12 1.75Z" />
-    </svg>
-  )
-}
-
 function EmailIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0" fill="none">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6 shrink-0" fill="none">
       <path d="M4.75 6.75h14.5v10.5H4.75V6.75Z" className="fill-white" />
       <path d="m5 7 7 5.4L19 7" stroke="#00152a" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4.75 6.75h14.5v10.5H4.75V6.75Z" stroke="#00152a" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -189,38 +167,61 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
         Enter the one-time code sent to <span className="font-semibold">{normalizedEmail || 'your email'}</span>.
       </p>
 
-      <div className="mt-5 rounded-2xl border border-[#e4dbc9] bg-[#fffaf1] p-4">
+      <div className="mt-5 rounded-2xl border border-[#e4dbc9] bg-[#fffaf1] p-4 sm:p-5">
         <p className="text-sm leading-6 text-[#43474d]">
           Open your inbox below. If you do not see the OTP, check your spam or junk folder.
         </p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3">
           <a
             href="https://mail.google.com/mail/u/0/#inbox"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-between gap-3 rounded-xl border border-[#e1d7c7] bg-white px-3 py-3 text-sm font-semibold text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
+            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
             aria-label="Open Gmail inbox"
           >
-            <span className="inline-flex items-center gap-2"><GmailLogo /> Gmail</span>
-            <span>Open</span>
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
+              <img
+                src="https://www.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png"
+                alt=""
+                className="size-7 object-contain"
+              />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Open Gmail</span>
+              <span className="block text-xs text-[#6b7280]">Check your Gmail inbox</span>
+            </span>
           </a>
           <a
             href="https://outlook.live.com/mail/0/inbox"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-between gap-3 rounded-xl border border-[#e1d7c7] bg-white px-3 py-3 text-sm font-semibold text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
+            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
             aria-label="Open Outlook inbox"
           >
-            <span className="inline-flex items-center gap-2"><OutlookLogo /> Outlook</span>
-            <span>Open</span>
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
+              <img
+                src="https://res-1.cdn.office.net/files/fabric-cdn-prod_20221201.001/assets/brand-icons/product/svg/outlook_48x1.svg"
+                alt=""
+                className="size-7 object-contain"
+              />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Open Outlook</span>
+              <span className="block text-xs text-[#6b7280]">Check your Outlook inbox</span>
+            </span>
           </a>
           <a
             href="mailto:"
-            className="inline-flex items-center justify-between gap-3 rounded-xl border border-[#e1d7c7] bg-white px-3 py-3 text-sm font-semibold text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
+            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
             aria-label="Open default email app"
           >
-            <span className="inline-flex items-center gap-2"><EmailIcon /> Email app</span>
-            <span>Open</span>
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
+              <EmailIcon />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Open email app</span>
+              <span className="block text-xs text-[#6b7280]">Use your default email app</span>
+            </span>
           </a>
         </div>
       </div>
