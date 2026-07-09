@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Outlook">
+  <rect width="256" height="256" rx="48" fill="#F3F8FF"/>
+  <path fill="#0078D4" d="M103 54h88c13.255 0 24 10.745 24 24v100c0 13.255-10.745 24-24 24h-88V54Z"/>
+  <path fill="#28A8EA" d="M103 78h96v42h-96V78Z"/>
+  <path fill="#50D9FF" d="M103 120h96v42h-96v-42Z"/>
+  <path fill="#0078D4" d="M103 162h96v16c0 4.418-3.582 8-8 8h-88v-24Z"/>
+  <path fill="#0A2767" d="M199 88v92c0 4.418-3.582 8-8 8h-88l96-100Z" opacity=".18"/>
+  <path fill="#fff" d="M110 96h82v72h-82V96Z" opacity=".92"/>
+  <path fill="#0078D4" d="m110 101 41 34 41-34v-5h-82v5Z"/>
+  <path fill="#005A9E" d="m110 168 33-33-33-28v61Zm82 0-33-33 33-28v61Z" opacity=".75"/>
+  <rect x="41" y="70" width="102" height="116" rx="10" fill="#0078D4"/>
+  <rect x="41" y="70" width="102" height="116" rx="10" fill="url(#a)"/>
+  <path fill="#fff" d="M92 157c-19.02 0-31-14.72-31-29s11.98-29 31-29 31 14.72 31 29-11.98 29-31 29Zm0-13.25c9.08 0 15.25-6.6 15.25-15.75S101.08 112.25 92 112.25 76.75 118.85 76.75 128 82.92 143.75 92 143.75Z"/>
+  <defs>
+    <linearGradient id="a" x1="41" x2="143" y1="70" y2="186" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A84E8"/>
+      <stop offset="1" stop-color="#004E9A"/>
+    </linearGradient>
+  </defs>
+</svg>
