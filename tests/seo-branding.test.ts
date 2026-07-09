@@ -40,4 +40,14 @@ describe('SEO and branding assets', () => {
     expect(robots).toContain("'/library'")
     expect(robots).toContain("'/resource/'")
   })
+
+  it('renders legal pages as standalone public pages, not authenticated app chrome', () => {
+    for (const page of [read('app/privacy/page.tsx'), read('app/terms/page.tsx')]) {
+      expect(page).toContain('BrandWordmark')
+      expect(page).not.toContain("@/components/nav")
+      expect(page).not.toContain('<Nav')
+      expect(page).not.toContain('AppHeader')
+      expect(page).not.toContain('AuthShell')
+    }
+  })
 })
