@@ -75,19 +75,22 @@ describe('OTP request and verification flow', () => {
     expect(verifyOtpForm).toContain('router.push(`/auth/set-password?next=')
   })
 
-  it('shows clean inbox shortcuts and spam guidance on the OTP screen', () => {
+  it('shows clean inbox shortcuts and spam guidance on the OTP screen using local assets', () => {
+    expect(existsSync('public/brand/gmail-icon.svg')).toBe(true)
+    expect(existsSync('public/brand/outlook-icon.svg')).toBe(true)
     expect(verifyOtpForm).toContain('https://mail.google.com/mail/u/0/#inbox')
     expect(verifyOtpForm).toContain('https://outlook.live.com/mail/0/inbox')
     expect(verifyOtpForm).toContain('mailto:')
-    expect(verifyOtpForm).toContain('gmail_2020q4_48dp.png')
-    expect(verifyOtpForm).toContain('outlook_48x1.svg')
+    expect(verifyOtpForm).toContain('/brand/gmail-icon.svg')
+    expect(verifyOtpForm).toContain('/brand/outlook-icon.svg')
     expect(verifyOtpForm).toContain('Open Gmail')
     expect(verifyOtpForm).toContain('Open Outlook')
     expect(verifyOtpForm).toContain('Open email app')
     expect(verifyOtpForm).toContain('check your spam or junk folder')
-    expect(verifyOtpForm).not.toContain('GmailLogo')
-    expect(verifyOtpForm).not.toContain('OutlookLogo')
-    expect(verifyOtpForm).not.toContain('sm:grid-cols-3')
+    expect(verifyOtpForm).not.toContain('gmail_2020q4_48dp.png')
+    expect(verifyOtpForm).not.toContain('outlook_48x1.svg')
+    expect(verifyOtpForm).not.toContain('res-1.cdn.office.net')
+    expect(verifyOtpForm).not.toContain('gstatic.com')
   })
 })
 
