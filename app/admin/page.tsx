@@ -8,7 +8,6 @@ import { isDriveConfigured } from '@/lib/drive';
 import { getIndexSyncStatus } from '@/lib/index-sync';
 import { IndexSyncPanel } from './index-sync-panel';
 import { AdminConsole } from './admin-console';
-import { UserSuspensionPanel } from './user-suspension-panel';
 import { createSupabaseAdminClient, isSupabaseConfigured } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase-server';
 import { devTiming, nowMs } from '@/lib/perf';
@@ -47,5 +46,5 @@ export default async function Admin({ searchParams }: { searchParams: Promise<Re
 
   const exportQuery = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]).toString();
   const configuredWarnings=<>{!isSupabaseConfigured()?<p className="mt-4 border border-amber-200 bg-amber-50 p-4 text-amber-900">Supabase is not configured.</p>:null}{!isDriveConfigured()?<p className="mt-4 border border-amber-200 bg-amber-50 p-4 text-amber-900">Google Drive is not configured.</p>:null}</>;
-  return <><Nav admin={membership.role==='admin'} email={membership.email}/><main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"><h1 className="text-xl font-semibold tracking-tight text-[color:var(--dp-navy)]">Admin operations</h1>{section === 'users' ? <UserSuspensionPanel users={memberships as any} currentAdminId={membership.id} /> : null}<AdminConsole sp={sp} reports={reports as any} tickets={tickets as any} memberships={memberships as any} logs={logs as any} usage={usage as any} usageResource={usageResource as any} usageUsers={usageUsers as any} usageUserResources={usageUserResources as any} diagnostics={diagnostics as any} counts={{report:reportCount,user:userCount,activity:activityCount,ticket:ticketCount}} pages={{report:reportPage,user:userPage,activity:activityPage,ticket:ticketPage}} sizes={{page:pageSize,user:userSize}} indexPanel={<IndexSyncPanel initial={indexStatus}/>} configuredWarnings={configuredWarnings} exportQuery={exportQuery}/></main></>;
+  return <><Nav admin={membership.role==='admin'} email={membership.email} userId={membership.id}/><main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8"><h1 className="text-xl font-semibold tracking-tight text-[color:var(--dp-navy)]">Admin operations</h1><AdminConsole currentAdminId={membership.id} sp={sp} reports={reports as any} tickets={tickets as any} memberships={memberships as any} logs={logs as any} usage={usage as any} usageResource={usageResource as any} usageUsers={usageUsers as any} usageUserResources={usageUserResources as any} diagnostics={diagnostics as any} counts={{report:reportCount,user:userCount,activity:activityCount,ticket:ticketCount}} pages={{report:reportPage,user:userPage,activity:activityPage,ticket:ticketPage}} sizes={{page:pageSize,user:userSize}} indexPanel={<IndexSyncPanel initial={indexStatus}/>} configuredWarnings={configuredWarnings} exportQuery={exportQuery}/></main></>;
 }

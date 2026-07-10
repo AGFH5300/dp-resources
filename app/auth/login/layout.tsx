@@ -10,8 +10,8 @@ export const metadata: Metadata = publicPageMetadata({
 })
 
 export default async function LoginLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await getSessionResourceMembership()
-  if (user) redirect('/library')
-
-  return children
+  const { user, membership } = await getSessionResourceMembership()
+  if (!user) return children
+  if (membership?.is_suspended) redirect('/account-suspended')
+  redirect('/library')
 }

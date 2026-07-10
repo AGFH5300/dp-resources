@@ -31,7 +31,7 @@ export default async function Library({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <Nav admin={membership.role === 'admin'} email={membership.email} />
+      <Nav admin={membership.role === 'admin'} email={membership.email} userId={membership.id} />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {!configured ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
