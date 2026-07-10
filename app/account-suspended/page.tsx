@@ -4,6 +4,7 @@ import { BrandWordmark } from '@/components/brand-wordmark'
 import { publicPageMetadata } from '@/lib/seo'
 import { getSessionResourceMembership } from '@/lib/supabase'
 import { ClearSuspensionReasonButton, SuspensionReasonFallback } from './suspension-reason-fallback'
+import { UnsuspensionWatcher } from './unsuspension-watcher'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Account suspended',
@@ -25,6 +26,7 @@ export default async function AccountSuspendedPage() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[color:var(--dp-navy)] sm:text-4xl">Your account has been suspended.</h1>
           <p className="mt-4 text-base leading-7 text-slate-700">You no longer have access to DP Resources. Contact the site administrator if you believe this is a mistake.</p>
           <SuspensionReasonFallback initialReason={suspensionReason} />
+          <UnsuspensionWatcher initialUserId={user?.id ?? null} />
           <form action="/api/auth/signout" method="post" className="mt-8">
             <ClearSuspensionReasonButton className="w-full rounded-md bg-[color:var(--dp-navy)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto" />
           </form>
