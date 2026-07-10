@@ -22,12 +22,26 @@ where is_approved is distinct from true
    or approved_at is null;
 
 alter table public.dp_resource_memberships
+  drop constraint if exists dp_resource_memberships_suspension_reason_length,
+  drop constraint if exists dp_resource_memberships_suspended_metadata_required,
+  drop constraint if exists dp_resource_memberships_unsuspended_metadata_cleared;
+
+alter table public.dp_resource_memberships
   add constraint dp_resource_memberships_suspension_reason_length
     check (suspension_reason is null or char_length(btrim(suspension_reason)) between 3 and 500) not valid,
   add constraint dp_resource_memberships_suspended_metadata_required
     check (is_suspended = false or (suspended_at is not null and suspension_reason is not null)) not valid,
   add constraint dp_resource_memberships_unsuspended_metadata_cleared
     check (is_suspended = true or (suspended_at is null and suspended_by is null and suspension_reason is null)) not valid;
+
+alter table public.dp_resource_memberships
+  validate constraint dp_resource_memberships_suspension_reason_length;
+
+alter table public.dp_resource_memberships
+  validate constraint dp_resource_memberships_suspended_metadata_required;
+
+alter table public.dp_resource_memberships
+  validate constraint dp_resource_memberships_unsuspended_metadata_cleared;
 
 create table if not exists public.dp_resource_email_domain_rules (
   domain text primary key,
@@ -37,9 +51,19 @@ create table if not exists public.dp_resource_email_domain_rules (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint dp_resource_email_domain_rules_domain_normalized check (domain = lower(btrim(domain)) and domain <> '' and domain !~ '@' and domain !~ '^\\.' and domain !~ '\\.$'),
   constraint dp_resource_email_domain_rules_action_valid check (action in ('allow', 'block'))
 );
+
+alter table public.dp_resource_email_domain_rules
+  drop constraint if exists dp_resource_email_domain_rules_domain_normalized;
+
+alter table public.dp_resource_email_domain_rules
+  add constraint dp_resource_email_domain_rules_domain_normalized
+  check (
+    domain = lower(btrim(domain))
+    and domain ~
+      '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
+  );
 
 alter table public.dp_resource_email_domain_rules enable row level security;
 revoke all on public.dp_resource_email_domain_rules from anon, authenticated;
@@ -88,7 +112,12 @@ begin
   limit 1;
 
   if found and v_rule.action = 'block' then
-    return jsonb_build_object('allowed', false, 'domain', v_domain, 'matched_domain', v_rule.domain, 'reason', coalesce(v_rule.reason, 'blocked_domain'));
+    return jsonb_build_object(
+      'allowed', false,
+      'domain', v_domain,
+      'matched_domain', v_rule.domain,
+      'reason', 'blocked_domain'
+    );
   end if;
 
   return jsonb_build_object('allowed', true, 'domain', v_domain, 'matched_domain', case when found then v_rule.domain else null end, 'reason', null);

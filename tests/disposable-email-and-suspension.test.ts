@@ -175,4 +175,35 @@ describe('migration coverage', () => {
     expect(migration).toContain('order by char_length(public.dp_resource_email_domain_rules.domain) desc')
     expect(migration).not.toMatch(/delete\s+from\s+public\.dp_resource_/i)
   })
+
+  it('returns only a generic reason from the public domain policy for blocked rules', () => {
+    const policyFunction = migration.match(/create or replace function public\.dp_resource_email_domain_policy[\s\S]*?\n\$\$;/)?.[0] ?? ''
+
+    expect(policyFunction).toContain("'reason', 'blocked_domain'")
+    expect(policyFunction).not.toContain('coalesce(v_rule.reason')
+    expect(policyFunction).not.toMatch(/'reason',\s*v_rule\.reason/i)
+    expect(policyFunction).not.toContain('Internal abuse investigation details')
+  })
+
+  it('uses a strict hostname constraint for domain rules', () => {
+    const allowed = ['epaynine.com', 'mail.example.edu', 'school.ac.in', 'temporary-mail.example.com']
+    const rejected = ['com', '%.com', '.example.com', 'example.com.', 'example_.com', 'example..com', '-example.com', 'example-.com']
+    const domainConstraint = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/
+
+    expect(migration).toContain('domain = lower(btrim(domain))')
+    expect(migration).toContain("'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'")
+    for (const domain of allowed) expect(domain).toMatch(domainConstraint)
+    for (const domain of rejected) expect(domain).not.toMatch(domainConstraint)
+  })
+
+  it('explicitly validates membership suspension constraints after adding them as not valid', () => {
+    for (const constraint of [
+      'dp_resource_memberships_suspension_reason_length',
+      'dp_resource_memberships_suspended_metadata_required',
+      'dp_resource_memberships_unsuspended_metadata_cleared',
+    ]) {
+      expect(migration).toMatch(new RegExp(`add constraint ${constraint}[\\s\\S]*?not valid`, 'i'))
+      expect(migration).toContain(`validate constraint ${constraint};`)
+    }
+  })
 })
