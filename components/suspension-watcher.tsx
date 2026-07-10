@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { createClientSupabase } from '@/lib/supabase-browser'
-import { SUSPENSION_REASON_STORAGE_KEY } from '@/components/suspension-storage'
+import { SUSPENDED_USER_ID_STORAGE_KEY, SUSPENSION_REASON_STORAGE_KEY } from '@/components/suspension-storage'
 
 type SuspensionWatcherProps = { userId?: string | null }
 
@@ -17,14 +17,16 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
     let active = true
     const supabase = createClientSupabase()
 
-    function storeSuspensionReason(reason: unknown) {
+    function storeSuspension(reason: unknown) {
+      window.sessionStorage.setItem(SUSPENDED_USER_ID_STORAGE_KEY, userId as string)
       if (typeof reason === 'string' && reason.length > 0) {
         window.sessionStorage.setItem(SUSPENSION_REASON_STORAGE_KEY, reason)
       }
     }
 
-    function clearSuspensionReason() {
+    function clearSuspensionStorage() {
       window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY)
+      window.sessionStorage.removeItem(SUSPENDED_USER_ID_STORAGE_KEY)
     }
 
     function redirectOnce() {
@@ -41,11 +43,11 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
         const status = await response.json().catch(() => null)
         if (!active || status?.authenticated !== true) return
         if (status.suspended === true) {
-          storeSuspensionReason(status.suspensionReason)
+          storeSuspension(status.suspensionReason)
           redirectOnce()
           return
         }
-        clearSuspensionReason()
+        clearSuspensionStorage()
       } catch {
         // Quiet fallback: realtime remains primary and active users are not refreshed.
       }
@@ -59,7 +61,7 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
         (payload) => {
           const updated = payload.new as { id?: string; is_suspended?: boolean; suspension_reason?: string | null }
           if (updated?.id === userId && updated.is_suspended === true && !navigatedRef.current) {
-            storeSuspensionReason(updated.suspension_reason)
+            storeSuspension(updated.suspension_reason)
             redirectOnce()
           }
         },

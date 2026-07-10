@@ -1,15 +1,24 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { SUSPENSION_REASON_STORAGE_KEY } from '@/components/suspension-storage'
+import { SUSPENDED_USER_ID_STORAGE_KEY, SUSPENSION_REASON_STORAGE_KEY, SUSPENSION_REASON_UPDATED_EVENT } from '@/components/suspension-storage'
 
 export function SuspensionReasonFallback({ initialReason }: { initialReason: string | null }) {
   const [reason, setReason] = useState(initialReason)
 
   useEffect(() => {
-    if (initialReason) return
-    const stored = window.sessionStorage.getItem(SUSPENSION_REASON_STORAGE_KEY)
-    if (stored) setReason(stored)
+    if (!initialReason) {
+      const stored = window.sessionStorage.getItem(SUSPENSION_REASON_STORAGE_KEY)
+      if (stored) setReason(stored)
+    }
+
+    function onReasonUpdated(event: Event) {
+      const reason = (event as CustomEvent<{ reason: string | null }>).detail?.reason ?? null
+      setReason(reason)
+    }
+
+    window.addEventListener(SUSPENSION_REASON_UPDATED_EVENT, onReasonUpdated)
+    return () => window.removeEventListener(SUSPENSION_REASON_UPDATED_EVENT, onReasonUpdated)
   }, [initialReason])
 
   if (!reason) return null
@@ -27,7 +36,7 @@ export function ClearSuspensionReasonButton({ className }: { className: string }
     <button
       className={className}
       type="submit"
-      onClick={() => window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY)}
+      onClick={() => { window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY); window.sessionStorage.removeItem(SUSPENDED_USER_ID_STORAGE_KEY) }}
     >
       Sign out
     </button>
