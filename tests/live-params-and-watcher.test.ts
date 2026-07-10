@@ -43,6 +43,7 @@ describe('SuspensionWatcher executable behavior', () => {
     const replace = vi.fn()
     vi.stubGlobal('window', {
       location: { replace },
+      sessionStorage: { setItem: vi.fn(), removeItem: vi.fn(), getItem: vi.fn() },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       setInterval: globalThis.setInterval,
@@ -56,7 +57,7 @@ describe('SuspensionWatcher executable behavior', () => {
     const fetch = vi.fn(async () => ({ ok: true, json: async () => status }))
     vi.stubGlobal('fetch', fetch)
 
-    let handler: ((payload: { new: { id?: string; is_suspended?: boolean } }) => void) | null = null
+    let handler: ((payload: { new: { id?: string; is_suspended?: boolean; suspension_reason?: string | null } }) => void) | null = null
     const channel = { id: 'channel' }
     const removeChannel = vi.fn()
     const supabase = {
@@ -74,14 +75,17 @@ describe('SuspensionWatcher executable behavior', () => {
     }))
     const { SuspensionWatcher } = await import('../components/suspension-watcher')
     SuspensionWatcher({ userId: 'user-1' })
-    return { handler: () => handler, cleanup: () => cleanup?.(), replace, fetch, removeChannel }
+    return { handler: () => handler, cleanup: () => cleanup?.(), replace, fetch, removeChannel, sessionStorage: window.sessionStorage }
   }
 
   it('an UPDATE with is_suspended true redirects exactly once and repeated updates still redirect once', async () => {
     const ctx = await mountWatcher()
-    ctx.handler()?.({ new: { id: 'user-1', is_suspended: true } })
-    ctx.handler()?.({ new: { id: 'user-1', is_suspended: true } })
+    ctx.handler()?.({ new: { id: 'user-1', is_suspended: true, suspension_reason: 'Policy violation' } })
+    ctx.handler()?.({ new: { id: 'user-1', is_suspended: true, suspension_reason: 'Second' } })
+    expect(ctx.sessionStorage.setItem).toHaveBeenCalledTimes(1)
+    expect(ctx.sessionStorage.setItem).toHaveBeenCalledWith('dp_resource_suspension_reason', 'Policy violation')
     expect(ctx.replace).toHaveBeenCalledTimes(1)
+    expect(ctx.replace).toHaveBeenCalledWith('/account-suspended')
   })
 
   it('an active membership does not redirect', async () => {
@@ -93,18 +97,21 @@ describe('SuspensionWatcher executable behavior', () => {
   it('an active fallback response does not refresh or navigate', async () => {
     const ctx = await mountWatcher({ authenticated: true, suspended: false })
     vi.advanceTimersByTime(30000)
-    await Promise.resolve(); await Promise.resolve()
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
     expect(ctx.fetch).toHaveBeenCalledWith('/api/account/status', { cache: 'no-store' })
     expect(ctx.replace).not.toHaveBeenCalled()
+    expect(ctx.sessionStorage.removeItem).toHaveBeenCalledWith('dp_resource_suspension_reason')
   })
 
-  it('a suspended fallback response redirects once', async () => {
-    const ctx = await mountWatcher({ authenticated: true, suspended: true })
+  it('a suspended fallback response stores the reason and redirects once without putting it in the URL', async () => {
+    const ctx = await mountWatcher({ authenticated: true, suspended: true, suspensionReason: 'Fallback reason' })
     vi.advanceTimersByTime(30000)
     await Promise.resolve(); await Promise.resolve()
     vi.advanceTimersByTime(30000)
     await Promise.resolve(); await Promise.resolve()
+    expect(ctx.sessionStorage.setItem).toHaveBeenCalledWith('dp_resource_suspension_reason', 'Fallback reason')
     expect(ctx.replace).toHaveBeenCalledTimes(1)
+    expect(ctx.replace).toHaveBeenCalledWith('/account-suspended')
   })
 
   it('cleans up interval, focus listener, visibility listener and Realtime channel', async () => {

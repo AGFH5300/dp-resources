@@ -167,12 +167,13 @@ describe('suspension API behavior', () => {
     expect(m.upsert).not.toHaveBeenCalled()
   })
 
-  it('blocks an unprotected domain and may update existing block metadata', async () => {
+  it('does not resubmit an already-blocked domain', async () => {
     const m = tableMock({ target: { id: userId, email: 'bad@throwaway.test', role: 'user' }, policy: { allowed: false, matched_domain: 'throwaway.test' } })
     const route = await loadSuspension(m)
     const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
     expect(res.status).toBe(200)
-    expect(m.upsert).toHaveBeenCalledWith(expect.objectContaining({ domain: 'throwaway.test', action: 'block' }), { onConflict: 'domain' })
+    expect(await res.json()).toMatchObject({ warnings: [expect.stringContaining('already blocked')] })
+    expect(m.upsert).not.toHaveBeenCalled()
   })
 })
 
