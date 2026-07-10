@@ -33,7 +33,9 @@ describe('auth redirects and public entry points', () => {
   it('redirects already signed-in users away from login and signup forms', () => {
     for (const layout of [loginLayout, signUpLayout]) {
       expect(layout).toContain('getSessionResourceMembership')
-      expect(layout).toContain('if (user) redirect(\'/library\')')
+      expect(layout).toContain('if (!user) return children')
+      expect(layout).toContain("if (membership?.is_suspended) redirect('/account-suspended')")
+      expect(layout).toContain("redirect('/library')")
     }
   })
 })

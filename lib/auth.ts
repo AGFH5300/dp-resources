@@ -10,7 +10,7 @@ export async function requireUser() {
 export async function requireMember() {
   const ctx = await requireUser();
   if (!ctx.membership) redirect('/auth');
-  if (ctx.membership.is_suspended) redirect('/auth/login?error=account_suspended');
+  if (ctx.membership.is_suspended) redirect('/account-suspended');
   return ctx as typeof ctx & { membership: NonNullable<typeof ctx.membership> };
 }
 
