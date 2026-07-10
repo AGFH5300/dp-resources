@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { isValidEmail } from '@/lib/auth-email'
 import { logIdentityRejection, validateEmailLocalPartIdentity, validateUsernameIdentity } from '@/lib/identity-moderation'
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
+import { DISPOSABLE_EMAIL_MESSAGE, getEmailDomainPolicy } from '@/lib/disposable-email'
 
 type AvailabilityStatus = 'available' | 'unavailable' | 'invalid' | 'error'
 const availabilityDebugEnabled = process.env.NODE_ENV === 'development'
@@ -145,6 +146,23 @@ export async function GET(request: Request) {
         },
       },
     )
+  }
+
+  let domainPolicy
+  try {
+    domainPolicy = await getEmailDomainPolicy(supabase, value)
+  } catch (policyError) {
+    return jsonResponse('error', false, 'Could not validate email right now.', {
+      status: 500,
+      debug: { ...requestMeta, validationPath: 'rpc_dp_resource_email_domain_policy_failed', error: policyError instanceof Error ? policyError.message : 'unknown' },
+    })
+  }
+
+  if (domainPolicy.allowed !== true) {
+    return jsonResponse('invalid', false, DISPOSABLE_EMAIL_MESSAGE, {
+      status: 400,
+      debug: { ...requestMeta, validationPath: 'email_domain_policy_blocked', domain: domainPolicy.domain },
+    })
   }
 
   const { data, error } = await supabase.rpc('dp_resource_is_email_available', {

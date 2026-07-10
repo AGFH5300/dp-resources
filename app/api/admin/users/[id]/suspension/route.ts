@@ -1,0 +1,138 @@
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth'
+import { sameOriginOrForbidden } from '@/lib/request-security'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import type { ResourceMembership } from '@/lib/types'
+
+const PROTECTED_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'ymail.com',
+  'icloud.com', 'me.com', 'mac.com', 'proton.me', 'protonmail.com', 'aol.com',
+])
+
+type SuspensionRequest = { suspended: boolean; reason?: string; blockDomain?: boolean }
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store, max-age=0' } })
+}
+
+function domainFromEmail(email: string) {
+  return email.toLowerCase().split('@').pop() ?? ''
+}
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const forbidden = sameOriginOrForbidden(request)
+  if (forbidden) return forbidden
+
+  const { id: targetUserId } = await params
+  if (!UUID_RE.test(targetUserId)) return json({ error: 'Invalid user ID.' }, 400)
+
+  let body: SuspensionRequest
+  try {
+    body = (await request.json()) as SuspensionRequest
+  } catch {
+    return json({ error: 'Invalid JSON body.' }, 400)
+  }
+  if (typeof body.suspended !== 'boolean') return json({ error: 'suspended must be a boolean.' }, 400)
+
+  const { user: actingAdmin, membership: actingMembership } = await requireAdmin()
+  const supabase = createSupabaseAdminClient()
+  const warnings: string[] = []
+  const now = new Date().toISOString()
+
+  const { data: target, error: targetError } = await supabase
+    .from('dp_resource_memberships')
+    .select('*')
+    .eq('id', targetUserId)
+    .maybeSingle<ResourceMembership>()
+
+  if (targetError) return json({ error: 'Could not read target user.' }, 500)
+  if (!target) return json({ error: 'User not found.' }, 404)
+
+  if (body.suspended) {
+    const reason = body.reason?.trim() ?? ''
+    if (reason.length < 3 || reason.length > 500) return json({ error: 'Suspension reason must be between 3 and 500 characters.' }, 400)
+    if (target.id === actingAdmin.id) return json({ error: 'Administrators cannot suspend their own account.' }, 403)
+    if (target.role === 'admin') return json({ error: 'Administrator accounts cannot be suspended from this panel.' }, 403)
+
+    const { error: updateError } = await supabase.from('dp_resource_memberships').update({
+      is_suspended: true,
+      suspended_at: now,
+      suspended_by: actingAdmin.id,
+      suspension_reason: reason,
+    }).eq('id', targetUserId)
+    if (updateError) return json({ error: 'Could not suspend user.' }, 500)
+
+    const { error: banError } = await supabase.auth.admin.updateUserById(targetUserId, { ban_duration: '876000h' })
+    if (banError) {
+      console.error('[admin-suspension] auth ban failed', { targetUserId, code: banError.code, message: banError.message })
+      warnings.push('The account is suspended in the application, but the Auth ban could not be applied.')
+    }
+
+    const metadata: Record<string, unknown> = { blockDomainRequested: body.blockDomain === true }
+    await supabase.from('dp_resource_moderation_events').insert({
+      target_user_id: targetUserId,
+      target_email: target.email,
+      actor_user_id: actingAdmin.id,
+      actor_email: actingMembership.email,
+      action: 'suspend',
+      reason,
+      metadata,
+    })
+
+    if (body.blockDomain) {
+      const domain = domainFromEmail(target.email)
+      if (PROTECTED_EMAIL_DOMAINS.has(domain)) {
+        warnings.push('Mainstream provider domains cannot be blocked. Only the individual user was suspended.')
+      } else if (domain) {
+        const { error: domainError } = await supabase.from('dp_resource_email_domain_rules').upsert({
+          domain,
+          action: 'block',
+          source: 'admin',
+          created_by: actingAdmin.id,
+          reason: reason.slice(0, 200),
+          updated_at: now,
+        }, { onConflict: 'domain' })
+        if (domainError) {
+          console.error('[admin-suspension] domain block failed', { domain, code: domainError.code, message: domainError.message })
+          warnings.push('The user was suspended, but the domain block could not be saved.')
+        } else {
+          await supabase.from('dp_resource_moderation_events').insert({
+            target_user_id: targetUserId,
+            target_email: target.email,
+            actor_user_id: actingAdmin.id,
+            actor_email: actingMembership.email,
+            action: 'block_domain',
+            reason,
+            metadata: { domain },
+          })
+        }
+      }
+    }
+
+    return json({ ok: true, suspended: true, warnings })
+  }
+
+  const { error: unbanError } = await supabase.auth.admin.updateUserById(targetUserId, { ban_duration: 'none' })
+  if (unbanError) return json({ error: 'Could not unban user; suspension remains active.' }, 500)
+
+  const { error: updateError } = await supabase.from('dp_resource_memberships').update({
+    is_suspended: false,
+    suspended_at: null,
+    suspended_by: null,
+    suspension_reason: null,
+  }).eq('id', targetUserId)
+  if (updateError) return json({ error: 'Could not clear application suspension.' }, 500)
+
+  await supabase.from('dp_resource_moderation_events').insert({
+    target_user_id: targetUserId,
+    target_email: target.email,
+    actor_user_id: actingAdmin.id,
+    actor_email: actingMembership.email,
+    action: 'unsuspend',
+    reason: body.reason?.trim() || null,
+    metadata: {},
+  })
+
+  return json({ ok: true, suspended: false, warnings })
+}

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { isValidEmail } from '@/lib/auth-email'
 import { logIdentityRejection, validateEmailLocalPartIdentity, validateFullNameIdentity, validateUsernameIdentity } from '@/lib/identity-moderation'
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit'
+import { DISPOSABLE_EMAIL_MESSAGE, getEmailDomainPolicy } from '@/lib/disposable-email'
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/
 const signupDebugEnabled = process.env.NODE_ENV === 'development'
@@ -90,6 +91,17 @@ export async function POST(request: Request) {
   // Compatibility marker: message: 'That username is already taken.'
   // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
   const supabase = await createClient()
+  let domainPolicy
+  try {
+    domainPolicy = await getEmailDomainPolicy(supabase, email)
+  } catch {
+    return jsonResponse({ ok: false, message: 'Could not validate signup details right now.', field: 'form', debug: { path: 'email_domain_policy_failed' } }, 500)
+  }
+
+  if (domainPolicy.allowed !== true) {
+    return jsonResponse({ ok: false, message: DISPOSABLE_EMAIL_MESSAGE, field: 'email', debug: { path: 'email_domain_policy_blocked', domain: domainPolicy.domain } }, 400)
+  }
+
   const [{ data: usernameStatus, error: usernameError }, { data: emailAvailable, error: emailError }] = await Promise.all([
     supabase.rpc('dp_resource_username_availability_status', { p_username: username }),
     supabase.rpc('dp_resource_is_email_available', { p_email: email }),
