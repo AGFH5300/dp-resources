@@ -1,0 +1,79 @@
+name: Apply admin full-name column
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-admin-full-name-column.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Add full names to the admin users table
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'app/admin/page.tsx',
+              "const membershipRows = rawMembershipRows || []; userCount=count||0; const latestActivity=new Map<string,string>(); if(membershipRows.length){ const {data:recentUserLogs=[]}=await sb.from('dp_resource_activity_logs').select('user_id,created_at').in('user_id',membershipRows.map((u:any)=>u.id)).order('created_at',{ascending:false}).limit(500); (recentUserLogs||[]).forEach((l:any)=>{ if(!latestActivity.has(l.user_id)) latestActivity.set(l.user_id,l.created_at); }); } memberships=membershipRows.map((u:any)=>({...u,latest_activity_at:latestActivity.get(u.id)||null}));",
+              "const membershipRows = rawMembershipRows || []; userCount=count||0; const profileNames=new Map<string,string>(); const authNames=new Map<string,string>(); const latestActivity=new Map<string,string>(); if(membershipRows.length){ const userIds=membershipRows.map((u:any)=>u.id); const [{data:profiles=[]},{data:authUsers},{data:recentUserLogs=[]}]=await Promise.all([sb.from('dp_resource_profiles').select('id,full_name').in('id',userIds),sb.auth.admin.listUsers({page:1,perPage:1000}),sb.from('dp_resource_activity_logs').select('user_id,created_at').in('user_id',userIds).order('created_at',{ascending:false}).limit(500)]); (profiles||[]).forEach((p:any)=>{ const name=String(p.full_name||'').trim(); if(name) profileNames.set(p.id,name); }); (authUsers?.users||[]).forEach((u:any)=>{ const metadata=u.user_metadata||{}; const name=String(metadata.full_name||metadata.name||metadata.display_name||'').trim(); if(name) authNames.set(u.id,name); }); (recentUserLogs||[]).forEach((l:any)=>{ if(!latestActivity.has(l.user_id)) latestActivity.set(l.user_id,l.created_at); }); } memberships=membershipRows.map((u:any)=>({...u,full_name:profileNames.get(u.id)||authNames.get(u.id)||null,latest_activity_at:latestActivity.get(u.id)||null}));",
+          )
+
+          replace_once(
+              'app/admin/admin-console.tsx',
+              '<tr><th className="p-2">User</th><th className="p-2">Role</th><th className="p-2">Joined</th><th className="p-2">Last activity</th><th className="p-2">Suspension</th></tr>',
+              '<tr><th className="p-2">Full name</th><th className="p-2">Email</th><th className="p-2">Role</th><th className="p-2">Joined</th><th className="p-2">Last activity</th><th className="p-2">Suspension</th></tr>',
+          )
+
+          replace_once(
+              'app/admin/admin-console.tsx',
+              '<tr key={u.id} className="border-t border-slate-100"><td className="p-2 font-medium">{u.email}</td><td className="p-2">{u.role}</td>',
+              '<tr key={u.id} className="border-t border-slate-100"><td className="whitespace-nowrap p-2 font-medium">{u.full_name || \'—\'}</td><td className="p-2 font-medium">{u.email}</td><td className="p-2">{u.role}</td>',
+          )
+
+          replace_once(
+              'lib/types.ts',
+              "export type ResourceMembership={id:string;email:string;role:'user'|'admin';",
+              "export type ResourceMembership={id:string;email:string;full_name?:string|null;role:'user'|'admin';",
+          )
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Commit the application change
+        run: |
+          rm .github/workflows/apply-admin-full-name-column.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/admin/page.tsx app/admin/admin-console.tsx lib/types.ts .github/workflows/apply-admin-full-name-column.yml
+          git commit -m 'feat: show full names in admin users table'
+          git push
