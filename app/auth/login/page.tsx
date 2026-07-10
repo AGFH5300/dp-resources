@@ -11,6 +11,9 @@ import { safeInternalReturnPath } from '@/lib/auth-redirect'
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile'
 const DEFAULT_NEXT_PATH = '/library'
 const SUSPENDED_MESSAGE = 'This account has been suspended. Contact the site administrator if you believe this is a mistake.'
+function friendlyLoginError(message: string) {
+  return /ban|banned|suspend|suspended/i.test(message) ? SUSPENDED_MESSAGE : message
+}
 
 function readNextPath() {
   if (typeof window === 'undefined') return DEFAULT_NEXT_PATH
@@ -46,7 +49,7 @@ export default function LoginPage() {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError(error.message)
+      setError(friendlyLoginError(error.message))
       setLoading(false)
       return
     }

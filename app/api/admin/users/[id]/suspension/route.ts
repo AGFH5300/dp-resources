@@ -124,6 +124,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const matchedDomain = policy?.matched_domain ?? null
         if (policy?.allowed === true && matchedDomain) {
           warnings.push('This email domain has an explicit allow rule and was not blocked. The individual account was suspended.')
+        } else if (policy?.allowed === false && matchedDomain) {
+          warnings.push('This email domain is already blocked.')
         } else if (policy) {
           const { error: domainError } = await supabase.from('dp_resource_email_domain_rules').upsert({
             domain,

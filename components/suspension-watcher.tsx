@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { createClientSupabase } from '@/lib/supabase-browser'
+import { SUSPENSION_REASON_STORAGE_KEY } from '@/components/suspension-storage'
 
 type SuspensionWatcherProps = { userId?: string | null }
 
@@ -16,6 +17,16 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
     let active = true
     const supabase = createClientSupabase()
 
+    function storeSuspensionReason(reason: unknown) {
+      if (typeof reason === 'string' && reason.length > 0) {
+        window.sessionStorage.setItem(SUSPENSION_REASON_STORAGE_KEY, reason)
+      }
+    }
+
+    function clearSuspensionReason() {
+      window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY)
+    }
+
     function redirectOnce() {
       if (navigatedRef.current) return
       navigatedRef.current = true
@@ -28,7 +39,13 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
         const response = await fetch('/api/account/status', { cache: 'no-store' })
         if (!response.ok) return
         const status = await response.json().catch(() => null)
-        if (active && status?.authenticated === true && status?.suspended === true) redirectOnce()
+        if (!active || status?.authenticated !== true) return
+        if (status.suspended === true) {
+          storeSuspensionReason(status.suspensionReason)
+          redirectOnce()
+          return
+        }
+        clearSuspensionReason()
       } catch {
         // Quiet fallback: realtime remains primary and active users are not refreshed.
       }
@@ -40,7 +57,11 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'dp_resource_memberships', filter: `id=eq.${userId}` },
         (payload) => {
-          if ((payload.new as { id?: string; is_suspended?: boolean })?.id === userId && (payload.new as { is_suspended?: boolean }).is_suspended === true) redirectOnce()
+          const updated = payload.new as { id?: string; is_suspended?: boolean; suspension_reason?: string | null }
+          if (updated?.id === userId && updated.is_suspended === true && !navigatedRef.current) {
+            storeSuspensionReason(updated.suspension_reason)
+            redirectOnce()
+          }
         },
       )
       .subscribe()
