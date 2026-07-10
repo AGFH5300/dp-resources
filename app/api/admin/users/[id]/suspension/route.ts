@@ -20,6 +20,33 @@ function domainFromEmail(email: string) {
   return email.toLowerCase().split('@').pop() ?? ''
 }
 
+type ModerationEvent = {
+  target_user_id: string
+  target_email: string
+  actor_user_id: string
+  actor_email: string
+  action: 'suspend' | 'unsuspend' | 'block_domain'
+  reason: string | null
+  metadata: Record<string, unknown>
+}
+
+async function recordModerationEvent(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  event: ModerationEvent,
+  warnings: string[],
+) {
+  const { error } = await supabase.from('dp_resource_moderation_events').insert(event)
+  if (error) {
+    console.error('[admin-suspension] moderation audit failed', {
+      action: event.action,
+      targetUserId: event.target_user_id,
+      code: error.code,
+      message: error.message,
+    })
+    warnings.push('The account change was saved, but the moderation audit log could not be written.')
+  }
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const forbidden = sameOriginOrForbidden(request)
   if (forbidden) return forbidden
@@ -70,7 +97,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     const metadata: Record<string, unknown> = { blockDomainRequested: body.blockDomain === true }
-    await supabase.from('dp_resource_moderation_events').insert({
+    await recordModerationEvent(supabase, {
       target_user_id: targetUserId,
       target_email: target.email,
       actor_user_id: actingAdmin.id,
@@ -78,7 +105,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       action: 'suspend',
       reason,
       metadata,
-    })
+    }, warnings)
 
     if (body.blockDomain) {
       const domain = domainFromEmail(target.email)
@@ -97,7 +124,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           console.error('[admin-suspension] domain block failed', { domain, code: domainError.code, message: domainError.message })
           warnings.push('The user was suspended, but the domain block could not be saved.')
         } else {
-          await supabase.from('dp_resource_moderation_events').insert({
+          await recordModerationEvent(supabase, {
             target_user_id: targetUserId,
             target_email: target.email,
             actor_user_id: actingAdmin.id,
@@ -105,7 +132,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             action: 'block_domain',
             reason,
             metadata: { domain },
-          })
+          }, warnings)
         }
       }
     }
@@ -124,7 +151,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }).eq('id', targetUserId)
   if (updateError) return json({ error: 'Could not clear application suspension.' }, 500)
 
-  await supabase.from('dp_resource_moderation_events').insert({
+  await recordModerationEvent(supabase, {
     target_user_id: targetUserId,
     target_email: target.email,
     actor_user_id: actingAdmin.id,
@@ -132,7 +159,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     action: 'unsuspend',
     reason: body.reason?.trim() || null,
     metadata: {},
-  })
+  }, warnings)
 
   return json({ ok: true, suspended: false, warnings })
 }

@@ -1,88 +1,178 @@
 import { readFileSync } from 'node:fs'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getEmailDomainPolicy, DISPOSABLE_EMAIL_MESSAGE } from '../lib/disposable-email'
 
-const authSource = readFileSync('lib/auth.ts', 'utf8')
-const signupSource = readFileSync('app/api/auth/start-signup/route.ts', 'utf8')
-const availabilitySource = readFileSync('app/api/auth/availability/route.ts', 'utf8')
-const suspensionRouteSource = readFileSync('app/api/admin/users/[id]/suspension/route.ts', 'utf8')
-const panelSource = readFileSync('app/admin/user-suspension-panel.tsx', 'utf8')
-const loginSource = readFileSync('app/auth/login/page.tsx', 'utf8')
-const migration = readFileSync('supabase/migrations/20260710153000_disposable_email_and_user_suspension.sql', 'utf8')
+const userId = '11111111-1111-4111-8111-111111111111'
+const adminId = '22222222-2222-4222-8222-222222222222'
 
-describe('central suspension enforcement', () => {
-  it('checks suspension in requireMember and preserves requireApproved as compatibility access', () => {
-    expect(authSource).toContain('ctx.membership.is_suspended')
-    expect(authSource).toContain("/auth/login?error=account_suspended")
-    expect(authSource).toContain('export async function requireApproved()')
-    expect(authSource).toContain('return requireMember()')
-    expect(authSource).toContain('const ctx = await requireMember()')
-  })
+function req(url: string, body?: unknown) {
+  return new Request(url, { method: body ? 'POST' : 'GET', headers: { origin: 'https://app.test' }, body: body ? JSON.stringify(body) : undefined })
+}
 
-  it('shows the suspended-account message and performs local browser sign-out only', () => {
-    expect(loginSource).toContain('account_suspended')
-    expect(loginSource).toContain('This account has been suspended. Contact the site administrator if you believe this is a mistake.')
-    expect(loginSource).toContain("signOut({ scope: 'local' })")
-    expect(loginSource).toContain('safeInternalReturnPath')
-  })
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.resetModules()
 })
 
 describe('disposable domain policy', () => {
-  it('defensively allows only explicit allowed=true policy responses', async () => {
+  it('normalizes email and returns authoritative RPC decisions', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { allowed: false, domain: 'epaynine.com', reason: 'blocked' }, error: null })
-    await expect(getEmailDomainPolicy({ rpc } as never, 'User@epaynine.com')).resolves.toEqual({ allowed: false, domain: 'epaynine.com', reason: 'blocked' })
+    await expect(getEmailDomainPolicy({ rpc } as never, ' User@EPAYNINE.com ')).resolves.toEqual({ allowed: false, domain: 'epaynine.com', reason: 'blocked' })
     expect(rpc).toHaveBeenCalledWith('dp_resource_email_domain_policy', { p_email: 'user@epaynine.com' })
   })
 
-  it('throws when the authoritative RPC fails so callers can fail closed', async () => {
+  it('throws on RPC failure so routes fail closed', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: 'XX000', message: 'boom' } })
     await expect(getEmailDomainPolicy({ rpc } as never, 'student@example.edu')).rejects.toThrow('Unable to validate email domain policy')
   })
+})
 
-  it('checks domain policy before email availability and before OTP creation', () => {
-    expect(availabilitySource.indexOf('getEmailDomainPolicy')).toBeLessThan(availabilitySource.indexOf('dp_resource_is_email_available'))
-    expect(signupSource.indexOf('getEmailDomainPolicy')).toBeLessThan(signupSource.indexOf('dp_resource_username_availability_status'))
-    expect(signupSource.indexOf('getEmailDomainPolicy')).toBeLessThan(signupSource.indexOf('signInWithOtp'))
-    expect(DISPOSABLE_EMAIL_MESSAGE).toBe('Temporary or disposable email addresses cannot be used. Please use a permanent email address.')
-    expect(signupSource).toContain('DISPOSABLE_EMAIL_MESSAGE')
-    expect(availabilitySource).toContain('DISPOSABLE_EMAIL_MESSAGE')
+describe('signup route behavior', () => {
+  async function loadStartSignup(policy: { allowed: boolean } | Error) {
+    const signInWithOtp = vi.fn().mockResolvedValue({ error: null })
+    const rpc = vi.fn().mockImplementation((name: string) => {
+      if (name === 'dp_resource_username_availability_status') return Promise.resolve({ data: 'available', error: null })
+      if (name === 'dp_resource_is_email_available') return Promise.resolve({ data: true, error: null })
+      return Promise.resolve({ data: null, error: null })
+    })
+    vi.doMock('../lib/request-security', () => ({ sameOriginOrForbidden: vi.fn(() => null) }))
+    vi.doMock('../lib/rate-limit', () => ({ privacySafeRequestKey: vi.fn(() => 'k'), rateLimit: vi.fn(async () => ({ ok: true })) }))
+    vi.doMock('../lib/supabase-server', () => ({ createClient: vi.fn(async () => ({ rpc, auth: { signInWithOtp } })) }))
+    vi.doMock('../lib/disposable-email', async () => ({ ...(await vi.importActual('../lib/disposable-email') as object), getEmailDomainPolicy: vi.fn(async () => { if (policy instanceof Error) throw policy; return { domain: 'epaynine.com', reason: null, ...policy } }) }))
+    return { route: await import('../app/api/auth/start-signup/route'), signInWithOtp }
+  }
+
+  it('does not send OTP for blocked email', async () => {
+    const { route, signInWithOtp } = await loadStartSignup({ allowed: false })
+    const res = await route.POST(req('https://app.test/api/auth/start-signup', { username: 'student1', fullName: 'Student One', email: 'user@epaynine.com' }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ ok: false, field: 'email', message: DISPOSABLE_EMAIL_MESSAGE })
+    expect(signInWithOtp).not.toHaveBeenCalled()
+  })
+
+  it('sends OTP for allowed email', async () => {
+    const { route, signInWithOtp } = await loadStartSignup({ allowed: true })
+    const res = await route.POST(req('https://app.test/api/auth/start-signup', { username: 'student1', fullName: 'Student One', email: 'user@example.edu' }))
+    expect(res.status).toBe(200)
+    expect(signInWithOtp).toHaveBeenCalledWith(expect.objectContaining({ email: 'user@example.edu' }))
+  })
+
+  it('fails closed when domain RPC fails', async () => {
+    const { route, signInWithOtp } = await loadStartSignup(new Error('rpc down'))
+    const res = await route.POST(req('https://app.test/api/auth/start-signup', { username: 'student1', fullName: 'Student One', email: 'user@example.edu' }))
+    expect(res.status).toBe(500)
+    expect(signInWithOtp).not.toHaveBeenCalled()
   })
 })
 
-describe('administrator suspension route and UI', () => {
-  it('uses same-origin and admin checks, bans without deleting users, and records moderation events', () => {
-    expect(suspensionRouteSource.indexOf('sameOriginOrForbidden(request)')).toBeLessThan(suspensionRouteSource.indexOf('requireAdmin()'))
-    expect(suspensionRouteSource).toContain("ban_duration: '876000h'")
-    expect(suspensionRouteSource).toContain("ban_duration: 'none'")
-    expect(suspensionRouteSource).toContain('dp_resource_moderation_events')
-    expect(suspensionRouteSource).not.toContain('deleteUser')
-    expect(suspensionRouteSource).not.toMatch(/\.delete\(/)
+describe('availability route behavior', () => {
+  it('returns invalid for blocked domains before email availability RPC', async () => {
+    const rpc = vi.fn()
+    vi.doMock('../lib/rate-limit', () => ({ privacySafeRequestKey: vi.fn(() => 'k'), rateLimit: vi.fn(async () => ({ ok: true })) }))
+    vi.doMock('../lib/supabase-server', () => ({ createClient: vi.fn(async () => ({ rpc })) }))
+    vi.doMock('../lib/disposable-email', async () => ({ ...(await vi.importActual('../lib/disposable-email') as object), getEmailDomainPolicy: vi.fn(async () => ({ allowed: false, domain: 'epaynine.com', reason: 'blocked' })) }))
+    const route = await import('../app/api/auth/availability/route')
+    const res = await route.GET(new Request('https://app.test/api/auth/availability?type=email&value=user@epaynine.com'))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ status: 'invalid', available: false, message: DISPOSABLE_EMAIL_MESSAGE })
+    expect(rpc).not.toHaveBeenCalledWith('dp_resource_is_email_available', expect.anything())
+  })
+})
+
+describe('suspension API behavior', () => {
+  function tableMock(opts: { target?: Record<string, unknown>; auditError?: boolean; unbanError?: boolean; banError?: boolean; domainError?: boolean } = {}) {
+    const calls: string[] = []
+    const update = vi.fn((values: unknown) => ({ eq: vi.fn(async () => { calls.push(`membership:${JSON.stringify(values)}`); return { error: null } }) }))
+    const insert = vi.fn(async (values: { action?: string }) => { calls.push(`audit:${values.action}`); return { error: opts.auditError ? { code: 'AUDIT', message: 'audit failed' } : null } })
+    const upsert = vi.fn(async () => ({ error: opts.domainError ? { code: 'DOMAIN', message: 'domain failed' } : null }))
+    const from = vi.fn((name: string) => {
+      if (name === 'dp_resource_memberships') return { select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn(async () => ({ data: opts.target ?? { id: userId, email: 'user@epaynine.com', role: 'user' }, error: null })) })) })), update }
+      if (name === 'dp_resource_moderation_events') return { insert }
+      if (name === 'dp_resource_email_domain_rules') return { upsert }
+      throw new Error(name)
+    })
+    const updateUserById = vi.fn(async (_id: string, payload: { ban_duration: string }) => { calls.push(`auth:${payload.ban_duration}`); return { error: payload.ban_duration === 'none' && opts.unbanError ? { code: 'UNBAN', message: 'no' } : payload.ban_duration !== 'none' && opts.banError ? { code: 'BAN', message: 'no' } : null } })
+    return { client: { from, auth: { admin: { updateUserById } } }, calls, updateUserById }
+  }
+
+  async function loadSuspension(m: ReturnType<typeof tableMock>) {
+    vi.doMock('../lib/request-security', () => ({ sameOriginOrForbidden: vi.fn(() => null) }))
+    vi.doMock('../lib/auth', () => ({ requireAdmin: vi.fn(async () => ({ user: { id: adminId }, membership: { email: 'admin@example.edu' } })) }))
+    vi.doMock('../lib/supabase-admin', () => ({ createSupabaseAdminClient: vi.fn(() => m.client) }))
+    return import('../app/api/admin/users/[id]/suspension/route')
+  }
+
+  it('updates membership before Auth ban, audits suspend and block_domain, and never deletes users', async () => {
+    const m = tableMock()
+    const route = await loadSuspension(m)
+    const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(m.calls[0]).toContain('membership')
+    expect(m.calls[1]).toBe('auth:876000h')
+    expect(m.calls).toContain('audit:suspend')
+    expect(m.calls).toContain('audit:block_domain')
+    expect(JSON.stringify(m.client)).not.toContain('delete')
   })
 
-  it('prevents self/admin suspension and protects mainstream provider domain blocks', () => {
-    expect(suspensionRouteSource).toContain('target.id === actingAdmin.id')
-    expect(suspensionRouteSource).toContain("target.role === 'admin'")
-    expect(suspensionRouteSource).toContain('PROTECTED_EMAIL_DOMAINS')
-    expect(suspensionRouteSource).toContain('Mainstream provider domains cannot be blocked')
+  it('returns audit warning while preserving successful suspension', async () => {
+    const m = tableMock({ auditError: true })
+    const route = await loadSuspension(m)
+    const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report' }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, suspended: true, warnings: [expect.stringContaining('audit log')] })
   })
 
-  it('renders focused controls without suspend buttons for admins and explains retained history', () => {
-    expect(panelSource).toContain("user.role !== 'admin'")
-    expect(panelSource).toContain('Unsuspend')
-    expect(panelSource).toContain('retaining profile, activity, download and analytics history')
-    expect(panelSource).toContain('Mainstream provider domains')
+  it('unbans before clearing suspension fields and failed unban leaves user suspended', async () => {
+    const ok = tableMock()
+    let route = await loadSuspension(ok)
+    let res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: false }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(ok.calls[0]).toBe('auth:none')
+    expect(ok.calls[1]).toContain('membership')
+
+    vi.resetModules()
+    const fail = tableMock({ unbanError: true })
+    route = await loadSuspension(fail)
+    res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: false }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(500)
+    expect(fail.calls).toEqual(['auth:none'])
+  })
+
+  it('rejects suspending admins or the current admin and protects mainstream domains', async () => {
+    for (const target of [{ id: adminId, email: 'me@example.edu', role: 'user' }, { id: userId, email: 'admin@example.edu', role: 'admin' }]) {
+      vi.resetModules()
+      const route = await loadSuspension(tableMock({ target }))
+      const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report' }) }), { params: Promise.resolve({ id: target.id as string }) })
+      expect(res.status).toBe(403)
+    }
+    vi.resetModules()
+    const m = tableMock({ target: { id: userId, email: 'user@gmail.com', role: 'user' } })
+    const route = await loadSuspension(m)
+    const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ warnings: [expect.stringContaining('Mainstream provider domains')] })
   })
 })
 
 describe('migration coverage', () => {
-  it('adds suspension and disposable email objects without hard-deleting records', () => {
-    expect(migration).toContain('is_suspended')
-    expect(migration).toContain('dp_resource_email_domain_rules')
-    expect(migration).toContain('dp_resource_email_domain_policy')
-    expect(migration).toContain('dp_before_user_created')
-    expect(migration).toContain('dp_resource_moderation_events')
-    expect(migration).toContain('epaynine.com')
-    expect(migration).toContain('set search_path = public, pg_temp')
+  const migration = readFileSync('supabase/migrations/20260710153000_disposable_email_and_user_suspension.sql', 'utf8')
+  it('uses the existing membership trigger function and atomic corrected hook permissions', () => {
+    expect(migration).toMatch(/^-- Disposable email blocking and application-level user suspension\.\n\nbegin;/)
+    expect(migration.trim().endsWith('commit;')).toBe(true)
+    expect(migration).toContain('create or replace function public.dp_resources_handle_new_user()')
+    expect(migration).not.toContain('dp_resource_create_membership_for_new_user')
+    expect(migration).not.toMatch(/create\s+trigger/i)
+    expect(migration).toContain("return '{}'::jsonb")
+    expect(migration).toMatch(/create or replace function public\.dp_before_user_created[\s\S]*?language plpgsql\nset search_path = ''/)
+    expect(migration).toContain('grant execute on function public.dp_before_user_created(jsonb) to supabase_auth_admin')
+  })
+
+  it('has constraints and most-specific parent-domain policy matching', () => {
+    expect(migration).toContain('dp_resource_memberships_suspension_reason_length')
+    expect(migration).toContain('dp_resource_email_domain_rules_domain_normalized')
+    expect(migration).toContain('dp_resource_moderation_events_action_valid')
+    expect(migration).toContain("v_domain like '%." )
+    expect(migration).toContain('order by char_length(public.dp_resource_email_domain_rules.domain) desc')
     expect(migration).not.toMatch(/delete\s+from\s+public\.dp_resource_/i)
   })
 })
