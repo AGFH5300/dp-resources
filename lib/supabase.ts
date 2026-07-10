@@ -5,8 +5,8 @@ import { createSupabaseAdminClient, adminEmails, syncBootstrapAdminResourceMembe
 
 export { isSupabaseConfigured, createSupabaseServerClient, createSupabaseAdminClient, adminEmails, syncBootstrapAdminResourceMembership };
 
-export function pendingMembershipInsert(user: { id: string; email: string }) {
-  return { id: user.id, email: user.email, role: 'user' as const, is_approved: false };
+export function pendingMembershipInsert(user: { id: string; email: string }, now = new Date().toISOString()) {
+  return { id: user.id, email: user.email, role: 'user' as const, is_approved: true, approved_at: now };
 }
 
 async function repairMissingResourceMembership(user: { id: string; email: string }) {

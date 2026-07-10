@@ -54,3 +54,26 @@
 2. Restore the pre-migration Supabase backup if schema rollback is required.
 3. Re-apply only migrations known to be compatible with the rollback commit.
 4. Verify admin login, signup, search, preview, PPTX, media seeking, support, reports, and analytics.
+
+
+## Disposable Email and User Suspension Deployment
+
+Codex can prepare the application code and migration file, but it cannot perform steps 4–8 because they require access to the connected Supabase project and Dashboard.
+
+1. Review the Codex diff.
+2. Run the complete test suite locally.
+3. Deploy the application code and migration through the normal controlled process.
+4. Apply `20260710153000_disposable_email_and_user_suspension.sql` to the `dp-resources` Supabase project.
+5. In Supabase Dashboard, open Authentication → Hooks.
+6. Configure Before User Created as a Postgres Function hook.
+7. Select `public.dp_before_user_created`.
+8. Save and enable the hook.
+9. Confirm `anything@epaynine.com` is rejected before account creation.
+10. Confirm Gmail, Outlook, iCloud and a school-domain signup continue immediately through the existing verification flow.
+11. Open Admin → Users.
+12. Suspend the identified disposable-email account.
+13. Optionally block its domain.
+14. Confirm the suspended account cannot open, preview or download resources.
+15. Confirm its historical activity and download events remain visible.
+16. Unsuspend a test account and verify access is restored.
+17. Verify no manual approval step appears anywhere.

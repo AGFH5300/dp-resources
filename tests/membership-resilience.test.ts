@@ -25,12 +25,13 @@ describe('bootstrap admin approval timestamp handling', () => {
 });
 
 describe('missing membership repair fallback', () => {
-  it('inserts only a pending user membership and relies on conflict ignore to avoid overwrites', () => {
+  it('inserts an immediately approved user membership and relies on conflict ignore to avoid overwrites', () => {
     expect(pendingMembershipInsert({ id: 'user-1', email: 'User@Example.com' })).toEqual({
       id: 'user-1',
       email: 'User@Example.com',
       role: 'user',
-      is_approved: false,
+      is_approved: true,
+      approved_at: expect.any(String),
     });
     expect(sessionHelperSource).toContain('ignoreDuplicates: true');
     expect(sessionHelperSource).toContain("onConflict: 'id'");
