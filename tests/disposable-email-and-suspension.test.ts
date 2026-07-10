@@ -80,11 +80,11 @@ describe('availability route behavior', () => {
 })
 
 describe('suspension API behavior', () => {
-  function tableMock(opts: { target?: Record<string, unknown>; auditError?: boolean; unbanError?: boolean; banError?: boolean; domainError?: boolean } = {}) {
+  function tableMock(opts: { target?: Record<string, unknown>; auditError?: boolean; unbanError?: boolean; banError?: boolean; domainError?: boolean; policy?: Record<string, unknown> } = {}) {
     const calls: string[] = []
     const update = vi.fn((values: unknown) => ({ eq: vi.fn(async () => { calls.push(`membership:${JSON.stringify(values)}`); return { error: null } }) }))
     const insert = vi.fn(async (values: { action?: string }) => { calls.push(`audit:${values.action}`); return { error: opts.auditError ? { code: 'AUDIT', message: 'audit failed' } : null } })
-    const upsert = vi.fn(async () => ({ error: opts.domainError ? { code: 'DOMAIN', message: 'domain failed' } : null }))
+    const upsert = vi.fn(async (values: unknown) => { calls.push(`domain:${JSON.stringify(values)}`); return { error: opts.domainError ? { code: 'DOMAIN', message: 'domain failed' } : null } })
     const from = vi.fn((name: string) => {
       if (name === 'dp_resource_memberships') return { select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn(async () => ({ data: opts.target ?? { id: userId, email: 'user@epaynine.com', role: 'user' }, error: null })) })) })), update }
       if (name === 'dp_resource_moderation_events') return { insert }
@@ -92,7 +92,8 @@ describe('suspension API behavior', () => {
       throw new Error(name)
     })
     const updateUserById = vi.fn(async (_id: string, payload: { ban_duration: string }) => { calls.push(`auth:${payload.ban_duration}`); return { error: payload.ban_duration === 'none' && opts.unbanError ? { code: 'UNBAN', message: 'no' } : payload.ban_duration !== 'none' && opts.banError ? { code: 'BAN', message: 'no' } : null } })
-    return { client: { from, auth: { admin: { updateUserById } } }, calls, updateUserById }
+    const rpc = vi.fn(async () => ({ data: opts.policy ?? { allowed: true, matched_domain: null }, error: null }))
+    return { client: { from, rpc, auth: { admin: { updateUserById } } }, calls, updateUserById, upsert, rpc }
   }
 
   async function loadSuspension(m: ReturnType<typeof tableMock>) {
@@ -138,19 +139,40 @@ describe('suspension API behavior', () => {
     expect(fail.calls).toEqual(['auth:none'])
   })
 
-  it('rejects suspending admins or the current admin and protects mainstream domains', async () => {
+  it('rejects suspending admins or the current admin', async () => {
     for (const target of [{ id: adminId, email: 'me@example.edu', role: 'user' }, { id: userId, email: 'admin@example.edu', role: 'admin' }]) {
       vi.resetModules()
       const route = await loadSuspension(tableMock({ target }))
       const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report' }) }), { params: Promise.resolve({ id: target.id as string }) })
       expect(res.status).toBe(403)
     }
-    vi.resetModules()
-    const m = tableMock({ target: { id: userId, email: 'user@gmail.com', role: 'user' } })
+  })
+
+
+  it('does not overwrite an exact explicit allow rule but still suspends the user', async () => {
+    const m = tableMock({ target: { id: userId, email: 'student@diaestudents.com', role: 'user' }, policy: { allowed: true, matched_domain: 'diaestudents.com' } })
     const route = await loadSuspension(m)
     const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ warnings: [expect.stringContaining('Mainstream provider domains')] })
+    expect(await res.json()).toMatchObject({ ok: true, suspended: true, warnings: [expect.stringContaining('explicit allow rule')] })
+    expect(m.calls.some(call => call.startsWith('membership:'))).toBe(true)
+    expect(m.upsert).not.toHaveBeenCalled()
+  })
+
+  it('protects a subdomain when a parent-domain allow rule is most-specific', async () => {
+    const m = tableMock({ target: { id: userId, email: 'student@mail.school.edu', role: 'user' }, policy: { allowed: true, matched_domain: 'school.edu' } })
+    const route = await loadSuspension(m)
+    const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(m.upsert).not.toHaveBeenCalled()
+  })
+
+  it('blocks an unprotected domain and may update existing block metadata', async () => {
+    const m = tableMock({ target: { id: userId, email: 'bad@throwaway.test', role: 'user' }, policy: { allowed: false, matched_domain: 'throwaway.test' } })
+    const route = await loadSuspension(m)
+    const res = await route.PATCH(new Request('https://app.test/api/admin/users/x/suspension', { method: 'PATCH', body: JSON.stringify({ suspended: true, reason: 'Abuse report', blockDomain: true }) }), { params: Promise.resolve({ id: userId }) })
+    expect(res.status).toBe(200)
+    expect(m.upsert).toHaveBeenCalledWith(expect.objectContaining({ domain: 'throwaway.test', action: 'block' }), { onConflict: 'domain' })
   })
 })
 

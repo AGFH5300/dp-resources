@@ -4,11 +4,6 @@ import { sameOriginOrForbidden } from '@/lib/request-security'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import type { ResourceMembership } from '@/lib/types'
 
-const PROTECTED_EMAIL_DOMAINS = new Set([
-  'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'ymail.com',
-  'icloud.com', 'me.com', 'mac.com', 'proton.me', 'protonmail.com', 'aol.com',
-])
-
 type SuspensionRequest = { suspended: boolean; reason?: string; blockDomain?: boolean }
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -17,7 +12,15 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 function domainFromEmail(email: string) {
-  return email.toLowerCase().split('@').pop() ?? ''
+  return email.trim().toLowerCase().split('@').pop() ?? ''
+}
+
+type DomainPolicy = { allowed?: boolean; matched_domain?: string | null; domain?: string | null }
+
+async function getMatchingDomainPolicy(supabase: ReturnType<typeof createSupabaseAdminClient>, email: string) {
+  const { data, error } = await supabase.rpc('dp_resource_email_domain_policy', { p_email: email.trim().toLowerCase() })
+  if (error) throw error
+  return data as DomainPolicy | null
 }
 
 type ModerationEvent = {
@@ -109,30 +112,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (body.blockDomain) {
       const domain = domainFromEmail(target.email)
-      if (PROTECTED_EMAIL_DOMAINS.has(domain)) {
-        warnings.push('Mainstream provider domains cannot be blocked. Only the individual user was suspended.')
-      } else if (domain) {
-        const { error: domainError } = await supabase.from('dp_resource_email_domain_rules').upsert({
-          domain,
-          action: 'block',
-          source: 'admin',
-          created_by: actingAdmin.id,
-          reason: reason.slice(0, 200),
-          updated_at: now,
-        }, { onConflict: 'domain' })
+      if (domain) {
+        let policy: DomainPolicy | null = null
+        try {
+          policy = await getMatchingDomainPolicy(supabase, target.email)
+        } catch (error) {
+          console.error('[admin-suspension] domain policy check failed', { domain, error })
+          warnings.push('The user was suspended, but the domain block could not be saved because the existing domain policy could not be verified.')
+        }
+
+        const matchedDomain = policy?.matched_domain ?? null
+        if (policy?.allowed === true && matchedDomain) {
+          warnings.push('This email domain has an explicit allow rule and was not blocked. The individual account was suspended.')
+        } else if (policy) {
+          const { error: domainError } = await supabase.from('dp_resource_email_domain_rules').upsert({
+            domain,
+            action: 'block',
+            source: 'admin',
+            created_by: actingAdmin.id,
+            reason: reason.slice(0, 200),
+            updated_at: now,
+          }, { onConflict: 'domain' })
         if (domainError) {
           console.error('[admin-suspension] domain block failed', { domain, code: domainError.code, message: domainError.message })
           warnings.push('The user was suspended, but the domain block could not be saved.')
-        } else {
-          await recordModerationEvent(supabase, {
-            target_user_id: targetUserId,
-            target_email: target.email,
-            actor_user_id: actingAdmin.id,
-            actor_email: actingMembership.email,
-            action: 'block_domain',
-            reason,
-            metadata: { domain },
-          }, warnings)
+          } else {
+            await recordModerationEvent(supabase, {
+              target_user_id: targetUserId,
+              target_email: target.email,
+              actor_user_id: actingAdmin.id,
+              actor_email: actingMembership.email,
+              action: 'block_domain',
+              reason,
+              metadata: { domain },
+            }, warnings)
+          }
         }
       }
     }
