@@ -26,6 +26,21 @@ export function UserSuspensionPanel({ users, currentAdminId }: UserSuspensionPan
   const [blockDomain, setBlockDomain] = useState(false)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
 
+  function resetSuspensionForm() {
+    setReason('')
+    setBlockDomain(false)
+  }
+
+  function openSuspensionForm(userId: string) {
+    setOpenUserId(userId)
+    resetSuspensionForm()
+  }
+
+  function cancelSuspensionForm() {
+    setOpenUserId(null)
+    resetSuspensionForm()
+  }
+
   async function patchUser(user: ResourceMembership, payload: Record<string, unknown>) {
     setBusyUserId(user.id)
     try {
@@ -38,9 +53,7 @@ export function UserSuspensionPanel({ users, currentAdminId }: UserSuspensionPan
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Could not update suspension.')
       toast.success(payload.suspended === false ? 'User unsuspended.' : 'User suspended.')
       if (Array.isArray(result.warnings)) result.warnings.forEach((warning: unknown) => typeof warning === 'string' && toast.warning(warning))
-      setOpenUserId(null)
-      setReason('')
-      setBlockDomain(false)
+      cancelSuspensionForm()
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update suspension.')
@@ -73,7 +86,7 @@ export function UserSuspensionPanel({ users, currentAdminId }: UserSuspensionPan
                   {user.suspension_reason ? <p className="text-sm text-[#7f1d1d]">Reason: {user.suspension_reason}</p> : null}
                 </div>
                 <div className="flex gap-2">
-                  {canSuspend ? <button className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 hover:bg-red-50" onClick={() => setOpenUserId(user.id)}>Suspend</button> : null}
+                  {canSuspend ? <button className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 hover:bg-red-50" onClick={() => openSuspensionForm(user.id)}>Suspend</button> : null}
                   {canUnsuspend ? <button className="rounded border border-emerald-200 px-3 py-1 text-sm text-emerald-700 hover:bg-emerald-50" disabled={busyUserId === user.id} onClick={() => { if (confirm(`Unsuspend ${user.email}?`)) void patchUser(user, { suspended: false }) }}>Unsuspend</button> : null}
                 </div>
               </div>
@@ -89,7 +102,7 @@ export function UserSuspensionPanel({ users, currentAdminId }: UserSuspensionPan
                   {protectedDomain ? <p className="text-sm text-amber-700">Mainstream provider domains such as {domain} cannot be blocked.</p> : null}
                   <div className="flex gap-2">
                     <button className="rounded bg-red-700 px-3 py-1 text-sm text-white disabled:opacity-60" disabled={busyUserId === user.id}>Confirm suspension</button>
-                    <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => setOpenUserId(null)}>Cancel</button>
+                    <button type="button" className="rounded border px-3 py-1 text-sm" onClick={cancelSuspensionForm}>Cancel</button>
                   </div>
                 </form>
               ) : null}

@@ -58,22 +58,17 @@
 
 ## Disposable Email and User Suspension Deployment
 
-Codex can prepare the application code and migration file, but it cannot perform steps 4–8 because they require access to the connected Supabase project and Dashboard.
+Codex can prepare the application code and migration file, but it cannot perform the Supabase Dashboard or production data steps because they require access to the connected Supabase project and live users. Deploy in this order so the application never calls missing database functions. Deploying the application code before `dp_resource_email_domain_policy` exists will make signup fail closed.
 
 1. Review the Codex diff.
-2. Run the complete test suite locally.
-3. Deploy the application code and migration through the normal controlled process.
-4. Apply `20260710153000_disposable_email_and_user_suspension.sql` to the `dp-resources` Supabase project.
-5. In Supabase Dashboard, open Authentication → Hooks.
-6. Configure Before User Created as a Postgres Function hook.
-7. Select `public.dp_before_user_created`.
-8. Save and enable the hook.
-9. Confirm `anything@epaynine.com` is rejected before account creation.
-10. Confirm Gmail, Outlook, iCloud and a school-domain signup continue immediately through the existing verification flow.
-11. Open Admin → Users.
-12. Suspend the identified disposable-email account.
-13. Optionally block its domain.
-14. Confirm the suspended account cannot open, preview or download resources.
-15. Confirm its historical activity and download events remain visible.
-16. Unsuspend a test account and verify access is restored.
-17. Verify no manual approval step appears anywhere.
+2. Run tests, typecheck, lint, and build locally (`npm test`, `npm run typecheck`, `npm run lint`, `npm run build`).
+3. Apply the corrected `20260710153000_disposable_email_and_user_suspension.sql` migration to the `dp-resources` Supabase project.
+4. Verify `public.dp_resource_email_domain_policy` directly with allowed and blocked addresses, including `anything@epaynine.com` and a normal allowed provider or school-domain address.
+5. Deploy the application code.
+6. In Supabase Dashboard, open Authentication → Hooks, configure Before User Created as a Postgres Function hook, select `public.dp_before_user_created`, save, and enable the hook.
+7. Perform actual signup tests: confirm `anything@epaynine.com` is rejected before account creation, and confirm Gmail, Outlook, iCloud, and a school-domain signup continue through the existing verification flow.
+8. Open Admin → Users and suspend the existing disposable-email account. Optionally block its domain if it is not a protected mainstream provider domain.
+9. Confirm the suspended account cannot open, preview, or download resources.
+10. Confirm its historical activity and download events remain visible.
+11. Unsuspend a test account and verify access is restored.
+12. Verify no manual approval step appears anywhere.
