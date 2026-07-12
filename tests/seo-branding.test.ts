@@ -27,6 +27,14 @@ describe('SEO and branding assets', () => {
     expect(target).not.toContain('ChatGPT Image Jul')
   })
 
+  it('points the web manifest at a real image instead of missing generated icon routes', () => {
+    const manifest = read('app/manifest.ts')
+    expect(manifest).toContain("src: '/brand/dp-favicon.png'")
+    expect(manifest).toContain("sizes: '1254x1254'")
+    expect(manifest).not.toContain("src: '/icon'")
+    expect(manifest).not.toContain("src: '/apple-icon'")
+  })
+
   it('keeps only public pages in the sitemap and blocks private app routes in robots', () => {
     const sitemap = read('app/sitemap.ts')
     const robots = read('app/robots.ts')
