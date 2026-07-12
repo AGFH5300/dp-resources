@@ -5,9 +5,25 @@ import { ChevronLeft, ChevronRight, Expand } from 'lucide-react';
 
 type SlideAudio = { name: string; url: string };
 type AudioBySlide = Record<number, SlideAudio[]>;
+type LoadingPhase = 'download' | 'render';
 
-function PresentationLoadingOverlay({ progress, status, pages }: { progress: number; status: string; pages: number }) {
-  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{Math.round(progress)}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-all duration-500" style={{ width: `${Math.max(8, Math.min(progress, 100))}%` }} /></div><p className="mt-3 text-xs leading-5 text-slate-500">{pages ? `Rendering slide view for ${pages} slide${pages === 1 ? '' : 's'}.` : 'Large PPTX files can take a short moment to load.'}</p></div></div>;
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  const megabytes = bytes / (1024 * 1024);
+  return `${megabytes >= 10 ? megabytes.toFixed(1) : megabytes.toFixed(2)} MB`;
+}
+
+function PresentationLoadingOverlay({ phase, downloadedBytes, downloadTotal, renderedSlides }: { phase: LoadingPhase; downloadedBytes: number; downloadTotal: number | null; renderedSlides: number }) {
+  const hasDownloadTotal = phase === 'download' && downloadTotal !== null && downloadTotal > 0;
+  const downloadPercent = hasDownloadTotal ? Math.min(100, Math.round((downloadedBytes / downloadTotal) * 100)) : null;
+  const badge = phase === 'download'
+    ? downloadPercent !== null ? `${downloadPercent}%` : formatBytes(downloadedBytes)
+    : renderedSlides > 0 ? `${renderedSlides} slide${renderedSlides === 1 ? '' : 's'}` : 'Rendering';
+  const status = phase === 'download'
+    ? downloadTotal ? `Downloaded ${formatBytes(downloadedBytes)} of ${formatBytes(downloadTotal)}` : `Downloaded ${formatBytes(downloadedBytes)}`
+    : renderedSlides > 0 ? `Built ${renderedSlides} slide${renderedSlides === 1 ? '' : 's'} so far…` : 'Building slide layout in your browser…';
+
+  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{downloadPercent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${downloadPercent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><p className="mt-3 text-xs leading-5 text-slate-500">{phase === 'download' ? 'Download progress reflects the actual presentation bytes received.' : 'Slide rendering does not expose a percentage, so the live slide count is shown instead.'}</p></div></div>;
 }
 
 function PresentationFallbackPanel({ fileId, onRetry }: { fileId: string; onRetry: () => void }) {
@@ -16,6 +32,59 @@ function PresentationFallbackPanel({ fileId, onRetry }: { fileId: string; onRetr
 
 function revokeObjectUrls(urls: string[]) {
   for (const url of urls) URL.revokeObjectURL(url);
+}
+
+function removeRendererTextArtifacts(container: HTMLElement) {
+  container.querySelectorAll<HTMLElement>('span').forEach((span) => {
+    if (span.textContent?.trim() === 'undefined') span.remove();
+  });
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    if (node.nodeValue?.trim() === 'undefined') node.nodeValue = '';
+    node = walker.nextNode();
+  }
+}
+
+function showOnlyActiveSlide(slides: HTMLElement[], activePage: number) {
+  slides.forEach((slide, index) => {
+    const active = index + 1 === activePage;
+    slide.style.display = active ? '' : 'none';
+    slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+  });
+}
+
+async function readResponseWithProgress(response: Response, onProgress: (loaded: number, total: number | null) => void) {
+  const contentLength = Number(response.headers.get('content-length'));
+  const total = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null;
+
+  if (!response.body) {
+    const buffer = await response.arrayBuffer();
+    onProgress(buffer.byteLength, total ?? buffer.byteLength);
+    return buffer;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress(loaded, total);
+  }
+
+  const combined = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined.buffer as ArrayBuffer;
 }
 
 class PresentationErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }, { failed: boolean }> {
@@ -34,15 +103,18 @@ export function PresentationViewer({ url, fileId, name }: { url: string; fileId:
 function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url: string; fileId: string; name: string; attempt: number; onRetry: () => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const activeSlideRef = useRef<HTMLButtonElement>(null);
-  const vueApp = useRef<any>(null);
   const slideNodes = useRef<HTMLElement[]>([]);
   const objectUrls = useRef<string[]>([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(0);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState('Downloading presentation…');
+  const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('download');
+  const [downloadedBytes, setDownloadedBytes] = useState(0);
+  const [downloadTotal, setDownloadTotal] = useState<number | null>(null);
+  const [renderedSlides, setRenderedSlides] = useState(0);
   const [audioBySlide, setAudioBySlide] = useState<AudioBySlide>({});
 
   useEffect(() => {
@@ -50,6 +122,8 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
     let stopped = false;
     let downloadTimer: ReturnType<typeof setTimeout> | undefined;
     let watchdog: ReturnType<typeof setTimeout> | undefined;
+    let audioTimer: ReturnType<typeof setTimeout> | undefined;
+    let renderObserver: MutationObserver | undefined;
     let mountedApp: any = null;
     let attemptUrls: string[] = [];
 
@@ -57,7 +131,10 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
     objectUrls.current = [];
     setLoading(true);
     setFailed(false);
-    setStatus('Downloading presentation…');
+    setLoadingPhase('download');
+    setDownloadedBytes(0);
+    setDownloadTotal(null);
+    setRenderedSlides(0);
     setPages(0);
     setPage(1);
     setAudioBySlide({});
@@ -67,16 +144,19 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
     const clearTimers = () => {
       if (downloadTimer) clearTimeout(downloadTimer);
       if (watchdog) clearTimeout(watchdog);
+      if (audioTimer) clearTimeout(audioTimer);
       downloadTimer = undefined;
       watchdog = undefined;
+      audioTimer = undefined;
     };
 
     const disposeRenderer = () => {
+      renderObserver?.disconnect();
+      renderObserver = undefined;
       if (mountedApp) {
         try { mountedApp.unmount(); } catch (error) { console.warn('PPTX renderer cleanup failed', error); }
         mountedApp = null;
       }
-      vueApp.current = null;
       slideNodes.current = [];
       root.current?.replaceChildren();
     };
@@ -95,21 +175,18 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
       stopped = true;
       if (error) console.error(message, error);
       disposeAttempt();
-      setStatus(message);
       setLoading(false);
       setFailed(true);
     };
 
-    (async () => {
-      try {
-        downloadTimer = setTimeout(() => controller.abort(), 60_000);
-        const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal });
-        if (!response.ok) throw new Error(`Presentation download failed (${response.status})`);
-        const buffer = await response.arrayBuffer();
-        if (stopped) return;
-        if (downloadTimer) clearTimeout(downloadTimer);
-        downloadTimer = undefined;
+    const rendererModulesPromise = Promise.all([
+      import('@vue-office/pptx'),
+      import('vue'),
+      import('dompurify'),
+    ]);
 
+    const scheduleAudioExtraction = (buffer: ArrayBuffer) => {
+      audioTimer = setTimeout(() => {
         void import('@/lib/pptx-audio').then(({ extractPptxAudioBlobs }) => extractPptxAudioBlobs(buffer)).then((audioBlobs) => {
           if (stopped) return;
           const createdUrls: string[] = [];
@@ -130,18 +207,36 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
           objectUrls.current = createdUrls;
           setAudioBySlide(mapped);
         }).catch((error) => console.warn('PPTX audio extraction failed', error));
+      }, 500);
+    };
 
-        setStatus('Rendering slides in your browser…');
-        watchdog = setTimeout(() => failAttempt('Presentation rendering timed out.'), 30_000);
-        const [{ default: VueOfficePptx }, { createApp }, DOMPurify] = await Promise.all([
-          import('@vue-office/pptx'),
-          import('vue'),
-          import('dompurify'),
-        ]);
+    (async () => {
+      try {
+        downloadTimer = setTimeout(() => controller.abort(), 60_000);
+        const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal });
+        if (!response.ok) throw new Error(`Presentation download failed (${response.status})`);
+        const buffer = await readResponseWithProgress(response, (loaded, total) => {
+          if (stopped) return;
+          setDownloadedBytes(loaded);
+          setDownloadTotal(total);
+        });
+        if (stopped) return;
+        if (downloadTimer) clearTimeout(downloadTimer);
+        downloadTimer = undefined;
+        setLoadingPhase('render');
+
+        const [{ default: VueOfficePptx }, { createApp }, DOMPurify] = await rendererModulesPromise;
         if (stopped || !root.current) return;
 
         const mount = document.createElement('div');
         root.current.replaceChildren(mount);
+        renderObserver = new MutationObserver(() => {
+          if (stopped || !root.current) return;
+          setRenderedSlides(root.current.querySelectorAll('.pptx-preview-slide-wrapper').length);
+        });
+        renderObserver.observe(mount, { childList: true, subtree: true });
+
+        watchdog = setTimeout(() => failAttempt('Presentation rendering timed out.'), 30_000);
         mountedApp = createApp(VueOfficePptx as any, {
           src: buffer,
           options: {
@@ -151,7 +246,10 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
           onRendered: () => {
             if (stopped || !root.current) return;
             try {
+              renderObserver?.disconnect();
+              renderObserver = undefined;
               DOMPurify.default.sanitize(root.current, { IN_PLACE: true, ADD_ATTR: ['target'] });
+              removeRendererTextArtifacts(root.current);
               root.current.querySelectorAll('a').forEach((anchor) => {
                 anchor.setAttribute('target', '_blank');
                 anchor.setAttribute('rel', 'noopener noreferrer');
@@ -162,10 +260,13 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
                 return;
               }
               slideNodes.current = nodes;
+              showOnlyActiveSlide(nodes, 1);
+              setRenderedSlides(nodes.length);
               setPages(nodes.length);
               setLoading(false);
               if (watchdog) clearTimeout(watchdog);
               watchdog = undefined;
+              scheduleAudioExtraction(buffer);
             } catch (error) {
               queueMicrotask(() => failAttempt('Presentation post-processing failed.', error));
             }
@@ -174,7 +275,6 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
             queueMicrotask(() => failAttempt('PPTX browser render failed.', error));
           },
         });
-        vueApp.current = mountedApp;
         mountedApp.mount(mount);
       } catch (error) {
         failAttempt(error instanceof DOMException && error.name === 'AbortError' ? 'Presentation download timed out.' : 'PPTX preview failed.', error);
@@ -188,9 +288,8 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
   }, [url, attempt]);
 
   useEffect(() => {
-    slideNodes.current.forEach((node, index) => {
-      node.style.display = Math.abs(index + 1 - page) <= 1 ? '' : 'none';
-    });
+    showOnlyActiveSlide(slideNodes.current, page);
+    stage.current?.scrollTo({ top: 0, left: 0 });
     activeSlideRef.current?.scrollIntoView({ block: 'nearest' });
   }, [page, pages]);
 
@@ -206,5 +305,5 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
   if (failed) return <PresentationFallbackPanel fileId={fileId} onRetry={onRetry} />;
 
   const audios = audioBySlide[page] || [];
-  return <section ref={wrap} className="flex h-[min(78dvh,calc(100dvh-9rem))] min-h-[520px] flex-col overflow-hidden bg-slate-100"><header className="shrink-0 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronLeft className="size-4" /></button><span className="text-sm text-slate-600">Slide {page} of {pages || '…'}</span><button type="button" disabled={!pages || page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))} aria-label="Next slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronRight className="size-4" /></button><a className="rounded border px-2 py-1 text-sm" href={`/api/files/${fileId}/download`}>Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border px-2 py-1 text-sm"><Expand className="size-4" />Full screen</button></header><div className="grid min-h-0 flex-1 grid-cols-[112px_minmax(0,1fr)] overflow-hidden"><aside aria-label="Slide picker" className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white p-2">{Array.from({ length: pages || 1 }, (_, index) => index + 1).map((slide) => <button ref={slide === page ? activeSlideRef : null} type="button" key={slide} disabled={!pages} onClick={() => setPage(slide)} className={`mb-2 w-full rounded border p-2 text-xs ${slide === page ? 'border-amber-300 bg-amber-50 text-[color:var(--dp-navy)]' : 'border-slate-200 hover:bg-slate-50'}`}>Slide {slide}</button>)}</aside><div className="relative min-h-0 overflow-auto bg-slate-200 p-4">{loading && <PresentationLoadingOverlay progress={pages ? 100 : 45} status={status} pages={pages} />}<div ref={root} aria-label={name} className="mx-auto min-h-full max-w-full [&_.pptx-preview-wrapper]:!max-w-full" />{audios.length > 0 && <div className="sticky bottom-3 mx-auto mt-3 max-w-3xl rounded-lg border border-slate-200 bg-white/95 p-3 shadow"><p className="mb-2 text-xs font-semibold text-slate-600">Embedded audio for slide {page}</p>{audios.map((audio) => <audio key={audio.url} controls preload="metadata" src={audio.url} aria-label={audio.name} className="mb-2 w-full last:mb-0" />)}</div>}</div></div></section>;
+  return <section ref={wrap} className="flex h-[min(78dvh,calc(100dvh-9rem))] min-h-[520px] flex-col overflow-hidden bg-slate-100"><header className="shrink-0 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronLeft className="size-4" /></button><span className="text-sm text-slate-600">Slide {page} of {pages || '…'}</span><button type="button" disabled={!pages || page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))} aria-label="Next slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronRight className="size-4" /></button><a className="rounded border px-2 py-1 text-sm" href={`/api/files/${fileId}/download`}>Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border px-2 py-1 text-sm"><Expand className="size-4" />Full screen</button></header><div className="grid min-h-0 flex-1 grid-cols-[112px_minmax(0,1fr)] overflow-hidden"><aside aria-label="Slide picker" className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white p-2">{Array.from({ length: pages || 1 }, (_, index) => index + 1).map((slide) => <button ref={slide === page ? activeSlideRef : null} type="button" key={slide} disabled={!pages} onClick={() => setPage(slide)} className={`mb-2 w-full rounded border p-2 text-xs ${slide === page ? 'border-amber-300 bg-amber-50 text-[color:var(--dp-navy)]' : 'border-slate-200 hover:bg-slate-50'}`}>Slide {slide}</button>)}</aside><div ref={stage} className="relative min-h-0 overflow-auto bg-slate-200 p-4">{loading && <PresentationLoadingOverlay phase={loadingPhase} downloadedBytes={downloadedBytes} downloadTotal={downloadTotal} renderedSlides={renderedSlides} />}<div ref={root} aria-label={name} className="mx-auto min-h-full max-w-full [&_.pptx-preview-wrapper]:!max-w-full" />{audios.length > 0 && <div className="sticky bottom-3 mx-auto mt-3 max-w-3xl rounded-lg border border-slate-200 bg-white/95 p-3 shadow"><p className="mb-2 text-xs font-semibold text-slate-600">Embedded audio for slide {page}</p>{audios.map((audio) => <audio key={audio.url} controls preload="metadata" src={audio.url} aria-label={audio.name} className="mb-2 w-full last:mb-0" />)}</div>}</div></div></section>;
 }

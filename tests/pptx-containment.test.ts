@@ -17,10 +17,18 @@ describe('PPTX viewer containment', () => {
     expect(viewer).toContain('min-h-0 flex-1');
   });
 
-  it('keeps the slide rail independently scrollable and the active slide in view', () => {
+  it('keeps the slide rail independently scrollable and resets the stage for each selected slide', () => {
     expect(viewer).toContain('aria-label="Slide picker"');
     expect(viewer).toContain('min-h-0 overflow-y-auto');
     expect(viewer).toContain('activeSlideRef.current?.scrollIntoView');
+    expect(viewer).toContain("stage.current?.scrollTo({ top: 0, left: 0 })");
+  });
+
+  it('shows only the active rendered slide so adjacent pages cannot look duplicated', () => {
+    expect(viewer).toContain('function showOnlyActiveSlide');
+    expect(viewer).toContain('const active = index + 1 === activePage');
+    expect(viewer).toContain("slide.style.display = active ? '' : 'none'");
+    expect(viewer).not.toContain('Math.abs(index + 1 - page) <= 1');
   });
 
   it('constrains the browser-rendered PPTX within the stage', () => {
@@ -30,12 +38,27 @@ describe('PPTX viewer containment', () => {
     expect(viewer).not.toContain('<canvas');
   });
 
-  it('shows a visible staged loading state during browser rendering', () => {
-    expect(viewer).toContain('PresentationLoadingOverlay');
-    expect(viewer).toContain('Preparing presentation preview');
-    expect(viewer).toContain('Rendering slides in your browser');
-    expect(viewer).toContain('Large PPTX files can take a short moment to load.');
-    expect(viewer).not.toContain('while LibreOffice converts');
+  it('uses actual byte progress and an honest live rendered-slide count', () => {
+    expect(viewer).toContain('readResponseWithProgress');
+    expect(viewer).toContain("response.headers.get('content-length')");
+    expect(viewer).toContain('Download progress reflects the actual presentation bytes received.');
+    expect(viewer).toContain('Slide rendering does not expose a percentage');
+    expect(viewer).toContain('MutationObserver');
+    expect(viewer).toContain("querySelectorAll('.pptx-preview-slide-wrapper').length");
+    expect(viewer).not.toContain('progress={pages ? 100 : 45}');
+  });
+
+  it('removes literal undefined text created by the third-party renderer', () => {
+    expect(viewer).toContain('removeRendererTextArtifacts');
+    expect(viewer).toContain("span.textContent?.trim() === 'undefined'");
+    expect(viewer).toContain("node.nodeValue?.trim() === 'undefined'");
+  });
+
+  it('overlaps renderer module loading with the file download and defers audio parsing', () => {
+    expect(viewer).toContain('const rendererModulesPromise = Promise.all');
+    expect(viewer.indexOf('const rendererModulesPromise = Promise.all')).toBeLessThan(viewer.indexOf('await fetch(url'));
+    expect(viewer).toContain('scheduleAudioExtraction(buffer)');
+    expect(viewer).toContain('}, 500);');
   });
 
   it('stops failed render attempts instead of only hiding them', () => {
