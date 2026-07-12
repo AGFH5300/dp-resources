@@ -29,11 +29,21 @@ describe('Render Dockerfile contract', () => {
     expect(file).not.toContain('ARG GOOGLE_DRIVE_FOLDER_ID');
   });
 
-  it('preserves the runtime requirements for Render', () => {
+  it('keeps the lean browser-preview runtime requirements for Render', () => {
     const file = dockerfile();
+    const runnerStage = file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
 
-    expect(file).toContain('libreoffice');
-    expect(file).toContain('libreoffice-impress');
+    expect(runnerStage).not.toContain('libreoffice');
+    expect(runnerStage).not.toContain('libreoffice-impress');
+    expect(runnerStage).not.toContain('dbus');
+    expect(runnerStage).not.toContain('libxinerama1');
+    expect(runnerStage).not.toContain('libxrender1');
+    expect(runnerStage).not.toContain('libxt6');
+    expect(runnerStage).not.toContain('libgl1');
+    expect(runnerStage).toContain('fonts-dejavu');
+    expect(runnerStage).toContain('fonts-liberation');
+    expect(runnerStage).toContain('fontconfig');
+    expect(runnerStage).toContain('ca-certificates');
     expect(file).toContain('EXPOSE 10000');
     expect(file).toContain('npm run start -- -H 0.0.0.0 -p ${PORT:-10000}');
   });
