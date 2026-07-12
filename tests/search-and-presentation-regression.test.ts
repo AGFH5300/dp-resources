@@ -60,11 +60,32 @@ describe('search consistency and PPTX viewer regressions', () => {
     expect(viewer).toContain('DOMPurify.default.sanitize');
     expect(viewer).toContain('noopener noreferrer');
     expect(viewer).toContain('if (nodes.length === 0)');
-    expect(viewer).toContain('slideNodes.current.forEach');
     expect(viewer).not.toContain("import('pdfjs-dist')");
     expect(viewer).not.toContain('res.status === 202');
     expect(viewer).not.toContain('await wait(2000)');
     expect(viewer).not.toContain('<iframe');
+  });
+
+  it('PPTX loading reports real bytes and never invents a rendering percentage', () => {
+    const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
+    expect(viewer).toContain('readResponseWithProgress(response');
+    expect(viewer).toContain('loaded += value.byteLength');
+    expect(viewer).toContain('onProgress(loaded, total)');
+    expect(viewer).toContain('setDownloadedBytes(loaded)');
+    expect(viewer).toContain('setDownloadTotal(total)');
+    expect(viewer).toContain('setRenderedSlides(root.current.querySelectorAll');
+    expect(viewer).toContain('Slide rendering does not expose a percentage');
+    expect(viewer).not.toContain('progress={pages ? 100 : 45}');
+  });
+
+  it('PPTX post-processing removes undefined text and isolates the selected slide', () => {
+    const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
+    expect(viewer).toContain('removeRendererTextArtifacts(root.current)');
+    expect(viewer).toContain("span.textContent?.trim() === 'undefined'");
+    expect(viewer).toContain('showOnlyActiveSlide(nodes, 1)');
+    expect(viewer).toContain('showOnlyActiveSlide(slideNodes.current, page)');
+    expect(viewer).toContain('const active = index + 1 === activePage');
+    expect(viewer).not.toContain('Math.abs(index + 1 - page) <= 1');
   });
 
   it('PPTX viewer supports selecting slides and bounded left/right navigation', () => {
