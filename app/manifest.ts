@@ -12,14 +12,10 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['education', 'productivity'],
     icons: [
       {
-        src: '/icon',
-        sizes: '32x32',
+        src: '/brand/dp-favicon.png',
+        sizes: '1254x1254',
         type: 'image/png',
-      },
-      {
-        src: '/apple-icon',
-        sizes: '180x180',
-        type: 'image/png',
+        purpose: 'any maskable',
       },
     ],
   }
