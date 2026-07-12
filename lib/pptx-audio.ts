@@ -50,6 +50,12 @@ function audioMimeType(mediaPath: string) {
   return 'application/octet-stream';
 }
 
+function audioBlob(bytes: Uint8Array, mediaPath: string) {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return new Blob([copy.buffer], { type: audioMimeType(mediaPath) });
+}
+
 export async function extractPptxAudioBlobs(buffer: ArrayBuffer): Promise<PptxAudioBlobsBySlide> {
   const zip = await JSZip.loadAsync(buffer);
   const bySlide: PptxAudioBlobsBySlide = {};
@@ -91,7 +97,7 @@ export async function extractPptxAudioBlobs(buffer: ArrayBuffer): Promise<PptxAu
 
       let blobPromise = blobCache.get(mediaPath);
       if (!blobPromise) {
-        blobPromise = media.async('uint8array').then((bytes) => new Blob([bytes], { type: audioMimeType(mediaPath) }));
+        blobPromise = media.async('uint8array').then((bytes) => audioBlob(bytes, mediaPath));
         blobCache.set(mediaPath, blobPromise);
       }
 
