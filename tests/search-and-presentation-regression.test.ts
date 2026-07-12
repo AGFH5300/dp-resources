@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const read=(p:string)=>readFileSync(p,'utf8');
+const read = (path: string) => readFileSync(path, 'utf8');
 
-describe('search consistency and PPTX PDF viewer regressions',()=>{
-  it('normalizes filename and MIME separators in the generated search vector without ILIKE fallback',()=>{
-    const sql=read('supabase/migrations/20260707184500_separator_normalized_resource_search_vector.sql');
+describe('search consistency and PPTX viewer regressions', () => {
+  it('normalizes filename and MIME separators in the generated search vector without ILIKE fallback', () => {
+    const sql = read('supabase/migrations/20260707184500_separator_normalized_resource_search_vector.sql');
     expect(sql).not.toMatch(/regexp_replace/i);
     expect(sql).not.toContain('concat_ws');
     expect(sql).toContain('to_tsvector(');
@@ -26,67 +26,67 @@ describe('search consistency and PPTX PDF viewer regressions',()=>{
     expect(sql).toContain('using gin (search_vector)');
     expect(read('supabase/migrations/20260707143000_token_search_resources_rpc.sql')).not.toMatch(/ilike/i);
   });
-  it('global search uses monotonic request ownership, aborts, timeout, and retry without query edits',()=>{
-    const s=read('components/global-search.tsx');
-    expect(s).toContain('requestSeq=useRef(0)');
-    expect(s).toContain('const seq=++requestSeq.current');
-    expect(s).toContain('requestSeq.current!==seq');
-    expect(s).toContain('setTimeout(() => ac.abort');
-    expect(s).toContain('7000');
-    expect(s).toContain('setRetryNonce(n=>n+1)');
-    expect(s).toContain('Search timed out. Please retry.');
+
+  it('global search uses monotonic request ownership, aborts, timeout, and retry without query edits', () => {
+    const source = read('components/global-search.tsx');
+    expect(source).toContain('requestSeq=useRef(0)');
+    expect(source).toContain('const seq=++requestSeq.current');
+    expect(source).toContain('requestSeq.current!==seq');
+    expect(source).toContain('setTimeout(() => ac.abort');
+    expect(source).toContain('7000');
+    expect(source).toContain('setRetryNonce(n=>n+1)');
+    expect(source).toContain('Search timed out. Please retry.');
   });
-  it('PPTX viewer uses browser content endpoint, client renderer, watchdogs, audio extraction, and no server PDF polling',()=>{
-    const s=read('app/resource/[fileId]/resource-preview.tsx');
-    const viewer=s.slice(s.indexOf('function PresentationViewer'), s.indexOf('function PdfViewer'));
-    expect(s).toContain('return <PresentationViewer url={url} fileId={fileId} name={name} />');
-    expect(s).not.toContain('PresentationViewer url={`/api/resource/${fileId}/presentation-pdf`}');
+
+  it('PPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling', () => {
+    const resourcePreview = read('app/resource/[fileId]/resource-preview.tsx');
+    const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
+    expect(resourcePreview).toContain('return <PresentationViewer url={url} fileId={fileId} name={name} />');
+    expect(resourcePreview).not.toContain('PresentationViewer url={`/api/resource/${fileId}/presentation-pdf`}');
     expect(viewer).toContain("fetch(url, { credentials: 'same-origin', signal: controller.signal })");
     expect(viewer).toContain("import('@vue-office/pptx')");
     expect(viewer).toContain("import('vue')");
+    expect(viewer).toContain("import('@/lib/pptx-audio')");
+    expect(viewer).toContain('extractPptxAudioBlobs(buffer)');
     expect(viewer).toContain('AbortController');
     expect(viewer).toContain('60_000');
     expect(viewer).toContain('30_000');
     expect(viewer).toContain('PresentationErrorBoundary');
-    expect(s).toContain('Retry preview');
-    expect(s).toContain('Download presentation');
-    expect(viewer).toContain('extractPptxAudio(buffer)');
-    expect(viewer).toContain('URL.revokeObjectURL');
+    expect(viewer).toContain('Retry preview');
+    expect(viewer).toContain('Download presentation');
+    expect(viewer).toContain('URL.createObjectURL(item.blob)');
+    expect(viewer).toContain('revokeObjectUrls(attemptUrls)');
+    expect(viewer).toContain('mountedApp.unmount()');
     expect(viewer).toContain('DOMPurify.default.sanitize');
     expect(viewer).toContain('noopener noreferrer');
+    expect(viewer).toContain('if (nodes.length === 0)');
     expect(viewer).toContain('slideNodes.current.forEach');
     expect(viewer).not.toContain("import('pdfjs-dist')");
     expect(viewer).not.toContain('res.status === 202');
     expect(viewer).not.toContain('await wait(2000)');
     expect(viewer).not.toContain('<iframe');
   });
-  it('PPTX viewer supports selecting slide 5 and bounded left/right navigation',()=>{
-    const source=read('app/resource/[fileId]/resource-preview.tsx');
-    const compact=source.slice(source.indexOf('function PresentationViewer')).replace(/\s+/g,'');
+
+  it('PPTX viewer supports selecting slides and bounded left/right navigation', () => {
+    const compact = read('app/resource/[fileId]/presentation-viewer.tsx').replace(/\s+/g, '');
     expect(compact).toContain('Array.from({length:pages||1}');
-    expect(compact).toContain('onClick={()=>setPage(n)}');
-    expect(compact).toContain('Math.max(1,p-1)');
-    expect(compact).toContain('Math.min(pages||1,p+1)');
+    expect(compact).toContain('onClick={()=>setPage(slide)}');
+    expect(compact).toContain('Math.max(1,current-1)');
+    expect(compact).toContain('Math.min(pages||1,current+1)');
     expect(compact).toContain('page>=pages');
   });
-  it('legacy server conversion is disabled by default, asynchronous only, guarded, streamed, and authenticated',()=>{
-    const s=read('app/api/resource/[fileId]/presentation-pdf/route.ts');
-    expect(s).toContain("process.env.ENABLE_SERVER_PPTX_CONVERSION==='true'");
-    expect(s).toContain("status:'disabled'");
-    expect(s).toContain("return jsonStatus({status:'disabled'");
-    expect(s).toContain('CONVERSION_TIMEOUT_MS=45_000');
-    expect(s).toContain('CIRCUIT_TTL_MS=30*60*1000');
-    expect(s).toContain('if(inFlight.size>0)');
-    expect(s).toContain('detached:true');
-    expect(s).toContain("process.kill(-pid,'SIGKILL')");
-    expect(s).toContain('await pipeline');
-    expect(s).not.toContain('Buffer.from(await res.arrayBuffer())');
-    expect(s).toContain('startConversionInBackground(fileId,modified)');
-    expect(s).toContain("status:'processing'");
-    expect(s).toContain('202');
-    expect(s).not.toContain('const pdf=await convert(fileId');
-    expect(s).toContain('spawn(command,args');
-    expect(s).toContain('await requireMember()');
-    expect(s).toContain('await assertInsideRoot(fileId)');
+
+  it('permanently disables and removes the server-side PPTX converter', () => {
+    const source = read('app/api/resource/[fileId]/presentation-pdf/route.ts');
+    expect(source).toContain('await requireMember()');
+    expect(source).toContain("status: 'disabled'");
+    expect(source).toContain('status: 410');
+    expect(source).toContain('permanently removed');
+    expect(source).toContain("'cache-control': 'no-store'");
+    expect(source).not.toContain('ENABLE_SERVER_PPTX_CONVERSION');
+    expect(source).not.toContain('spawn');
+    expect(source).not.toContain('soffice');
+    expect(source).not.toContain('libreoffice');
+    expect(source).not.toContain('startConversionInBackground');
   });
 });
