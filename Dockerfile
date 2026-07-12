@@ -31,17 +31,9 @@ ENV NODE_ENV=production \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      libreoffice \
-      libreoffice-impress \
       fonts-dejavu \
       fonts-liberation \
       fontconfig \
-      dbus \
-      libxinerama1 \
-      libxrender1 \
-      libxt6 \
-      libgl1 \
-      libglib2.0-0 \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

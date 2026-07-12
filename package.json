@@ -15,7 +15,9 @@
     "@radix-ui/react-select": "^2.3.2",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
+    "@vue-office/pptx": "^1.0.1",
     "docx-preview": "^0.3.7",
+    "dompurify": "^3.4.12",
     "fast-glob": "^3.3.3",
     "googleapis": "^173.0.0",
     "jszip": "^3.10.1",
@@ -25,7 +27,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "vue": "^3.5.39",
+    "vue-demi": "^0.14.10"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.10",

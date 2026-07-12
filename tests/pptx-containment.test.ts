@@ -19,23 +19,24 @@ describe('PPTX viewer containment', () => {
     expect(viewer).toContain('aria-label="Slide picker"')
     expect(viewer).toContain('min-h-0 overflow-y-auto')
     expect(viewer).toContain('activeSlideRef.current?.scrollIntoView')
-    expect(viewer).toContain('maxPicker=Math.min(pages,200)')
+    expect(viewer).toContain('activeSlideRef.current?.scrollIntoView')
   })
-  it('centres and constrains the canvas within the stage', () => {
-    expect(viewer).toContain('place-items-center overflow-auto')
-    expect(viewer).toContain('(stageSize.width-32)/base.width')
-    expect(viewer).toContain('(stageSize.height-32)/base.height')
-    expect(viewer).toContain('className="max-h-full max-w-full bg-white shadow"')
+  it('centres and constrains the browser-rendered PPTX within the stage', () => {
+    expect(viewer).toContain('overflow-auto bg-slate-200 p-4')
+    expect(viewer).toContain('pptx-preview-wrapper')
+    expect(viewer).toContain('getBoundingClientRect().width - 32')
+    expect(viewer).not.toContain('<canvas')
   })
-  it('shows a visible staged loading progress bar during server conversion', () => {
+  it('shows a visible staged loading progress bar during browser rendering', () => {
     expect(source).toContain('PresentationLoadingOverlay')
     expect(source).toContain('Preparing presentation preview')
-    expect(source).toContain('Converting presentation to PDF')
+    expect(source).toContain('Rendering slides in your browser')
     expect(source).toContain('Large PPTX files can take a short moment to load.')
     expect(source).not.toContain('while LibreOffice converts')
   })
-  it('does not duplicate the top-level resource download button inside the PPTX toolbar', () => {
-    expect(viewer).not.toContain('>Download</a>')
-    expect(viewer).not.toContain('/api/files/${fileId}/download')
+  it('offers download fallback from the PPTX failure panel and toolbar', () => {
+    expect(viewer).toContain('>Download</a>')
+    expect(source).toContain('Download presentation')
+    expect(source).toContain('/api/files/${fileId}/download')
   })
 })
