@@ -68,16 +68,21 @@ describe('search consistency and PPTX viewer regressions', () => {
 
   it('PPTX loading reports real bytes, total size, and download ETA without inventing a rendering ETA', () => {
     const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
+    const contentRoute = read('app/api/resource/[fileId]/content/route.ts');
     expect(viewer).toContain('readResponseWithProgress(response');
     expect(viewer).toContain('loaded += value.byteLength');
     expect(viewer).toContain('onProgress(loaded, total, etaSeconds)');
     expect(viewer).toContain('setDownloadedBytes(loaded)');
     expect(viewer).toContain('setDownloadTotal(total)');
     expect(viewer).toContain('setDownloadEtaSeconds(etaSeconds)');
+    expect(viewer).toContain("response.headers.get('x-file-size')");
     expect(viewer).toContain('Total size: ${formatBytes(downloadTotal)}');
     expect(viewer).toContain('smoothedBytesPerSecond');
     expect(viewer).toContain('setRenderedSlides(root.current.querySelectorAll');
-    expect(viewer).toContain('Slide rendering does not expose a reliable ETA');
+    expect(viewer).toContain('Download progress reflects the actual presentation bytes received.');
+    expect(viewer).toContain('Slide rendering does not expose a percentage');
+    expect(viewer).not.toContain('The ETA is based on the recent download speed');
+    expect(contentRoute).toContain("'x-file-size': String(meta.size)");
     expect(viewer).not.toContain('progress={pages ? 100 : 45}');
   });
 
