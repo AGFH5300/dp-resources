@@ -36,7 +36,7 @@ function PresentationLoadingOverlay({ phase, downloadedBytes, downloadTotal, dow
     ? downloadEtaSeconds !== null ? `${formatEta(downloadEtaSeconds)} remaining` : 'Estimating time remaining…'
     : 'Rendering time varies by presentation';
 
-  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{downloadPercent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${downloadPercent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-600"><span>{downloadTotal ? `Total size: ${formatBytes(downloadTotal)}` : 'Total size: calculating…'}</span><span>{etaLabel}</span></div><p className="mt-3 text-xs leading-5 text-slate-500">{phase === 'download' ? 'The ETA is based on the recent download speed and may adjust as the connection changes.' : 'Slide rendering does not expose a reliable ETA, so the live slide count is shown instead.'}</p></div></div>;
+  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{downloadPercent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${downloadPercent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-600"><span>{downloadTotal ? `Total size: ${formatBytes(downloadTotal)}` : 'Total size: calculating…'}</span><span>{etaLabel}</span></div><p className="mt-3 text-xs leading-5 text-slate-500">{phase === 'download' ? 'Download progress reflects the actual presentation bytes received.' : 'Slide rendering does not expose a percentage, so the live slide count is shown instead.'}</p></div></div>;
 }
 
 function PresentationFallbackPanel({ fileId, onRetry }: { fileId: string; onRetry: () => void }) {
@@ -68,12 +68,19 @@ function showOnlyActiveSlide(slides: HTMLElement[], activePage: number) {
   });
 }
 
-async function readResponseWithProgress(response: Response, onProgress: (loaded: number, total: number | null, etaSeconds: number | null) => void) {
+function responseTotalBytes(response: Response) {
+  const explicitFileSize = Number(response.headers.get('x-file-size'));
+  if (Number.isFinite(explicitFileSize) && explicitFileSize > 0) return explicitFileSize;
+
   const contentLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > 0) return contentLength;
+
   const contentRangeTotal = Number(response.headers.get('content-range')?.match(/\/(\d+)$/)?.[1]);
-  const total = Number.isFinite(contentLength) && contentLength > 0
-    ? contentLength
-    : Number.isFinite(contentRangeTotal) && contentRangeTotal > 0 ? contentRangeTotal : null;
+  return Number.isFinite(contentRangeTotal) && contentRangeTotal > 0 ? contentRangeTotal : null;
+}
+
+async function readResponseWithProgress(response: Response, onProgress: (loaded: number, total: number | null, etaSeconds: number | null) => void) {
+  const total = responseTotalBytes(response);
 
   onProgress(0, total, null);
 
