@@ -38,14 +38,25 @@ describe('PPTX viewer containment', () => {
     expect(viewer).not.toContain('<canvas');
   });
 
-  it('uses actual byte progress and an honest live rendered-slide count', () => {
+  it('uses actual byte progress, total file size, a smoothed download ETA, and an honest rendered-slide count', () => {
     expect(viewer).toContain('readResponseWithProgress');
     expect(viewer).toContain("response.headers.get('content-length')");
-    expect(viewer).toContain('Download progress reflects the actual presentation bytes received.');
-    expect(viewer).toContain('Slide rendering does not expose a percentage');
+    expect(viewer).toContain("response.headers.get('content-range')");
+    expect(viewer).toContain('Total size: ${formatBytes(downloadTotal)}');
+    expect(viewer).toContain('function formatEta');
+    expect(viewer).toContain('smoothedBytesPerSecond');
+    expect(viewer).toContain('instantBytesPerSecond');
+    expect(viewer).toContain('downloadEtaSeconds');
+    expect(viewer).toContain('The ETA is based on the recent download speed');
+    expect(viewer).toContain('Slide rendering does not expose a reliable ETA');
     expect(viewer).toContain('MutationObserver');
     expect(viewer).toContain("querySelectorAll('.pptx-preview-slide-wrapper').length");
     expect(viewer).not.toContain('progress={pages ? 100 : 45}');
+  });
+
+  it('does not claim a rendering ETA that the third-party renderer cannot provide', () => {
+    expect(viewer).toContain('Rendering time varies by presentation');
+    expect(viewer).not.toContain('estimated rendering time');
   });
 
   it('removes literal undefined text created by the third-party renderer', () => {
