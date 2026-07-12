@@ -13,7 +13,17 @@ function formatBytes(bytes: number) {
   return `${megabytes >= 10 ? megabytes.toFixed(1) : megabytes.toFixed(2)} MB`;
 }
 
-function PresentationLoadingOverlay({ phase, downloadedBytes, downloadTotal, renderedSlides }: { phase: LoadingPhase; downloadedBytes: number; downloadTotal: number | null; renderedSlides: number }) {
+function formatEta(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 1) return 'Less than 1 sec';
+  const rounded = Math.ceil(seconds);
+  if (rounded < 60) return `About ${rounded} sec`;
+  const minutes = Math.floor(rounded / 60);
+  const remainingSeconds = rounded % 60;
+  if (remainingSeconds === 0) return `About ${minutes} min`;
+  return `About ${minutes} min ${remainingSeconds} sec`;
+}
+
+function PresentationLoadingOverlay({ phase, downloadedBytes, downloadTotal, downloadEtaSeconds, renderedSlides }: { phase: LoadingPhase; downloadedBytes: number; downloadTotal: number | null; downloadEtaSeconds: number | null; renderedSlides: number }) {
   const hasDownloadTotal = phase === 'download' && downloadTotal !== null && downloadTotal > 0;
   const downloadPercent = hasDownloadTotal ? Math.min(100, Math.round((downloadedBytes / downloadTotal) * 100)) : null;
   const badge = phase === 'download'
@@ -22,8 +32,11 @@ function PresentationLoadingOverlay({ phase, downloadedBytes, downloadTotal, ren
   const status = phase === 'download'
     ? downloadTotal ? `Downloaded ${formatBytes(downloadedBytes)} of ${formatBytes(downloadTotal)}` : `Downloaded ${formatBytes(downloadedBytes)}`
     : renderedSlides > 0 ? `Built ${renderedSlides} slide${renderedSlides === 1 ? '' : 's'} so far…` : 'Building slide layout in your browser…';
+  const etaLabel = phase === 'download'
+    ? downloadEtaSeconds !== null ? `${formatEta(downloadEtaSeconds)} remaining` : 'Estimating time remaining…'
+    : 'Rendering time varies by presentation';
 
-  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{downloadPercent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${downloadPercent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><p className="mt-3 text-xs leading-5 text-slate-500">{phase === 'download' ? 'Download progress reflects the actual presentation bytes received.' : 'Slide rendering does not expose a percentage, so the live slide count is shown instead.'}</p></div></div>;
+  return <div className="absolute inset-0 z-10 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading presentation preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing presentation preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{downloadPercent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${downloadPercent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-600"><span>{downloadTotal ? `Total size: ${formatBytes(downloadTotal)}` : 'Total size: calculating…'}</span><span>{etaLabel}</span></div><p className="mt-3 text-xs leading-5 text-slate-500">{phase === 'download' ? 'The ETA is based on the recent download speed and may adjust as the connection changes.' : 'Slide rendering does not expose a reliable ETA, so the live slide count is shown instead.'}</p></div></div>;
 }
 
 function PresentationFallbackPanel({ fileId, onRetry }: { fileId: string; onRetry: () => void }) {
@@ -55,19 +68,52 @@ function showOnlyActiveSlide(slides: HTMLElement[], activePage: number) {
   });
 }
 
-async function readResponseWithProgress(response: Response, onProgress: (loaded: number, total: number | null) => void) {
+async function readResponseWithProgress(response: Response, onProgress: (loaded: number, total: number | null, etaSeconds: number | null) => void) {
   const contentLength = Number(response.headers.get('content-length'));
-  const total = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null;
+  const contentRangeTotal = Number(response.headers.get('content-range')?.match(/\/(\d+)$/)?.[1]);
+  const total = Number.isFinite(contentLength) && contentLength > 0
+    ? contentLength
+    : Number.isFinite(contentRangeTotal) && contentRangeTotal > 0 ? contentRangeTotal : null;
+
+  onProgress(0, total, null);
 
   if (!response.body) {
     const buffer = await response.arrayBuffer();
-    onProgress(buffer.byteLength, total ?? buffer.byteLength);
+    onProgress(buffer.byteLength, total ?? buffer.byteLength, 0);
     return buffer;
   }
 
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
+  const startedAt = Date.now();
   let loaded = 0;
+  let lastSampleAt = startedAt;
+  let lastSampleLoaded = 0;
+  let lastUpdateAt = 0;
+  let smoothedBytesPerSecond = 0;
+
+  const reportProgress = (force = false) => {
+    const now = Date.now();
+    const sampleSeconds = (now - lastSampleAt) / 1000;
+    if (sampleSeconds >= 0.25) {
+      const instantBytesPerSecond = (loaded - lastSampleLoaded) / sampleSeconds;
+      if (instantBytesPerSecond > 0) {
+        smoothedBytesPerSecond = smoothedBytesPerSecond > 0
+          ? (smoothedBytesPerSecond * 0.7) + (instantBytesPerSecond * 0.3)
+          : instantBytesPerSecond;
+      }
+      lastSampleAt = now;
+      lastSampleLoaded = loaded;
+    }
+
+    if (!force && now - lastUpdateAt < 100) return;
+    const hasStableEstimate = total !== null && smoothedBytesPerSecond > 0 && now - startedAt >= 500;
+    const etaSeconds = hasStableEstimate && loaded < total
+      ? Math.max(1, Math.ceil((total - loaded) / smoothedBytesPerSecond))
+      : loaded >= (total ?? Number.POSITIVE_INFINITY) ? 0 : null;
+    onProgress(loaded, total, etaSeconds);
+    lastUpdateAt = now;
+  };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -75,9 +121,10 @@ async function readResponseWithProgress(response: Response, onProgress: (loaded:
     if (!value) continue;
     chunks.push(value);
     loaded += value.byteLength;
-    onProgress(loaded, total);
+    reportProgress();
   }
 
+  reportProgress(true);
   const combined = new Uint8Array(loaded);
   let offset = 0;
   for (const chunk of chunks) {
@@ -114,6 +161,7 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
   const [loadingPhase, setLoadingPhase] = useState<LoadingPhase>('download');
   const [downloadedBytes, setDownloadedBytes] = useState(0);
   const [downloadTotal, setDownloadTotal] = useState<number | null>(null);
+  const [downloadEtaSeconds, setDownloadEtaSeconds] = useState<number | null>(null);
   const [renderedSlides, setRenderedSlides] = useState(0);
   const [audioBySlide, setAudioBySlide] = useState<AudioBySlide>({});
 
@@ -134,6 +182,7 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
     setLoadingPhase('download');
     setDownloadedBytes(0);
     setDownloadTotal(null);
+    setDownloadEtaSeconds(null);
     setRenderedSlides(0);
     setPages(0);
     setPage(1);
@@ -215,14 +264,16 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
         downloadTimer = setTimeout(() => controller.abort(), 60_000);
         const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal });
         if (!response.ok) throw new Error(`Presentation download failed (${response.status})`);
-        const buffer = await readResponseWithProgress(response, (loaded, total) => {
+        const buffer = await readResponseWithProgress(response, (loaded, total, etaSeconds) => {
           if (stopped) return;
           setDownloadedBytes(loaded);
           setDownloadTotal(total);
+          setDownloadEtaSeconds(etaSeconds);
         });
         if (stopped) return;
         if (downloadTimer) clearTimeout(downloadTimer);
         downloadTimer = undefined;
+        setDownloadEtaSeconds(null);
         setLoadingPhase('render');
 
         const [{ default: VueOfficePptx }, { createApp }, DOMPurify] = await rendererModulesPromise;
@@ -305,5 +356,5 @@ function PresentationViewerInner({ url, fileId, name, attempt, onRetry }: { url:
   if (failed) return <PresentationFallbackPanel fileId={fileId} onRetry={onRetry} />;
 
   const audios = audioBySlide[page] || [];
-  return <section ref={wrap} className="flex h-[min(78dvh,calc(100dvh-9rem))] min-h-[520px] flex-col overflow-hidden bg-slate-100"><header className="shrink-0 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronLeft className="size-4" /></button><span className="text-sm text-slate-600">Slide {page} of {pages || '…'}</span><button type="button" disabled={!pages || page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))} aria-label="Next slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronRight className="size-4" /></button><a className="rounded border px-2 py-1 text-sm" href={`/api/files/${fileId}/download`}>Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border px-2 py-1 text-sm"><Expand className="size-4" />Full screen</button></header><div className="grid min-h-0 flex-1 grid-cols-[112px_minmax(0,1fr)] overflow-hidden"><aside aria-label="Slide picker" className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white p-2">{Array.from({ length: pages || 1 }, (_, index) => index + 1).map((slide) => <button ref={slide === page ? activeSlideRef : null} type="button" key={slide} disabled={!pages} onClick={() => setPage(slide)} className={`mb-2 w-full rounded border p-2 text-xs ${slide === page ? 'border-amber-300 bg-amber-50 text-[color:var(--dp-navy)]' : 'border-slate-200 hover:bg-slate-50'}`}>Slide {slide}</button>)}</aside><div ref={stage} className="relative min-h-0 overflow-auto bg-slate-200 p-4">{loading && <PresentationLoadingOverlay phase={loadingPhase} downloadedBytes={downloadedBytes} downloadTotal={downloadTotal} renderedSlides={renderedSlides} />}<div ref={root} aria-label={name} className="mx-auto min-h-full max-w-full [&_.pptx-preview-wrapper]:!max-w-full" />{audios.length > 0 && <div className="sticky bottom-3 mx-auto mt-3 max-w-3xl rounded-lg border border-slate-200 bg-white/95 p-3 shadow"><p className="mb-2 text-xs font-semibold text-slate-600">Embedded audio for slide {page}</p>{audios.map((audio) => <audio key={audio.url} controls preload="metadata" src={audio.url} aria-label={audio.name} className="mb-2 w-full last:mb-0" />)}</div>}</div></div></section>;
+  return <section ref={wrap} className="flex h-[min(78dvh,calc(100dvh-9rem))] min-h-[520px] flex-col overflow-hidden bg-slate-100"><header className="shrink-0 flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} aria-label="Previous slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronLeft className="size-4" /></button><span className="text-sm text-slate-600">Slide {page} of {pages || '…'}</span><button type="button" disabled={!pages || page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))} aria-label="Next slide" className="rounded border px-2 py-1 disabled:opacity-40"><ChevronRight className="size-4" /></button><a className="rounded border px-2 py-1 text-sm" href={`/api/files/${fileId}/download`}>Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border px-2 py-1 text-sm"><Expand className="size-4" />Full screen</button></header><div className="grid min-h-0 flex-1 grid-cols-[112px_minmax(0,1fr)] overflow-hidden"><aside aria-label="Slide picker" className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white p-2">{Array.from({ length: pages || 1 }, (_, index) => index + 1).map((slide) => <button ref={slide === page ? activeSlideRef : null} type="button" key={slide} disabled={!pages} onClick={() => setPage(slide)} className={`mb-2 w-full rounded border p-2 text-xs ${slide === page ? 'border-amber-300 bg-amber-50 text-[color:var(--dp-navy)]' : 'border-slate-200 hover:bg-slate-50'}`}>Slide {slide}</button>)}</aside><div ref={stage} className="relative min-h-0 overflow-auto bg-slate-200 p-4">{loading && <PresentationLoadingOverlay phase={loadingPhase} downloadedBytes={downloadedBytes} downloadTotal={downloadTotal} downloadEtaSeconds={downloadEtaSeconds} renderedSlides={renderedSlides} />}<div ref={root} aria-label={name} className="mx-auto min-h-full max-w-full [&_.pptx-preview-wrapper]:!max-w-full" />{audios.length > 0 && <div className="sticky bottom-3 mx-auto mt-3 max-w-3xl rounded-lg border border-slate-200 bg-white/95 p-3 shadow"><p className="mb-2 text-xs font-semibold text-slate-600">Embedded audio for slide {page}</p>{audios.map((audio) => <audio key={audio.url} controls preload="metadata" src={audio.url} aria-label={audio.name} className="mb-2 w-full last:mb-0" />)}</div>}</div></div></section>;
 }
