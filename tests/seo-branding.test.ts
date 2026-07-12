@@ -35,6 +35,15 @@ describe('SEO and branding assets', () => {
     expect(manifest).not.toContain("src: '/apple-icon'")
   })
 
+  it('keeps cached legacy icon URLs working through redirects', () => {
+    for (const route of ['app/icon/route.ts', 'app/apple-icon/route.ts']) {
+      expect(existsSync(route)).toBe(true)
+      const source = read(route)
+      expect(source).toContain("new URL('/brand/dp-favicon.png', request.url)")
+      expect(source).toContain('307')
+    }
+  })
+
   it('keeps only public pages in the sitemap and blocks private app routes in robots', () => {
     const sitemap = read('app/sitemap.ts')
     const robots = read('app/robots.ts')
