@@ -2,7 +2,12 @@ import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, isDriveConfigured } from '@/lib/drive';
 import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { recordFileOpenedOnce } from '@/lib/activity';
-import { createPdfPreviewSession } from '@/lib/pdf-preview-session';
+import {
+  createPdfPreviewSession,
+  PDF_PREVIEW_SESSION_TTL_SECONDS,
+  pdfPreviewSessionCookieName,
+  pdfPreviewSessionCookiePath,
+} from '@/lib/pdf-preview-session';
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -46,14 +51,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
     fileName: meta.name,
   }).catch(() => undefined);
 
+  const cookie = [
+    `${pdfPreviewSessionCookieName(fileId)}=${session.token}`,
+    `Path=${pdfPreviewSessionCookiePath(fileId)}`,
+    `Max-Age=${PDF_PREVIEW_SESSION_TTL_SECONDS}`,
+    'HttpOnly',
+    'SameSite=Lax',
+    process.env.NODE_ENV === 'production' ? 'Secure' : '',
+  ].filter(Boolean).join('; ');
+
   return Response.json({
-    token: session.token,
     expiresAt: session.expiresAt,
     size,
-    url: `/api/resource/${encodeURIComponent(fileId)}/pdf-content`,
+    url: pdfPreviewSessionCookiePath(fileId),
   }, {
     headers: {
       'cache-control': 'private, no-store',
+      'set-cookie': cookie,
       'x-content-type-options': 'nosniff',
     },
   });
