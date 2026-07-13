@@ -4,6 +4,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { renderAsync } from 'docx-preview';
 import { Expand, ZoomIn, ZoomOut } from 'lucide-react';
 import { getResourceCapability } from '@/lib/resource-capabilities';
+import { PdfViewer } from './pdf-viewer';
 import { PresentationViewer } from './presentation-viewer';
 
 const WorkbookPreview = dynamic(() => import('./xlsx-preview').then(m => m.WorkbookPreview), { ssr: false, loading: () => <PreviewLoading /> });
@@ -98,31 +99,3 @@ const DocxPreview = memo(function DocxPreview({ url }: { url: string }) {
   }, [url]);
   return <section className="min-h-[75vh] overflow-auto border-y border-slate-200 bg-slate-100 p-4">{loading && <div className="mx-auto max-w-5xl space-y-3" aria-label="Loading Word document preview"><div className="h-6 w-1/3 animate-pulse rounded bg-slate-200" /><div className="h-[68vh] animate-pulse rounded bg-white shadow-sm" /></div>}{error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}<div ref={ref} className="mx-auto max-w-5xl [&_.docx-wrapper]:bg-slate-100 [&_.docx-wrapper]:p-0 [&_.docx]:shadow-sm" /></section>;
 });
-
-function PdfViewer({ url, fileId, name }: { url: string; fileId: string; name: string }) {
-  const [blobUrl, setBlobUrl] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl = '';
-    (async () => {
-      try {
-        setLoading(true); setError('');
-        const res = await fetch(url, { credentials: 'same-origin' });
-        const type = res.headers.get('content-type') || '';
-        if (!res.ok || !type.includes('pdf')) throw new Error('PDF preview failed');
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (!cancelled) setBlobUrl(objectUrl);
-      } catch {
-        if (!cancelled) setError('PDF preview failed. You can still download the file.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [url]);
-  if (error) return <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-semibold">{error}</p><a className="mt-3 inline-flex rounded-md bg-[color:var(--dp-navy)] px-3 py-2 text-white" href={`/api/files/${fileId}/download`}>Download</a></div>;
-  return <div className="relative min-h-[75vh] border-y border-slate-200 bg-white">{loading && <div className="absolute inset-0 grid place-items-center bg-white"><div className="size-8 animate-spin rounded-full border-2 border-slate-200 border-t-[color:var(--dp-navy)]" aria-label="Loading PDF" /></div>}{blobUrl && <iframe title={name} src={blobUrl} className="h-[75vh] w-full bg-white" />}</div>;
-}
