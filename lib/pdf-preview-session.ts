@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export type PdfPreviewSessionPayload = {
   version: 1;
@@ -16,7 +16,16 @@ export type PdfPreviewSessionPayload = {
 
 type NewPdfPreviewSession = Omit<PdfPreviewSessionPayload, 'version' | 'audience' | 'expiresAt'>;
 
-const SESSION_TTL_SECONDS = 2 * 60 * 60;
+export const PDF_PREVIEW_SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+export function pdfPreviewSessionCookieName(fileId: string) {
+  const suffix = createHash('sha256').update(fileId).digest('hex').slice(0, 20);
+  return `dp_pdf_${suffix}`;
+}
+
+export function pdfPreviewSessionCookiePath(fileId: string) {
+  return `/api/resource/${encodeURIComponent(fileId)}/pdf-content`;
+}
 
 function signingSecret() {
   const secret = process.env.PDF_PREVIEW_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -33,7 +42,7 @@ export function createPdfPreviewSession(input: NewPdfPreviewSession, nowMs = Dat
     version: 1,
     audience: 'pdf-preview',
     ...input,
-    expiresAt: Math.floor(nowMs / 1000) + SESSION_TTL_SECONDS,
+    expiresAt: Math.floor(nowMs / 1000) + PDF_PREVIEW_SESSION_TTL_SECONDS,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = signatureFor(encodedPayload).toString('base64url');
