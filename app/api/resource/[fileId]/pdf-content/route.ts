@@ -1,5 +1,8 @@
 import { fetchDriveMediaResponse } from '@/lib/media-range';
-import { verifyPdfPreviewSession } from '@/lib/pdf-preview-session';
+import {
+  pdfPreviewSessionCookieName,
+  verifyPdfPreviewSession,
+} from '@/lib/pdf-preview-session';
 import { parseSingleByteRange } from '@/lib/range-requests';
 
 export const runtime = 'nodejs';
@@ -7,15 +10,29 @@ export const dynamic = 'force-dynamic';
 
 const MAX_RANGE_BYTES = 32 * 1024 * 1024;
 
+function cookieValue(req: Request, name: string) {
+  const raw = req.headers.get('cookie');
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const trimmed = part.trim();
+    const separator = trimmed.indexOf('=');
+    if (separator <= 0) continue;
+    if (trimmed.slice(0, separator) === name) return trimmed.slice(separator + 1) || null;
+  }
+  return null;
+}
+
 function sessionFrom(req: Request, fileId: string) {
-  return verifyPdfPreviewSession(req.headers.get('x-dp-pdf-session'), fileId);
+  const headerToken = req.headers.get('x-dp-pdf-session');
+  const cookieToken = cookieValue(req, pdfPreviewSessionCookieName(fileId));
+  return verifyPdfPreviewSession(headerToken || cookieToken, fileId);
 }
 
 function baseHeaders(size: number) {
   return new Headers({
     'accept-ranges': 'bytes',
     'cache-control': 'private, max-age=300, must-revalidate',
-    'vary': 'x-dp-pdf-session, range',
+    vary: 'Cookie, Range',
     'x-content-type-options': 'nosniff',
     'x-file-size': String(size),
   });
@@ -62,6 +79,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   if (!headers.get('content-disposition')) headers.set('content-disposition', `inline; filename="${session.fileName.replace(/["\\]/g, '_')}"`);
   if (!requestedRange && !headers.get('content-length')) headers.set('content-length', String(session.size));
 
-  const status = rangeHeader && headers.get('content-range') ? 206 : upstream.status;
-  return new Response(upstream.body, { status, headers });
+  if (rangeHeader && (upstream.status !== 206 || !headers.get('content-range'))) {
+    console.error('Google Drive ignored a PDF byte range', {
+      fileId,
+      requestedRange: rangeHeader,
+      upstreamStatus: upstream.status,
+      upstreamContentRange: headers.get('content-range'),
+    });
+    return new Response('PDF range request was not honored', { status: 502, headers: baseHeaders(session.size) });
+  }
+
+  return new Response(upstream.body, { status: upstream.status, headers });
 }
