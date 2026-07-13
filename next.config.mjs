@@ -32,15 +32,15 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: '/(.*)',
+        headers: pageSecurityHeaders,
+      },
+      {
         source: '/api/:path*',
         headers: [
           ...apiSecurityHeaders,
           { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
         ],
-      },
-      {
-        source: '/(.*)',
-        headers: pageSecurityHeaders,
       },
     ];
   },
