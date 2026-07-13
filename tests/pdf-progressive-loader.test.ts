@@ -31,15 +31,16 @@ describe('progressive PDF preview', () => {
     expect(token).toContain('timingSafeEqual');
   });
 
-  it('streams normal large PDFs and uses larger range chunks', () => {
+  it('uses range-only loading so large PDFs open before the full file downloads', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
-    expect(viewer).toContain('STREAMING_LIMIT = 128 * 1024 * 1024');
-    expect(viewer).toContain('DEFAULT_RANGE_CHUNK = 8 * 1024 * 1024');
-    expect(viewer).toContain('LARGE_RANGE_CHUNK = 16 * 1024 * 1024');
-    expect(viewer).toContain('disableStream: rangeOnly');
-    expect(viewer).toContain('disableAutoFetch: rangeOnly');
+    expect(viewer).toContain('DEFAULT_RANGE_CHUNK = 2 * 1024 * 1024');
+    expect(viewer).toContain('LARGE_RANGE_CHUNK = 4 * 1024 * 1024');
+    expect(viewer).toContain('disableRange: false');
+    expect(viewer).toContain('disableStream: true');
+    expect(viewer).toContain('disableAutoFetch: true');
     expect(viewer).toContain('loadingTask.onProgress');
-    expect(viewer).not.toContain('rangeChunkSize: 2 * 1024 * 1024');
+    expect(viewer).not.toContain('STREAMING_LIMIT');
+    expect(viewer).not.toContain('disableStream: rangeOnly');
   });
 
   it('publishes the PDF.js WASM, CMap, font, and ICC runtime assets', () => {
@@ -71,10 +72,11 @@ describe('progressive PDF preview', () => {
 
   it('uses concise user-facing loading copy without implementation details', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
-    expect(viewer).toContain('Download progress reflects the actual PDF bytes received.');
-    expect(viewer).toContain('Pages appear as they become ready.');
+    expect(viewer).toContain('Pages load as you scroll');
+    expect(viewer).toContain('Loading the first pages…');
     expect(viewer).not.toContain('Authentication and file validation happen once');
     expect(viewer).not.toContain('short-lived signed session');
+    expect(viewer).not.toContain('Download progress reflects the actual PDF bytes received.');
   });
 
   it('caps signed range size and keeps sessions short-lived and file-specific', () => {
