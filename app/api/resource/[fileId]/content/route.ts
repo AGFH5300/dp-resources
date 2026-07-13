@@ -2,7 +2,7 @@ import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, safeDownloadName } from '@/lib/drive';
 import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { fetchDriveMediaResponse } from '@/lib/media-range';
-import { recordActivity } from '@/lib/activity';
+import { recordFileOpenedOnce } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
 import { needsRangeSupport } from '@/lib/resource-capabilities';
 import { ifRangeMatches, parseSingleByteRange } from '@/lib/range-requests';
@@ -17,7 +17,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const authMs = nowMs() - authStart;
   if (!isDriveConfigured()) return new Response('Resources are not yet available', { status: 503 });
   const { fileId } = await params;
-  const limited = await rateLimit(privacySafeRequestKey(req, 'resource-content'), 120, 10 * 60 * 1000, 'resource-content');
+  const requestedRange = req.headers.get('range');
+  const isRangeRequest = Boolean(requestedRange);
+  const rateScope = isRangeRequest ? 'resource-content-range' : 'resource-content';
+  const limited = await rateLimit(
+    privacySafeRequestKey(req, rateScope),
+    isRangeRequest ? 600 : 120,
+    10 * 60 * 1000,
+    rateScope,
+  );
   if (!limited.ok) return new Response('Too many requests. Please try again later.', { status: 429 });
   const validateStart = nowMs();
   const indexedMeta = await getIndexedResourceShell(fileId);
@@ -34,7 +42,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     'x-file-size': String(meta.size),
   });
   const rangeCapable = needsRangeSupport(meta.mimeType, meta.name);
-  const requestedRange = req.headers.get('range');
   const rangeDecision = requestedRange && rangeCapable ? parseSingleByteRange(requestedRange, meta.size) : { kind: 'none' as const };
   if (rangeDecision.kind === 'invalid') {
     headers.set('content-range', `bytes */${rangeDecision.total}`);
@@ -42,22 +49,32 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     return new Response(null, { status: 416, headers });
   }
   const shouldServeRange = rangeDecision.kind === 'range' && ifRangeMatches(req.headers.get('if-range'), etag);
+  const auditOpen = () => recordFileOpenedOnce(req, {
+    userId: user.id,
+    userEmail: user.email!,
+    fileId,
+    fileName: meta.name,
+  }).catch(() => undefined);
   if (requestedRange && rangeDecision.kind === 'range' && rangeCapable && shouldServeRange) {
     const native = await fetchDriveMediaResponse(fileId, meta.mimeType, meta.name, rangeDecision.header).catch(() => null);
     if (!native) return new Response('Unable to retrieve this file', { status: 502 });
+    auditOpen();
     const nativeHeaders = new Headers(native.headers);
     nativeHeaders.set('x-file-size', String(meta.size));
     if (!nativeHeaders.get('content-range')) return new Response(native.body, { status: 200, headers: nativeHeaders });
     return native.status === 206 ? new Response(native.body, { status: 206, headers: nativeHeaders }) : new Response(native.body, { status: native.status, headers: nativeHeaders });
   }
-  if (!requestedRange && req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+  if (!requestedRange && req.headers.get('if-none-match') === etag) {
+    auditOpen();
+    return new Response(null, { status: 304, headers });
+  }
   const streamStart = nowMs();
   const media = await getDriveStream(fileId, meta.mimeType, shouldServeRange ? rangeDecision.header : undefined).catch(() => null);
   if (!media) return new Response('Unable to retrieve this file', { status: 502 });
   if ('unavailable' in media) return new Response('Preview is unavailable for this Google Workspace file type.', { status: 415 });
   const streamMs = nowMs() - streamStart;
   devTiming('resource.content', { authMs, validateMs, streamMs });
-  recordActivity({ userId: user.id, userEmail: user.email!, fileId, fileName: meta.name, action: 'file_opened' }).catch(() => undefined);
+  auditOpen();
   headers.set('content-type', media.contentType);
   const mediaHeaders = media.headers || {};
   const contentRange = mediaHeaders['content-range'];
