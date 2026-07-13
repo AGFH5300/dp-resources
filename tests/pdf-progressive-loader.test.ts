@@ -42,12 +42,47 @@ describe('progressive PDF preview', () => {
     expect(viewer).not.toContain('rangeChunkSize: 2 * 1024 * 1024');
   });
 
+  it('publishes the PDF.js WASM, CMap, font, and ICC runtime assets', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    const copier = read('scripts/copy-pdfjs-assets.mjs');
+    const packageJson = read('package.json');
+
+    expect(viewer).toContain("wasmUrl: `${PDF_ASSET_ROOT}/wasm/`");
+    expect(viewer).toContain("standardFontDataUrl: `${PDF_ASSET_ROOT}/standard_fonts/`");
+    expect(viewer).toContain("cMapUrl: `${PDF_ASSET_ROOT}/cmaps/`");
+    expect(viewer).toContain("iccUrl: `${PDF_ASSET_ROOT}/iccs/`");
+    expect(viewer).toContain('useWasm: true');
+    for (const directory of ['wasm', 'standard_fonts', 'cmaps', 'iccs']) expect(copier).toContain(`'${directory}'`);
+    expect(packageJson).toContain('npm run prepare:pdfjs && next build');
+  });
+
+  it('renders a continuous vertical document and lazily keeps nearby pages active', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    expect(viewer).toContain('function ContinuousPdfPage');
+    expect(viewer).toContain("rootMargin: '1400px 0px'");
+    expect(viewer).toContain('pageNumbers.map');
+    expect(viewer).toContain('nearbyPages.has(pageNumber)');
+    expect(viewer).not.toContain('Previous PDF page');
+    expect(viewer).not.toContain('Next PDF page');
+    expect(viewer).not.toContain('PDF page number');
+    expect(viewer).not.toContain('ChevronLeft');
+    expect(viewer).not.toContain('ChevronRight');
+  });
+
+  it('uses concise user-facing loading copy without implementation details', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    expect(viewer).toContain('Download progress reflects the actual PDF bytes received.');
+    expect(viewer).toContain('Pages appear as they become ready.');
+    expect(viewer).not.toContain('Authentication and file validation happen once');
+    expect(viewer).not.toContain('short-lived signed session');
+  });
+
   it('caps signed range size and keeps sessions short-lived and file-specific', () => {
     const route = read('app/api/resource/[fileId]/pdf-content/route.ts');
     const token = read('lib/pdf-preview-session.ts');
     expect(route).toContain('MAX_RANGE_BYTES = 32 * 1024 * 1024');
     expect(route).toContain("req.headers.get('x-dp-pdf-session')");
-    expect(token).toContain("payload.fileId !== expectedFileId");
+    expect(token).toContain('payload.fileId !== expectedFileId');
     expect(token).toContain('SESSION_TTL_SECONDS = 2 * 60 * 60');
     expect(token).toContain("audience: 'pdf-preview'");
   });
@@ -55,7 +90,6 @@ describe('progressive PDF preview', () => {
   it('keeps essential controls, cleanup, and one activity event per open', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
     const sessionRoute = read('app/api/resource/[fileId]/pdf-session/route.ts');
-    expect(viewer).toContain('PDF page number');
     expect(viewer).toContain('Zoom in');
     expect(viewer).toContain('Full screen');
     expect(viewer).toContain('Retry preview');
