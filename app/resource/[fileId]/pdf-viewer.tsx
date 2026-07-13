@@ -4,7 +4,6 @@ import { Download, Expand, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type LoadingPhase = 'session' | 'network' | 'page' | 'ready';
-type LoadingMode = 'stream' | 'range';
 type PdfViewport = { width: number; height: number };
 type PdfRenderTask = { promise: Promise<void>; cancel: () => void };
 type PdfPage = {
@@ -22,9 +21,8 @@ type PdfJsModule = { getDocument: (options: Record<string, unknown>) => PdfLoadi
 type PreviewSession = { token: string; url: string; size: number; expiresAt: number };
 type RegisterPage = (pageNumber: number, node: HTMLElement | null) => void;
 
-const STREAMING_LIMIT = 128 * 1024 * 1024;
-const DEFAULT_RANGE_CHUNK = 8 * 1024 * 1024;
-const LARGE_RANGE_CHUNK = 16 * 1024 * 1024;
+const DEFAULT_RANGE_CHUNK = 2 * 1024 * 1024;
+const LARGE_RANGE_CHUNK = 4 * 1024 * 1024;
 const PDF_ASSET_ROOT = '/pdfjs';
 
 function formatBytes(bytes: number) {
@@ -33,35 +31,24 @@ function formatBytes(bytes: number) {
   return `${megabytes >= 10 ? megabytes.toFixed(1) : megabytes.toFixed(2)} MB`;
 }
 
-function formatEta(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds <= 1) return 'Less than 1 sec';
-  const rounded = Math.ceil(seconds);
-  if (rounded < 60) return `About ${rounded} sec`;
-  const minutes = Math.floor(rounded / 60);
-  const remainingSeconds = rounded % 60;
-  return remainingSeconds === 0 ? `About ${minutes} min` : `About ${minutes} min ${remainingSeconds} sec`;
-}
-
-function PdfLoadingOverlay({ phase, mode, downloadedBytes, downloadTotal, downloadEtaSeconds }: { phase: LoadingPhase; mode: LoadingMode; downloadedBytes: number; downloadTotal: number | null; downloadEtaSeconds: number | null }) {
+function PdfLoadingOverlay({ phase, downloadedBytes, downloadTotal }: { phase: LoadingPhase; downloadedBytes: number; downloadTotal: number | null }) {
   const hasTotal = downloadTotal !== null && downloadTotal > 0;
-  const showPercent = phase === 'network' && mode === 'stream' && hasTotal;
-  const percent = showPercent ? Math.min(100, Math.round((downloadedBytes / downloadTotal!) * 100)) : null;
   const status = phase === 'session'
     ? 'Connecting to the PDF…'
     : phase === 'page'
       ? 'Rendering the first page…'
-      : mode === 'stream'
-        ? hasTotal ? `Downloaded ${formatBytes(downloadedBytes)} of ${formatBytes(downloadTotal!)}` : `Downloaded ${formatBytes(downloadedBytes)}`
-        : downloadedBytes > 0 ? `Loaded ${formatBytes(downloadedBytes)} of the required PDF data` : 'Loading the first pages…';
-  const badge = phase === 'session' ? 'Connecting' : phase === 'page' ? 'Opening' : percent !== null ? `${percent}%` : downloadedBytes > 0 ? formatBytes(downloadedBytes) : 'Loading';
-  const etaLabel = phase === 'network' && mode === 'stream'
-    ? downloadEtaSeconds !== null ? `${formatEta(downloadEtaSeconds)} remaining` : 'Estimating time remaining…'
-    : mode === 'range' ? 'Pages load as you scroll' : 'Almost ready';
-  const helperText = phase === 'network' && mode === 'stream'
-    ? 'Download progress reflects the actual PDF bytes received.'
-    : 'Pages appear as they become ready.';
+      : downloadedBytes > 0
+        ? `Loaded ${formatBytes(downloadedBytes)} of the required PDF data`
+        : 'Loading the first pages…';
+  const badge = phase === 'session'
+    ? 'Connecting'
+    : phase === 'page'
+      ? 'Opening'
+      : downloadedBytes > 0
+        ? formatBytes(downloadedBytes)
+        : 'Loading';
 
-  return <div className="absolute inset-0 z-20 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading PDF preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing PDF preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{percent !== null ? <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-150" style={{ width: `${percent}%` }} /> : <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" />}</div><div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-600"><span>{hasTotal ? `Total size: ${formatBytes(downloadTotal!)}` : 'Total size: calculating…'}</span><span>{etaLabel}</span></div><p className="mt-3 text-xs leading-5 text-slate-500">{helperText}</p></div></div>;
+  return <div className="absolute inset-0 z-20 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading PDF preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing PDF preview</p><p className="mt-1 text-xs text-slate-500">{status}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{badge}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" /></div><div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-600"><span>{hasTotal ? `Total size: ${formatBytes(downloadTotal!)}` : 'Total size: calculating…'}</span><span>Pages load as you scroll</span></div></div></div>;
 }
 
 function PdfFallback({ fileId, message, onRetry }: { fileId: string; message: string; onRetry: () => void }) {
@@ -178,10 +165,8 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
   const [pages, setPages] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [phase, setPhase] = useState<LoadingPhase>('session');
-  const [mode, setMode] = useState<LoadingMode>('stream');
   const [downloadedBytes, setDownloadedBytes] = useState(0);
   const [downloadTotal, setDownloadTotal] = useState<number | null>(null);
-  const [downloadEtaSeconds, setDownloadEtaSeconds] = useState<number | null>(null);
   const [firstPageReady, setFirstPageReady] = useState(false);
   const [nearbyPages, setNearbyPages] = useState<Set<number>>(() => new Set([1, 2, 3]));
   const [error, setError] = useState('');
@@ -212,21 +197,14 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
     let cancelled = false;
     let loadingTask: PdfLoadingTask | null = null;
     let documentProxy: PdfDocument | null = null;
-    const startedAt = Date.now();
-    let lastSampleAt = startedAt;
-    let lastSampleLoaded = 0;
-    let smoothedBytesPerSecond = 0;
-    let currentMode: LoadingMode = 'stream';
 
     setPdfDocument(null);
     setError('');
     setPages(0);
     setZoom(1);
     setPhase('session');
-    setMode('stream');
     setDownloadedBytes(0);
     setDownloadTotal(null);
-    setDownloadEtaSeconds(null);
     setFirstPageReady(false);
     setNearbyPages(new Set([1, 2, 3]));
 
@@ -241,9 +219,6 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
         if (!session.token || !session.url || !Number.isSafeInteger(session.size) || session.size <= 0) throw new Error('PDF session response was invalid');
         if (cancelled) return;
 
-        const rangeOnly = session.size > STREAMING_LIMIT;
-        currentMode = rangeOnly ? 'range' : 'stream';
-        setMode(currentMode);
         setPhase('network');
         setDownloadTotal(session.size);
         const rangeChunkSize = session.size > 512 * 1024 * 1024 ? LARGE_RANGE_CHUNK : DEFAULT_RANGE_CHUNK;
@@ -253,8 +228,8 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
           httpHeaders: { 'x-dp-pdf-session': session.token },
           withCredentials: false,
           disableRange: false,
-          disableStream: rangeOnly,
-          disableAutoFetch: rangeOnly,
+          disableStream: true,
+          disableAutoFetch: true,
           rangeChunkSize,
           cMapUrl: `${PDF_ASSET_ROOT}/cmaps/`,
           cMapPacked: true,
@@ -267,21 +242,9 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
         });
         loadingTask.onProgress = ({ loaded, total }) => {
           if (cancelled) return;
-          const now = Date.now();
           const safeTotal = Number.isFinite(total) && Number(total) > 0 ? Number(total) : session.size;
-          const safeLoaded = Math.min(safeTotal, Math.max(0, loaded || 0));
-          const sampleSeconds = (now - lastSampleAt) / 1000;
-          const sampleBytes = safeLoaded - lastSampleLoaded;
-          if (sampleSeconds >= 0.25 && sampleBytes > 0) {
-            const instantBytesPerSecond = sampleBytes / sampleSeconds;
-            smoothedBytesPerSecond = smoothedBytesPerSecond > 0 ? (smoothedBytesPerSecond * 0.7) + (instantBytesPerSecond * 0.3) : instantBytesPerSecond;
-            lastSampleAt = now;
-            lastSampleLoaded = safeLoaded;
-          }
-          const canEstimate = currentMode === 'stream' && smoothedBytesPerSecond > 0 && now - startedAt >= 500 && safeLoaded < safeTotal;
-          setDownloadedBytes(safeLoaded);
+          setDownloadedBytes(Math.min(safeTotal, Math.max(0, loaded || 0)));
           setDownloadTotal(safeTotal);
-          setDownloadEtaSeconds(canEstimate ? Math.max(1, Math.ceil((safeTotal - safeLoaded) / smoothedBytesPerSecond)) : currentMode === 'stream' && safeLoaded >= safeTotal ? 0 : null);
         };
 
         documentProxy = await loadingTask.promise;
@@ -289,7 +252,6 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
         setPdfDocument(documentProxy);
         setPages(documentProxy.numPages);
         setPhase('page');
-        setDownloadEtaSeconds(null);
       } catch (loadError) {
         if (!cancelled) {
           console.error('PDF preview failed', loadError);
@@ -362,5 +324,5 @@ export function PdfViewer({ fileId, name }: { url: string; fileId: string; name:
 
   const changeZoom = (next: number) => setZoom(Math.max(0.6, Math.min(2.5, next)));
 
-  return <section ref={wrap} className="flex h-[min(82dvh,calc(100dvh-7rem))] min-h-[560px] flex-col overflow-hidden border-y border-slate-200 bg-slate-100"><header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><span className="mr-2 text-sm font-medium text-slate-600">{pages ? `${pages} pages` : 'Opening PDF…'}</span><button type="button" disabled={!pages} onClick={() => changeZoom(zoom - 0.15)} aria-label="Zoom out" className="rounded border border-slate-200 p-2 disabled:opacity-40"><ZoomOut className="size-4" /></button><span className="min-w-12 text-center text-xs font-medium text-slate-600">{Math.round(zoom * 100)}%</span><button type="button" disabled={!pages} onClick={() => changeZoom(zoom + 0.15)} aria-label="Zoom in" className="rounded border border-slate-200 p-2 disabled:opacity-40"><ZoomIn className="size-4" /></button><a className="inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700" href={`/api/files/${fileId}/download`}><Download className="size-4" />Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"><Expand className="size-4" />Full screen</button></header><div ref={stage} className="relative min-h-0 flex-1 overflow-auto bg-slate-200">{!firstPageReady && <PdfLoadingOverlay phase={phase} mode={mode} downloadedBytes={downloadedBytes} downloadTotal={downloadTotal} downloadEtaSeconds={downloadEtaSeconds} />}<div className="mx-auto flex w-max min-w-full flex-col items-center gap-4 p-6">{pdfDocument && pageNumbers.map((pageNumber) => <ContinuousPdfPage key={pageNumber} pdf={pdfDocument} pageNumber={pageNumber} active={nearbyPages.has(pageNumber)} zoom={zoom} layoutVersion={layoutVersion} scrollRoot={stage} registerPage={registerPage} onFirstPageReady={onFirstPageReady} onFatalError={onFatalError} name={name} />)}</div>{error && firstPageReady && <div role="alert" className="sticky bottom-3 mx-auto mb-3 flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 shadow"><span>{error}</span><button type="button" onClick={() => setAttempt((current) => current + 1)} className="rounded bg-[color:var(--dp-navy)] px-3 py-1.5 font-medium text-white">Retry</button></div>}</div></section>;
+  return <section ref={wrap} className="flex h-[min(82dvh,calc(100dvh-7rem))] min-h-[560px] flex-col overflow-hidden border-y border-slate-200 bg-slate-100"><header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><span className="mr-2 text-sm font-medium text-slate-600">{pages ? `${pages} pages` : 'Opening PDF…'}</span><button type="button" disabled={!pages} onClick={() => changeZoom(zoom - 0.15)} aria-label="Zoom out" className="rounded border border-slate-200 p-2 disabled:opacity-40"><ZoomOut className="size-4" /></button><span className="min-w-12 text-center text-xs font-medium text-slate-600">{Math.round(zoom * 100)}%</span><button type="button" disabled={!pages} onClick={() => changeZoom(zoom + 0.15)} aria-label="Zoom in" className="rounded border border-slate-200 p-2 disabled:opacity-40"><ZoomIn className="size-4" /></button><a className="inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700" href={`/api/files/${fileId}/download`}><Download className="size-4" />Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"><Expand className="size-4" />Full screen</button></header><div ref={stage} className="relative min-h-0 flex-1 overflow-auto bg-slate-200">{!firstPageReady && <PdfLoadingOverlay phase={phase} downloadedBytes={downloadedBytes} downloadTotal={downloadTotal} />}<div className="mx-auto flex w-max min-w-full flex-col items-center gap-4 p-6">{pdfDocument && pageNumbers.map((pageNumber) => <ContinuousPdfPage key={pageNumber} pdf={pdfDocument} pageNumber={pageNumber} active={nearbyPages.has(pageNumber)} zoom={zoom} layoutVersion={layoutVersion} scrollRoot={stage} registerPage={registerPage} onFirstPageReady={onFirstPageReady} onFatalError={onFatalError} name={name} />)}</div>{error && firstPageReady && <div role="alert" className="sticky bottom-3 mx-auto mb-3 flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 shadow"><span>{error}</span><button type="button" onClick={() => setAttempt((current) => current + 1)} className="rounded bg-[color:var(--dp-navy)] px-3 py-1.5 font-medium text-white">Retry</button></div>}</div></section>;
 }
