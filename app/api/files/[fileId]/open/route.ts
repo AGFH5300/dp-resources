@@ -1,7 +1,7 @@
 import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, getDriveStream, isDriveConfigured, safeDownloadName } from '@/lib/drive';
 import { fetchDriveMediaResponse } from '@/lib/media-range';
-import { recordActivity } from '@/lib/activity';
+import { recordFileOpenedOnce } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
 import { needsRangeSupport } from '@/lib/resource-capabilities';
 import { ifRangeMatches, parseSingleByteRange } from '@/lib/range-requests';
@@ -36,20 +36,30 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     return new Response(null, { status: 416, headers });
   }
   const shouldServeRange = rangeDecision.kind === 'range' && ifRangeMatches(req.headers.get('if-range'), etag);
+  const auditOpen = () => recordFileOpenedOnce(req, {
+    userId: user.id,
+    userEmail: user.email!,
+    fileId,
+    fileName: meta.name,
+  }).catch(() => undefined);
   if (requestedRange && rangeDecision.kind === 'range' && rangeCapable && shouldServeRange) {
     const native = await fetchDriveMediaResponse(fileId, meta.mimeType, meta.name, rangeDecision.header).catch(() => null);
     if (!native) return new Response('Unable to retrieve this file', { status: 502 });
+    auditOpen();
     if (!native.headers.get('content-range')) return new Response(native.body, { status: 200, headers: native.headers });
     return native.status === 206 ? native : new Response(native.body, { status: native.status, headers: native.headers });
   }
-  if (!requestedRange && req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+  if (!requestedRange && req.headers.get('if-none-match') === etag) {
+    auditOpen();
+    return new Response(null, { status: 304, headers });
+  }
   const streamStart = nowMs();
   const media = await getDriveStream(fileId, meta.mimeType, shouldServeRange ? rangeDecision.header : undefined).catch(() => null);
   if (!media) return new Response('Unable to retrieve this file', { status: 502 });
   if ('unavailable' in media) return new Response('Preview is unavailable for this Google Workspace file type.', { status: 415 });
   const streamMs = nowMs() - streamStart;
   devTiming('resource.open', { authMs, validateMs, streamMs });
-  recordActivity({ userId: user.id, userEmail: user.email!, fileId, fileName: meta.name, action: 'file_opened' }).catch(() => undefined);
+  auditOpen();
   headers.set('content-type', media.contentType);
   const mediaHeaders = media.headers || {};
   const contentRange = mediaHeaders['content-range'];

@@ -35,4 +35,25 @@ describe('progressive PDF preview', () => {
     expect(viewer).toContain('loadingTask.destroy()');
     expect(viewer).toContain('renderTask?.cancel()');
   });
+
+  it('gives range traffic a separate high-volume rate budget', () => {
+    const route = read('app/api/resource/[fileId]/content/route.ts');
+    expect(route).toContain("const rateScope = isRangeRequest ? 'resource-content-range' : 'resource-content'");
+    expect(route).toContain('isRangeRequest ? 600 : 120');
+    expect(route).toContain('10 * 60 * 1000');
+  });
+
+  it('records successful full and range opens without logging every chunk', () => {
+    const activity = read('lib/activity.ts');
+    const contentRoute = read('app/api/resource/[fileId]/content/route.ts');
+    const openRoute = read('app/api/files/[fileId]/open/route.ts');
+    expect(activity).toContain('recordFileOpenedOnce');
+    expect(activity).toContain("'file-open-audit'");
+    expect(activity).toContain('15 * 1000');
+    for (const route of [contentRoute, openRoute]) {
+      expect(route).toContain('recordFileOpenedOnce');
+      expect(route).toContain('auditOpen();');
+      expect(route.indexOf('auditOpen();')).toBeLessThan(route.lastIndexOf('return native.status'));
+    }
+  });
 });
