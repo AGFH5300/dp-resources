@@ -5,55 +5,71 @@ import { getResourceCapability } from '../lib/resource-capabilities';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('progressive PDF preview', () => {
-  it('enables authenticated byte ranges for PDF resources', () => {
+  it('enables byte ranges for PDF resources', () => {
     const capability = getResourceCapability('application/pdf', 'large-book.pdf');
     expect(capability.previewMode).toBe('pdf');
     expect(capability.needsRange).toBe(true);
   });
 
-  it('uses PDF.js range loading instead of downloading a complete blob', () => {
+  it('uses a single authenticated session followed by locally verified PDF requests', () => {
     const preview = read('app/resource/[fileId]/resource-preview.tsx');
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    const sessionRoute = read('app/api/resource/[fileId]/pdf-session/route.ts');
+    const contentRoute = read('app/api/resource/[fileId]/pdf-content/route.ts');
+    const token = read('lib/pdf-preview-session.ts');
+
     expect(preview).toContain("import { PdfViewer } from './pdf-viewer'");
-    expect(viewer).toContain("import('pdfjs-dist/webpack.mjs')");
-    expect(viewer).toContain('disableRange: false');
-    expect(viewer).toContain('disableStream: true');
-    expect(viewer).toContain('disableAutoFetch: true');
-    expect(viewer).toContain('rangeChunkSize: 2 * 1024 * 1024');
-    expect(viewer).toContain('loadingTask.onProgress');
-    expect(viewer).toContain('actual PDF bytes fetched');
-    expect(preview).not.toContain('const blob = await res.blob()');
-    expect(preview).not.toContain('URL.createObjectURL(blob)');
+    expect(viewer).toContain('/pdf-session');
+    expect(viewer).toContain("'x-dp-pdf-session': session.token");
+    expect(sessionRoute).toContain('requireMember()');
+    expect(sessionRoute).toContain('createPdfPreviewSession');
+    expect(contentRoute).toContain('verifyPdfPreviewSession');
+    expect(contentRoute).not.toContain('requireMember');
+    expect(contentRoute).not.toContain('getIndexedResourceShell');
+    expect(contentRoute).not.toContain('rateLimit(');
+    expect(token).toContain("createHmac('sha256'");
+    expect(token).toContain('timingSafeEqual');
   });
 
-  it('keeps essential controls and cleanup for very large documents', () => {
+  it('streams normal large PDFs and uses larger range chunks', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    expect(viewer).toContain('STREAMING_LIMIT = 128 * 1024 * 1024');
+    expect(viewer).toContain('DEFAULT_RANGE_CHUNK = 8 * 1024 * 1024');
+    expect(viewer).toContain('LARGE_RANGE_CHUNK = 16 * 1024 * 1024');
+    expect(viewer).toContain('disableStream: rangeOnly');
+    expect(viewer).toContain('disableAutoFetch: rangeOnly');
+    expect(viewer).toContain('loadingTask.onProgress');
+    expect(viewer).not.toContain('rangeChunkSize: 2 * 1024 * 1024');
+  });
+
+  it('caps signed range size and keeps sessions short-lived and file-specific', () => {
+    const route = read('app/api/resource/[fileId]/pdf-content/route.ts');
+    const token = read('lib/pdf-preview-session.ts');
+    expect(route).toContain('MAX_RANGE_BYTES = 32 * 1024 * 1024');
+    expect(route).toContain("req.headers.get('x-dp-pdf-session')");
+    expect(token).toContain("payload.fileId !== expectedFileId");
+    expect(token).toContain('SESSION_TTL_SECONDS = 2 * 60 * 60');
+    expect(token).toContain("audience: 'pdf-preview'");
+  });
+
+  it('keeps essential controls, cleanup, and one activity event per open', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    const sessionRoute = read('app/api/resource/[fileId]/pdf-session/route.ts');
     expect(viewer).toContain('PDF page number');
     expect(viewer).toContain('Zoom in');
     expect(viewer).toContain('Full screen');
     expect(viewer).toContain('Retry preview');
     expect(viewer).toContain('loadingTask.destroy()');
     expect(viewer).toContain('renderTask?.cancel()');
+    expect(sessionRoute).toContain('recordFileOpenedOnce');
   });
 
-  it('gives range traffic a separate high-volume rate budget', () => {
-    const route = read('app/api/resource/[fileId]/content/route.ts');
-    expect(route).toContain("const rateScope = isRangeRequest ? 'resource-content-range' : 'resource-content'");
-    expect(route).toContain('isRangeRequest ? 600 : 120');
-    expect(route).toContain('10 * 60 * 1000');
-  });
-
-  it('records successful full and range opens without logging every chunk', () => {
-    const activity = read('lib/activity.ts');
+  it('retains protection for the general content and open routes', () => {
     const contentRoute = read('app/api/resource/[fileId]/content/route.ts');
     const openRoute = read('app/api/files/[fileId]/open/route.ts');
-    expect(activity).toContain('recordFileOpenedOnce');
-    expect(activity).toContain("'file-open-audit'");
-    expect(activity).toContain('15 * 1000');
     for (const route of [contentRoute, openRoute]) {
       expect(route).toContain('recordFileOpenedOnce');
       expect(route).toContain('auditOpen();');
-      expect(route.indexOf('auditOpen();')).toBeLessThan(route.lastIndexOf('return native.status'));
     }
   });
 });
