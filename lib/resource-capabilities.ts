@@ -7,7 +7,7 @@ const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.doc
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 export const resourceCapabilities: ResourceCapability[] = [
   { previewMode:'folder', label:'Folder', icon:'folder', needsRange:false, generic:false, mimeTypes:[FOLDER_MIME], extensions:[] },
-  { previewMode:'pdf', label:'PDF', icon:'pdf', needsRange:false, generic:false, mimeTypes:['application/pdf'], extensions:['pdf'] },
+  { previewMode:'pdf', label:'PDF', icon:'pdf', needsRange:true, generic:false, mimeTypes:['application/pdf'], extensions:['pdf'] },
   { previewMode:'docx', label:'Word document', icon:'word', needsRange:false, generic:false, mimeTypes:[DOCX], extensions:['docx'] },
   { previewMode:'xlsx', label:'Spreadsheet', icon:'spreadsheet', needsRange:false, generic:false, mimeTypes:[XLSX], extensions:['xlsx'] },
   { previewMode:'pptx', label:'Presentation', icon:'presentation', needsRange:false, generic:false, mimeTypes:[PPTX], extensions:['pptx'] },
