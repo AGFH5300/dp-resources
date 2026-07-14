@@ -29,14 +29,16 @@ jobs:
       DRIVE_FILE_ID: ${{ inputs.drive_file_id }}
       PDF_PREVIEW_DPI: '150'
       PDF_PREVIEW_JPEG_QUALITY: '76'
-      PDF_PREVIEW_BATCH_SIZE: '20'
+      PDF_PREVIEW_BATCH_SIZE: '40'
+      PDF_PREVIEW_UPLOAD_CONCURRENCY: '6'
+      PDF_PREVIEW_UPLOAD_ATTEMPTS: '5'
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
