@@ -15,28 +15,72 @@ describe('private PDF preview derivatives', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
     expect(viewer).toContain('continuous PDF preview');
     expect(viewer).toContain('IntersectionObserver');
-    expect(viewer).toContain("rootMargin: '1600px 0px'");
+    expect(viewer).toContain("rootMargin:'1600px 0px'");
     expect(viewer).toContain('Loading page…');
     expect(viewer).toContain('Preparing page…');
     expect(viewer).toContain('<img');
     expect(viewer).not.toContain('<iframe');
     expect(viewer).not.toContain("import('pdfjs-dist");
     expect(viewer).not.toContain('<canvas');
-    expect(viewer).not.toContain('Previous');
+    expect(viewer).not.toContain('Previous page');
     expect(viewer).not.toContain('Next page');
   });
 
-  it('keeps the requested controls without exposing backend implementation details', () => {
+  it('provides one compact toolbar with direct navigation and document controls', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
-    for (const label of ['Zoom out', 'Zoom in', 'Download', 'Full screen', 'Retry preview']) expect(viewer).toContain(label);
-    for (const text of ['Authentication happens once', 'signed session', 'Range request', 'PDF bytes fetched', '700+ pages do not have to download']) expect(viewer).not.toContain(text);
-    expect(viewer).not.toContain('remaining');
+    for (const label of [
+      'Page number',
+      'Zoom out',
+      'Reset zoom',
+      'Zoom in',
+      'Fit to width',
+      'Rotate pages',
+      'Search document',
+      'Annotations',
+      'Undo annotation',
+      'Redo annotation',
+      'Download PDF',
+      'Print PDF',
+      'Open standard reader',
+      'Full screen',
+      'Retry preview',
+    ]) expect(viewer).toContain(label);
+    expect(viewer).toContain("scrollIntoView({behavior,block:'start'})");
+    expect(viewer).toContain("event.key.toLowerCase()==='f'");
+    expect(viewer).toContain("event.key.toLowerCase()==='p'");
+    expect(viewer).not.toContain('Authentication happens once');
+    expect(viewer).not.toContain('signed session');
+    expect(viewer).not.toContain('Range request');
   });
 
-  it('authorizes once and serves private same-origin manifests and page images', () => {
+  it('keeps annotations private to the browser with undo, redo, pen, highlight and erase', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    expect(viewer).toContain('dp-pdf-annotations:');
+    expect(viewer).toContain('localStorage.getItem');
+    expect(viewer).toContain('localStorage.setItem');
+    expect(viewer).toContain('Pen colour');
+    expect(viewer).toContain('Highlight');
+    expect(viewer).toContain('Erase');
+    expect(viewer).toContain('Clear page');
+    expect(viewer).toContain('Clear all');
+    expect(viewer).toContain('<svg');
+    expect(viewer).toContain('<polyline');
+    expect(viewer).toContain('Saved only in this browser.');
+  });
+
+  it('removes the duplicate PDF download and doubled fallback strip', () => {
+    const page = read('app/resource/[fileId]/page.tsx');
+    const preview = read('app/resource/[fileId]/resource-preview.tsx');
+    expect(page).toContain("downloadHref={!meta.isFolder&&!isPdf?");
+    expect(preview).toContain("if (cap.previewMode === 'pdf') return <PdfViewer");
+    expect(preview).not.toContain('Preview not prepared? Open standard reader');
+  });
+
+  it('authorizes once and serves private same-origin manifests, search and page images', () => {
     const sessionRoute = read('app/api/resource/[fileId]/pdf-session/route.ts');
     const statusRoute = read('app/api/resource/[fileId]/pdf-preview/status/route.ts');
     const manifestRoute = read('app/api/resource/[fileId]/pdf-preview/manifest/route.ts');
+    const searchRoute = read('app/api/resource/[fileId]/pdf-preview/search/route.ts');
     const pageRoute = read('app/api/resource/[fileId]/pdf-preview/page/[pageNumber]/route.ts');
     const token = read('lib/pdf-preview-session.ts');
 
@@ -51,9 +95,10 @@ describe('private PDF preview derivatives', () => {
     expect(sessionRoute).toContain('SameSite=Lax');
     expect(token).toContain('pdfPreviewSessionFromRequest');
     expect(token).toContain("previewStorageProvider: 'supabase' | 'r2'");
-    expect(statusRoute).toContain('pdfPreviewSessionFromRequest');
-    expect(manifestRoute).toContain('pdfPreviewSessionFromRequest');
-    expect(pageRoute).toContain('pdfPreviewSessionFromRequest');
+    for (const route of [statusRoute, manifestRoute, searchRoute, pageRoute]) expect(route).toContain('pdfPreviewSessionFromRequest');
+    expect(searchRoute).toContain("url.searchParams.get('v')");
+    expect(searchRoute).toContain('dp_search_pdf_preview');
+    expect(searchRoute).not.toContain('requireMember');
     expect(statusRoute).not.toContain('requireMember');
     expect(manifestRoute).not.toContain('requireMember');
     expect(pageRoute).not.toContain('requireMember');
@@ -66,12 +111,16 @@ describe('private PDF preview derivatives', () => {
     expect(pageRoute).not.toContain('createSignedUrl');
   });
 
-  it('uses private provider metadata and keeps the original resumable worker', () => {
+  it('uses private provider metadata and resumable image plus text preparation', () => {
     const originalMigration = read('supabase/migrations/20260714110000_private_pdf_preview_derivatives.sql');
     const providerMigration = read('supabase/migrations/20260714150000_pdf_preview_r2_storage.sql');
+    const searchMigration = read('supabase/migrations/20260714193000_pdf_preview_search_text.sql');
     const worker = read('scripts/pdf-preview-worker.mjs');
     const r2Worker = read('scripts/pdf-preview-worker-r2.mjs');
     const queue = read('scripts/queue-pdf-previews.mjs');
+    const prepare = read('scripts/prepare-pdf-preview.mjs');
+    const batch = read('scripts/prepare-pdf-previews-batch.mjs');
+    const workflow = read('.github/workflows/prepare-pdf-previews.yml');
     const dockerfile = read('Dockerfile');
 
     expect(originalMigration).toContain("values ('pdf-previews', 'pdf-previews', false");
@@ -81,15 +130,28 @@ describe('private PDF preview derivatives', () => {
     expect(providerMigration).toContain("storage_provider text not null default 'supabase'");
     expect(providerMigration).toContain('dp_queue_pdf_preview_v2');
     expect(providerMigration).toContain('dp_pdf_preview_storage_usage');
+    expect(searchMigration).toContain('text_ready_at');
+    expect(searchMigration).toContain('search_text');
+    expect(searchMigration).toContain('dp_store_pdf_preview_text');
+    expect(searchMigration).toContain('dp_search_pdf_preview');
     expect(worker).toContain("alt: 'media'");
     expect(worker).toContain("execFile('pdftoppm'");
-    expect(worker.indexOf('if (!readyPages.has(1)) ranges.push([1, 1])')).toBeLessThan(worker.indexOf('for (let start = 2'));
+    expect(worker).toContain("execFile('pdftotext'");
+    expect(worker.indexOf('if (!readyPages.has(1)) {')).toBeLessThan(worker.indexOf('for (let start = 2'));
+    expect(worker).toContain('dp_store_pdf_preview_text');
     expect(worker).toContain("status: complete ? 'ready' : pagesReady > 0 ? 'partial' : 'processing'");
     expect(r2Worker).toContain('putPrivateR2Object');
     expect(r2Worker).toContain("await import('./pdf-preview-worker.mjs')");
     expect(queue).toContain('dp_resource_index');
     expect(queue).toContain('dp_queue_pdf_preview_v2');
     expect(queue).toContain('--storage-provider=');
+    expect(prepare).toContain('Boolean(document.text_ready_at)');
+    expect(batch).toContain("'all_large_pdfs'");
+    expect(batch).toContain('loadLargePdfs');
+    expect(batch).toContain('Boolean(existing.text_ready_at)');
+    expect(workflow).toContain('- all_large_pdfs');
+    expect(workflow).toContain("default: '10'");
+    expect(workflow).toContain("default: '8'");
     expect(dockerfile).toContain('poppler-utils');
     expect(dockerfile).toContain('COPY --from=builder /app/scripts ./scripts');
   });
