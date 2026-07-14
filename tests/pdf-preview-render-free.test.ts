@@ -79,6 +79,7 @@ describe('Render Free PDF preview preparation', () => {
     expect(worker).toContain('existingReadyPages(job.id)');
     expect(worker).toContain("execFile('pdftotext'");
     expect(worker).toContain('dp_store_pdf_preview_text');
+    expect(worker).toContain('pts(?:\\s+\\([^\\r\\n]*\\))?\\s*$');
     expect(worker).not.toContain(".eq('page_number', pageNumber)");
   });
 
