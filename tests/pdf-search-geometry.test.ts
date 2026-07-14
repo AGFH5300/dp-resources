@@ -35,6 +35,16 @@ describe('PDF exact search geometry', () => {
     expect(matches[0].rects[0].x).toBeLessThan(matches[1].rects[0].x);
   });
 
+  it('supports browser-style substring searches inside a word', () => {
+    const matches = findPdfSearchMatches(page([
+      ['triangle', 0.10, 0.15, 0.08, 0.025, 1],
+      ['rectangular', 0.22, 0.15, 0.11, 0.025, 1],
+    ]), 'angle');
+
+    expect(matches).toHaveLength(2);
+    expect(matches.every((match) => match.rects.length === 1)).toBe(true);
+  });
+
   it('merges a phrase on one line into one highlight rectangle', () => {
     const matches = findPdfSearchMatches(page([
       ['right', 0.10, 0.20, 0.06, 0.025, 3],
