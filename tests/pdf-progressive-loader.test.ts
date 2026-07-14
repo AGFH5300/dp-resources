@@ -45,7 +45,11 @@ describe('private PDF preview derivatives', () => {
       'Full screen',
       'Retry preview',
     ]) expect(viewer).toContain(label);
-    expect(viewer).toContain("scrollIntoView({behavior,block:'start'})");
+    expect(viewer).toContain("root.scrollTo({top:Math.max(0,top-8),behavior})");
+    expect(viewer).toContain('preserveCurrentPage');
+    expect(viewer).toContain('suppressCurrentUntil');
+    expect(viewer).toContain('WebkitTextFillColor');
+    expect(viewer).toContain('Search result ${searchMarker.position} of ${searchMarker.total}');
     expect(viewer).toContain("e.key.toLowerCase()==='f'");
     expect(viewer).toContain("e.key.toLowerCase()==='p'");
     expect(viewer).not.toContain('Authentication happens once');
