@@ -1,0 +1,72 @@
+name: Prepare PDF previews
+
+on:
+  workflow_dispatch:
+    inputs:
+      drive_file_id:
+        description: Google Drive file ID for one PDF
+        required: true
+        type: string
+        default: 1I6IrD9hMk3P2nVUCertioitIwn_C8ApS
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pdf-preview-${{ inputs.drive_file_id }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare selected PDF
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      DRIVE_FILE_ID: ${{ inputs.drive_file_id }}
+      PDF_PREVIEW_DPI: '150'
+      PDF_PREVIEW_JPEG_QUALITY: '76'
+      PDF_PREVIEW_BATCH_SIZE: '20'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate required secrets
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+          test -n "$DRIVE_FILE_ID"
+
+      - name: Prepare selected PDF preview
+        run: node scripts/prepare-pdf-preview.mjs "--drive-file-id=${DRIVE_FILE_ID}"
+
+      - name: Write workflow summary
+        if: success()
+        run: |
+          {
+            echo "## PDF preview prepared"
+            echo ""
+            echo "Drive file ID: \`$DRIVE_FILE_ID\`"
+            echo ""
+            echo "The original Google Drive PDF was read only and was not modified."
+          } >> "$GITHUB_STEP_SUMMARY"
