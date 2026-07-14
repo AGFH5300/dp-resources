@@ -1,250 +1,39 @@
 'use client';
 
-import { Download, Expand, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Eraser, Expand, ExternalLink, Highlighter, Minus, Pencil, Plus, Printer, Redo2, RotateCcw, RotateCw, Search, Trash2, Undo2, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type PreviewStatus = 'queued' | 'processing' | 'partial' | 'ready' | 'failed';
+type Status='queued'|'processing'|'partial'|'ready'|'failed';
+type State={status:Status;pageCount:number|null;pagesReady:number;manifestUrl:string|null;statusUrl?:string;searchReady?:boolean;message?:string};
+type Page={pageNumber:number;width:number;height:number;ready:boolean};
+type Manifest={status:Status;versionKey:string;pageCount:number;pagesReady:number;searchReady?:boolean;pages:Page[]};
+type Point={x:number;y:number};
+type Stroke={id:string;tool:'pen'|'highlight';color:string;width:number;points:Point[]};
+type Marks=Record<string,Stroke[]>;
+type Tool='none'|'pen'|'highlight'|'eraser';
+type Rotation=0|90|180|270;
+type Result={pageNumber:number;snippet:string};
 
-type PreviewState = {
-  status: PreviewStatus;
-  pageCount: number | null;
-  pagesReady: number;
-  manifestUrl: string | null;
-  statusUrl?: string;
-  message?: string;
-};
+const icon='inline-flex size-9 shrink-0 items-center justify-center rounded text-white/90 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-35';
+const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 
-type PreviewPage = {
-  pageNumber: number;
-  width: number;
-  height: number;
-  ready: boolean;
-};
+function Loading({state}:{state:State|null}){const progress=Boolean(state?.pageCount&&state.pagesReady>0&&state.pagesReady<state.pageCount);const percent=progress&&state?.pageCount?Math.round(state.pagesReady/state.pageCount*100):null;const detail=state?.status==='failed'?'Preview preparation needs to be retried.':state?.pageCount?(state.pagesReady?`Prepared ${state.pagesReady.toLocaleString()} of ${state.pageCount.toLocaleString()} pages`:'Preparing the first page…'):'Opening the document…';return <div className="absolute inset-0 z-20 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading PDF preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing PDF preview</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div><span className="text-sm font-semibold">{percent===null?'Loading':`${percent}%`}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{percent===null?<div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]"/>:<div className="h-full rounded-full bg-[color:var(--dp-blue)]" style={{width:`${percent}%`}}/>}</div></div></div>}
+function Fallback({fileId,message,onRetry}:{fileId:string;message:string;onRetry:()=>void}){return <section role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"><h2 className="text-base font-semibold">PDF preview could not be displayed</h2><p className="mt-2">{message}</p><div className="mt-4 flex gap-3"><button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-md bg-[color:var(--dp-navy)] px-3 py-2 text-white"><RotateCcw className="size-4"/>Retry preview</button><a href={`/api/files/${fileId}/download`} className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2"><Download className="size-4"/>Download PDF</a></div></section>}
+function pointer(e:React.PointerEvent<SVGSVGElement>):Point|null{const m=e.currentTarget.getScreenCTM();if(!m)return null;const p=e.currentTarget.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const local=p.matrixTransform(m.inverse());return{x:clamp(local.x/1000,0,1),y:clamp(local.y/1000,0,1)}}
 
-type PreviewManifest = {
-  status: PreviewStatus;
-  versionKey: string;
-  pageCount: number;
-  pagesReady: number;
-  pages: PreviewPage[];
-};
+const PdfPage=memo(function PdfPage({fileId,version,page,active,zoom,rotation,register,onFirst,tool,color,marks,onAdd,onErase}:{fileId:string;version:string;page:Page;active:boolean;zoom:number;rotation:Rotation;register:(n:number,node:HTMLElement|null)=>void;onFirst:()=>void;tool:Tool;color:string;marks:Stroke[];onAdd:(n:number,s:Stroke)=>void;onErase:(n:number,p:Point)=>void}){const[attempt,setAttempt]=useState(0);const[loaded,setLoaded]=useState(false);const[failed,setFailed]=useState(false);const[draft,setDraft]=useState<Stroke|null>(null);const rotated=rotation===90||rotation===270;const base=Math.min(1100,Math.max(280,rotated?page.height:page.width));const width=Math.max(240,Math.round(base*zoom));const height=Math.max(240,Math.round(width*(rotated?page.width/page.height:page.height/page.width)));const planeWidth=rotated?height:width;const planeHeight=rotated?width:height;const ref=useCallback((node:HTMLElement|null)=>register(page.pageNumber,node),[page.pageNumber,register]);useEffect(()=>{if(!active){setLoaded(false);setFailed(false);setDraft(null)}},[active]);const finish=()=>{if(!draft)return;onAdd(page.pageNumber,draft.points.length===1?{...draft,points:[draft.points[0],draft.points[0]]}:draft);setDraft(null)};const down=(e:React.PointerEvent<SVGSVGElement>)=>{if(tool==='none')return;const p=pointer(e);if(!p)return;e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);if(tool==='eraser'){onErase(page.pageNumber,p);return}setDraft({id:crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`,tool,color:tool==='highlight'?'#facc15':color,width:tool==='highlight'?.028:.0045,points:[p]})};const move=(e:React.PointerEvent<SVGSVGElement>)=>{if(!draft)return;const p=pointer(e);if(!p)return;e.preventDefault();setDraft(s=>{if(!s)return s;const last=s.points[s.points.length-1];return Math.hypot(last.x-p.x,last.y-p.y)<.0015?s:{...s,points:[...s.points,p]}})};const visible=draft?[...marks,draft]:marks;return <article ref={ref} data-page-number={page.pageNumber} className="flex w-full justify-center px-4 py-3" aria-label={`Page ${page.pageNumber}`}><div className="relative shrink-0 overflow-hidden bg-white shadow-lg ring-1 ring-black/15" style={{width,height}}><div className="absolute left-1/2 top-1/2" style={{width:planeWidth,height:planeHeight,transform:`translate(-50%,-50%) rotate(${rotation}deg)`}}>{active&&page.ready?<img key={attempt} src={`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/page/${page.pageNumber}?v=${encodeURIComponent(version)}&attempt=${attempt}`} alt={`PDF page ${page.pageNumber}`} draggable={false} loading={page.pageNumber===1?'eager':'lazy'} fetchPriority={page.pageNumber===1?'high':'auto'} onLoad={()=>{setLoaded(true);setFailed(false);if(page.pageNumber===1)onFirst()}} onError={()=>{setLoaded(false);setFailed(true)}} className={`absolute inset-0 h-full w-full object-contain ${loaded?'opacity-100':'opacity-0'}`}/>:null}<svg viewBox="0 0 1000 1000" aria-label={`Annotations for page ${page.pageNumber}`} className={`absolute inset-0 h-full w-full ${tool==='none'?'pointer-events-none':tool==='eraser'?'cursor-cell':'cursor-crosshair'}`} style={{touchAction:tool==='none'?'auto':'none'}} onPointerDown={down} onPointerMove={move} onPointerUp={finish} onPointerCancel={()=>setDraft(null)}>{visible.map(s=><polyline key={s.id} points={s.points.map(p=>`${p.x*1000},${p.y*1000}`).join(' ')} fill="none" stroke={s.color} strokeWidth={s.width*1000} strokeLinecap="round" strokeLinejoin="round" opacity={s.tool==='highlight'?.38:1} style={s.tool==='highlight'?{mixBlendMode:'multiply'}:undefined}/>)}</svg></div>{(!active||!page.ready||!loaded)&&!failed?<div className="absolute inset-0 grid place-items-center bg-white text-sm text-slate-500">{page.ready?'Loading page…':'Preparing page…'}</div>:null}{failed?<div className="absolute inset-0 grid place-items-center bg-amber-50 text-sm"><button type="button" onClick={()=>{setFailed(false);setAttempt(v=>v+1)}} className="rounded border bg-white px-3 py-2"><RotateCcw className="mr-2 inline size-4"/>Retry page</button></div>:null}</div></article>});
 
-function PdfLoadingOverlay({ state }: { state: PreviewState | null }) {
-  const canShowProgress = Boolean(state?.pageCount && state.pagesReady > 0 && state.pagesReady < state.pageCount);
-  const percent = canShowProgress && state?.pageCount ? Math.round((state.pagesReady / state.pageCount) * 100) : null;
-  const detail = state?.status === 'failed'
-    ? 'Preview preparation needs to be retried.'
-    : state?.pageCount
-      ? state.pagesReady > 0 ? `Prepared ${state.pagesReady.toLocaleString()} of ${state.pageCount.toLocaleString()} pages` : 'Preparing the first page…'
-      : 'Opening the document…';
+function stored(raw:string|null):Marks{try{const value=raw?JSON.parse(raw):{};return value&&typeof value==='object'&&!Array.isArray(value)?value as Marks:{}}catch{return{}}}
 
-  return <div className="absolute inset-0 z-20 grid place-items-center bg-slate-200/90 px-6 backdrop-blur-sm" aria-label="Loading PDF preview"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing PDF preview</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div><span className="text-sm font-semibold text-[color:var(--dp-navy)]">{percent === null ? 'Loading' : `${percent}%`}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">{percent === null ? <div className="h-full w-2/5 animate-pulse rounded-full bg-[color:var(--dp-blue)]" /> : <div className="h-full rounded-full bg-[color:var(--dp-blue)] transition-[width] duration-300" style={{ width: `${percent}%` }} />}</div></div></div>;
-}
-
-function PdfFallback({ fileId, message, onRetry }: { fileId: string; message: string; onRetry: () => void }) {
-  return <section role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"><h2 className="text-base font-semibold">PDF preview could not be displayed</h2><p className="mt-2">{message}</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-md bg-[color:var(--dp-navy)] px-3 py-2 font-medium text-white"><RotateCcw className="size-4" />Retry preview</button><a className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2 font-medium text-amber-950" href={`/api/files/${fileId}/download`}><Download className="size-4" />Download PDF</a></div></section>;
-}
-
-const VirtualPdfPage = memo(function VirtualPdfPage({ fileId, versionKey, page, active, zoom, register, onFirstPageReady }: { fileId: string; versionKey: string; page: PreviewPage; active: boolean; zoom: number; register: (pageNumber: number, node: HTMLElement | null) => void; onFirstPageReady: () => void }) {
-  const [attempt, setAttempt] = useState(0);
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const baseWidth = Math.min(1100, Math.max(280, page.width));
-  const setNode = useCallback((node: HTMLElement | null) => register(page.pageNumber, node), [page.pageNumber, register]);
-  const width = Math.max(240, Math.round(baseWidth * zoom));
-
-  useEffect(() => {
-    if (!active) {
-      setLoaded(false);
-      setFailed(false);
-    }
-  }, [active]);
-
-  return <article ref={setNode} data-page-number={page.pageNumber} className="flex w-full justify-center px-4 py-3" aria-label={`Page ${page.pageNumber}`}><div className="relative shrink-0 overflow-hidden bg-white shadow-sm ring-1 ring-slate-300" style={{ width, aspectRatio: `${page.width} / ${page.height}` }}>{active && page.ready ? <img key={attempt} src={`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/page/${page.pageNumber}?v=${encodeURIComponent(versionKey)}&attempt=${attempt}`} alt={`PDF page ${page.pageNumber}`} draggable={false} loading={page.pageNumber === 1 ? 'eager' : 'lazy'} fetchPriority={page.pageNumber === 1 ? 'high' : 'auto'} onLoad={() => { setLoaded(true); setFailed(false); if (page.pageNumber === 1) onFirstPageReady(); }} onError={() => { setLoaded(false); setFailed(true); }} className={`absolute inset-0 h-full w-full object-contain transition-opacity ${loaded ? 'opacity-100' : 'opacity-0'}`} /> : null}{(!active || !page.ready || !loaded) && !failed ? <div className="absolute inset-0 grid place-items-center bg-white text-sm text-slate-500">{page.ready ? 'Loading page…' : 'Preparing page…'}</div> : null}{failed ? <div role="alert" className="absolute inset-0 grid place-items-center bg-amber-50 p-5 text-center text-sm text-amber-950"><div><p>Page {page.pageNumber} could not be loaded.</p><button type="button" onClick={() => { setFailed(false); setAttempt((value) => value + 1); }} className="mt-3 inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2 font-medium"><RotateCcw className="size-4" />Retry page</button></div></div> : null}</div></article>;
-});
-
-export function PdfViewer({ fileId, name }: { url: string; fileId: string; name: string }) {
-  const wrap = useRef<HTMLElement>(null);
-  const scrollRoot = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const currentPageObserverRef = useRef<IntersectionObserver | null>(null);
-  const pageNodes = useRef(new Map<number, HTMLElement>());
-  const [attempt, setAttempt] = useState(0);
-  const [previewState, setPreviewState] = useState<PreviewState | null>(null);
-  const [manifest, setManifest] = useState<PreviewManifest | null>(null);
-  const [activePages, setActivePages] = useState(() => new Set<number>([1]));
-  const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(1);
-  const [firstPageReady, setFirstPageReady] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadManifest = useCallback(async (url: string, signal: AbortSignal) => {
-    const response = await fetch(url, { credentials: 'same-origin', signal, cache: 'no-store' });
-    if (!response.ok) throw new Error(`PDF manifest failed (${response.status})`);
-    const next = await response.json() as PreviewManifest;
-    if (typeof next.versionKey !== 'string' || next.versionKey.length < 32 || !Number.isSafeInteger(next.pageCount) || next.pageCount < 1 || next.pages.length !== next.pageCount) throw new Error('PDF manifest response was invalid');
-    setManifest(next);
-    setPreviewState((current) => ({
-      status: next.status,
-      pageCount: next.pageCount,
-      pagesReady: next.pagesReady,
-      manifestUrl: current?.manifestUrl || url,
-      statusUrl: current?.statusUrl,
-    }));
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
-    let stopped = false;
-
-    setPreviewState(null);
-    setManifest(null);
-    setFirstPageReady(false);
-    setError('');
-    setZoom(1);
-    setCurrentPage(1);
-    setActivePages(new Set([1]));
-
-    const pollStatus = async (statusUrl: string) => {
-      if (stopped) return;
-      try {
-        const response = await fetch(statusUrl, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
-        if (response.status === 401) throw new Error('PDF preview session expired');
-        const state = await response.json() as PreviewState;
-        if (stopped) return;
-        setPreviewState((current) => ({ ...state, statusUrl: current?.statusUrl || statusUrl }));
-        if (state.status === 'failed') throw new Error(state.message || 'PDF preview preparation failed');
-        if (state.manifestUrl) {
-          await loadManifest(state.manifestUrl, controller.signal);
-          return;
-        }
-        pollTimer = setTimeout(() => void pollStatus(statusUrl), 4000);
-      } catch (statusError) {
-        if (stopped || (statusError instanceof DOMException && statusError.name === 'AbortError')) return;
-        console.error('PDF preview status failed', statusError);
-        setError('The PDF preview could not be prepared. You can retry or download the original file.');
-      }
-    };
-
-    (async () => {
-      try {
-        const response = await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-session`, {
-          method: 'POST',
-          credentials: 'same-origin',
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(`PDF session failed (${response.status})`);
-        const state = await response.json() as PreviewState;
-        if (!state.statusUrl) throw new Error('PDF session response was invalid');
-        if (stopped) return;
-        setPreviewState(state);
-        if (state.manifestUrl) await loadManifest(state.manifestUrl, controller.signal);
-        else await pollStatus(state.statusUrl);
-      } catch (loadError) {
-        if (stopped || (loadError instanceof DOMException && loadError.name === 'AbortError')) return;
-        console.error('PDF derivative preview failed', loadError);
-        setError('The PDF preview could not be prepared. You can retry or download the original file.');
-      }
-    })();
-
-    return () => {
-      stopped = true;
-      if (pollTimer) clearTimeout(pollTimer);
-      controller.abort();
-    };
-  }, [attempt, fileId, loadManifest]);
-
-  useEffect(() => {
-    if (!manifest || manifest.status === 'ready' || !previewState?.statusUrl) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let stopped = false;
-    let lastReady = manifest.pagesReady;
-
-    const refresh = async () => {
-      try {
-        const response = await fetch(previewState.statusUrl!, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
-        if (!response.ok && response.status !== 202) return;
-        const state = await response.json() as PreviewState;
-        if (stopped) return;
-        setPreviewState((current) => ({ ...state, statusUrl: current?.statusUrl }));
-        if (state.manifestUrl && (state.pagesReady > lastReady || state.status === 'ready')) {
-          lastReady = state.pagesReady;
-          await loadManifest(state.manifestUrl, controller.signal);
-        }
-        if (state.status !== 'ready' && state.status !== 'failed') timer = setTimeout(() => void refresh(), 5000);
-      } catch {
-        if (!stopped) timer = setTimeout(() => void refresh(), 5000);
-      }
-    };
-
-    timer = setTimeout(() => void refresh(), 5000);
-    return () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      controller.abort();
-    };
-  }, [loadManifest, manifest, previewState?.statusUrl]);
-
-  const registerPage = useCallback((pageNumber: number, node: HTMLElement | null) => {
-    const previous = pageNodes.current.get(pageNumber);
-    if (previous && previous !== node) {
-      observerRef.current?.unobserve(previous);
-      currentPageObserverRef.current?.unobserve(previous);
-    }
-    if (!node) {
-      pageNodes.current.delete(pageNumber);
-      return;
-    }
-    pageNodes.current.set(pageNumber, node);
-    observerRef.current?.observe(node);
-    currentPageObserverRef.current?.observe(node);
-  }, []);
-
-  useEffect(() => {
-    const root = scrollRoot.current;
-    if (!root || !manifest || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver((entries) => {
-      setActivePages((previous) => {
-        const next = new Set(previous);
-        for (const entry of entries) {
-          const pageNumber = Number((entry.target as HTMLElement).dataset.pageNumber);
-          if (!Number.isSafeInteger(pageNumber)) continue;
-          if (entry.isIntersecting) next.add(pageNumber);
-          else next.delete(pageNumber);
-        }
-        return next;
-      });
-    }, { root, rootMargin: '1600px 0px', threshold: 0 });
-    const visible = new Map<number, number>();
-    const currentPageObserver = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        const pageNumber = Number((entry.target as HTMLElement).dataset.pageNumber);
-        if (!Number.isSafeInteger(pageNumber)) continue;
-        if (entry.isIntersecting) visible.set(pageNumber, entry.intersectionRatio);
-        else visible.delete(pageNumber);
-      }
-      const best = [...visible.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0];
-      if (best) setCurrentPage(best);
-    }, { root, threshold: [0, 0.25, 0.5, 0.75, 1] });
-    observerRef.current = observer;
-    currentPageObserverRef.current = currentPageObserver;
-    for (const node of pageNodes.current.values()) {
-      observer.observe(node);
-      currentPageObserver.observe(node);
-    }
-    return () => {
-      observerRef.current = null;
-      currentPageObserverRef.current = null;
-      observer.disconnect();
-      currentPageObserver.disconnect();
-    };
-  }, [manifest]);
-
-  const markFirstPageReady = useCallback(() => setFirstPageReady(true), []);
-  const pages = useMemo(() => manifest?.pages || [], [manifest]);
-  if (error) return <PdfFallback fileId={fileId} message={error} onRetry={() => setAttempt((value) => value + 1)} />;
-
-  return <section ref={wrap} className="flex h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px] flex-col overflow-hidden border-y border-slate-200 bg-slate-100"><header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2"><span className="mr-2 text-sm font-medium text-slate-600">{manifest ? `Page ${currentPage} of ${manifest.pageCount}` : 'Opening PDF…'}</span><button type="button" aria-label="Zoom out" disabled={zoom <= 0.65} onClick={() => setZoom((value) => Math.max(0.65, Number((value - 0.15).toFixed(2))))} className="inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700 disabled:opacity-40"><ZoomOut className="size-4" />Zoom out</button><button type="button" aria-label="Zoom in" disabled={zoom >= 2.5} onClick={() => setZoom((value) => Math.min(2.5, Number((value + 0.15).toFixed(2))))} className="inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700 disabled:opacity-40"><ZoomIn className="size-4" />Zoom in</button><a className="inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700" href={`/api/files/${fileId}/download`}><Download className="size-4" />Download</a><button type="button" onClick={() => wrap.current?.requestFullscreen?.()} className="ml-auto inline-flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-sm text-slate-700"><Expand className="size-4" />Full screen</button></header><div ref={scrollRoot} className="relative min-h-0 flex-1 overflow-auto bg-slate-200" aria-label={`${name} continuous PDF preview`}>{(!manifest || !firstPageReady) && <PdfLoadingOverlay state={previewState} />}{pages.map((page) => <VirtualPdfPage key={page.pageNumber} fileId={fileId} versionKey={manifest!.versionKey} page={page} active={activePages.has(page.pageNumber)} zoom={zoom} register={registerPage} onFirstPageReady={markFirstPageReady} />)}</div></section>;
-}
+export function PdfViewer({fileId,name}:{url:string;fileId:string;name:string}){const wrap=useRef<HTMLElement>(null);const scroller=useRef<HTMLDivElement>(null);const lazyObserver=useRef<IntersectionObserver|null>(null);const currentObserver=useRef<IntersectionObserver|null>(null);const nodes=useRef(new Map<number,HTMLElement>());const pageRef=useRef<HTMLInputElement>(null);const searchRef=useRef<HTMLInputElement>(null);const marksRef=useRef<Marks>({});const[attempt,setAttempt]=useState(0);const[state,setState]=useState<State|null>(null);const[manifest,setManifest]=useState<Manifest|null>(null);const[active,setActive]=useState(()=>new Set([1]));const[current,setCurrent]=useState(1);const[pageInput,setPageInput]=useState('1');const[zoom,setZoom]=useState(1);const[rotation,setRotation]=useState<Rotation>(0);const[firstReady,setFirstReady]=useState(false);const[error,setError]=useState('');const[fullscreen,setFullscreen]=useState(false);const[message,setMessage]=useState('');const[searchOpen,setSearchOpen]=useState(false);const[query,setQuery]=useState('');const[results,setResults]=useState<Result[]>([]);const[resultIndex,setResultIndex]=useState(-1);const[searching,setSearching]=useState(false);const[searchMessage,setSearchMessage]=useState('');const[annotationOpen,setAnnotationOpen]=useState(false);const[tool,setTool]=useState<Tool>('none');const[color,setColor]=useState('#2563eb');const[marks,setMarks]=useState<Marks>({});const[past,setPast]=useState<Marks[]>([]);const[future,setFuture]=useState<Marks[]>([]);
+const loadManifest=useCallback(async(url:string,signal:AbortSignal)=>{const r=await fetch(url,{credentials:'same-origin',signal,cache:'no-store'});if(!r.ok)throw new Error(`PDF manifest failed (${r.status})`);const next=await r.json() as Manifest;if(typeof next.versionKey!=='string'||next.versionKey.length<32||!Number.isSafeInteger(next.pageCount)||next.pageCount<1||next.pages.length!==next.pageCount)throw new Error('PDF manifest response was invalid');setManifest(next);setState(s=>({status:next.status,pageCount:next.pageCount,pagesReady:next.pagesReady,manifestUrl:s?.manifestUrl||url,statusUrl:s?.statusUrl,searchReady:Boolean(next.searchReady)}))},[]);
+useEffect(()=>{const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|null=null;let stopped=false;setState(null);setManifest(null);setFirstReady(false);setError('');setZoom(1);setRotation(0);setCurrent(1);setActive(new Set([1]));const poll=async(url:string)=>{if(stopped)return;try{const r=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(r.status===401)throw new Error('PDF preview session expired');const next=await r.json() as State;if(stopped)return;setState(s=>({...next,statusUrl:s?.statusUrl||url}));if(next.status==='failed')throw new Error(next.message||'PDF preview preparation failed');if(next.manifestUrl)await loadManifest(next.manifestUrl,controller.signal);else timer=setTimeout(()=>void poll(url),4000)}catch(e){if(stopped||(e instanceof DOMException&&e.name==='AbortError'))return;setError('The PDF preview could not be prepared. You can retry or download the original file.')}};void(async()=>{try{const r=await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-session`,{method:'POST',credentials:'same-origin',signal:controller.signal});if(!r.ok)throw new Error(`PDF session failed (${r.status})`);const next=await r.json() as State;if(!next.statusUrl)throw new Error('PDF session response was invalid');if(stopped)return;setState(next);if(next.manifestUrl)await loadManifest(next.manifestUrl,controller.signal);else await poll(next.statusUrl)}catch(e){if(stopped||(e instanceof DOMException&&e.name==='AbortError'))return;setError('The PDF preview could not be prepared. You can retry or download the original file.')}})();return()=>{stopped=true;if(timer)clearTimeout(timer);controller.abort()}},[attempt,fileId,loadManifest]);
+const register=useCallback((n:number,node:HTMLElement|null)=>{const old=nodes.current.get(n);if(old&&old!==node){lazyObserver.current?.unobserve(old);currentObserver.current?.unobserve(old)}if(!node){nodes.current.delete(n);return}nodes.current.set(n,node);lazyObserver.current?.observe(node);currentObserver.current?.observe(node)},[]);
+useEffect(()=>{const root=scroller.current;if(!root||!manifest||typeof IntersectionObserver==='undefined')return;const lazy=new IntersectionObserver(entries=>setActive(previous=>{const next=new Set(previous);for(const entry of entries){const n=Number((entry.target as HTMLElement).dataset.pageNumber);if(Number.isSafeInteger(n))entry.isIntersecting?next.add(n):next.delete(n)}return next}),{root,rootMargin:'1600px 0px',threshold:0});const visible=new Map<number,number>();const now=new IntersectionObserver(entries=>{for(const entry of entries){const n=Number((entry.target as HTMLElement).dataset.pageNumber);if(Number.isSafeInteger(n))entry.isIntersecting?visible.set(n,entry.intersectionRatio):visible.delete(n)}const best=[...visible.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0]?.[0];if(best)setCurrent(best)},{root,threshold:[0,.25,.5,.75,1]});lazyObserver.current=lazy;currentObserver.current=now;for(const node of nodes.current.values()){lazy.observe(node);now.observe(node)}return()=>{lazy.disconnect();now.disconnect();lazyObserver.current=null;currentObserver.current=null}},[manifest]);
+useEffect(()=>{if(document.activeElement!==pageRef.current)setPageInput(String(current))},[current]);useEffect(()=>{const fn=()=>setFullscreen(document.fullscreenElement===wrap.current);document.addEventListener('fullscreenchange',fn);return()=>document.removeEventListener('fullscreenchange',fn)},[]);
+const storageKey=manifest?`dp-pdf-annotations:${fileId}:${manifest.versionKey}`:'';useEffect(()=>{if(!storageKey)return;const value=stored(localStorage.getItem(storageKey));marksRef.current=value;setMarks(value);setPast([]);setFuture([])},[storageKey]);useEffect(()=>{if(storageKey)localStorage.setItem(storageKey,JSON.stringify(marks))},[marks,storageKey]);
+const replace=useCallback((next:Marks)=>{const previous=marksRef.current;marksRef.current=next;setMarks(next);setPast(s=>[...s.slice(-49),previous]);setFuture([])},[]);const add=useCallback((n:number,s:Stroke)=>replace({...marksRef.current,[String(n)]:[...(marksRef.current[String(n)]||[]),s]}),[replace]);const erase=useCallback((n:number,p:Point)=>{const key=String(n),list=marksRef.current[key]||[];let index=-1,distance=Infinity;list.forEach((s,i)=>s.points.forEach(q=>{const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<distance){distance=d;index=i}}));if(index>=0&&distance<=.04)replace({...marksRef.current,[key]:list.filter((_,i)=>i!==index)})},[replace]);const undo=()=>{const previous=past[past.length-1];if(!previous)return;setFuture(s=>[...s.slice(-49),marksRef.current]);marksRef.current=previous;setMarks(previous);setPast(s=>s.slice(0,-1))};const redo=()=>{const next=future[future.length-1];if(!next)return;setPast(s=>[...s.slice(-49),marksRef.current]);marksRef.current=next;setMarks(next);setFuture(s=>s.slice(0,-1))};
+const jump=useCallback((requested:number,behavior:ScrollBehavior='smooth')=>{if(!manifest)return;const n=clamp(Math.round(requested),1,manifest.pageCount);setActive(s=>new Set(s).add(n));setCurrent(n);setPageInput(String(n));requestAnimationFrame(()=>nodes.current.get(n)?.scrollIntoView({behavior,block:'start'}))},[manifest]);const submitPage=(e:React.FormEvent)=>{e.preventDefault();const n=Number(pageInput);if(Number.isFinite(n))jump(n);else setPageInput(String(current));pageRef.current?.blur()};const fit=()=>{const root=scroller.current,p=manifest?.pages[current-1];if(!root||!p)return;const rotated=rotation===90||rotation===270;setZoom(clamp((root.clientWidth-48)/Math.min(1100,Math.max(280,rotated?p.height:p.width)),.5,2.5))};const openOriginal=useCallback((purpose:'reader'|'print')=>{window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${current}`,'_blank','noopener,noreferrer');setMessage(purpose==='print'?'The original PDF opened in a new tab. Use its print control.':'The original PDF opened in a new tab.');setTimeout(()=>setMessage(''),5000)},[current,fileId]);const toggleFullscreen=async()=>document.fullscreenElement?document.exitFullscreen():wrap.current?.requestFullscreen?.();
+const runSearch=useCallback(async(e?:React.FormEvent)=>{e?.preventDefault();if(!manifest)return;const q=query.trim();if(q.length<2){setSearchMessage('Enter at least two characters.');return}if(!manifest.searchReady){setSearchMessage('Search is not indexed yet. Run the preparation workflow once more for this existing PDF.');return}setSearching(true);try{const r=await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/search?q=${encodeURIComponent(q)}&v=${encodeURIComponent(manifest.versionKey)}`,{credentials:'same-origin',cache:'no-store'});const data=await r.json() as{ready?:boolean;results?:Result[];message?:string};if(!r.ok&&r.status!==202)throw new Error(data.message||`Search failed (${r.status})`);const found=Array.isArray(data.results)?data.results:[];setResults(found);setResultIndex(found.length?0:-1);setSearchMessage(data.ready===false?'Search is not indexed yet.':found.length?`${found.length} matching page${found.length===1?'':'s'}.`:'No matches found.');if(found[0])jump(found[0].pageNumber)}catch(err){setResults([]);setResultIndex(-1);setSearchMessage(err instanceof Error?err.message:'Search failed.')}finally{setSearching(false)}},[fileId,jump,manifest,query]);const moveResult=(direction:-1|1)=>{if(!results.length)return;const next=(resultIndex+direction+results.length)%results.length;setResultIndex(next);jump(results[next].pageNumber)};
+useEffect(()=>{const fn=(e:KeyboardEvent)=>{const mod=e.metaKey||e.ctrlKey;if(mod&&e.key.toLowerCase()==='f'){e.preventDefault();setSearchOpen(true);setTimeout(()=>searchRef.current?.focus(),0)}else if(mod&&e.key.toLowerCase()==='p'){e.preventDefault();openOriginal('print')}else if(e.key==='Escape'){setSearchOpen(false);setAnnotationOpen(false);setTool('none')}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn)},[openOriginal]);
+const pages=useMemo(()=>manifest?.pages||[],[manifest]);const activeResult=resultIndex>=0?results[resultIndex]:null;if(error)return <Fallback fileId={fileId} message={error} onRetry={()=>setAttempt(v=>v+1)}/>;return <section ref={wrap} className={`flex flex-col overflow-hidden border border-slate-300 bg-slate-100 ${fullscreen?'h-screen min-h-0':'h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px]'}`}><header className="flex shrink-0 items-center gap-1 overflow-x-auto bg-[#323639] px-2 py-1.5 text-white"><form onSubmit={submitPage} className="flex items-center gap-1" aria-label="Go to page"><input ref={pageRef} aria-label="Page number" inputMode="numeric" value={pageInput} onChange={e=>setPageInput(e.target.value.replace(/\D/g,'').slice(0,6))} onFocus={e=>e.currentTarget.select()} onBlur={()=>setPageInput(String(current))} className="h-8 w-14 rounded-sm border border-white/15 bg-[#1f2022] px-2 text-center text-sm text-white outline-none"/><span className="px-1 text-sm text-white/80">/ {manifest?.pageCount??'—'}</span></form><div className="mx-1 h-6 w-px bg-white/20"/><button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom<=.5} onClick={()=>setZoom(v=>Math.max(.5,+(v-.15).toFixed(2)))} className={icon}><Minus className="size-5"/></button><button type="button" aria-label="Reset zoom" onClick={()=>setZoom(1)} className="h-8 min-w-16 rounded px-2 text-sm hover:bg-white/10">{Math.round(zoom*100)}%</button><button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom>=2.5} onClick={()=>setZoom(v=>Math.min(2.5,+(v+.15).toFixed(2)))} className={icon}><Plus className="size-5"/></button><button type="button" aria-label="Fit to width" onClick={fit} className="h-8 rounded px-2 text-xs font-semibold hover:bg-white/10">Fit</button><div className="mx-1 h-6 w-px bg-white/20"/><button type="button" aria-label="Rotate pages" onClick={()=>setRotation(v=>((v+90)%360) as Rotation)} className={icon}><RotateCw className="size-5"/></button><button type="button" aria-label="Search document" onClick={()=>{setSearchOpen(v=>!v);setTimeout(()=>searchRef.current?.focus(),0)}} className={`${icon} ${searchOpen?'bg-white/15':''}`}><Search className="size-5"/></button><button type="button" aria-label="Annotations" onClick={()=>setAnnotationOpen(v=>{if(v)setTool('none');return!v})} className={`${icon} ${annotationOpen?'bg-white/15':''}`}><Pencil className="size-5"/></button><button type="button" aria-label="Undo annotation" disabled={!past.length} onClick={undo} className={icon}><Undo2 className="size-5"/></button><button type="button" aria-label="Redo annotation" disabled={!future.length} onClick={redo} className={icon}><Redo2 className="size-5"/></button><div className="ml-auto h-6 w-px bg-white/20"/><a aria-label="Download PDF" title="Download PDF" href={`/api/files/${fileId}/download`} className={icon}><Download className="size-5"/></a><button type="button" aria-label="Print PDF" title="Print PDF" onClick={()=>openOriginal('print')} className={icon}><Printer className="size-5"/></button><button type="button" aria-label="Open standard reader" title="Open standard reader" onClick={()=>openOriginal('reader')} className={icon}><ExternalLink className="size-5"/></button><button type="button" aria-label={fullscreen?'Exit full screen':'Full screen'} onClick={()=>void toggleFullscreen()} className={icon}><Expand className="size-5"/></button></header>{searchOpen?<div className="shrink-0 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white"><form onSubmit={e=>void runSearch(e)} className="flex items-center gap-2"><Search className="size-4 text-white/60"/><input ref={searchRef} aria-label="Search PDF text" value={query} onChange={e=>setQuery(e.target.value.slice(0,100))} placeholder="Search in document" className="h-8 min-w-48 flex-1 rounded border border-white/20 bg-[#202124] px-2 text-sm outline-none"/><button type="submit" disabled={searching} className="h-8 rounded bg-white/15 px-3 text-sm">{searching?'Searching…':'Find'}</button>{results.length?<><button type="button" aria-label="Previous search result" onClick={()=>moveResult(-1)} className={icon}><ChevronUp className="size-5"/></button><button type="button" aria-label="Next search result" onClick={()=>moveResult(1)} className={icon}><ChevronDown className="size-5"/></button><span className="text-xs">{resultIndex+1} of {results.length}</span></>:null}<button type="button" aria-label="Close search" onClick={()=>setSearchOpen(false)} className={icon}><X className="size-5"/></button></form><div className="mt-1 flex min-h-5 gap-2 text-xs text-white/70" aria-live="polite"><span>{searchMessage}</span>{activeResult?<button type="button" onClick={()=>jump(activeResult.pageNumber)} className="truncate text-left hover:underline"><strong>Page {activeResult.pageNumber}:</strong> {activeResult.snippet}</button>:null}</div></div>:null}{annotationOpen?<div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white"><span className="text-xs font-semibold uppercase text-white/60">Annotate</span><button type="button" onClick={()=>setTool('pen')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='pen'?'bg-white/15':''}`}><Pencil className="size-4"/>Pen</button><button type="button" onClick={()=>setTool('highlight')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='highlight'?'bg-white/15':''}`}><Highlighter className="size-4"/>Highlight</button><button type="button" onClick={()=>setTool('eraser')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='eraser'?'bg-white/15':''}`}><Eraser className="size-4"/>Erase</button><label className="inline-flex items-center gap-2 text-xs text-white/70">Pen colour<input aria-label="Annotation colour" type="color" value={color} onChange={e=>setColor(e.target.value)} className="size-7"/></label><button type="button" disabled={!(marks[String(current)]||[]).length} onClick={()=>replace({...marksRef.current,[String(current)]:[]})} className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"><Trash2 className="size-4"/>Clear page</button><button type="button" disabled={!Object.values(marks as Record<string,Stroke[]>).some((list:Stroke[])=>list.length)} onClick={()=>replace({})} className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"><Trash2 className="size-4"/>Clear all</button><span className="ml-auto text-xs text-white/50">Saved only in this browser.</span></div>:null}{message?<p className="shrink-0 bg-[#3c4043] px-3 pb-2 text-xs text-white/70" role="status">{message}</p>:null}<div ref={scroller} className="relative min-h-0 flex-1 overflow-auto bg-slate-300" aria-label={`${name} continuous PDF preview`}>{(!manifest||!firstReady)&&<Loading state={state}/>} {pages.map(page=><PdfPage key={page.pageNumber} fileId={fileId} version={manifest!.versionKey} page={page} active={active.has(page.pageNumber)} zoom={zoom} rotation={rotation} register={register} onFirst={()=>setFirstReady(true)} tool={tool} color={color} marks={marks[String(page.pageNumber)]||[]} onAdd={add} onErase={erase}/>)}</div></section>}
