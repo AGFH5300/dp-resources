@@ -1,4 +1,4 @@
-import { getPdfPreviewPageByIdentity, PDF_PREVIEW_BUCKET } from '@/lib/pdf-preview-derivatives';
+import { PDF_PREVIEW_BUCKET } from '@/lib/pdf-preview-derivatives';
 import { pdfPreviewSessionFromRequest } from '@/lib/pdf-preview-session';
 
 export const runtime = 'nodejs';
@@ -17,16 +17,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     headers: { 'cache-control': 'private, no-store' },
   });
 
-  const page = await getPdfPreviewPageByIdentity(session.previewId, session.previewVersionKey, pageNumber).catch(() => null);
-  if (!page || !page.object_path || !page.ready_at) return new Response('PDF page is not ready', {
-    status: 404,
-    headers: { 'cache-control': 'private, no-store' },
-  });
-
   const storageBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!storageBaseUrl || !serviceRoleKey) return new Response('Unable to retrieve PDF page', { status: 503 });
-  const encodedPath = page.object_path.split('/').map(encodeURIComponent).join('/');
+  const objectPath = `${session.fileId}/${session.previewVersionKey}/page-${pageNumber}.jpg`;
+  const encodedPath = objectPath.split('/').map(encodeURIComponent).join('/');
   const storageUrl = `${storageBaseUrl}/storage/v1/object/authenticated/${PDF_PREVIEW_BUCKET}/${encodedPath}`;
   const upstream = await fetch(storageUrl, {
     cache: 'no-store',
@@ -36,6 +31,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
       Authorization: `Bearer ${serviceRoleKey}`,
     },
   }).catch(() => null);
+  if (upstream?.status === 404) return new Response('PDF page is not ready', {
+    status: 404,
+    headers: { 'cache-control': 'private, no-store' },
+  });
   if (!upstream?.ok || !upstream.body) return new Response('Unable to retrieve PDF page', { status: 502 });
 
   const headers = new Headers({
@@ -44,9 +43,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     vary: 'Cookie',
     'x-content-type-options': 'nosniff',
   });
-  const length = upstream.headers.get('content-length') || (page.byte_size ? String(page.byte_size) : null);
-  if (length) headers.set('content-length', length);
-  if (page.etag) headers.set('etag', `"${page.etag}"`);
+  for (const name of ['content-length', 'etag', 'last-modified']) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
 
   return new Response(upstream.body, { status: 200, headers });
 }
