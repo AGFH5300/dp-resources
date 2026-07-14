@@ -38,7 +38,7 @@ on:
         description: Stop before starting another book once this recorded provider usage is reached
         required: true
         type: string
-        default: '9'
+        default: '8'
 
 permissions:
   contents: read
