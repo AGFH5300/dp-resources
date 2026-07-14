@@ -1,0 +1,30 @@
+name: Normalize PDF search index
+
+on:
+  push:
+    branches:
+      - feat/pdf-exact-search-highlights-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/pdf-exact-search-highlights-v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/normalize-pdf-search-index.py
+      - run: |
+          rm scripts/normalize-pdf-search-index.py
+          rm .github/workflows/normalize-pdf-search-index.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/pdf-preview-worker.mjs tests/pdf-progressive-loader.test.ts scripts/normalize-pdf-search-index.py .github/workflows/normalize-pdf-search-index.yml
+          git commit -m "Normalize exact PDF search text"
+          git push origin HEAD:feat/pdf-exact-search-highlights-v2
