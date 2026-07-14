@@ -3,22 +3,53 @@ name: Prepare PDF previews
 on:
   workflow_dispatch:
     inputs:
+      selection:
+        description: What should be prepared?
+        required: true
+        type: choice
+        options:
+          - largest_textbooks
+          - single_pdf
+        default: largest_textbooks
       drive_file_id:
-        description: Google Drive file ID for one PDF
+        description: Google Drive file ID (used only for single_pdf)
+        required: false
+        type: string
+        default: ''
+      minimum_size_mib:
+        description: Minimum source PDF size for largest_textbooks
         required: true
         type: string
-        default: 1I6IrD9hMk3P2nVUCertioitIwn_C8ApS
+        default: '20'
+      maximum_books:
+        description: Maximum books to prepare sequentially in this run
+        required: true
+        type: string
+        default: '3'
+      storage_provider:
+        description: Private derivative storage provider
+        required: true
+        type: choice
+        options:
+          - r2
+          - supabase
+        default: r2
+      max_total_preview_gib:
+        description: Stop before starting another book once this recorded provider usage is reached
+        required: true
+        type: string
+        default: '9'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pdf-preview-${{ inputs.drive_file_id }}
+  group: pdf-preview-generation
   cancel-in-progress: false
 
 jobs:
   prepare:
-    name: Prepare selected PDF
+    name: Prepare PDF previews
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -26,7 +57,17 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
       GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_PDF_PREVIEW_BUCKET: ${{ secrets.R2_PDF_PREVIEW_BUCKET }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      SELECTION: ${{ inputs.selection }}
       DRIVE_FILE_ID: ${{ inputs.drive_file_id }}
+      MINIMUM_SIZE_MIB: ${{ inputs.minimum_size_mib }}
+      MAXIMUM_BOOKS: ${{ inputs.maximum_books }}
+      STORAGE_PROVIDER: ${{ inputs.storage_provider }}
+      MAX_TOTAL_PREVIEW_GIB: ${{ inputs.max_total_preview_gib }}
       PDF_PREVIEW_DPI: '150'
       PDF_PREVIEW_JPEG_QUALITY: '76'
       PDF_PREVIEW_BATCH_SIZE: '40'
@@ -51,24 +92,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate required secrets
+      - name: Validate configuration
+        shell: bash
         run: |
+          set -euo pipefail
           test -n "$NEXT_PUBLIC_SUPABASE_URL"
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
           test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
           test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
-          test -n "$DRIVE_FILE_ID"
+          if [ "$SELECTION" = "single_pdf" ]; then
+            test -n "$DRIVE_FILE_ID"
+          fi
+          if [ "$STORAGE_PROVIDER" = "r2" ]; then
+            test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
+            test -n "$R2_ACCESS_KEY_ID"
+            test -n "$R2_SECRET_ACCESS_KEY"
+            test -n "$R2_PDF_PREVIEW_BUCKET"
+          fi
 
-      - name: Prepare selected PDF preview
-        run: node scripts/prepare-pdf-preview.mjs "--drive-file-id=${DRIVE_FILE_ID}"
+      - name: Prepare selected PDF previews
+        run: >-
+          node scripts/prepare-pdf-previews-batch.mjs
+          "--selection=${SELECTION}"
+          "--drive-file-id=${DRIVE_FILE_ID}"
+          "--min-size-mib=${MINIMUM_SIZE_MIB}"
+          "--max-books=${MAXIMUM_BOOKS}"
+          "--storage-provider=${STORAGE_PROVIDER}"
+          "--max-total-preview-gib=${MAX_TOTAL_PREVIEW_GIB}"
 
-      - name: Write workflow summary
-        if: success()
+      - name: Record source-file safety
+        if: always()
         run: |
           {
-            echo "## PDF preview prepared"
             echo ""
-            echo "Drive file ID: \`$DRIVE_FILE_ID\`"
-            echo ""
-            echo "The original Google Drive PDF was read only and was not modified."
+            echo "The workflow read Google Drive originals without modifying, renaming, moving, compressing or deleting them."
           } >> "$GITHUB_STEP_SUMMARY"
