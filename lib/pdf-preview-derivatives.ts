@@ -44,9 +44,18 @@ export type PdfPreviewSource = {
   modifiedTime?: string;
 };
 
+const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at';
+
+export function normalizePdfPreviewModifiedTime(value?: string) {
+  const trimmed = value?.trim() || '';
+  if (!trimmed) return '';
+  const timestamp = Date.parse(trimmed);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : trimmed;
+}
+
 export function pdfPreviewVersionKey(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
   return createHash('sha256')
-    .update(`${source.fileId}\n${source.modifiedTime || ''}\n${source.size}`)
+    .update(`${source.fileId}\n${normalizePdfPreviewModifiedTime(source.modifiedTime)}\n${source.size}`)
     .digest('hex');
 }
 
@@ -58,14 +67,46 @@ export function isPdfPreviewViewable(document: Pick<PdfPreviewDocument, 'status'
   return Boolean(document && document.pages_ready >= 1 && (document.status === 'partial' || document.status === 'ready' || document.status === 'processing'));
 }
 
+async function findReusablePdfPreviewDocument(
+  sb: ReturnType<typeof createSupabaseAdminClient>,
+  source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>,
+) {
+  let query = sb
+    .from('dp_pdf_preview_documents')
+    .select(documentColumns)
+    .eq('drive_file_id', source.fileId)
+    .eq('source_size_bytes', source.size)
+    .in('status', ['ready', 'partial', 'processing'])
+    .order('pages_ready', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const modifiedTime = normalizePdfPreviewModifiedTime(source.modifiedTime);
+  query = modifiedTime ? query.eq('source_modified_at', modifiedTime) : query.is('source_modified_at', null);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(`Unable to read reusable PDF preview state: ${error.message}`);
+  return data as PdfPreviewDocument | null;
+}
+
 export async function ensurePdfPreviewDocument(source: PdfPreviewSource) {
   const sb = createSupabaseAdminClient();
-  const versionKey = pdfPreviewVersionKey(source);
-  const storagePrefix = pdfPreviewStoragePrefix(source);
+
+  // PostgreSQL normalizes timestamptz values while JavaScript callers may receive
+  // equivalent strings such as `Z` and `+00:00`. Reuse an already prepared source
+  // before deriving a new hash so formatting alone can never orphan derivatives.
+  const reusable = await findReusablePdfPreviewDocument(sb, source);
+  if (reusable) return reusable;
+
+  const normalizedSource = {
+    ...source,
+    modifiedTime: normalizePdfPreviewModifiedTime(source.modifiedTime) || undefined,
+  };
+  const versionKey = pdfPreviewVersionKey(normalizedSource);
+  const storagePrefix = pdfPreviewStoragePrefix(normalizedSource);
   const { data, error } = await sb.rpc('dp_queue_pdf_preview', {
     p_drive_file_id: source.fileId,
     p_source_name: source.fileName,
-    p_source_modified_at: source.modifiedTime || null,
+    p_source_modified_at: normalizedSource.modifiedTime || null,
     p_source_size_bytes: source.size,
     p_version_key: versionKey,
     p_storage_prefix: storagePrefix,
@@ -80,12 +121,13 @@ export async function getPdfPreviewDocument(source: Pick<PdfPreviewSource, 'file
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_documents')
-    .select('id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at')
+    .select(documentColumns)
     .eq('drive_file_id', source.fileId)
     .eq('version_key', pdfPreviewVersionKey(source))
     .maybeSingle();
   if (error) throw new Error(`Unable to read PDF preview state: ${error.message}`);
-  return data as PdfPreviewDocument | null;
+  if (data) return data as PdfPreviewDocument;
+  return findReusablePdfPreviewDocument(sb, source);
 }
 
 export async function getPdfPreviewManifest(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
@@ -125,7 +167,7 @@ export async function getPdfPreviewDocumentByIdentity(previewId: string, version
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_documents')
-    .select('id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at')
+    .select(documentColumns)
     .eq('id', previewId)
     .eq('version_key', versionKey)
     .maybeSingle();
