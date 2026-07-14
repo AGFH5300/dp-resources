@@ -50,7 +50,7 @@ export function normalizePdfPreviewModifiedTime(value?: string) {
   const trimmed = value?.trim() || '';
   if (!trimmed) return '';
   const timestamp = Date.parse(trimmed);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : trimmed;
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().replace(/Z$/, '+00:00') : trimmed;
 }
 
 export function pdfPreviewVersionKey(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
@@ -91,9 +91,6 @@ async function findReusablePdfPreviewDocument(
 export async function ensurePdfPreviewDocument(source: PdfPreviewSource) {
   const sb = createSupabaseAdminClient();
 
-  // PostgreSQL normalizes timestamptz values while JavaScript callers may receive
-  // equivalent strings such as `Z` and `+00:00`. Reuse an already prepared source
-  // before deriving a new hash so formatting alone can never orphan derivatives.
   const reusable = await findReusablePdfPreviewDocument(sb, source);
   if (reusable) return reusable;
 
@@ -142,10 +139,7 @@ export async function getPdfPreviewManifest(source: Pick<PdfPreviewSource, 'file
     .order('page_number', { ascending: true });
   if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
 
-  return {
-    document,
-    pages: (data || []) as PdfPreviewPage[],
-  };
+  return { document, pages: (data || []) as PdfPreviewPage[] };
 }
 
 export async function getPdfPreviewPage(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>, pageNumber: number) {
