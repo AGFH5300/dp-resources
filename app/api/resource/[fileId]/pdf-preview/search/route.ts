@@ -88,7 +88,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const { data, error } = await sb.rpc('dp_search_pdf_preview', {
     p_document_id: session.previewId,
     p_query: normalizedQuery,
-    p_limit: 100,
+    p_limit: Math.min(Math.max(Number(document.page_count || 1), 1), 5000),
   });
   if (error) return new Response('Unable to search PDF preview', { status: 502 });
 
