@@ -53,6 +53,8 @@ describe('private PDF preview derivatives', () => {
     expect(manifestRoute).not.toContain('requireMember');
     expect(pageRoute).not.toContain('requireMember');
     expect(pageRoute).toContain('/storage/v1/object/authenticated/');
+    expect(pageRoute).toContain('page-${pageNumber}.jpg');
+    expect(pageRoute).not.toContain('getPdfPreviewPageByIdentity');
     expect(pageRoute).toContain('Authorization: `Bearer ${serviceRoleKey}`');
     expect(pageRoute).not.toContain('createSignedUrl');
   });
