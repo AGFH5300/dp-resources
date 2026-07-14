@@ -8,24 +8,25 @@ on:
         required: true
         type: choice
         options:
+          - all_large_pdfs
           - largest_textbooks
           - single_pdf
-        default: largest_textbooks
+        default: all_large_pdfs
       drive_file_id:
         description: Google Drive file ID (used only for single_pdf)
         required: false
         type: string
         default: ''
       minimum_size_mib:
-        description: Minimum source PDF size for largest_textbooks
+        description: Minimum source PDF size for automatic selections
         required: true
         type: string
         default: '20'
       maximum_books:
-        description: Maximum books to prepare sequentially in this run
+        description: Maximum PDFs to prepare sequentially in this run
         required: true
         type: string
-        default: '3'
+        default: '10'
       storage_provider:
         description: Private derivative storage provider
         required: true
@@ -35,7 +36,7 @@ on:
           - supabase
         default: r2
       max_total_preview_gib:
-        description: Stop before starting another book once this recorded provider usage is reached
+        description: Stop before starting another PDF once this recorded provider usage is reached
         required: true
         type: string
         default: '8'
