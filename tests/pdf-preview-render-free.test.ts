@@ -32,7 +32,7 @@ describe('Render Free PDF preview preparation', () => {
     expect(preflight).toContain('finally');
   });
 
-  it('queues and prepares the exact normalized Drive version', () => {
+  it('queues and prepares the exact normalized Drive version without moving active jobs', () => {
     const queue = read('scripts/queue-pdf-previews.mjs');
     const prepare = read('scripts/prepare-pdf-preview.mjs');
     expect(queue).toContain('--drive-file-id=');
@@ -40,6 +40,9 @@ describe('Render Free PDF preview preparation', () => {
     expect(queue).toContain(".eq('drive_file_id', driveFileId)");
     expect(queue).toContain('No indexed PDF was found for Drive file ID');
     expect(queue).toContain('dp_queue_pdf_preview_v2');
+    expect(queue).toContain("['queued', 'failed'].includes(document.status)");
+    expect(queue).toContain(".in('status', ['queued', 'failed'])");
+    expect(queue).toContain(".is('locked_by', null)");
     expect(prepare).toContain(".eq('version_key', version)");
     expect(prepare).toContain("provider === 'r2' ? 'scripts/pdf-preview-worker-r2.mjs' : 'scripts/pdf-preview-worker.mjs'");
     expect(prepare).toContain('queued_at: priorityTime');
