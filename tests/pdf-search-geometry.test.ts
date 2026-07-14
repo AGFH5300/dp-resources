@@ -38,7 +38,7 @@ describe('PDF exact search geometry', () => {
   it('supports browser-style substring searches inside a word', () => {
     const matches = findPdfSearchMatches(page([
       ['triangle', 0.10, 0.15, 0.08, 0.025, 1],
-      ['rectangular', 0.22, 0.15, 0.11, 0.025, 1],
+      ['angle', 0.22, 0.15, 0.05, 0.025, 1],
     ]), 'angle');
 
     expect(matches).toHaveLength(2);
