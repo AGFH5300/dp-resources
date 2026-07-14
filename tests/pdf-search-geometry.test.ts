@@ -20,6 +20,7 @@ describe('PDF exact search geometry', () => {
     expect(validatePdfSearchGeometry(valid, 12)).toEqual(valid);
     expect(validatePdfSearchGeometry(valid, 13)).toBeNull();
     expect(validatePdfSearchGeometry({ ...valid, w: [['triangle', 0.1]] }, 12)).toBeNull();
+    expect(findPdfSearchMatches(page([]), 'triangle')).toEqual([]);
   });
 
   it('returns every repeated occurrence of a word on the page', () => {
