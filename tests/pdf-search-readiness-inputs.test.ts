@@ -13,6 +13,8 @@ describe('PDF search readiness and toolbar inputs', () => {
 
   it('keeps PDF toolbar inputs dark and readable while focused', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    const globals = read('app/globals.css');
+    expect(globals).toContain('input:focus-visible');
     expect(viewer).toContain("backgroundColor:'#1f2022'");
     expect(viewer).toContain("backgroundColor:'#202124'");
     expect(viewer).toContain("WebkitTextFillColor:'#fff'");
