@@ -112,7 +112,7 @@ describe('PDF range route integrity', () => {
     expect(beginning).toMatchObject({ kind: 'range', start: 0, end: 1023, header: 'bytes=0-1023' });
     expect(middle).toMatchObject({ kind: 'range', start: 4096, end: 8191, header: 'bytes=4096-8191' });
     expect(openEnded).toMatchObject({ kind: 'range', start: 9000, end: 9999, header: 'bytes=9000-9999' });
-    expect(suffix).toMatchObject({ kind: 'range', start: 9500, end: 9999, header: 'bytes=-500' });
+    expect(suffix).toMatchObject({ kind: 'range', start: 9500, end: 9999, header: 'bytes=9500-9999' });
     expect(byteRangeLength(beginning)).toBe(1024);
     expect(expectedPdfContentRange(middle, 10_000)).toBe('bytes 4096-8191/10000');
   });
