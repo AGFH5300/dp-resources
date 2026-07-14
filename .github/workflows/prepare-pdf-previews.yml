@@ -110,6 +110,10 @@ jobs:
             test -n "$R2_PDF_PREVIEW_BUCKET"
           fi
 
+      - name: Verify private R2 read and write access
+        if: env.STORAGE_PROVIDER == 'r2'
+        run: node scripts/verify-r2-preview-storage.mjs
+
       - name: Prepare selected PDF previews
         run: >-
           node scripts/prepare-pdf-previews-batch.mjs
