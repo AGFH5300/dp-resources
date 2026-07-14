@@ -16,10 +16,20 @@ describe('Render Free PDF preview preparation', () => {
     expect(workflow).toContain('poppler-utils');
     expect(workflow).toContain('node-version: 24');
     expect(workflow).toContain('scripts/prepare-pdf-previews-batch.mjs');
+    expect(workflow).toContain('scripts/verify-r2-preview-storage.mjs');
     expect(workflow).toContain('secrets.SUPABASE_SERVICE_ROLE_KEY');
     expect(workflow).toContain('secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
     expect(workflow).toContain('secrets.R2_ACCESS_KEY_ID');
     expect(workflow).toContain('group: pdf-preview-generation');
+  });
+
+  it('fails fast by writing, reading and deleting a tiny private R2 object', () => {
+    const preflight = read('scripts/verify-r2-preview-storage.mjs');
+    expect(preflight).toContain('putPrivateR2Object');
+    expect(preflight).toContain('getPrivateR2Object');
+    expect(preflight).toContain('deletePrivateR2Object');
+    expect(preflight).toContain('downloaded.equals(payload)');
+    expect(preflight).toContain('finally');
   });
 
   it('queues and prepares the exact normalized Drive version', () => {
