@@ -13,6 +13,9 @@ export type PdfPreviewSessionPayload = {
   userId: string;
   previewId: string;
   previewVersionKey: string;
+  previewStorageProvider: 'supabase' | 'r2';
+  previewStorageBucket: string;
+  previewStoragePrefix: string;
   expiresAt: number;
 };
 
@@ -65,31 +68,49 @@ export function verifyPdfPreviewSession(token: string | null, expectedFileId: st
   const expectedSignature = signatureFor(encodedPayload);
   if (providedSignature.length !== expectedSignature.length || !timingSafeEqual(providedSignature, expectedSignature)) return null;
 
-  let payload: PdfPreviewSessionPayload;
+  let parsed: Partial<PdfPreviewSessionPayload>;
   try {
-    payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as PdfPreviewSessionPayload;
+    parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<PdfPreviewSessionPayload>;
   } catch {
     return null;
   }
 
   if (
-    payload.version !== 1 ||
-    payload.audience !== 'pdf-preview' ||
-    payload.fileId !== expectedFileId ||
-    typeof payload.fileName !== 'string' ||
-    typeof payload.mimeType !== 'string' ||
-    !Number.isSafeInteger(payload.size) ||
-    payload.size <= 0 ||
-    typeof payload.userId !== 'string' ||
-    typeof payload.previewId !== 'string' ||
-    payload.previewId.length < 16 ||
-    typeof payload.previewVersionKey !== 'string' ||
-    payload.previewVersionKey.length < 32 ||
-    !Number.isSafeInteger(payload.expiresAt) ||
-    payload.expiresAt <= Math.floor(nowMs / 1000)
+    parsed.version !== 1 ||
+    parsed.audience !== 'pdf-preview' ||
+    parsed.fileId !== expectedFileId ||
+    typeof parsed.fileName !== 'string' ||
+    typeof parsed.mimeType !== 'string' ||
+    !Number.isSafeInteger(parsed.size) ||
+    Number(parsed.size) <= 0 ||
+    typeof parsed.userId !== 'string' ||
+    typeof parsed.previewId !== 'string' ||
+    parsed.previewId.length < 16 ||
+    typeof parsed.previewVersionKey !== 'string' ||
+    parsed.previewVersionKey.length < 32 ||
+    !Number.isSafeInteger(parsed.expiresAt) ||
+    Number(parsed.expiresAt) <= Math.floor(nowMs / 1000)
   ) return null;
 
-  return payload;
+  // Sessions issued before R2 support did not contain storage fields. Keep those
+  // short-lived cookies valid by resolving them to the original Supabase location.
+  const previewStorageProvider = parsed.previewStorageProvider || 'supabase';
+  const previewStorageBucket = parsed.previewStorageBucket || 'pdf-previews';
+  const previewStoragePrefix = parsed.previewStoragePrefix || `${parsed.fileId}/${parsed.previewVersionKey}`;
+  if (
+    !['supabase', 'r2'].includes(previewStorageProvider) ||
+    typeof previewStorageBucket !== 'string' ||
+    !previewStorageBucket.trim() ||
+    typeof previewStoragePrefix !== 'string' ||
+    !previewStoragePrefix.trim()
+  ) return null;
+
+  return {
+    ...parsed,
+    previewStorageProvider,
+    previewStorageBucket,
+    previewStoragePrefix,
+  } as PdfPreviewSessionPayload;
 }
 
 function cookieValue(req: Request, name: string) {

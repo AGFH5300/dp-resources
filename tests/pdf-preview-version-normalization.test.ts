@@ -20,7 +20,7 @@ describe('PDF preview version normalization', () => {
   it('reuses an already prepared source before creating a new version row', () => {
     expect(source).toContain("toISOString().replace(/Z$/, '+00:00')");
     expect(source).toContain('findReusablePdfPreviewDocument');
-    expect(source.indexOf('const reusable = await findReusablePdfPreviewDocument')).toBeLessThan(source.indexOf("sb.rpc('dp_queue_pdf_preview'"));
+    expect(source.indexOf('const reusable = await findReusablePdfPreviewDocument')).toBeLessThan(source.indexOf("sb.rpc('dp_queue_pdf_preview_v2'"));
     expect(source).toContain(".in('status', ['ready', 'partial', 'processing'])");
     expect(source).toContain(".order('pages_ready', { ascending: false })");
   });

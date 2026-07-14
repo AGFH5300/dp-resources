@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   pdfPreviewSessionFromRequest: vi.fn(),
+  getPrivateR2Object: vi.fn(),
 }));
 
 vi.mock('@/lib/pdf-preview-derivatives', () => ({
@@ -9,6 +10,9 @@ vi.mock('@/lib/pdf-preview-derivatives', () => ({
 }));
 vi.mock('@/lib/pdf-preview-session', () => ({
   pdfPreviewSessionFromRequest: mocks.pdfPreviewSessionFromRequest,
+}));
+vi.mock('@/lib/r2-s3', () => ({
+  getPrivateR2Object: mocks.getPrivateR2Object,
 }));
 
 import { GET } from '../app/api/resource/[fileId]/pdf-preview/page/[pageNumber]/route';
@@ -39,6 +43,7 @@ beforeEach(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
   mocks.pdfPreviewSessionFromRequest.mockReset();
   mocks.pdfPreviewSessionFromRequest.mockReturnValue(session);
+  mocks.getPrivateR2Object.mockReset();
 });
 
 afterEach(() => {
@@ -57,6 +62,7 @@ describe('private PDF page route', () => {
 
     expect((await GET(request(), context)).status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.getPrivateR2Object).not.toHaveBeenCalled();
   });
 
   it('rejects a stale or missing derivative version before storage access', async () => {
@@ -66,6 +72,7 @@ describe('private PDF page route', () => {
     expect((await GET(request('b'.repeat(64)), context)).status).toBe(409);
     expect((await GET(new Request(`http://localhost/api/resource/${fileId}/pdf-preview/page/1`), context)).status).toBe(409);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.getPrivateR2Object).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the deterministic private object is not prepared', async () => {
@@ -78,7 +85,7 @@ describe('private PDF page route', () => {
     expect(response.headers.get('cache-control')).toBe('private, no-store');
   });
 
-  it('streams the private object with server-side credentials and no page database lookup', async () => {
+  it('keeps legacy sessions on the original Supabase object path', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3, 4]), {
       status: 200,
       headers: { 'content-type': 'image/jpeg', 'content-length': '4', etag: '"storage-etag"' },
@@ -99,5 +106,34 @@ describe('private PDF page route', () => {
     expect(response.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
     expect(response.headers.get('authorization')).toBeNull();
     expect(response.headers.get('apikey')).toBeNull();
+  });
+
+  it('streams an R2-backed page using only the signed private bucket and prefix', async () => {
+    mocks.pdfPreviewSessionFromRequest.mockReturnValue({
+      ...session,
+      previewStorageProvider: 'r2',
+      previewStorageBucket: 'dp-pdf-previews',
+      previewStoragePrefix: `${fileId}/${versionKey}`,
+    });
+    mocks.getPrivateR2Object.mockResolvedValue(new Response(new Uint8Array([5, 6, 7]), {
+      status: 200,
+      headers: { 'content-type': 'image/jpeg', 'content-length': '3', etag: '"r2-etag"' },
+    }));
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await GET(request(), context);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.getPrivateR2Object).toHaveBeenCalledTimes(1);
+    expect(mocks.getPrivateR2Object).toHaveBeenCalledWith(
+      'dp-pdf-previews',
+      `${fileId}/${versionKey}/page-1.jpg`,
+      expect.any(AbortSignal),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-length')).toBe('3');
+    expect(response.headers.get('etag')).toBe('"r2-etag"');
+    expect(response.headers.get('authorization')).toBeNull();
   });
 });
