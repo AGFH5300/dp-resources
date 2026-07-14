@@ -26,12 +26,13 @@ describe('public changelog page', () => {
     expect(list).not.toContain('type="search"')
   })
 
-  it('uses merged main-branch history as the source and converts it to summaries', () => {
+  it('uses merged main-branch history and consolidates it into daily release notes', () => {
     const source = read('lib/changelog.ts')
 
     expect(source).toContain('/commits?sha=main')
     expect(source).toContain('Merge pull request #')
-    expect(source).toContain('summaryOverrides')
+    expect(source).toContain('historicalSummaries')
+    expect(source).toContain('consolidateHistory')
     expect(source).toContain('sentenceFromTitle')
     expect(source).toContain('next: { revalidate: REVALIDATE_SECONDS }')
     expect(source).not.toContain('GITHUB_TOKEN')
