@@ -1,3 +1,4 @@
+import { PDF_PREVIEW_BUCKET } from '@/lib/pdf-preview-derivatives';
 import { pdfPreviewSessionFromRequest } from '@/lib/pdf-preview-session';
 import { getPrivateR2Object } from '@/lib/r2-s3';
 
@@ -34,12 +35,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     headers: { 'cache-control': 'private, no-store' },
   });
 
-  const objectPath = `${session.previewStoragePrefix}/page-${pageNumber}.jpg`;
+  // Sessions issued before provider-aware storage did not contain these fields.
+  // Preserve their exact original deterministic Supabase object path.
+  const storageProvider = session.previewStorageProvider || 'supabase';
+  const storageBucket = session.previewStorageBucket || PDF_PREVIEW_BUCKET;
+  const storagePrefix = session.previewStoragePrefix || `${session.fileId}/${session.previewVersionKey}`;
+  const objectPath = `${storagePrefix}/page-${pageNumber}.jpg`;
+
   let upstream: Response | null = null;
-  if (session.previewStorageProvider === 'r2') {
-    upstream = await getPrivateR2Object(session.previewStorageBucket, objectPath, req.signal).catch(() => null);
+  if (storageProvider === 'r2') {
+    upstream = await getPrivateR2Object(storageBucket, objectPath, req.signal).catch(() => null);
   } else {
-    upstream = await getSupabaseObject(session.previewStorageBucket, objectPath, req.signal);
+    upstream = await getSupabaseObject(storageBucket, objectPath, req.signal);
   }
 
   if (upstream?.status === 404) return new Response('PDF page is not ready', {
