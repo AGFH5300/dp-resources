@@ -83,12 +83,14 @@ async function main() {
     document.status === 'ready'
     && Number(document.pages_ready) === Number(document.page_count)
     && Boolean(document.text_ready_at)
+    && Boolean(document.search_geometry_ready_at)
   ) {
     console.log(JSON.stringify({
       event: 'pdf_preview_manual_prepare_already_ready',
       driveFileId,
       pageCount: document.page_count,
       searchReady: true,
+      exactHighlightsReady: true,
       storageProvider: document.storage_provider,
       storageBucket: document.storage_bucket,
     }));
@@ -131,7 +133,8 @@ async function main() {
     driveFileId,
     pageCount: completed.page_count,
     pagesReady: completed.pages_ready,
-    searchReady: Boolean(completed.text_ready_at),
+    searchReady: Boolean(completed.text_ready_at && completed.search_geometry_ready_at),
+    exactHighlightsReady: Boolean(completed.search_geometry_ready_at),
     storageProvider: completed.storage_provider,
     storageBucket: completed.storage_bucket,
   }));

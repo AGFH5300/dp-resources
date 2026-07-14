@@ -181,6 +181,7 @@ async function main() {
       existing?.status === 'ready'
       && Number(existing.pages_ready) === Number(existing.page_count)
       && Boolean(existing.text_ready_at)
+      && Boolean(existing.search_geometry_ready_at)
     ) {
       skipped.push(file);
       if (selection === 'single_pdf') break;
@@ -238,7 +239,7 @@ async function main() {
       message,
       pages: document?.page_count || null,
       pagesReady: document?.pages_ready || 0,
-      searchReady: Boolean(document?.text_ready_at),
+      searchReady: Boolean(document?.text_ready_at && document?.search_geometry_ready_at),
       duration: formatDuration(Date.now() - startedAt),
       previewMiB: formatMiB(bytes),
       storageProvider: document?.storage_provider || storageProvider,

@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     versionKey: manifest.document.version_key,
     pageCount: manifest.document.page_count,
     pagesReady: manifest.document.pages_ready,
-    searchReady: Boolean(manifest.document.text_ready_at),
+    searchReady: Boolean(manifest.document.text_ready_at && manifest.document.search_geometry_ready_at),
     pages: manifest.pages.map((page) => ({
       pageNumber: page.page_number,
       width: page.pixel_width,
