@@ -1,13 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  getPdfPreviewPageByIdentity: vi.fn(),
   pdfPreviewSessionFromRequest: vi.fn(),
 }));
 
 vi.mock('@/lib/pdf-preview-derivatives', () => ({
   PDF_PREVIEW_BUCKET: 'pdf-previews',
-  getPdfPreviewPageByIdentity: mocks.getPdfPreviewPageByIdentity,
 }));
 vi.mock('@/lib/pdf-preview-session', () => ({
   pdfPreviewSessionFromRequest: mocks.pdfPreviewSessionFromRequest,
@@ -41,19 +39,6 @@ beforeEach(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret';
   mocks.pdfPreviewSessionFromRequest.mockReset();
   mocks.pdfPreviewSessionFromRequest.mockReturnValue(session);
-  mocks.getPdfPreviewPageByIdentity.mockReset();
-  mocks.getPdfPreviewPageByIdentity.mockResolvedValue({
-    document_id: session.previewId,
-    page_number: 1,
-    width_points: 600,
-    height_points: 800,
-    pixel_width: 1250,
-    pixel_height: 1667,
-    object_path: `${fileId}/${versionKey}/page-001.jpg`,
-    byte_size: 4,
-    etag: 'page-etag',
-    ready_at: '2026-07-14T00:00:00.000Z',
-  });
 });
 
 afterEach(() => {
@@ -67,8 +52,11 @@ afterEach(() => {
 describe('private PDF page route', () => {
   it('fails closed for missing authorization', async () => {
     mocks.pdfPreviewSessionFromRequest.mockReturnValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
     expect((await GET(request(), context)).status).toBe(401);
-    expect(mocks.getPdfPreviewPageByIdentity).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('rejects a stale or missing derivative version before storage access', async () => {
@@ -77,40 +65,37 @@ describe('private PDF page route', () => {
 
     expect((await GET(request('b'.repeat(64)), context)).status).toBe(409);
     expect((await GET(new Request(`http://localhost/api/resource/${fileId}/pdf-preview/page/1`), context)).status).toBe(409);
-    expect(mocks.getPdfPreviewPageByIdentity).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('returns 404 without contacting storage when a page is not prepared', async () => {
-    mocks.getPdfPreviewPageByIdentity.mockResolvedValue(null);
-    const fetchMock = vi.fn();
+  it('returns 404 when the deterministic private object is not prepared', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 404 }));
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await GET(request(), context);
 
     expect(response.status).toBe(404);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
   });
 
-  it('streams the private object with server-side credentials and versioned immutable caching', async () => {
+  it('streams the private object with server-side credentials and no page database lookup', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3, 4]), {
       status: 200,
-      headers: { 'content-type': 'image/jpeg', 'content-length': '4' },
+      headers: { 'content-type': 'image/jpeg', 'content-length': '4', etag: '"storage-etag"' },
     }));
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await GET(request(), context);
 
-    expect(mocks.getPdfPreviewPageByIdentity).toHaveBeenCalledWith(session.previewId, versionKey, 1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`https://example.supabase.co/storage/v1/object/authenticated/pdf-previews/${fileId}/${versionKey}/page-001.jpg`);
+    expect(url).toBe(`https://example.supabase.co/storage/v1/object/authenticated/pdf-previews/${fileId}/${versionKey}/page-1.jpg`);
     expect(new Headers(init.headers).get('apikey')).toBe('service-role-secret');
     expect(new Headers(init.headers).get('authorization')).toBe('Bearer service-role-secret');
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/jpeg');
     expect(response.headers.get('content-length')).toBe('4');
-    expect(response.headers.get('etag')).toBe('"page-etag"');
+    expect(response.headers.get('etag')).toBe('"storage-etag"');
     expect(response.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
     expect(response.headers.get('authorization')).toBeNull();
     expect(response.headers.get('apikey')).toBeNull();
