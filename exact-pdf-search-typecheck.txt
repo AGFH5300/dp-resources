@@ -1,7 +1,0 @@
-
-> dp-resources@1.0.0 typecheck
-> tsc --noEmit
-
-tests/pdf-progressive-loader.test.ts(54,45): error TS1005: ',' expected.
-tests/pdf-progressive-loader.test.ts(54,53): error TS1005: ',' expected.
-exit_status=2

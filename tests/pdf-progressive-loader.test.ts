@@ -51,7 +51,7 @@ describe('private PDF preview derivatives', () => {
     expect(viewer).toContain('WebkitTextFillColor');
     expect(viewer).toContain('Matching words are highlighted in yellow.');
     expect(viewer).toContain('searchMatches.flatMap');
-    expect(viewer).toContain('mixBlendMode:'multiply'');
+    expect(viewer).toContain("mixBlendMode:'multiply'");
     expect(viewer).not.toContain('border-amber-400 bg-amber-300/10');
     expect(viewer).toContain("e.key.toLowerCase()==='f'");
     expect(viewer).toContain("e.key.toLowerCase()==='p'");
@@ -105,7 +105,7 @@ describe('private PDF preview derivatives', () => {
     for (const route of [statusRoute, manifestRoute, searchRoute, pageRoute]) expect(route).toContain('pdfPreviewSessionFromRequest');
     expect(searchRoute).toContain("url.searchParams.get('v')");
     expect(searchRoute).toContain('dp_search_pdf_preview');
-    expect(searchRoute).toContain('exactMatches');
+    expect(searchRoute).toContain('findPdfSearchMatches');
     expect(searchRoute).toContain('search/page-${pageNumber}.json');
     expect(searchRoute).toContain('getPrivateR2Object');
     expect(searchRoute).not.toContain('requireMember');
