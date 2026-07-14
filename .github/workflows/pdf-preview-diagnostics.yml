@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   tests:
@@ -23,6 +25,20 @@ jobs:
         run: |
           set -o pipefail
           npm test -- --reporter=verbose 2>&1 | tee pdf-test-output.txt
+      - name: Post sanitized failure tail
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "Temporary PDF-preview test diagnostic (this comment will be removed after the fix):"
+            echo
+            echo '```text'
+            tail -n 120 pdf-test-output.txt
+            echo '```'
+          } > pdf-test-comment.md
+          gh pr comment 82 --body-file pdf-test-comment.md
       - name: Upload test output
         if: always()
         uses: actions/upload-artifact@v4
