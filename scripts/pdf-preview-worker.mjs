@@ -37,7 +37,6 @@ const drive = google.drive({ version: 'v3', auth });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
-const pad = (pageNumber, pageCount) => String(pageNumber).padStart(String(pageCount).length, '0');
 
 async function claimJob() {
   const { data, error } = await supabase.rpc('dp_claim_pdf_preview_job', { p_worker_id: workerId });
@@ -145,7 +144,7 @@ async function renderRange(sourcePath, outputDir, start, end) {
 async function uploadRenderedPage(job, pageCount, pageNumber, filePath) {
   const bytes = await readFile(filePath);
   const etag = sha256(bytes);
-  const objectPath = `${job.storage_prefix}/page-${pad(pageNumber, pageCount)}.jpg`;
+  const objectPath = `${job.storage_prefix}/page-${pageNumber}.jpg`;
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(objectPath, bytes, {
     contentType: 'image/jpeg',
     cacheControl: '31536000',
