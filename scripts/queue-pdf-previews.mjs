@@ -57,10 +57,12 @@ async function queueFile(file) {
   if (!document) throw new Error(`Queueing did not return a document for ${file.name}`);
 
   // A user may have opened an unprepared PDF before the GitHub job started, leaving
-  // a zero-page Supabase queue row. It is safe to move only that empty row to R2.
+  // a zero-page Supabase queue row. Move only an unlocked queued/failed row; never
+  // redirect an active or partially prepared worker to another provider.
   if (
     Number(document.pages_ready) === 0 &&
-    document.status !== 'ready' &&
+    ['queued', 'failed'].includes(document.status) &&
+    !document.locked_by &&
     (document.storage_provider !== requestedProvider || document.storage_bucket !== requestedBucket)
   ) {
     const { data: updated, error: updateError } = await supabase
@@ -72,6 +74,8 @@ async function queueFile(file) {
       })
       .eq('id', document.id)
       .eq('pages_ready', 0)
+      .in('status', ['queued', 'failed'])
+      .is('locked_by', null)
       .select('*')
       .maybeSingle();
     if (updateError) throw new Error(`Unable to select ${requestedProvider} storage for ${file.name}: ${updateError.message}`);
