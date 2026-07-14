@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   if (!session) return new Response('Invalid or expired PDF preview session', { status: 401 });
 
   const preview = await getPdfPreviewDocumentByIdentity(session.previewId, session.previewVersionKey).catch(() => null);
-  if (!preview) return Response.json({ status: 'queued', pageCount: null, pagesReady: 0, manifestUrl: null }, {
+  if (!preview) return Response.json({ status: 'queued', pageCount: null, pagesReady: 0, manifestUrl: null, searchReady: false }, {
     status: 202,
     headers: { 'cache-control': 'private, no-store' },
   });
@@ -21,6 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     pageCount: preview.page_count,
     pagesReady: preview.pages_ready,
     manifestUrl: viewable ? `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/manifest` : null,
+    searchReady: Boolean(preview.text_ready_at),
     message: preview.status === 'failed' ? 'PDF preview preparation failed' : undefined,
   }, {
     status: viewable ? 200 : 202,
