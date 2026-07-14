@@ -24,6 +24,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: absoluteUrl('/changelog'),
+      lastModified,
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    },
+    {
       url: absoluteUrl('/privacy'),
       lastModified,
       changeFrequency: 'yearly',
