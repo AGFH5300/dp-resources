@@ -1,0 +1,30 @@
+name: Apply PDF page-size label fix
+
+on:
+  push:
+    branches:
+      - fix/pdfinfo-page-size-labels
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pdfinfo-page-size-labels
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/apply-pdfinfo-label-fix.py
+      - run: |
+          rm scripts/apply-pdfinfo-label-fix.py
+          rm .github/workflows/apply-pdfinfo-label-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/pdf-preview-worker.mjs tests/pdf-preview-render-free.test.ts scripts/apply-pdfinfo-label-fix.py .github/workflows/apply-pdfinfo-label-fix.yml
+          git commit -m "Accept labeled pdfinfo page dimensions"
+          git push origin HEAD:fix/pdfinfo-page-size-labels
