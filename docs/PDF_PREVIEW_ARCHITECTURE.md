@@ -51,7 +51,7 @@ This is the current PR #77 behavior. It is not an integrated reader, does not pr
    - returns dimensions and readiness for all pages.
 4. `GET .../pdf-preview/page/:pageNumber`
    - verifies the cookie;
-   - resolves only the current Drive-version derivative;
+   - derives the private object path from the signed file/version session without another database lookup;
    - streams the private JPEG object through the application.
 5. The browser keeps only pages within an IntersectionObserver window active. Distant `<img>` elements are removed while dimensions/placeholders remain, preventing hundreds of decoded full-resolution pages from accumulating in memory.
 
@@ -70,7 +70,9 @@ The Render background worker:
 - resumes already uploaded pages after a lease expiry/restart;
 - never runs conversion inside a website request.
 
-Default rendering is 150 DPI, progressive JPEG quality 76. On the 698-page benchmark, local Poppler preparation of pages 1–5 took 2.54 seconds with about 308 MB peak RSS. Those five page images totalled 811,998 bytes; page 1 was 144,203 bytes. This benchmark measures conversion after the source PDF is local, not end-to-end production timing.
+Default rendering is 150 DPI, progressive JPEG quality 76. On the 698-page benchmark, local Poppler preparation of pages 1–5 took 2.54 seconds with about 308 MB peak RSS. Those five page images totalled 811,998 bytes; page 1 was 144,203 bytes. Pages 690–698 rendered in 2.77 seconds with about 80 MB peak RSS and produced 1,982,593 bytes, confirming distant JPEG 2000 pages decode correctly. This benchmark measures conversion after the source PDF is local, not end-to-end production timing.
+
+A second real Drive PDF, `Mathematics HL - Applications and Interpretation - OXFORD 2019.pdf`, was also inspected. It is 60,835,803 bytes, 868 pages and not linearized. Pages 1–5 rendered in 1.18 seconds with about 78 MB peak RSS; page 1 was 551,059 bytes and the five pages totalled 1,927,711 bytes. This provides a materially different source-layout test, but likewise is not an authenticated browser benchmark.
 
 ## Performance budget
 
@@ -123,7 +125,7 @@ Exact authenticated Chrome cold/warm timings must be appended to the PR after th
 
    For staged rollout, first queue the largest PDFs with a higher threshold and explicitly verify the 62.43 MiB/698-page Economics file.
 6. Wait until the benchmark documents show `ready` before directing production users to this reader.
-7. Run the authenticated Chrome benchmark for cold cache, warm cache, cancellation, retry, rapid distant scrolling, zoom and memory. Attach the network export/screenshots to the PR.
+7. Run the authenticated Chrome benchmark for cold cache, warm cache, cancellation, retry, rapid distant scrolling, zoom and memory. Put full screenshots/HAR files in a private artifact store. Only add redacted UI images and sanitized network tables to the public PR; remove cookies, authorization headers, signed values, private filenames where necessary, Drive content and page imagery.
 8. Confirm the original download route still returns the Drive PDF and activity logging records one open, not one event per page.
 
 ## Rollback
@@ -144,5 +146,6 @@ Exact authenticated Chrome cold/warm timings must be appended to the PR after th
 - Memory observation during extended and rapid scrolling.
 - Cancellation by navigating away during loading.
 - Page retry after an injected failed page request.
+- No private PDF page content, auth cookies, signed session material, Drive links or unsanitized HAR data in the public repository or PR.
 
 The pull request must remain open until this evidence is recorded.
