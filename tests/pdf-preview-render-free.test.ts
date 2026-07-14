@@ -22,8 +22,22 @@ describe('Render Free PDF preview preparation', () => {
     expect(queue).toContain(".eq('drive_file_id', driveFileId)");
     expect(queue).toContain('No indexed PDF was found for Drive file ID');
     expect(prepare).toContain("'scripts/pdf-preview-worker.mjs', '--once'");
-    expect(prepare).toContain("queued_at: priorityTime");
+    expect(prepare).toContain('queued_at: priorityTime');
     expect(prepare).toContain("completed.status !== 'ready'");
+  });
+
+  it('uploads page batches concurrently, retries transient failures, and resumes completed pages', () => {
+    const workflow = read('.github/workflows/prepare-pdf-previews.yml');
+    const worker = read('scripts/pdf-preview-worker.mjs');
+    expect(workflow).toContain("PDF_PREVIEW_BATCH_SIZE: '40'");
+    expect(workflow).toContain("PDF_PREVIEW_UPLOAD_CONCURRENCY: '6'");
+    expect(workflow).toContain("PDF_PREVIEW_UPLOAD_ATTEMPTS: '5'");
+    expect(worker).toContain('pdf_preview_upload_retry');
+    expect(worker).toContain('mapConcurrent(rendered, UPLOAD_CONCURRENCY');
+    expect(worker).toContain(".upsert(rows, {");
+    expect(worker).toContain('pdf_preview_resume_state');
+    expect(worker).toContain('existingReadyPages(job.id)');
+    expect(worker).not.toContain(".eq('page_number', pageNumber)");
   });
 
   it('keeps an authenticated standard-reader escape hatch for unprepared PDFs', () => {
