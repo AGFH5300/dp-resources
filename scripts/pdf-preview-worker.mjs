@@ -13,7 +13,9 @@ const execFile = promisify(execFileCallback);
 const BUCKET = 'pdf-previews';
 const RENDER_DPI = Number(process.env.PDF_PREVIEW_DPI || 150);
 const JPEG_QUALITY = Number(process.env.PDF_PREVIEW_JPEG_QUALITY || 76);
-const BATCH_SIZE = Number(process.env.PDF_PREVIEW_BATCH_SIZE || 20);
+const BATCH_SIZE = Number(process.env.PDF_PREVIEW_BATCH_SIZE || 40);
+const UPLOAD_CONCURRENCY = Number(process.env.PDF_PREVIEW_UPLOAD_CONCURRENCY || 6);
+const UPLOAD_ATTEMPTS = Number(process.env.PDF_PREVIEW_UPLOAD_ATTEMPTS || 5);
 const POLL_MS = Number(process.env.PDF_PREVIEW_POLL_MS || 5000);
 const once = process.argv.includes('--once');
 const workerId = process.env.PDF_PREVIEW_WORKER_ID || `pdf-worker-${randomUUID()}`;
@@ -24,6 +26,8 @@ for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GOO
 if (!Number.isFinite(RENDER_DPI) || RENDER_DPI < 96 || RENDER_DPI > 240) throw new Error('PDF_PREVIEW_DPI must be between 96 and 240');
 if (!Number.isFinite(JPEG_QUALITY) || JPEG_QUALITY < 50 || JPEG_QUALITY > 95) throw new Error('PDF_PREVIEW_JPEG_QUALITY must be between 50 and 95');
 if (!Number.isSafeInteger(BATCH_SIZE) || BATCH_SIZE < 1 || BATCH_SIZE > 100) throw new Error('PDF_PREVIEW_BATCH_SIZE must be between 1 and 100');
+if (!Number.isSafeInteger(UPLOAD_CONCURRENCY) || UPLOAD_CONCURRENCY < 1 || UPLOAD_CONCURRENCY > 12) throw new Error('PDF_PREVIEW_UPLOAD_CONCURRENCY must be between 1 and 12');
+if (!Number.isSafeInteger(UPLOAD_ATTEMPTS) || UPLOAD_ATTEMPTS < 1 || UPLOAD_ATTEMPTS > 8) throw new Error('PDF_PREVIEW_UPLOAD_ATTEMPTS must be between 1 and 8');
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -37,6 +41,61 @@ const drive = google.drive({ version: 'v3', auth });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
+
+function errorDetails(error) {
+  if (!error) return 'unknown error';
+  const details = [error.message || String(error)];
+  if (error.statusCode) details.push(`status=${error.statusCode}`);
+  if (error.error && error.error !== error.message) details.push(String(error.error));
+  return details.join(' ');
+}
+
+function shouldRetryUpload(error) {
+  const status = Number(error?.statusCode || error?.status || 0);
+  const message = errorDetails(error).toLowerCase();
+  return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500
+    || /aborted|timeout|timed out|network|fetch|socket|bad request/.test(message);
+}
+
+async function withUploadRetry(pageNumber, operation) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt += 1) {
+    let result;
+    try {
+      result = await operation();
+    } catch (error) {
+      result = { error };
+    }
+    if (!result.error) return result;
+    lastError = result.error;
+    if (attempt >= UPLOAD_ATTEMPTS || !shouldRetryUpload(lastError)) break;
+    const delayMs = Math.min(8000, 400 * (2 ** (attempt - 1))) + Math.floor(Math.random() * 250);
+    console.warn(JSON.stringify({
+      event: 'pdf_preview_upload_retry',
+      pageNumber,
+      attempt,
+      delayMs,
+      message: errorDetails(lastError),
+    }));
+    await sleep(delayMs);
+  }
+  throw new Error(`Unable to upload PDF page ${pageNumber}: ${errorDetails(lastError)}`);
+}
+
+async function mapConcurrent(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
 
 async function claimJob() {
   const { data, error } = await supabase.rpc('dp_claim_pdf_preview_job', { p_worker_id: workerId });
@@ -93,6 +152,7 @@ async function upsertPageDimensions(job, pageCount, dimensions) {
   for (let offset = 0; offset < rows.length; offset += 500) {
     const { error } = await supabase.from('dp_pdf_preview_pages').upsert(rows.slice(offset, offset + 500), {
       onConflict: 'document_id,page_number',
+      ignoreDuplicates: true,
     });
     if (error) throw new Error(`Unable to save PDF page dimensions: ${error.message}`);
   }
@@ -141,26 +201,39 @@ async function renderRange(sourcePath, outputDir, start, end) {
   return files.map((file, index) => ({ pageNumber: start + index, path: join(outputDir, file) }));
 }
 
-async function uploadRenderedPage(job, pageCount, pageNumber, filePath) {
-  const bytes = await readFile(filePath);
-  const etag = sha256(bytes);
-  const objectPath = `${job.storage_prefix}/page-${pageNumber}.jpg`;
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(objectPath, bytes, {
-    contentType: 'image/jpeg',
-    cacheControl: '31536000',
-    upsert: true,
-  });
-  if (uploadError) throw new Error(`Unable to upload PDF page ${pageNumber}: ${uploadError.message}`);
-
+async function uploadRenderedBatch(job, dimensions, rendered) {
+  if (!rendered.length) return [];
   const readyAt = new Date().toISOString();
-  const { error: pageError } = await supabase.from('dp_pdf_preview_pages').update({
-    object_path: objectPath,
-    byte_size: bytes.length,
-    etag,
-    ready_at: readyAt,
-    updated_at: readyAt,
-  }).eq('document_id', job.id).eq('page_number', pageNumber);
-  if (pageError) throw new Error(`Unable to record PDF page ${pageNumber}: ${pageError.message}`);
+  const rows = await mapConcurrent(rendered, UPLOAD_CONCURRENCY, async ({ pageNumber, path }) => {
+    const bytes = await readFile(path);
+    const objectPath = `${job.storage_prefix}/page-${pageNumber}.jpg`;
+    await withUploadRetry(pageNumber, () => supabase.storage.from(BUCKET).upload(objectPath, bytes, {
+      contentType: 'image/jpeg',
+      cacheControl: '31536000',
+      upsert: true,
+    }));
+    const page = dimensions.get(pageNumber);
+    return {
+      document_id: job.id,
+      page_number: pageNumber,
+      width_points: page.widthPoints,
+      height_points: page.heightPoints,
+      pixel_width: Math.max(1, Math.round((page.widthPoints * RENDER_DPI) / 72)),
+      pixel_height: Math.max(1, Math.round((page.heightPoints * RENDER_DPI) / 72)),
+      object_path: objectPath,
+      byte_size: bytes.length,
+      etag: sha256(bytes),
+      ready_at: readyAt,
+      updated_at: readyAt,
+    };
+  });
+
+  const { error } = await supabase.from('dp_pdf_preview_pages').upsert(rows, {
+    onConflict: 'document_id,page_number',
+  });
+  if (error) throw new Error(`Unable to record PDF page batch: ${error.message}`);
+  await Promise.all(rendered.map((item) => rm(item.path, { force: true })));
+  return rows;
 }
 
 async function updateProgress(job, pageCount, pagesReady) {
@@ -190,6 +263,7 @@ async function processJob(job) {
     const { pageCount, dimensions } = await readPdfInfo(sourcePath);
     await upsertPageDimensions(job, pageCount, dimensions);
     const readyPages = await existingReadyPages(job.id);
+    console.log(JSON.stringify({ event: 'pdf_preview_resume_state', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount }));
 
     const ranges = [];
     if (!readyPages.has(1)) ranges.push([1, 1]);
@@ -201,12 +275,11 @@ async function processJob(job) {
 
     for (const [start, end] of ranges) {
       const rendered = await renderRange(sourcePath, outputDir, start, end);
+      const pending = rendered.filter((item) => !readyPages.has(item.pageNumber));
+      const uploaded = await uploadRenderedBatch(job, dimensions, pending);
+      for (const row of uploaded) readyPages.add(row.page_number);
       for (const item of rendered) {
-        if (!readyPages.has(item.pageNumber)) {
-          await uploadRenderedPage(job, pageCount, item.pageNumber, item.path);
-          readyPages.add(item.pageNumber);
-        }
-        await rm(item.path, { force: true });
+        if (!pending.some((pendingItem) => pendingItem.path === item.path)) await rm(item.path, { force: true });
       }
       await updateProgress(job, pageCount, readyPages.size);
       console.log(JSON.stringify({ event: 'pdf_preview_progress', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount }));
@@ -237,7 +310,14 @@ async function processJob(job) {
 }
 
 async function main() {
-  console.log(JSON.stringify({ event: 'pdf_preview_worker_started', workerId, dpi: RENDER_DPI, batchSize: BATCH_SIZE }));
+  console.log(JSON.stringify({
+    event: 'pdf_preview_worker_started',
+    workerId,
+    dpi: RENDER_DPI,
+    batchSize: BATCH_SIZE,
+    uploadConcurrency: UPLOAD_CONCURRENCY,
+    uploadAttempts: UPLOAD_ATTEMPTS,
+  }));
   do {
     const job = await claimJob();
     if (job) await processJob(job);
