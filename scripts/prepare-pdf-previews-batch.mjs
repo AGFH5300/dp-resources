@@ -17,13 +17,13 @@ const driveFileId = argument('drive-file-id');
 const storageProvider = argument('storage-provider', process.env.PDF_PREVIEW_STORAGE_PROVIDER || 'r2').toLowerCase();
 const minSizeMiB = Number(argument('min-size-mib', '20'));
 const maxBooks = Number(argument('max-books', '3'));
-const maxTotalGiB = Number(argument('max-total-preview-gib', storageProvider === 'r2' ? '9' : '0.9'));
+const maxTotalGiB = Number(argument('max-total-preview-gib', storageProvider === 'r2' ? '8' : '0.9'));
 
-if (!['single_pdf', 'largest_textbooks'].includes(selection)) throw new Error('Selection must be single_pdf or largest_textbooks');
+if (!['single_pdf', 'largest_textbooks', 'all_large_pdfs'].includes(selection)) throw new Error('Selection must be single_pdf, largest_textbooks or all_large_pdfs');
 if (selection === 'single_pdf' && !driveFileId) throw new Error('A Drive file ID is required for single_pdf selection');
 if (!['supabase', 'r2'].includes(storageProvider)) throw new Error('Storage provider must be supabase or r2');
 if (!Number.isFinite(minSizeMiB) || minSizeMiB < 0) throw new Error('Minimum size must be zero or greater');
-if (!Number.isSafeInteger(maxBooks) || maxBooks < 1 || maxBooks > 20) throw new Error('Maximum books must be between 1 and 20');
+if (!Number.isSafeInteger(maxBooks) || maxBooks < 1 || maxBooks > 40) throw new Error('Maximum books must be between 1 and 40');
 if (!Number.isFinite(maxTotalGiB) || maxTotalGiB <= 0) throw new Error('Maximum total preview storage must be greater than zero');
 
 const minimumBytes = Math.floor(minSizeMiB * 1024 * 1024);
@@ -102,10 +102,10 @@ async function loadSinglePdf() {
   return [{ ...data, size_bytes: Number(data.size_bytes) }];
 }
 
-async function loadLargestTextbooks() {
-  const candidates = [];
+async function loadLargePdfs() {
+  const files = [];
   let from = 0;
-  while (candidates.length < Math.max(100, maxBooks * 10)) {
+  while (true) {
     const { data, error } = await supabase
       .from('dp_resource_index')
       .select('drive_file_id,name,size_bytes,modified_at')
@@ -114,16 +114,17 @@ async function loadLargestTextbooks() {
       .gte('size_bytes', minimumBytes)
       .order('size_bytes', { ascending: false })
       .range(from, from + 499);
-    if (error) throw new Error(`Unable to read textbook candidates: ${error.message}`);
+    if (error) throw new Error(`Unable to read large PDF candidates: ${error.message}`);
     if (!data?.length) break;
-    for (const row of data) {
-      const file = { ...row, size_bytes: Number(row.size_bytes) };
-      if (isLikelyTextbook(file)) candidates.push(file);
-    }
+    for (const row of data) files.push({ ...row, size_bytes: Number(row.size_bytes) });
     if (data.length < 500) break;
     from += data.length;
   }
-  return candidates;
+  return files;
+}
+
+async function loadLargestTextbooks() {
+  return (await loadLargePdfs()).filter(isLikelyTextbook);
 }
 
 function formatDuration(milliseconds) {
@@ -149,30 +150,38 @@ async function writeSummary(results, skipped, stoppedForStorage, finalStorageByt
     `- Selection: \`${selection}\``,
     `- Storage provider: \`${storageProvider}\``,
     `- Final recorded ${storageProvider} usage: **${formatMiB(finalStorageBytes)} MiB**`,
-    `- Completed versions skipped: **${skipped.length}**`,
+    `- Completed searchable versions skipped: **${skipped.length}**`,
     `- Storage guard reached: **${stoppedForStorage ? 'yes' : 'no'}**`,
     '',
-    '| PDF | Result | Pages | Duration | Preview MiB |',
-    '|---|---:|---:|---:|---:|',
+    '| PDF | Result | Pages | Search | Duration | Preview MiB |',
+    '|---|---:|---:|---:|---:|---:|',
   ];
-  if (!results.length) lines.push('| No new PDF required preparation | — | — | — | — |');
+  if (!results.length) lines.push('| No new PDF required preparation | — | — | — | — | — |');
   for (const result of results) {
-    lines.push(`| ${escapeTable(result.name)} | ${escapeTable(result.status)} | ${result.pages ?? '—'} | ${result.duration} | ${result.previewMiB ?? '—'} |`);
+    lines.push(`| ${escapeTable(result.name)} | ${escapeTable(result.status)} | ${result.pages ?? '—'} | ${result.searchReady ? 'Ready' : 'Unavailable'} | ${result.duration} | ${result.previewMiB ?? '—'} |`);
   }
   if (skipped.length) {
-    lines.push('', '### Already prepared');
+    lines.push('', '### Already prepared and searchable');
     for (const file of skipped) lines.push(`- ${file.name}`);
   }
   await appendFile(summaryPath, `${lines.join('\n')}\n`, 'utf8');
 }
 
 async function main() {
-  const files = selection === 'single_pdf' ? await loadSinglePdf() : await loadLargestTextbooks();
+  const files = selection === 'single_pdf'
+    ? await loadSinglePdf()
+    : selection === 'all_large_pdfs'
+      ? await loadLargePdfs()
+      : await loadLargestTextbooks();
   const selected = [];
   const skipped = [];
   for (const file of files) {
     const existing = await targetDocument(file);
-    if (existing?.status === 'ready' && Number(existing.pages_ready) === Number(existing.page_count)) {
+    if (
+      existing?.status === 'ready'
+      && Number(existing.pages_ready) === Number(existing.page_count)
+      && Boolean(existing.text_ready_at)
+    ) {
       skipped.push(file);
       if (selection === 'single_pdf') break;
       continue;
@@ -229,6 +238,7 @@ async function main() {
       message,
       pages: document?.page_count || null,
       pagesReady: document?.pages_ready || 0,
+      searchReady: Boolean(document?.text_ready_at),
       duration: formatDuration(Date.now() - startedAt),
       previewMiB: formatMiB(bytes),
       storageProvider: document?.storage_provider || storageProvider,

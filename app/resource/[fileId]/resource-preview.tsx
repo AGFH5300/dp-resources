@@ -35,7 +35,7 @@ function ImagePreview({ url, name }: { url: string; name: string }) {
 export function ResourcePreview({ fileId, mimeType, name, sheetEmbedUrl }: { fileId: string; mimeType: string; name: string; sheetEmbedUrl?: string }) {
   const url = `/api/resource/${fileId}/content`;
   const cap = getResourceCapability(mimeType, name, false, fileId);
-  if (cap.previewMode === 'pdf') return <div><div className="flex items-center justify-end border-y border-slate-200 bg-white px-3 py-2 text-sm"><a href={url} target="_blank" rel="noreferrer" className="font-medium text-[color:var(--dp-blue)] hover:underline">Preview not prepared? Open standard reader</a></div><PdfViewer url={url} fileId={fileId} name={name} /></div>;
+  if (cap.previewMode === 'pdf') return <PdfViewer url={url} fileId={fileId} name={name} />;
   if (cap.previewMode === 'image') return <ImagePreview url={url} name={name} />;
   if (cap.previewMode === 'master-xlsx') return <SpreadsheetPreview sheetEmbedUrl={sheetEmbedUrl} />;
   if (cap.previewMode === 'xlsx') return <WorkbookPreview url={url} name={name} />;

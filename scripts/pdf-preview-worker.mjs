@@ -164,6 +164,39 @@ async function upsertPageDimensions(job, pageCount, dimensions) {
   if (error) throw new Error(`Unable to save PDF page count: ${error.message}`);
 }
 
+function normalizeSearchText(value) {
+  return value
+    .replace(/\u0000/g, '')
+    .replace(/[\t ]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 200000);
+}
+
+async function extractPageText(sourcePath, outputPath, pageCount) {
+  await execFile('pdftotext', ['-layout', '-enc', 'UTF-8', sourcePath, outputPath], {
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  const raw = await readFile(outputPath, 'utf8');
+  const split = raw.split('\f');
+  if (split.length > pageCount && !split[split.length - 1]?.trim()) split.pop();
+  return Array.from({ length: pageCount }, (_, index) => ({
+    pageNumber: index + 1,
+    text: normalizeSearchText(split[index] || ''),
+  }));
+}
+
+async function storePageText(job, pages) {
+  const { data, error } = await supabase.rpc('dp_store_pdf_preview_text', {
+    p_document_id: job.id,
+    p_pages: pages,
+  });
+  if (error) throw new Error(`Unable to save PDF search text: ${error.message}`);
+  if (Number(data) !== pages.length) {
+    throw new Error(`Saved search text for ${Number(data) || 0} of ${pages.length} PDF pages`);
+  }
+}
+
 async function existingReadyPages(jobId) {
   const ready = new Set();
   let from = 0;
@@ -251,9 +284,22 @@ async function updateProgress(job, pageCount, pagesReady) {
   if (error) throw new Error(`Unable to update PDF preview progress: ${error.message}`);
 }
 
+async function renderAndRecord(job, sourcePath, outputDir, dimensions, readyPages, start, end, pageCount) {
+  const rendered = await renderRange(sourcePath, outputDir, start, end);
+  const pending = rendered.filter((item) => !readyPages.has(item.pageNumber));
+  const uploaded = await uploadRenderedBatch(job, dimensions, pending);
+  for (const row of uploaded) readyPages.add(row.page_number);
+  for (const item of rendered) {
+    if (!pending.some((pendingItem) => pendingItem.path === item.path)) await rm(item.path, { force: true });
+  }
+  await updateProgress(job, pageCount, readyPages.size);
+  console.log(JSON.stringify({ event: 'pdf_preview_progress', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount }));
+}
+
 async function processJob(job) {
   const workDir = await mkdtemp(join(tmpdir(), 'dp-pdf-preview-'));
   const sourcePath = join(workDir, 'source.pdf');
+  const textPath = join(workDir, 'search.txt');
   const outputDir = join(workDir, 'pages');
   await mkdir(outputDir);
 
@@ -263,30 +309,35 @@ async function processJob(job) {
     const { pageCount, dimensions } = await readPdfInfo(sourcePath);
     await upsertPageDimensions(job, pageCount, dimensions);
     const readyPages = await existingReadyPages(job.id);
-    console.log(JSON.stringify({ event: 'pdf_preview_resume_state', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount }));
+    console.log(JSON.stringify({ event: 'pdf_preview_resume_state', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount, searchReady: Boolean(job.text_ready_at) }));
 
-    const ranges = [];
-    if (!readyPages.has(1)) ranges.push([1, 1]);
+    if (!readyPages.has(1)) {
+      await renderAndRecord(job, sourcePath, outputDir, dimensions, readyPages, 1, 1, pageCount);
+    }
+
+    if (!job.text_ready_at) {
+      try {
+        const pages = await extractPageText(sourcePath, textPath, pageCount);
+        await storePageText(job, pages);
+        job.text_ready_at = new Date().toISOString();
+        console.log(JSON.stringify({ event: 'pdf_preview_text_ready', fileId: job.drive_file_id, pageCount }));
+      } catch (textError) {
+        console.warn(JSON.stringify({
+          event: 'pdf_preview_text_failed',
+          fileId: job.drive_file_id,
+          message: textError instanceof Error ? textError.message : String(textError),
+        }));
+      }
+    }
+
     for (let start = 2; start <= pageCount; start += BATCH_SIZE) {
       const end = Math.min(pageCount, start + BATCH_SIZE - 1);
       if ([...Array(end - start + 1)].every((_, index) => readyPages.has(start + index))) continue;
-      ranges.push([start, end]);
-    }
-
-    for (const [start, end] of ranges) {
-      const rendered = await renderRange(sourcePath, outputDir, start, end);
-      const pending = rendered.filter((item) => !readyPages.has(item.pageNumber));
-      const uploaded = await uploadRenderedBatch(job, dimensions, pending);
-      for (const row of uploaded) readyPages.add(row.page_number);
-      for (const item of rendered) {
-        if (!pending.some((pendingItem) => pendingItem.path === item.path)) await rm(item.path, { force: true });
-      }
-      await updateProgress(job, pageCount, readyPages.size);
-      console.log(JSON.stringify({ event: 'pdf_preview_progress', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount }));
+      await renderAndRecord(job, sourcePath, outputDir, dimensions, readyPages, start, end, pageCount);
     }
 
     if (readyPages.size >= pageCount) await updateProgress(job, pageCount, readyPages.size);
-    console.log(JSON.stringify({ event: 'pdf_preview_ready', fileId: job.drive_file_id, pageCount }));
+    console.log(JSON.stringify({ event: 'pdf_preview_ready', fileId: job.drive_file_id, pageCount, searchReady: Boolean(job.text_ready_at) }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ event: 'pdf_preview_failed', fileId: job.drive_file_id, message }));

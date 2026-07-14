@@ -25,6 +25,7 @@ export type PdfPreviewDocument = {
   last_error: string | null;
   first_page_ready_at: string | null;
   completed_at: string | null;
+  text_ready_at: string | null;
   updated_at: string;
 };
 
@@ -48,7 +49,7 @@ export type PdfPreviewSource = {
   modifiedTime?: string;
 };
 
-const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at';
+const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,text_ready_at,updated_at';
 
 export function normalizePdfPreviewModifiedTime(value?: string) {
   const trimmed = value?.trim() || '';
@@ -207,7 +208,7 @@ export async function getPdfPreviewPageByIdentity(previewId: string, versionKey:
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
+    .select('document_id,page_number,width_points,height_points,pixel_width,height_points,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
     .eq('document_id', previewId)
     .eq('page_number', pageNumber)
     .eq('dp_pdf_preview_documents.version_key', versionKey)

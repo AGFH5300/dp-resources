@@ -79,11 +79,16 @@ async function main() {
 
   const document = await targetDocument(version);
   if (!document) throw new Error(`Queueing did not create preview version ${version} for ${driveFileId}`);
-  if (document.status === 'ready' && Number(document.pages_ready) === Number(document.page_count)) {
+  if (
+    document.status === 'ready'
+    && Number(document.pages_ready) === Number(document.page_count)
+    && Boolean(document.text_ready_at)
+  ) {
     console.log(JSON.stringify({
       event: 'pdf_preview_manual_prepare_already_ready',
       driveFileId,
       pageCount: document.page_count,
+      searchReady: true,
       storageProvider: document.storage_provider,
       storageBucket: document.storage_bucket,
     }));
@@ -92,6 +97,8 @@ async function main() {
 
   // Render Free has no separate background worker. Put this exact document at the
   // front of the existing atomic queue, then run the worker for exactly one job.
+  // A fully rendered document with no text index is reopened only to extract text;
+  // its existing page images remain untouched and are skipped by the resumable worker.
   const priorityTime = '1970-01-01T00:00:00.000Z';
   const { error: priorityError } = await supabase
     .from('dp_pdf_preview_documents')
@@ -124,6 +131,7 @@ async function main() {
     driveFileId,
     pageCount: completed.page_count,
     pagesReady: completed.pages_ready,
+    searchReady: Boolean(completed.text_ready_at),
     storageProvider: completed.storage_provider,
     storageBucket: completed.storage_bucket,
   }));
