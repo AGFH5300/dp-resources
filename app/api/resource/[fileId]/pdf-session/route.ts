@@ -57,6 +57,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
     userId: user.id,
     previewId: preview.id,
     previewVersionKey: preview.version_key,
+    previewStorageProvider: preview.storage_provider,
+    previewStorageBucket: preview.storage_bucket,
+    previewStoragePrefix: preview.storage_prefix,
   });
 
   recordFileOpenedOnce(req, {
