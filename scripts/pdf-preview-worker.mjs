@@ -120,7 +120,7 @@ function parsePdfInfo(output) {
   const pageCount = Number(/^Pages:\s+(\d+)$/m.exec(output)?.[1]);
   if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('pdfinfo did not return a valid page count');
   const dimensions = new Map();
-  const pattern = /^Page\s+(\d+)\s+size:\s+([\d.]+) x ([\d.]+) pts$/gm;
+  const pattern = /^Page\s+(\d+)\s+size:\s+([\d.]+)\s+x\s+([\d.]+)\s+pts(?:\s+\([^\r\n]*\))?\s*$/gm;
   for (const match of output.matchAll(pattern)) {
     dimensions.set(Number(match[1]), { widthPoints: Number(match[2]), heightPoints: Number(match[3]) });
   }
