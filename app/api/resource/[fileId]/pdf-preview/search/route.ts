@@ -1,5 +1,5 @@
 import { PDF_PREVIEW_BUCKET, getPdfPreviewDocumentByIdentity } from '@/lib/pdf-preview-derivatives';
-import { findPdfSearchMatches, validatePdfSearchGeometry } from '@/lib/pdf-search-geometry';
+import { findPdfSearchMatches, normalizePdfSearchText, validatePdfSearchGeometry } from '@/lib/pdf-search-geometry';
 import { pdfPreviewSessionFromRequest } from '@/lib/pdf-preview-session';
 import { getPrivateR2Object } from '@/lib/r2-s3';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
@@ -33,8 +33,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   });
 
   const query = (url.searchParams.get('q') || '').trim();
-  if (query.length < 2 || query.length > 100) {
-    return Response.json({ ready: true, results: [], message: 'Enter between 2 and 100 characters.' }, {
+  const normalizedQuery = normalizePdfSearchText(query);
+  if (query.length < 2 || query.length > 100 || normalizedQuery.length < 2) {
+    return Response.json({ ready: true, results: [], message: 'Enter between 2 and 100 searchable characters.' }, {
       status: 400,
       headers: { 'cache-control': 'private, no-store' },
     });
@@ -73,7 +74,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
 
     const payload = validatePdfSearchGeometry(await upstream.json().catch(() => null), pageNumber);
     if (!payload) return new Response('Invalid PDF search geometry', { status: 502 });
-    const matches = findPdfSearchMatches(payload, query);
+    const matches = findPdfSearchMatches(payload, normalizedQuery);
 
     return Response.json({ ready: true, exactHighlightsReady: true, pageNumber, matches }, {
       headers: {
@@ -86,7 +87,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb.rpc('dp_search_pdf_preview', {
     p_document_id: session.previewId,
-    p_query: query,
+    p_query: normalizedQuery,
     p_limit: 100,
   });
   if (error) return new Response('Unable to search PDF preview', { status: 502 });
