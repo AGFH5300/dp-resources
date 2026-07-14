@@ -1,11 +1,13 @@
 import 'server-only';
 
 import { createHash } from 'node:crypto';
+import { isR2PdfPreviewConfigured } from './r2-s3';
 import { createSupabaseAdminClient } from './supabase-admin';
 
 export const PDF_PREVIEW_BUCKET = 'pdf-previews';
 
 export type PdfPreviewStatus = 'queued' | 'processing' | 'partial' | 'ready' | 'failed';
+export type PdfPreviewStorageProvider = 'supabase' | 'r2';
 
 export type PdfPreviewDocument = {
   id: string;
@@ -15,6 +17,8 @@ export type PdfPreviewDocument = {
   source_modified_at: string | null;
   source_size_bytes: number;
   storage_prefix: string;
+  storage_provider: PdfPreviewStorageProvider;
+  storage_bucket: string;
   status: PdfPreviewStatus;
   page_count: number | null;
   pages_ready: number;
@@ -44,7 +48,7 @@ export type PdfPreviewSource = {
   modifiedTime?: string;
 };
 
-const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at';
+const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at';
 
 export function normalizePdfPreviewModifiedTime(value?: string) {
   const trimmed = value?.trim() || '';
@@ -65,6 +69,19 @@ export function pdfPreviewStoragePrefix(source: Pick<PdfPreviewSource, 'fileId' 
 
 export function isPdfPreviewViewable(document: Pick<PdfPreviewDocument, 'status' | 'pages_ready'> | null) {
   return Boolean(document && document.pages_ready >= 1 && (document.status === 'partial' || document.status === 'ready' || document.status === 'processing'));
+}
+
+export function pdfPreviewDefaultStorageTarget(): { provider: PdfPreviewStorageProvider; bucket: string } {
+  const requested = process.env.PDF_PREVIEW_DEFAULT_STORAGE_PROVIDER?.trim().toLowerCase() || 'supabase';
+  if (requested === 'r2') {
+    const bucket = process.env.R2_PDF_PREVIEW_BUCKET?.trim();
+    if (!bucket || !isR2PdfPreviewConfigured()) {
+      throw new Error('R2 is selected for PDF previews but its bucket or S3 credentials are not configured');
+    }
+    return { provider: 'r2', bucket };
+  }
+  if (requested !== 'supabase') throw new Error(`Unsupported PDF preview storage provider: ${requested}`);
+  return { provider: 'supabase', bucket: process.env.PDF_PREVIEW_SUPABASE_BUCKET?.trim() || PDF_PREVIEW_BUCKET };
 }
 
 async function findReusablePdfPreviewDocument(
@@ -100,13 +117,16 @@ export async function ensurePdfPreviewDocument(source: PdfPreviewSource) {
   };
   const versionKey = pdfPreviewVersionKey(normalizedSource);
   const storagePrefix = pdfPreviewStoragePrefix(normalizedSource);
-  const { data, error } = await sb.rpc('dp_queue_pdf_preview', {
+  const storage = pdfPreviewDefaultStorageTarget();
+  const { data, error } = await sb.rpc('dp_queue_pdf_preview_v2', {
     p_drive_file_id: source.fileId,
     p_source_name: source.fileName,
     p_source_modified_at: normalizedSource.modifiedTime || null,
     p_source_size_bytes: source.size,
     p_version_key: versionKey,
     p_storage_prefix: storagePrefix,
+    p_storage_provider: storage.provider,
+    p_storage_bucket: storage.bucket,
   });
   if (error) throw new Error(`Unable to queue PDF preview: ${error.message}`);
   const document = (Array.isArray(data) ? data[0] : data) as PdfPreviewDocument | null;
@@ -187,7 +207,7 @@ export async function getPdfPreviewPageByIdentity(previewId: string, versionKey:
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
+    .select('document_id,page_number,width_points,height_points,pixel_width,height_points,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
     .eq('document_id', previewId)
     .eq('page_number', pageNumber)
     .eq('dp_pdf_preview_documents.version_key', versionKey)
