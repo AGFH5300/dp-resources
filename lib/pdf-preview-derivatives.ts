@@ -207,7 +207,7 @@ export async function getPdfPreviewPageByIdentity(previewId: string, versionKey:
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,height_points,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
+    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
     .eq('document_id', previewId)
     .eq('page_number', pageNumber)
     .eq('dp_pdf_preview_documents.version_key', versionKey)
