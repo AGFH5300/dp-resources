@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('Render Free PDF preview preparation', () => {
-  it('exposes one manual workflow for single PDFs or largest textbooks', () => {
+  it('exposes one manual workflow for single PDFs, textbooks, or all large PDFs', () => {
     const workflow = read('.github/workflows/prepare-pdf-previews.yml');
     expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).toContain('all_large_pdfs');
     expect(workflow).toContain('largest_textbooks');
     expect(workflow).toContain('single_pdf');
     expect(workflow).toContain('drive_file_id:');
@@ -47,12 +48,16 @@ describe('Render Free PDF preview preparation', () => {
     expect(prepare).toContain("provider === 'r2' ? 'scripts/pdf-preview-worker-r2.mjs' : 'scripts/pdf-preview-worker.mjs'");
     expect(prepare).toContain('queued_at: priorityTime');
     expect(prepare).toContain("completed.status !== 'ready'");
+    expect(prepare).toContain('Boolean(document.text_ready_at)');
   });
 
-  it('selects likely textbook files, skips ready versions, and processes sequentially', () => {
+  it('selects large PDFs, skips searchable ready versions, and processes sequentially', () => {
     const batch = read('scripts/prepare-pdf-previews-batch.mjs');
     expect(batch).toContain('isLikelyTextbook');
+    expect(batch).toContain('loadLargePdfs');
+    expect(batch).toContain("selection === 'all_large_pdfs'");
     expect(batch).toContain("existing?.status === 'ready'");
+    expect(batch).toContain('Boolean(existing.text_ready_at)');
     expect(batch).toContain('for (const file of selected)');
     expect(batch).toContain('await run(process.execPath');
     expect(batch).toContain('dp_pdf_preview_storage_usage');
@@ -61,7 +66,7 @@ describe('Render Free PDF preview preparation', () => {
     expect(batch).not.toContain('Promise.all(selected');
   });
 
-  it('uploads page batches concurrently, retries transient failures, and resumes completed pages', () => {
+  it('uploads page batches concurrently, retries transient failures, resumes pages, and extracts search text', () => {
     const workflow = read('.github/workflows/prepare-pdf-previews.yml');
     const worker = read('scripts/pdf-preview-worker.mjs');
     expect(workflow).toContain("PDF_PREVIEW_BATCH_SIZE: '40'");
@@ -72,14 +77,17 @@ describe('Render Free PDF preview preparation', () => {
     expect(worker).toContain(".upsert(rows, {");
     expect(worker).toContain('pdf_preview_resume_state');
     expect(worker).toContain('existingReadyPages(job.id)');
+    expect(worker).toContain("execFile('pdftotext'");
+    expect(worker).toContain('dp_store_pdf_preview_text');
     expect(worker).not.toContain(".eq('page_number', pageNumber)");
   });
 
-  it('keeps an authenticated standard-reader escape hatch for unprepared PDFs', () => {
+  it('keeps the standard reader inside the single PDF toolbar rather than a second bordered strip', () => {
     const preview = read('app/resource/[fileId]/resource-preview.tsx');
-    expect(preview).toContain('Preview not prepared? Open standard reader');
-    expect(preview).toContain('target="_blank"');
-    expect(preview).toContain('rel="noreferrer"');
-    expect(preview).toContain('`/api/resource/${fileId}/content`');
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    expect(preview).not.toContain('Preview not prepared? Open standard reader');
+    expect(preview).toContain("if (cap.previewMode === 'pdf') return <PdfViewer");
+    expect(viewer).toContain('Open standard reader');
+    expect(viewer).toContain("window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${current}`");
   });
 });
