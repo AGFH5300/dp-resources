@@ -1,0 +1,164 @@
+import 'server-only';
+
+import { createHash } from 'node:crypto';
+import { createSupabaseAdminClient } from './supabase-admin';
+
+export const PDF_PREVIEW_BUCKET = 'pdf-previews';
+
+export type PdfPreviewStatus = 'queued' | 'processing' | 'partial' | 'ready' | 'failed';
+
+export type PdfPreviewDocument = {
+  id: string;
+  drive_file_id: string;
+  version_key: string;
+  source_name: string;
+  source_modified_at: string | null;
+  source_size_bytes: number;
+  storage_prefix: string;
+  status: PdfPreviewStatus;
+  page_count: number | null;
+  pages_ready: number;
+  last_error: string | null;
+  first_page_ready_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+};
+
+export type PdfPreviewPage = {
+  document_id: string;
+  page_number: number;
+  width_points: number;
+  height_points: number;
+  pixel_width: number;
+  pixel_height: number;
+  object_path: string | null;
+  byte_size: number | null;
+  etag: string | null;
+  ready_at: string | null;
+};
+
+export type PdfPreviewSource = {
+  fileId: string;
+  fileName: string;
+  size: number;
+  modifiedTime?: string;
+};
+
+export function pdfPreviewVersionKey(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
+  return createHash('sha256')
+    .update(`${source.fileId}\n${source.modifiedTime || ''}\n${source.size}`)
+    .digest('hex');
+}
+
+export function pdfPreviewStoragePrefix(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
+  return `${source.fileId}/${pdfPreviewVersionKey(source)}`;
+}
+
+export function isPdfPreviewViewable(document: Pick<PdfPreviewDocument, 'status' | 'pages_ready'> | null) {
+  return Boolean(document && document.pages_ready >= 1 && (document.status === 'partial' || document.status === 'ready' || document.status === 'processing'));
+}
+
+export async function ensurePdfPreviewDocument(source: PdfPreviewSource) {
+  const sb = createSupabaseAdminClient();
+  const versionKey = pdfPreviewVersionKey(source);
+  const storagePrefix = pdfPreviewStoragePrefix(source);
+  const { data, error } = await sb.rpc('dp_queue_pdf_preview', {
+    p_drive_file_id: source.fileId,
+    p_source_name: source.fileName,
+    p_source_modified_at: source.modifiedTime || null,
+    p_source_size_bytes: source.size,
+    p_version_key: versionKey,
+    p_storage_prefix: storagePrefix,
+  });
+  if (error) throw new Error(`Unable to queue PDF preview: ${error.message}`);
+  const document = (Array.isArray(data) ? data[0] : data) as PdfPreviewDocument | null;
+  if (!document) throw new Error('Unable to queue PDF preview');
+  return document;
+}
+
+export async function getPdfPreviewDocument(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_documents')
+    .select('id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at')
+    .eq('drive_file_id', source.fileId)
+    .eq('version_key', pdfPreviewVersionKey(source))
+    .maybeSingle();
+  if (error) throw new Error(`Unable to read PDF preview state: ${error.message}`);
+  return data as PdfPreviewDocument | null;
+}
+
+export async function getPdfPreviewManifest(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {
+  const document = await getPdfPreviewDocument(source);
+  if (!document) return null;
+
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_pages')
+    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
+    .eq('document_id', document.id)
+    .order('page_number', { ascending: true });
+  if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
+
+  return {
+    document,
+    pages: (data || []) as PdfPreviewPage[],
+  };
+}
+
+export async function getPdfPreviewPage(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>, pageNumber: number) {
+  const document = await getPdfPreviewDocument(source);
+  if (!document || !isPdfPreviewViewable(document)) return null;
+
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_pages')
+    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
+    .eq('document_id', document.id)
+    .eq('page_number', pageNumber)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to read PDF preview page: ${error.message}`);
+  return data as PdfPreviewPage | null;
+}
+
+export async function getPdfPreviewDocumentByIdentity(previewId: string, versionKey: string) {
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_documents')
+    .select('id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,updated_at')
+    .eq('id', previewId)
+    .eq('version_key', versionKey)
+    .maybeSingle();
+  if (error) throw new Error(`Unable to read PDF preview state: ${error.message}`);
+  return data as PdfPreviewDocument | null;
+}
+
+export async function getPdfPreviewManifestByIdentity(previewId: string, versionKey: string) {
+  const document = await getPdfPreviewDocumentByIdentity(previewId, versionKey);
+  if (!document) return null;
+
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_pages')
+    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
+    .eq('document_id', previewId)
+    .order('page_number', { ascending: true });
+  if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
+  return { document, pages: (data || []) as PdfPreviewPage[] };
+}
+
+export async function getPdfPreviewPageByIdentity(previewId: string, versionKey: string, pageNumber: number) {
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_pdf_preview_pages')
+    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
+    .eq('document_id', previewId)
+    .eq('page_number', pageNumber)
+    .eq('dp_pdf_preview_documents.version_key', versionKey)
+    .in('dp_pdf_preview_documents.status', ['processing', 'partial', 'ready'])
+    .maybeSingle();
+  if (error) throw new Error(`Unable to read PDF preview page: ${error.message}`);
+  if (!data) return null;
+  const { dp_pdf_preview_documents: _document, ...page } = data as PdfPreviewPage & { dp_pdf_preview_documents: unknown };
+  return page as PdfPreviewPage;
+}
