@@ -1,6 +1,5 @@
 import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, isDriveConfigured } from '@/lib/drive';
-import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { recordFileOpenedOnce } from '@/lib/activity';
 import { ensurePdfPreviewDocument, isPdfPreviewViewable } from '@/lib/pdf-preview-derivatives';
 import {
@@ -27,9 +26,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
   );
   if (!limited.ok) return new Response('Too many preview requests. Please try again shortly.', { status: 429 });
 
-  const indexedMeta = await getIndexedResourceShell(fileId);
-  if (!indexedMeta && !(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
-  const meta = indexedMeta || await getDriveMetadata(fileId);
+  // Perform current file/root authorization and metadata resolution once per preview
+  // session. Both Drive lookups are short-lived cached; page and byte requests rely on
+  // the signed, file-specific session and do not repeat Google or membership work.
+  if (!(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
+  const meta = await getDriveMetadata(fileId);
   if (!meta || meta.isFolder) return new Response('Not found', { status: 404 });
   if (meta.mimeType !== 'application/pdf' && !/\.pdf$/i.test(meta.name)) return new Response('Not a PDF', { status: 415 });
 
