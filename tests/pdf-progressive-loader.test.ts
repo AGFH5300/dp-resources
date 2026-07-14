@@ -43,6 +43,9 @@ describe('private PDF preview derivatives', () => {
     expect(sessionRoute).toContain('requireMember');
     expect(sessionRoute).toContain('recordFileOpenedOnce');
     expect(sessionRoute).toContain('ensurePdfPreviewDocument');
+    expect(sessionRoute).toContain('assertInsideRoot');
+    expect(sessionRoute).toContain('getDriveMetadata');
+    expect(sessionRoute).not.toContain('getIndexedResourceShell');
     expect(sessionRoute).toContain('HttpOnly');
     expect(sessionRoute).toContain('SameSite=Lax');
     expect(token).toContain('pdfPreviewSessionFromRequest');
