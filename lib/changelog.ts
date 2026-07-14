@@ -33,6 +33,7 @@ const historicalSummaries: Record<string, string[]> = {
     'PDF search now supports exact word and phrase highlighting, repeated matches, large textbooks, and automatic scrolling to the highlighted occurrence.',
     'Improved preview preparation with controlled batches, retry and resume support, storage safeguards, reliable version matching, and broader PDF page-size compatibility.',
     'Fixed PDF page drift during navigation and layout changes, stale search readiness, and invisible page-number or search input text.',
+    'Added a public changelog with dated, plain-language summaries of released improvements and fixes.',
   ],
   '2026-07-13': [
     'Improved large-PDF loading with authenticated preview sessions, safer byte-range handling, continuous scrolling, lazy rendering, and better image decoding support.',
