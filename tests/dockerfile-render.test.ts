@@ -29,7 +29,7 @@ describe('Render Dockerfile contract', () => {
     expect(file).not.toContain('ARG GOOGLE_DRIVE_FOLDER_ID');
   });
 
-  it('keeps the lean browser-preview runtime requirements for Render', () => {
+  it('keeps the web runtime lean while including the isolated PDF worker tooling', () => {
     const file = dockerfile();
     const runnerStage = file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
 
@@ -44,6 +44,8 @@ describe('Render Dockerfile contract', () => {
     expect(runnerStage).toContain('fonts-liberation');
     expect(runnerStage).toContain('fontconfig');
     expect(runnerStage).toContain('ca-certificates');
+    expect(runnerStage).toContain('poppler-utils');
+    expect(runnerStage).toContain('COPY --from=builder /app/scripts ./scripts');
     expect(file).toContain('EXPOSE 10000');
     expect(file).toContain('npm run start -- -H 0.0.0.0 -p ${PORT:-10000}');
   });
@@ -64,16 +66,17 @@ describe('Next config runtime contract', () => {
     expect(existsSync('next.config.mjs')).toBe(true);
   });
 
-  it('keeps pages frame-denied while allowing same-origin API PDF embedding', () => {
+  it('frame-denies normal pages and API routes after removing native PDF embedding', () => {
     const file = nextConfig();
 
     expect(file).toContain('Content-Security-Policy');
-    expect(file).toContain("pageSecurityHeaders = securityHeaders(\"'none'\", 'DENY')");
-    expect(file).toContain("apiSecurityHeaders = securityHeaders(\"'self'\", 'SAMEORIGIN')");
+    expect(file).toContain("frame-ancestors 'none'");
+    expect(file).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
+    expect(file).not.toContain('SAMEORIGIN');
     expect(file).toContain("frame-src 'self' blob: https://docs.google.com https://drive.google.com");
     expect(file).toContain("{ key: 'X-Content-Type-Options', value: 'nosniff' }");
     expect(file).toContain("{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }");
     expect(file).toContain("{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }");
-    expect(file.indexOf("source: '/api/:path*'")).toBeGreaterThan(file.indexOf("source: '/(.*)'"));
+    expect(file).toContain("source: '/api/:path*'");
   });
 });

@@ -1,4 +1,4 @@
-function contentSecurityPolicy(frameAncestors) {
+function contentSecurityPolicy() {
   return [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
@@ -9,36 +9,30 @@ function contentSecurityPolicy(frameAncestors) {
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     "frame-src 'self' blob: https://docs.google.com https://drive.google.com",
-    `frame-ancestors ${frameAncestors}`,
+    "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ].join('; ');
 }
 
-function securityHeaders(frameAncestors, frameOptions) {
-  return [
-    { key: 'Content-Security-Policy', value: contentSecurityPolicy(frameAncestors) },
-    { key: 'X-Frame-Options', value: frameOptions },
-    { key: 'X-Content-Type-Options', value: 'nosniff' },
-    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  ];
-}
-
-const pageSecurityHeaders = securityHeaders("'none'", 'DENY');
-const apiSecurityHeaders = securityHeaders("'self'", 'SAMEORIGIN');
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy() },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+];
 
 const nextConfig = {
   async headers() {
     return [
       {
         source: '/(.*)',
-        headers: pageSecurityHeaders,
+        headers: securityHeaders,
       },
       {
         source: '/api/:path*',
         headers: [
-          ...apiSecurityHeaders,
           { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
         ],
       },

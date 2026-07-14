@@ -35,6 +35,7 @@ RUN apt-get update \
       fonts-liberation \
       fontconfig \
       ca-certificates \
+      poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
@@ -42,6 +43,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.* ./
 
 EXPOSE 10000

@@ -11,6 +11,8 @@ export type PdfPreviewSessionPayload = {
   size: number;
   modifiedTime?: string;
   userId: string;
+  previewId: string;
+  previewVersionKey: string;
   expiresAt: number;
 };
 
@@ -24,7 +26,7 @@ export function pdfPreviewSessionCookieName(fileId: string) {
 }
 
 export function pdfPreviewSessionCookiePath(fileId: string) {
-  return `/api/resource/${encodeURIComponent(fileId)}/pdf-content`;
+  return `/api/resource/${encodeURIComponent(fileId)}`;
 }
 
 function signingSecret() {
@@ -79,9 +81,31 @@ export function verifyPdfPreviewSession(token: string | null, expectedFileId: st
     !Number.isSafeInteger(payload.size) ||
     payload.size <= 0 ||
     typeof payload.userId !== 'string' ||
+    typeof payload.previewId !== 'string' ||
+    payload.previewId.length < 16 ||
+    typeof payload.previewVersionKey !== 'string' ||
+    payload.previewVersionKey.length < 32 ||
     !Number.isSafeInteger(payload.expiresAt) ||
     payload.expiresAt <= Math.floor(nowMs / 1000)
   ) return null;
 
   return payload;
+}
+
+function cookieValue(req: Request, name: string) {
+  const raw = req.headers.get('cookie');
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const trimmed = part.trim();
+    const separator = trimmed.indexOf('=');
+    if (separator <= 0) continue;
+    if (trimmed.slice(0, separator) === name) return trimmed.slice(separator + 1) || null;
+  }
+  return null;
+}
+
+export function pdfPreviewSessionFromRequest(req: Request, fileId: string) {
+  const headerToken = req.headers.get('x-dp-pdf-session');
+  const cookieToken = cookieValue(req, pdfPreviewSessionCookieName(fileId));
+  return verifyPdfPreviewSession(headerToken || cookieToken, fileId);
 }

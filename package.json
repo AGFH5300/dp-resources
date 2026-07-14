@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "prepare:pdfjs": "node scripts/copy-pdfjs-assets.mjs",
-    "dev": "npm run prepare:pdfjs && next dev",
-    "dev:hot": "npm run prepare:pdfjs && concurrently -s last -n \"NEXT,WARM\" -c \"cyan,magenta\" \"next dev -p 5000\" \"node scripts/warmup-dev.mjs\"",
-    "build": "npm run prepare:pdfjs && next build",
+    "dev": "next dev",
+    "dev:hot": "concurrently -s last -n \"NEXT,WARM\" -c \"cyan,magenta\" \"next dev -p 5000\" \"node scripts/warmup-dev.mjs\"",
+    "build": "next build",
     "start": "next start",
+    "pdf-previews:worker": "node scripts/pdf-preview-worker.mjs",
+    "pdf-previews:queue": "node scripts/queue-pdf-previews.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

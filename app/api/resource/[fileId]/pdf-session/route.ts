@@ -1,7 +1,7 @@
 import { requireMember } from '@/lib/auth';
 import { assertInsideRoot, getDriveMetadata, isDriveConfigured } from '@/lib/drive';
-import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { recordFileOpenedOnce } from '@/lib/activity';
+import { ensurePdfPreviewDocument, isPdfPreviewViewable } from '@/lib/pdf-preview-derivatives';
 import {
   createPdfPreviewSession,
   PDF_PREVIEW_SESSION_TTL_SECONDS,
@@ -26,14 +26,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
   );
   if (!limited.ok) return new Response('Too many preview requests. Please try again shortly.', { status: 429 });
 
-  const indexedMeta = await getIndexedResourceShell(fileId);
-  if (!indexedMeta && !(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
-  const meta = indexedMeta || await getDriveMetadata(fileId);
+  // Perform current file/root authorization and metadata resolution once per preview
+  // session. Both Drive lookups are short-lived cached; page and byte requests rely on
+  // the signed, file-specific session and do not repeat Google or membership work.
+  if (!(await assertInsideRoot(fileId))) return new Response('Not found', { status: 404 });
+  const meta = await getDriveMetadata(fileId);
   if (!meta || meta.isFolder) return new Response('Not found', { status: 404 });
   if (meta.mimeType !== 'application/pdf' && !/\.pdf$/i.test(meta.name)) return new Response('Not a PDF', { status: 415 });
 
   const size = Number(meta.size);
   if (!Number.isSafeInteger(size) || size <= 0) return new Response('PDF size is unavailable', { status: 422 });
+
+  const preview = await ensurePdfPreviewDocument({
+    fileId,
+    fileName: meta.name,
+    size,
+    modifiedTime: meta.modifiedTime,
+  }).catch((error) => {
+    console.error('Unable to queue PDF preview derivative', { fileId, error });
+    return null;
+  });
+  if (!preview) return new Response('PDF preview preparation is unavailable', { status: 503 });
 
   const session = createPdfPreviewSession({
     fileId,
@@ -42,6 +55,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
     size,
     modifiedTime: meta.modifiedTime,
     userId: user.id,
+    previewId: preview.id,
+    previewVersionKey: preview.version_key,
   });
 
   recordFileOpenedOnce(req, {
@@ -60,10 +75,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
     process.env.NODE_ENV === 'production' ? 'Secure' : '',
   ].filter(Boolean).join('; ');
 
+  const viewable = isPdfPreviewViewable(preview);
   return Response.json({
     expiresAt: session.expiresAt,
-    size,
-    url: pdfPreviewSessionCookiePath(fileId),
+    status: preview.status,
+    pageCount: preview.page_count,
+    pagesReady: preview.pages_ready,
+    manifestUrl: viewable ? `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/manifest` : null,
+    statusUrl: `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/status`,
   }, {
     headers: {
       'cache-control': 'private, no-store',
