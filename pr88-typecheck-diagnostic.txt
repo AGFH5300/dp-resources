@@ -1,2 +1,0 @@
-5:app/resource/[fileId]/pdf-viewer.tsx(37,1885): error TS2367: This comparison appears to be unintentional because the types 'true | undefined' and 'false' have no overlap.
-exit_status=2
