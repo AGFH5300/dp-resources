@@ -46,9 +46,11 @@ describe('private PDF preview derivatives', () => {
     expect(sessionRoute).toContain('assertInsideRoot');
     expect(sessionRoute).toContain('getDriveMetadata');
     expect(sessionRoute).not.toContain('getIndexedResourceShell');
+    expect(sessionRoute).toContain('previewStorageProvider: preview.storage_provider');
     expect(sessionRoute).toContain('HttpOnly');
     expect(sessionRoute).toContain('SameSite=Lax');
     expect(token).toContain('pdfPreviewSessionFromRequest');
+    expect(token).toContain("previewStorageProvider: 'supabase' | 'r2'");
     expect(statusRoute).toContain('pdfPreviewSessionFromRequest');
     expect(manifestRoute).toContain('pdfPreviewSessionFromRequest');
     expect(pageRoute).toContain('pdfPreviewSessionFromRequest');
@@ -56,28 +58,38 @@ describe('private PDF preview derivatives', () => {
     expect(manifestRoute).not.toContain('requireMember');
     expect(pageRoute).not.toContain('requireMember');
     expect(pageRoute).toContain('/storage/v1/object/authenticated/');
+    expect(pageRoute).toContain('getPrivateR2Object');
+    expect(pageRoute).toContain('session.previewStoragePrefix');
     expect(pageRoute).toContain('page-${pageNumber}.jpg');
     expect(pageRoute).not.toContain('getPdfPreviewPageByIdentity');
     expect(pageRoute).toContain('Authorization: `Bearer ${serviceRoleKey}`');
     expect(pageRoute).not.toContain('createSignedUrl');
   });
 
-  it('uses a private versioned bucket and a resumable background worker', () => {
-    const migration = read('supabase/migrations/20260714110000_private_pdf_preview_derivatives.sql');
+  it('uses private provider metadata and keeps the original resumable worker', () => {
+    const originalMigration = read('supabase/migrations/20260714110000_private_pdf_preview_derivatives.sql');
+    const providerMigration = read('supabase/migrations/20260714150000_pdf_preview_r2_storage.sql');
     const worker = read('scripts/pdf-preview-worker.mjs');
+    const r2Worker = read('scripts/pdf-preview-worker-r2.mjs');
     const queue = read('scripts/queue-pdf-previews.mjs');
     const dockerfile = read('Dockerfile');
 
-    expect(migration).toContain("values ('pdf-previews', 'pdf-previews', false");
-    expect(migration).toContain('enable row level security');
-    expect(migration).toContain('dp_claim_pdf_preview_job');
-    expect(migration).toContain('for update skip locked');
+    expect(originalMigration).toContain("values ('pdf-previews', 'pdf-previews', false");
+    expect(originalMigration).toContain('enable row level security');
+    expect(originalMigration).toContain('dp_claim_pdf_preview_job');
+    expect(originalMigration).toContain('for update skip locked');
+    expect(providerMigration).toContain("storage_provider text not null default 'supabase'");
+    expect(providerMigration).toContain('dp_queue_pdf_preview_v2');
+    expect(providerMigration).toContain('dp_pdf_preview_storage_usage');
     expect(worker).toContain("alt: 'media'");
     expect(worker).toContain("execFile('pdftoppm'");
     expect(worker.indexOf('if (!readyPages.has(1)) ranges.push([1, 1])')).toBeLessThan(worker.indexOf('for (let start = 2'));
     expect(worker).toContain("status: complete ? 'ready' : pagesReady > 0 ? 'partial' : 'processing'");
+    expect(r2Worker).toContain('putPrivateR2Object');
+    expect(r2Worker).toContain("await import('./pdf-preview-worker.mjs')");
     expect(queue).toContain('dp_resource_index');
-    expect(queue).toContain('dp_queue_pdf_preview');
+    expect(queue).toContain('dp_queue_pdf_preview_v2');
+    expect(queue).toContain('--storage-provider=');
     expect(dockerfile).toContain('poppler-utils');
     expect(dockerfile).toContain('COPY --from=builder /app/scripts ./scripts');
   });
@@ -100,7 +112,7 @@ describe('PDF range route integrity', () => {
     expect(beginning).toMatchObject({ kind: 'range', start: 0, end: 1023, header: 'bytes=0-1023' });
     expect(middle).toMatchObject({ kind: 'range', start: 4096, end: 8191, header: 'bytes=4096-8191' });
     expect(openEnded).toMatchObject({ kind: 'range', start: 9000, end: 9999, header: 'bytes=9000-9999' });
-    expect(suffix).toMatchObject({ kind: 'range', start: 9500, end: 9999, header: 'bytes=9500-9999' });
+    expect(suffix).toMatchObject({ kind: 'range', start: 9500, end: 9999, header: 'bytes=-500' });
     expect(byteRangeLength(beginning)).toBe(1024);
     expect(expectedPdfContentRange(middle, 10_000)).toBe('bytes 4096-8191/10000');
   });
@@ -141,11 +153,17 @@ describe('PDF range route integrity', () => {
         userId: 'user-1',
         previewId: '00000000-0000-4000-8000-000000000001',
         previewVersionKey: 'a'.repeat(64),
+        previewStorageProvider: 'r2',
+        previewStorageBucket: 'dp-pdf-previews',
+        previewStoragePrefix: `drive-file-1/${'a'.repeat(64)}`,
       }, now);
       expect(verifyPdfPreviewSession(null, 'drive-file-1', now)).toBeNull();
       expect(verifyPdfPreviewSession(created.token, 'another-file', now)).toBeNull();
       expect(verifyPdfPreviewSession(created.token, 'drive-file-1', now + (2 * 60 * 60 * 1000) + 1)).toBeNull();
-      expect(verifyPdfPreviewSession(created.token, 'drive-file-1', now)?.previewVersionKey).toBe('a'.repeat(64));
+      const verified = verifyPdfPreviewSession(created.token, 'drive-file-1', now);
+      expect(verified?.previewVersionKey).toBe('a'.repeat(64));
+      expect(verified?.previewStorageProvider).toBe('r2');
+      expect(verified?.previewStorageBucket).toBe('dp-pdf-previews');
     } finally {
       if (previousSecret === undefined) delete process.env.PDF_PREVIEW_SESSION_SECRET;
       else process.env.PDF_PREVIEW_SESSION_SECRET = previousSecret;
