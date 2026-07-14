@@ -49,7 +49,10 @@ describe('private PDF preview derivatives', () => {
     expect(viewer).toContain('preserveCurrentPage');
     expect(viewer).toContain('suppressCurrentUntil');
     expect(viewer).toContain('WebkitTextFillColor');
-    expect(viewer).toContain('Search result ${searchMarker.position} of ${searchMarker.total}');
+    expect(viewer).toContain('Matching words are highlighted in yellow.');
+    expect(viewer).toContain('searchMatches.flatMap');
+    expect(viewer).toContain("mixBlendMode:'multiply'");
+    expect(viewer).not.toContain('border-amber-400 bg-amber-300/10');
     expect(viewer).toContain("e.key.toLowerCase()==='f'");
     expect(viewer).toContain("e.key.toLowerCase()==='p'");
     expect(viewer).not.toContain('Authentication happens once');
@@ -102,6 +105,9 @@ describe('private PDF preview derivatives', () => {
     for (const route of [statusRoute, manifestRoute, searchRoute, pageRoute]) expect(route).toContain('pdfPreviewSessionFromRequest');
     expect(searchRoute).toContain("url.searchParams.get('v')");
     expect(searchRoute).toContain('dp_search_pdf_preview');
+    expect(searchRoute).toContain('findPdfSearchMatches');
+    expect(searchRoute).toContain('search/page-${pageNumber}.json');
+    expect(searchRoute).toContain('getPrivateR2Object');
     expect(searchRoute).not.toContain('requireMember');
     expect(statusRoute).not.toContain('requireMember');
     expect(manifestRoute).not.toContain('requireMember');
@@ -119,6 +125,7 @@ describe('private PDF preview derivatives', () => {
     const originalMigration = read('supabase/migrations/20260714110000_private_pdf_preview_derivatives.sql');
     const providerMigration = read('supabase/migrations/20260714150000_pdf_preview_r2_storage.sql');
     const searchMigration = read('supabase/migrations/20260714193000_pdf_preview_search_text.sql');
+    const exactSearchMigration = read('supabase/migrations/20260714220000_pdf_preview_exact_search_geometry.sql');
     const worker = read('scripts/pdf-preview-worker.mjs');
     const r2Worker = read('scripts/pdf-preview-worker-r2.mjs');
     const queue = read('scripts/queue-pdf-previews.mjs');
@@ -138,9 +145,15 @@ describe('private PDF preview derivatives', () => {
     expect(searchMigration).toContain('search_text');
     expect(searchMigration).toContain('dp_store_pdf_preview_text');
     expect(searchMigration).toContain('dp_search_pdf_preview');
+    expect(exactSearchMigration).toContain('search_geometry_ready_at');
     expect(worker).toContain("alt: 'media'");
     expect(worker).toContain("execFile('pdftoppm'");
     expect(worker).toContain("execFile('pdftotext'");
+    expect(worker).toContain("'-bbox-layout'");
+    expect(worker).toContain(".normalize('NFKC')");
+    expect(worker).toContain('(-?[\\d.]+)');
+    expect(worker).toContain('/search/page-${pageNumber}.json');
+    expect(worker).toContain('uploadSearchGeometry');
     expect(worker.indexOf('if (!readyPages.has(1)) {')).toBeLessThan(worker.indexOf('for (let start = 2'));
     expect(worker).toContain('dp_store_pdf_preview_text');
     expect(worker).toContain("status: complete ? 'ready' : pagesReady > 0 ? 'partial' : 'processing'");
@@ -150,9 +163,11 @@ describe('private PDF preview derivatives', () => {
     expect(queue).toContain('dp_queue_pdf_preview_v2');
     expect(queue).toContain('--storage-provider=');
     expect(prepare).toContain('Boolean(document.text_ready_at)');
+    expect(prepare).toContain('Boolean(document.search_geometry_ready_at)');
     expect(batch).toContain("'all_large_pdfs'");
     expect(batch).toContain('loadLargePdfs');
     expect(batch).toContain('Boolean(existing.text_ready_at)');
+    expect(batch).toContain('Boolean(existing.search_geometry_ready_at)');
     expect(workflow).toContain('- all_large_pdfs');
     expect(workflow).toContain("default: '10'");
     expect(workflow).toContain("default: '8'");

@@ -167,34 +167,108 @@ async function upsertPageDimensions(job, pageCount, dimensions) {
 function normalizeSearchText(value) {
   return value
     .replace(/\u0000/g, '')
-    .replace(/[\t ]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 200000);
 }
 
-async function extractPageText(sourcePath, outputPath, pageCount) {
-  await execFile('pdftotext', ['-layout', '-enc', 'UTF-8', sourcePath, outputPath], {
+function decodeXml(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, decimal) => String.fromCodePoint(Number(decimal)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+const rounded = (value) => Math.round(value * 1_000_000) / 1_000_000;
+
+function parseBboxSearchIndex(output, pageCount) {
+  const pages = [];
+  const pagePattern = /<page\s+width="([\d.]+)"\s+height="([\d.]+)">([\s\S]*?)<\/page>/g;
+  for (const pageMatch of output.matchAll(pagePattern)) {
+    const width = Number(pageMatch[1]);
+    const height = Number(pageMatch[2]);
+    if (!(width > 0) || !(height > 0)) throw new Error('pdftotext returned invalid page geometry');
+    const words = [];
+    const lines = [];
+    let lineNumber = 0;
+    const linePattern = /<line\b[^>]*>([\s\S]*?)<\/line>/g;
+    for (const lineMatch of pageMatch[3].matchAll(linePattern)) {
+      const lineWords = [];
+      const wordPattern = /<word\s+xMin="(-?[\d.]+)"\s+yMin="(-?[\d.]+)"\s+xMax="(-?[\d.]+)"\s+yMax="(-?[\d.]+)">([\s\S]*?)<\/word>/g;
+      for (const wordMatch of lineMatch[1].matchAll(wordPattern)) {
+        const text = decodeXml(wordMatch[5]).replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+        const xMin = Number(wordMatch[1]);
+        const yMin = Number(wordMatch[2]);
+        const xMax = Number(wordMatch[3]);
+        const yMax = Number(wordMatch[4]);
+        words.push([
+          text.slice(0, 240),
+          rounded(xMin / width),
+          rounded(yMin / height),
+          rounded((xMax - xMin) / width),
+          rounded((yMax - yMin) / height),
+          lineNumber,
+        ]);
+        lineWords.push(text);
+      }
+      if (lineWords.length) {
+        lines.push(lineWords.join(' '));
+        lineNumber += 1;
+      }
+    }
+    pages.push({
+      pageNumber: pages.length + 1,
+      text: normalizeSearchText(lines.join(' ')),
+      geometry: { v: 1, p: pages.length + 1, w: words },
+    });
+  }
+  if (pages.length !== pageCount) throw new Error(`pdftotext returned geometry for ${pages.length} of ${pageCount} pages`);
+  return pages;
+}
+
+async function extractPageSearchIndex(sourcePath, outputPath, pageCount) {
+  await execFile('pdftotext', ['-bbox-layout', '-enc', 'UTF-8', sourcePath, outputPath], {
     maxBuffer: 16 * 1024 * 1024,
   });
-  const raw = await readFile(outputPath, 'utf8');
-  const split = raw.split('\f');
-  if (split.length > pageCount && !split[split.length - 1]?.trim()) split.pop();
-  return Array.from({ length: pageCount }, (_, index) => ({
-    pageNumber: index + 1,
-    text: normalizeSearchText(split[index] || ''),
-  }));
+  return parseBboxSearchIndex(await readFile(outputPath, 'utf8'), pageCount);
 }
 
 async function storePageText(job, pages) {
+  const payload = pages.map(({ pageNumber, text }) => ({ pageNumber, text }));
   const { data, error } = await supabase.rpc('dp_store_pdf_preview_text', {
     p_document_id: job.id,
-    p_pages: pages,
+    p_pages: payload,
   });
   if (error) throw new Error(`Unable to save PDF search text: ${error.message}`);
-  if (Number(data) !== pages.length) {
-    throw new Error(`Saved search text for ${Number(data) || 0} of ${pages.length} PDF pages`);
+  if (Number(data) !== payload.length) {
+    throw new Error(`Saved search text for ${Number(data) || 0} of ${payload.length} PDF pages`);
   }
+}
+
+async function uploadSearchGeometry(job, pages) {
+  await mapConcurrent(pages, UPLOAD_CONCURRENCY, async ({ pageNumber, geometry }) => {
+    const bytes = Buffer.from(JSON.stringify(geometry));
+    const objectPath = `${job.storage_prefix}/search/page-${pageNumber}.json`;
+    await withUploadRetry(pageNumber, () => supabase.storage.from(BUCKET).upload(objectPath, bytes, {
+      contentType: 'application/json',
+      cacheControl: '31536000',
+      upsert: true,
+    }));
+  });
+  const readyAt = new Date().toISOString();
+  const { error } = await supabase.from('dp_pdf_preview_documents').update({
+    search_geometry_ready_at: readyAt,
+    updated_at: readyAt,
+  }).eq('id', job.id);
+  if (error) throw new Error(`Unable to mark PDF search geometry ready: ${error.message}`);
 }
 
 async function existingReadyPages(jobId) {
@@ -299,7 +373,7 @@ async function renderAndRecord(job, sourcePath, outputDir, dimensions, readyPage
 async function processJob(job) {
   const workDir = await mkdtemp(join(tmpdir(), 'dp-pdf-preview-'));
   const sourcePath = join(workDir, 'source.pdf');
-  const textPath = join(workDir, 'search.txt');
+  const textPath = join(workDir, 'search.html');
   const outputDir = join(workDir, 'pages');
   await mkdir(outputDir);
 
@@ -309,18 +383,21 @@ async function processJob(job) {
     const { pageCount, dimensions } = await readPdfInfo(sourcePath);
     await upsertPageDimensions(job, pageCount, dimensions);
     const readyPages = await existingReadyPages(job.id);
-    console.log(JSON.stringify({ event: 'pdf_preview_resume_state', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount, searchReady: Boolean(job.text_ready_at) }));
+    console.log(JSON.stringify({ event: 'pdf_preview_resume_state', fileId: job.drive_file_id, pagesReady: readyPages.size, pageCount, searchReady: Boolean(job.text_ready_at && job.search_geometry_ready_at) }));
 
     if (!readyPages.has(1)) {
       await renderAndRecord(job, sourcePath, outputDir, dimensions, readyPages, 1, 1, pageCount);
     }
 
-    if (!job.text_ready_at) {
+    if (!job.text_ready_at || !job.search_geometry_ready_at) {
       try {
-        const pages = await extractPageText(sourcePath, textPath, pageCount);
+        const pages = await extractPageSearchIndex(sourcePath, textPath, pageCount);
         await storePageText(job, pages);
-        job.text_ready_at = new Date().toISOString();
-        console.log(JSON.stringify({ event: 'pdf_preview_text_ready', fileId: job.drive_file_id, pageCount }));
+        await uploadSearchGeometry(job, pages);
+        const readyAt = new Date().toISOString();
+        job.text_ready_at = readyAt;
+        job.search_geometry_ready_at = readyAt;
+        console.log(JSON.stringify({ event: 'pdf_preview_text_ready', fileId: job.drive_file_id, pageCount, exactHighlightsReady: true }));
       } catch (textError) {
         console.warn(JSON.stringify({
           event: 'pdf_preview_text_failed',
@@ -337,7 +414,7 @@ async function processJob(job) {
     }
 
     if (readyPages.size >= pageCount) await updateProgress(job, pageCount, readyPages.size);
-    console.log(JSON.stringify({ event: 'pdf_preview_ready', fileId: job.drive_file_id, pageCount, searchReady: Boolean(job.text_ready_at) }));
+    console.log(JSON.stringify({ event: 'pdf_preview_ready', fileId: job.drive_file_id, pageCount, searchReady: Boolean(job.text_ready_at && job.search_geometry_ready_at) }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ event: 'pdf_preview_failed', fileId: job.drive_file_id, message }));
