@@ -46,8 +46,8 @@ describe('private PDF preview derivatives', () => {
       'Retry preview',
     ]) expect(viewer).toContain(label);
     expect(viewer).toContain("scrollIntoView({behavior,block:'start'})");
-    expect(viewer).toContain("event.key.toLowerCase()==='f'");
-    expect(viewer).toContain("event.key.toLowerCase()==='p'");
+    expect(viewer).toContain("e.key.toLowerCase()==='f'");
+    expect(viewer).toContain("e.key.toLowerCase()==='p'");
     expect(viewer).not.toContain('Authentication happens once');
     expect(viewer).not.toContain('signed session');
     expect(viewer).not.toContain('Range request');
