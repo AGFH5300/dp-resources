@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ fileId: 
     pageCount: preview.page_count,
     pagesReady: preview.pages_ready,
     manifestUrl: viewable ? `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/manifest` : null,
-    searchReady: Boolean(preview.text_ready_at),
+    searchReady: Boolean(preview.text_ready_at && preview.search_geometry_ready_at),
     message: preview.status === 'failed' ? 'PDF preview preparation failed' : undefined,
   }, {
     status: viewable ? 200 : 202,

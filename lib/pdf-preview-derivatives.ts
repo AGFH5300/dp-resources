@@ -26,6 +26,7 @@ export type PdfPreviewDocument = {
   first_page_ready_at: string | null;
   completed_at: string | null;
   text_ready_at: string | null;
+  search_geometry_ready_at: string | null;
   updated_at: string;
 };
 
@@ -49,7 +50,7 @@ export type PdfPreviewSource = {
   modifiedTime?: string;
 };
 
-const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,text_ready_at,updated_at';
+const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,text_ready_at,search_geometry_ready_at,updated_at';
 
 export function normalizePdfPreviewModifiedTime(value?: string) {
   const trimmed = value?.trim() || '';
