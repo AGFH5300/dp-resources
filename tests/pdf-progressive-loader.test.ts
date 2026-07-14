@@ -150,6 +150,8 @@ describe('private PDF preview derivatives', () => {
     expect(worker).toContain("execFile('pdftoppm'");
     expect(worker).toContain("execFile('pdftotext'");
     expect(worker).toContain("'-bbox-layout'");
+    expect(worker).toContain(".normalize('NFKC')");
+    expect(worker).toContain('(-?[\\d.]+)');
     expect(worker).toContain('/search/page-${pageNumber}.json');
     expect(worker).toContain('uploadSearchGeometry');
     expect(worker.indexOf('if (!readyPages.has(1)) {')).toBeLessThan(worker.indexOf('for (let start = 2'));

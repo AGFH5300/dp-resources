@@ -167,8 +167,10 @@ async function upsertPageDimensions(job, pageCount, dimensions) {
 function normalizeSearchText(value) {
   return value
     .replace(/\u0000/g, '')
-    .replace(/[\t ]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 200000);
 }
@@ -199,7 +201,7 @@ function parseBboxSearchIndex(output, pageCount) {
     const linePattern = /<line\b[^>]*>([\s\S]*?)<\/line>/g;
     for (const lineMatch of pageMatch[3].matchAll(linePattern)) {
       const lineWords = [];
-      const wordPattern = /<word\s+xMin="([\d.]+)"\s+yMin="([\d.]+)"\s+xMax="([\d.]+)"\s+yMax="([\d.]+)">([\s\S]*?)<\/word>/g;
+      const wordPattern = /<word\s+xMin="(-?[\d.]+)"\s+yMin="(-?[\d.]+)"\s+xMax="(-?[\d.]+)"\s+yMax="(-?[\d.]+)">([\s\S]*?)<\/word>/g;
       for (const wordMatch of lineMatch[1].matchAll(wordPattern)) {
         const text = decodeXml(wordMatch[5]).replace(/\s+/g, ' ').trim();
         if (!text) continue;
