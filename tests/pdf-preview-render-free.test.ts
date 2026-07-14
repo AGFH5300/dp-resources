@@ -88,6 +88,6 @@ describe('Render Free PDF preview preparation', () => {
     expect(preview).not.toContain('Preview not prepared? Open standard reader');
     expect(preview).toContain("if (cap.previewMode === 'pdf') return <PdfViewer");
     expect(viewer).toContain('Open standard reader');
-    expect(viewer).toContain("window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${current}`");
+    expect(viewer).toContain("window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${currentRef.current}`");
   });
 });
