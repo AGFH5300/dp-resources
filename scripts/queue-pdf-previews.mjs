@@ -10,6 +10,10 @@ const minSizeMb = Number(minSizeArgument?.split('=')[1] || process.env.PDF_PREVI
 if (!Number.isFinite(minSizeMb) || minSizeMb < 0) throw new Error('Minimum size must be zero or greater');
 const minimumBytes = Math.floor(minSizeMb * 1024 * 1024);
 
+const driveFileArgument = process.argv.find((value) => value.startsWith('--drive-file-id='));
+const driveFileId = driveFileArgument?.slice('--drive-file-id='.length).trim() || '';
+if (driveFileArgument && !driveFileId) throw new Error('Drive file ID must not be empty');
+
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -22,7 +26,7 @@ function versionKey(file) {
 
 async function queueFile(file) {
   const version = versionKey(file);
-  const { error } = await supabase.rpc('dp_queue_pdf_preview', {
+  const { data, error } = await supabase.rpc('dp_queue_pdf_preview', {
     p_drive_file_id: file.drive_file_id,
     p_source_name: file.name,
     p_source_modified_at: file.modified_at,
@@ -31,32 +35,50 @@ async function queueFile(file) {
     p_storage_prefix: `${file.drive_file_id}/${version}`,
   });
   if (error) throw new Error(`Unable to queue ${file.name}: ${error.message}`);
+  const document = Array.isArray(data) ? data[0] || null : data || null;
+  return { version, documentId: document?.id || null };
 }
 
 async function main() {
   let offset = 0;
   let queued = 0;
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('dp_resource_index')
       .select('drive_file_id,name,size_bytes,modified_at')
       .eq('is_folder', false)
-      .eq('mime_type', 'application/pdf')
-      .gte('size_bytes', minimumBytes)
-      .order('size_bytes', { ascending: false })
-      .range(offset, offset + 499);
+      .eq('mime_type', 'application/pdf');
+
+    if (driveFileId) query = query.eq('drive_file_id', driveFileId);
+    else query = query.gte('size_bytes', minimumBytes).order('size_bytes', { ascending: false });
+
+    const { data, error } = await query.range(offset, offset + 499);
     if (error) throw new Error(`Unable to read PDF resources: ${error.message}`);
     if (!data?.length) break;
+
     for (const file of data) {
       if (!Number.isSafeInteger(Number(file.size_bytes)) || Number(file.size_bytes) <= 0) continue;
-      await queueFile({ ...file, size_bytes: Number(file.size_bytes) });
+      const result = await queueFile({ ...file, size_bytes: Number(file.size_bytes) });
       queued += 1;
-      console.log(JSON.stringify({ event: 'pdf_preview_queued', fileId: file.drive_file_id, name: file.name, sizeBytes: file.size_bytes }));
+      console.log(JSON.stringify({
+        event: 'pdf_preview_queued',
+        fileId: file.drive_file_id,
+        name: file.name,
+        sizeBytes: file.size_bytes,
+        version: result.version,
+        documentId: result.documentId,
+      }));
     }
-    if (data.length < 500) break;
+
+    if (driveFileId || data.length < 500) break;
     offset += data.length;
   }
-  console.log(JSON.stringify({ event: 'pdf_preview_queue_complete', queued, minimumBytes }));
+
+  if (driveFileId && queued !== 1) {
+    throw new Error(`No indexed PDF was found for Drive file ID ${driveFileId}`);
+  }
+
+  console.log(JSON.stringify({ event: 'pdf_preview_queue_complete', queued, minimumBytes, driveFileId: driveFileId || null }));
 }
 
 main().catch((error) => {
