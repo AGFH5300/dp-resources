@@ -75,11 +75,18 @@ async function signedR2Request({ method, bucket, key, body, contentType, cacheCo
 
   return fetch(endpoint, {
     method,
-    body: method === 'GET' || method === 'HEAD' ? undefined : payload,
+    body: ['GET', 'HEAD', 'DELETE'].includes(method) ? undefined : payload,
     cache: 'no-store',
     signal,
     headers,
   });
+}
+
+async function errorFromResponse(prefix, response) {
+  const details = (await response.text().catch(() => '')).slice(0, 500);
+  const error = new Error(`${prefix} failed with status ${response.status}${details ? `: ${details}` : ''}`);
+  error.statusCode = response.status;
+  return error;
 }
 
 export async function putPrivateR2Object({ bucket, key, body, contentType = 'application/octet-stream', cacheControl = 'private, max-age=31536000, immutable', signal }) {
@@ -93,8 +100,17 @@ export async function putPrivateR2Object({ bucket, key, body, contentType = 'app
     signal,
   });
   if (response.ok) return { etag: response.headers.get('etag') };
-  const details = (await response.text().catch(() => '')).slice(0, 500);
-  const error = new Error(`R2 upload failed with status ${response.status}${details ? `: ${details}` : ''}`);
-  error.statusCode = response.status;
-  throw error;
+  throw await errorFromResponse('R2 upload', response);
+}
+
+export async function getPrivateR2Object({ bucket, key, signal }) {
+  const response = await signedR2Request({ method: 'GET', bucket, key, signal });
+  if (response.ok || response.status === 404) return response;
+  throw await errorFromResponse('R2 read', response);
+}
+
+export async function deletePrivateR2Object({ bucket, key, signal }) {
+  const response = await signedR2Request({ method: 'DELETE', bucket, key, signal });
+  if (response.ok || response.status === 404) return;
+  throw await errorFromResponse('R2 cleanup', response);
 }
