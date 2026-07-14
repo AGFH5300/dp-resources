@@ -1,0 +1,36 @@
+name: Diagnose PDF viewer fix
+
+on:
+  push:
+    branches:
+      - fix/pdf-viewer-scroll-stability
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pdf-viewer-scroll-stability
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: |
+          set +e
+          npm test > /tmp/test-output.txt 2>&1
+          status=$?
+          grep -n -E "FAIL|AssertionError|expected|Received|Test Files|Tests" /tmp/test-output.txt | tail -80 > pdf-viewer-test-diagnostic.txt || true
+          echo "exit_status=$status" >> pdf-viewer-test-diagnostic.txt
+      - run: |
+          rm .github/workflows/diagnose-pdf-viewer-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pdf-viewer-test-diagnostic.txt .github/workflows/diagnose-pdf-viewer-fix.yml
+          git commit -m "Capture PDF viewer test diagnostic"
+          git push origin HEAD:fix/pdf-viewer-scroll-stability
