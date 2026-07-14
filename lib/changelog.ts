@@ -26,91 +26,76 @@ type GitHubCommit = {
   parents?: Array<{ sha?: unknown }>
 }
 
-const summaryOverrides: Record<number, string> = {
-  89: 'PDF search now scrolls directly to the highlighted word and cycles through individual matches on the page.',
-  88: 'Fixed PDF search readiness and made page-number and search text clearly visible while typing.',
-  87: 'Added exact word and phrase highlighting to searchable PDF previews.',
-  85: 'Fixed preview preparation for PDFs that label page sizes such as A4 or Letter.',
-  84: 'Kept the current PDF page stable when jumping, zooming, fitting, or rotating.',
-  83: 'Added a complete PDF toolbar with direct page entry, search, annotations, print, download, rotation, and fullscreen.',
-  82: 'Added private Cloudflare R2 storage and controlled batch preparation for large textbooks.',
-  81: 'Fixed preview version matching so existing prepared PDFs are reused reliably.',
-  80: 'Made large PDF preparation faster and more resilient with concurrent uploads, retries, and resume support.',
-  79: 'Added a GitHub Actions workflow to prepare PDF previews on the free hosting setup.',
-  78: 'Introduced instant-loading, page-based previews for very large PDFs.',
-  77: 'Replaced the slow custom PDF reader with the browser reader while the new preview system was being prepared.',
-  71: 'Fixed presentation file-size and time-remaining calculations.',
-  70: 'Added presentation file size and an honest download time estimate.',
-  69: 'Fixed presentation progress, duplicate slides, renderer artefacts, and favicon errors.',
-  68: 'Strengthened browser-based PowerPoint previews and removed unsafe server conversion.',
-  67: 'Moved PowerPoint previews into the browser to protect the website from large conversion jobs.',
-  66: 'Suspended accounts now return to the library automatically when an administrator restores access.',
-  64: 'Improved suspension messages, domain-block controls, and notification contrast.',
-  59: 'Added disposable-email blocking and account suspension without introducing a manual approval queue.',
-  56: 'Fixed the production Next.js configuration used by Render.',
-  54: 'Added Docker-based deployment support for Render.',
-  53: 'Made close controls consistent, accessible, and sticky in long admin panels.',
-  52: 'Moved detailed resource usage statistics into a compact modal.',
-  51: 'Improved resource usage analytics with clearer file types and direct actions.',
-  50: 'Strengthened resource usage analytics, session limits, cleanup, and admin protections.',
-  49: 'Added production diagnostics, privacy and terms pages, and resource usage analytics.',
-  48: 'Improved username availability messages, added clickable resource breadcrumbs, and strengthened API security.',
-  43: 'Improved search reliability and presentation previews.',
-  42: 'Rebuilt global search, media seeking, and the protected presentation preview pipeline.',
-  41: 'Fixed audio and video seeking, reset search cleanly, and improved preview interactions.',
-  40: 'Expanded previews for saved files, audio, video, spreadsheets, presentations, and other resource types.',
-  39: 'Fixed library context menus near screen edges and made folder-size totals accurate.',
-  38: 'Unified library action menus and added estimated folder sizes.',
-  35: 'Made the Google Drive library index faster, resumable, and safer for large folders.',
-  32: 'Made library navigation faster with indexed browsing and improved protected preview caching.',
-  30: 'Fixed support submission feedback and added ticket conversations plus admin user search.',
-  26: 'Improved the master workbook preview, simplified the account menu, and strengthened dependency security.',
-  25: 'Restored DOCX previews, added the Google Sheets embed, and standardised selects and admin filters.',
-  23: 'Added production-ready notifications, workbook previews, admin queues, and search polish.',
-  20: 'Redesigned search, added featured resources, improved document previews, and strengthened index recovery.',
-  17: 'Introduced the current DP Resources header, account menu, and modern resource layouts.',
-  16: 'Redesigned the library as a calm, Drive-style workspace with contextual actions and a details panel.',
-  15: 'Completed the main resource actions, support centre, filters, and DP Resources visual styling.',
-  12: 'Launched the Drive-style resource workspace with global search, previews, saved resources, recent activity, and support.',
-  11: 'Removed the approval wait so verified users can enter the library immediately.',
-  8: 'Introduced the complete DP Resources sign-up, OTP verification, login, and password setup experience.',
-  4: 'Separated DP Resources data from MYP Atlas while continuing to share the same secure user accounts.',
-  2: 'Replaced the prototype with the production Supabase and Google Drive architecture.',
-  1: 'Created the first DP Resources portal prototype.',
+const historicalSummaries: Record<string, string[]> = {
+  '2026-07-14': [
+    'Large textbooks and other prepared PDFs now open almost instantly through private page-based previews stored in Supabase or Cloudflare R2.',
+    'Added a complete PDF toolbar with direct page entry, zoom, fit, rotation, print, download, fullscreen, and browser-local annotation tools.',
+    'PDF search now supports exact word and phrase highlighting, repeated matches, large textbooks, and automatic scrolling to the highlighted occurrence.',
+    'Improved preview preparation with controlled batches, retry and resume support, storage safeguards, reliable version matching, and broader PDF page-size compatibility.',
+    'Fixed PDF page drift during navigation and layout changes, stale search readiness, and invisible page-number or search input text.',
+  ],
+  '2026-07-13': [
+    'Improved large-PDF loading with authenticated preview sessions, safer byte-range handling, continuous scrolling, lazy rendering, and better image decoding support.',
+    'Strengthened large-PDF request limits and activity tracking so repeated range requests do not create duplicate open events.',
+  ],
+  '2026-07-12': [
+    'Moved PowerPoint previews into the browser so large presentations cannot overload or crash the web server.',
+    'Improved presentation cleanup, embedded-audio handling, slide navigation, progress reporting, file-size display, and download time estimates.',
+    'Fixed duplicate slides, renderer artefacts, and related preview lifecycle issues.',
+  ],
+  '2026-07-10': [
+    'Added disposable-email protection while keeping legitimate sign-ups immediate and free from a manual approval queue.',
+    'Added administrator account suspension with private reasons, optional domain blocking, audit records, and safer allowed-domain handling.',
+    'Suspended and restored accounts now update in near real time, including automatic return to the library after access is restored.',
+    'Improved suspension messaging, administrator controls, privacy boundaries, and notification contrast.',
+  ],
+  '2026-07-09': [
+    'Strengthened resource-usage tracking so membership and Drive-root access are verified before sessions begin.',
+    'Restored reliable not-found responses and corrected a protected-path regression in the test suite.',
+  ],
+  '2026-07-08': [
+    'Added and hardened Docker-based Render deployment, including production configuration and build fixes.',
+    'Expanded administrator usage analytics with friendly file types, resource actions, detailed modals, and per-user breakdowns.',
+    'Added persistent diagnostics, platform housekeeping, session protections, and safer analytics retention.',
+    'Made close controls accessible and kept them visible in long administrator panels and modals.',
+  ],
+  '2026-07-07': [
+    'Unified Library action menus across list and grid views, prevented viewport clipping, and added accurate indexed folder-size summaries.',
+    'Expanded secure previews for audio, video, spreadsheets, presentations, documents, and other indexed file types.',
+    'Improved global search accuracy, extension matching, request cancellation, navigation speed, and no-results messaging.',
+    'Added server-side identity moderation, clearer username availability messages, clickable resource breadcrumbs, and stronger API request protections.',
+    'Added production diagnostics, privacy and terms pages, and resource usage analytics for platform improvement.',
+  ],
+  '2026-07-06': [
+    'Improved and simplified the protected Google Sheets master-workbook preview.',
+    'Added support ticket conversations, administrator replies, internal notes, and reusable administrator email search.',
+    'Made Library navigation and the Google Drive index faster, resumable, and safer for large folders.',
+    'Removed confusing external resource actions and corrected deployment migration ordering.',
+    'Resolved a PostCSS security advisory without changing application behaviour.',
+  ],
+  '2026-07-05': [
+    'Restored reliable DOCX previews, added the protected Google Sheets embed, and standardised selects and live administrator filters.',
+  ],
+  '2026-07-04': [
+    'Added production-ready notifications, protected workbook previews, permanent featured resources, and administrator operations queues.',
+    'Rebuilt the administrator area into a focused operations console with persistent report and support workflows.',
+  ],
+  '2026-07-02': [
+    'Made the Google Drive index resumable and safe for large libraries, with clearer administrator progress and recovery controls.',
+    'Introduced the current DP Resources header, account menu, Drive-style Library workspace, contextual actions, and details panels.',
+    'Completed the main resource actions, support centre, global search interface, filters, and DP Resources visual styling.',
+    'Added featured resources, higher-fidelity document previews, improved notifications, and stronger index recovery.',
+    'Improved spreadsheet and DOCX reliability and refined the signed-in experience across desktop and mobile.',
+  ],
+  '2026-07-01': [
+    'Created DP Resources and replaced the initial prototype with the production Supabase and Google Drive architecture.',
+    'Hardened authentication, protected Drive access, server-side streaming, administrator permissions, and deployment security.',
+    'Separated DP Resources data from MYP Atlas while continuing to share the same secure user accounts.',
+    'Introduced the complete DP Resources sign-up, OTP verification, login, and password setup experience.',
+    'Removed the approval wait so verified users can enter the library immediately.',
+    'Launched the Drive-style resource workspace with global search, previews, saved resources, recent activity, reporting, and support.',
+  ],
 }
-
-const fallbackEntries: ChangelogEntry[] = [
-  {
-    id: '81ef3aeb05bb98d83633a2a46db47eedd617efa3',
-    summary: summaryOverrides[89],
-    date: '2026-07-14T22:03:15Z',
-  },
-  {
-    id: '94fe7c27b8a6a10ea3162f816d1813b0614829f8',
-    summary: summaryOverrides[88],
-    date: '2026-07-14T21:47:43Z',
-  },
-  {
-    id: 'd7f22c7d51e9b126178cbdd3241bf8e69a43376f',
-    summary: summaryOverrides[87],
-    date: '2026-07-14T20:25:32Z',
-  },
-  {
-    id: '5c07b2971741466a1c0a30f092f310a6fd6e4817',
-    summary: summaryOverrides[84],
-    date: '2026-07-14T19:07:40Z',
-  },
-  {
-    id: '13414e49ce360a461ca2f957c3d0cc28a2f52d01',
-    summary: summaryOverrides[83],
-    date: '2026-07-14T17:21:42Z',
-  },
-  {
-    id: 'f5cc956ec39d88f5c7a450087501e0894ae60a38',
-    summary: summaryOverrides[82],
-    date: '2026-07-14T15:51:58Z',
-  },
-]
 
 function sentenceFromTitle(title: string) {
   const cleaned = title.replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim()
@@ -129,11 +114,7 @@ function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-  const merge = /^Merge pull request #(\d+) from\s+/i.exec(lines[0] || '')
-  if (!merge) return null
-
-  const pullRequest = Number(merge[1])
-  if (!Number.isSafeInteger(pullRequest) || pullRequest < 1) return null
+  if (!/^Merge pull request #(\d+) from\s+/i.test(lines[0] || '')) return null
 
   const title = lines.slice(1).join(' ').trim()
   const rawDate = value.commit?.committer?.date || value.commit?.author?.date
@@ -141,9 +122,50 @@ function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
 
   return {
     id: value.sha,
-    summary: summaryOverrides[pullRequest] || sentenceFromTitle(title),
+    summary: sentenceFromTitle(title),
     date: new Date(rawDate).toISOString(),
   }
+}
+
+function dateKey(date: string) {
+  return new Date(date).toISOString().slice(0, 10)
+}
+
+function historicalFallbackEntries() {
+  return Object.entries(historicalSummaries)
+    .sort(([left], [right]) => right.localeCompare(left))
+    .flatMap(([date, summaries]) =>
+      summaries.map((summary, index) => ({
+        id: `historical-${date}-${index}`,
+        summary,
+        date: `${date}T12:00:00.000Z`,
+      })),
+    )
+}
+
+function consolidateHistory(entries: ChangelogEntry[]) {
+  const byDate = new Map<string, ChangelogEntry[]>()
+  for (const entry of entries) {
+    const key = dateKey(entry.date)
+    const current = byDate.get(key) || []
+    current.push(entry)
+    byDate.set(key, current)
+  }
+
+  const dates = new Set([...byDate.keys(), ...Object.keys(historicalSummaries)])
+  return [...dates]
+    .sort((left, right) => right.localeCompare(left))
+    .flatMap((date) => {
+      const summaries = historicalSummaries[date]
+      if (summaries) {
+        return summaries.map((summary, index) => ({
+          id: `historical-${date}-${index}`,
+          summary,
+          date: `${date}T12:00:00.000Z`,
+        }))
+      }
+      return byDate.get(date) || []
+    })
 }
 
 async function fetchCommitPage(page: number): Promise<GitHubCommit[]> {
@@ -181,7 +203,7 @@ async function fetchAllMergeCommits() {
     if (parsed) unique.set(parsed.id, parsed)
   }
 
-  return [...unique.values()].sort((left, right) => Date.parse(right.date) - Date.parse(left.date))
+  return consolidateHistory([...unique.values()])
 }
 
 export async function getChangelog(): Promise<ChangelogResult> {
@@ -191,6 +213,6 @@ export async function getChangelog(): Promise<ChangelogResult> {
     return { entries, source: 'github' }
   } catch (error) {
     console.error('Unable to refresh the public changelog from GitHub.', error)
-    return { entries: fallbackEntries, source: 'fallback' }
+    return { entries: historicalFallbackEntries(), source: 'fallback' }
   }
 }
