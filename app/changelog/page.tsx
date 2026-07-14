@@ -5,7 +5,7 @@ import { ChangelogList } from './changelog-list'
 import { getChangelog } from '@/lib/changelog'
 import { publicPageMetadata } from '@/lib/seo'
 
-export const revalidate = 60 * 60
+export const revalidate = 3600
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Changelog',
