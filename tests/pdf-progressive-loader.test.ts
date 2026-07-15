@@ -19,7 +19,8 @@ describe('private PDF preview derivatives', () => {
     expect(viewer).toContain('Loading page…');
     expect(viewer).toContain('Preparing page…');
     expect(viewer).toContain('<img');
-    expect(viewer).not.toContain('<iframe');
+    expect(viewer).toContain('function StandardPdfViewer');
+    expect(viewer).toContain('<iframe');
     expect(viewer).not.toContain("import('pdfjs-dist");
     expect(viewer).not.toContain('<canvas');
     expect(viewer).not.toContain('Previous page');
@@ -93,10 +94,11 @@ describe('private PDF preview derivatives', () => {
 
     expect(sessionRoute).toContain('requireMember');
     expect(sessionRoute).toContain('recordFileOpenedOnce');
-    expect(sessionRoute).toContain('ensurePdfPreviewDocument');
+    expect(sessionRoute).toContain('getPdfPreviewDocument');
+    expect(sessionRoute).not.toContain('ensurePdfPreviewDocument');
     expect(sessionRoute).toContain('assertInsideRoot');
     expect(sessionRoute).toContain('getDriveMetadata');
-    expect(sessionRoute).not.toContain('getIndexedResourceShell');
+    expect(sessionRoute).toContain('getIndexedResourceShell');
     expect(sessionRoute).toContain('previewStorageProvider: preview.storage_provider');
     expect(sessionRoute).toContain('HttpOnly');
     expect(sessionRoute).toContain('SameSite=Lax');
