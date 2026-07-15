@@ -34,8 +34,21 @@ describe('public changelog page', () => {
     expect(source).toContain('historicalSummaries')
     expect(source).toContain('consolidateHistory')
     expect(source).toContain('sentenceFromTitle')
+    expect(source).toContain('isUserFacingTitle')
     expect(source).toContain('next: { revalidate: REVALIDATE_SECONDS }')
     expect(source).not.toContain('GITHUB_TOKEN')
+  })
+
+  it('keeps visible release notes focused on improvements users experience', () => {
+    const source = read('lib/changelog.ts')
+    const summaries = source.slice(source.indexOf('const historicalSummaries'), source.indexOf('function sentenceFromTitle'))
+
+    for (const internalTerm of ['administrator', 'production-ready', 'Supabase', 'Cloudflare R2', 'Docker', 'deployment', 'audit records', 'operations console']) {
+      expect(summaries).not.toContain(internalTerm)
+    }
+    expect(summaries).toContain('PDF search now highlights exact words and phrases')
+    expect(summaries).toContain('Made PowerPoint previews safer and more reliable')
+    expect(summaries).toContain('Added support conversations')
   })
 
   it('is linked from the footer, indexed publicly, and bypasses session middleware', () => {
