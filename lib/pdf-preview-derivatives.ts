@@ -51,6 +51,8 @@ export type PdfPreviewSource = {
 };
 
 const documentColumns = 'id,drive_file_id,version_key,source_name,source_modified_at,source_size_bytes,storage_prefix,storage_provider,storage_bucket,status,page_count,pages_ready,last_error,first_page_ready_at,completed_at,text_ready_at,search_geometry_ready_at,updated_at';
+const pageColumns = 'document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at';
+const PDF_PREVIEW_PAGE_QUERY_BATCH = 500;
 
 export function normalizePdfPreviewModifiedTime(value?: string) {
   const trimmed = value?.trim() || '';
@@ -107,6 +109,29 @@ async function findReusablePdfPreviewDocument(
   return data as PdfPreviewDocument | null;
 }
 
+async function getAllPdfPreviewPages(
+  sb: ReturnType<typeof createSupabaseAdminClient>,
+  documentId: string,
+) {
+  const pages: PdfPreviewPage[] = [];
+
+  for (let start = 0; ; start += PDF_PREVIEW_PAGE_QUERY_BATCH) {
+    const { data, error } = await sb
+      .from('dp_pdf_preview_pages')
+      .select(pageColumns)
+      .eq('document_id', documentId)
+      .order('page_number', { ascending: true })
+      .range(start, start + PDF_PREVIEW_PAGE_QUERY_BATCH - 1);
+    if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
+
+    const batch = (data || []) as PdfPreviewPage[];
+    pages.push(...batch);
+    if (batch.length < PDF_PREVIEW_PAGE_QUERY_BATCH) break;
+  }
+
+  return pages;
+}
+
 export async function ensurePdfPreviewDocument(source: PdfPreviewSource) {
   const sb = createSupabaseAdminClient();
 
@@ -159,14 +184,8 @@ export async function getPdfPreviewManifest(source: Pick<PdfPreviewSource, 'file
   if (!document) return null;
 
   const sb = createSupabaseAdminClient();
-  const { data, error } = await sb
-    .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
-    .eq('document_id', document.id)
-    .order('page_number', { ascending: true });
-  if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
-
-  return { document, pages: (data || []) as PdfPreviewPage[] };
+  const pages = await getAllPdfPreviewPages(sb, document.id);
+  return { document, pages };
 }
 
 export async function getPdfPreviewPage(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>, pageNumber: number) {
@@ -176,7 +195,7 @@ export async function getPdfPreviewPage(source: Pick<PdfPreviewSource, 'fileId' 
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
+    .select(pageColumns)
     .eq('document_id', document.id)
     .eq('page_number', pageNumber)
     .maybeSingle();
@@ -201,20 +220,15 @@ export async function getPdfPreviewManifestByIdentity(previewId: string, version
   if (!document) return null;
 
   const sb = createSupabaseAdminClient();
-  const { data, error } = await sb
-    .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,pixel_height,object_path,byte_size,etag,ready_at')
-    .eq('document_id', previewId)
-    .order('page_number', { ascending: true });
-  if (error) throw new Error(`Unable to read PDF preview pages: ${error.message}`);
-  return { document, pages: (data || []) as PdfPreviewPage[] };
+  const pages = await getAllPdfPreviewPages(sb, previewId);
+  return { document, pages };
 }
 
 export async function getPdfPreviewPageByIdentity(previewId: string, versionKey: string, pageNumber: number) {
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb
     .from('dp_pdf_preview_pages')
-    .select('document_id,page_number,width_points,height_points,pixel_width,height_points,pixel_height,object_path,byte_size,etag,ready_at,dp_pdf_preview_documents!inner(version_key,status)')
+    .select(`${pageColumns},dp_pdf_preview_documents!inner(version_key,status)`)
     .eq('document_id', previewId)
     .eq('page_number', pageNumber)
     .eq('dp_pdf_preview_documents.version_key', versionKey)
