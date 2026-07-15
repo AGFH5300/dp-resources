@@ -27,6 +27,13 @@ type GitHubCommit = {
 }
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-15': [
+    'Expanded instant PDF loading to every large PDF currently available in the Library.',
+    'Fixed regular PDFs so smaller documents continue to open reliably in the standard reader.',
+    'Fixed prepared books incorrectly opening in the slower reader or failing to display.',
+    'Very long books with more than 1,000 pages now load completely and support direct page jumps.',
+    'Search highlighting, annotations, zoom, rotation, print, and download remain available throughout the instant reader.',
+  ],
   '2026-07-14': [
     'Large textbooks and other prepared PDFs now open much faster without waiting for the complete file to download.',
     'Added a complete PDF toolbar with page entry, zoom, fit, rotation, print, download, fullscreen, and annotation tools.',

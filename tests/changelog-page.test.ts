@@ -46,6 +46,10 @@ describe('public changelog page', () => {
     for (const internalTerm of ['administrator', 'production-ready', 'Supabase', 'Cloudflare R2', 'Docker', 'deployment', 'audit records', 'operations console']) {
       expect(summaries).not.toContain(internalTerm)
     }
+    expect(summaries).toContain("'2026-07-15'")
+    expect(summaries).toContain('Expanded instant PDF loading to every large PDF currently available in the Library.')
+    expect(summaries).toContain('Fixed regular PDFs so smaller documents continue to open reliably in the standard reader.')
+    expect(summaries).toContain('Very long books with more than 1,000 pages now load completely and support direct page jumps.')
     expect(summaries).toContain('PDF search now highlights exact words and phrases')
     expect(summaries).toContain('Made PowerPoint previews safer and more reliable')
     expect(summaries).toContain('Added support conversations')
