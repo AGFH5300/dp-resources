@@ -29,6 +29,8 @@ describe('standard PDF fallback', () => {
 
     expect(viewer).toContain('function StandardPdfViewer')
     expect(viewer).toContain("fetch(url,{credentials:'same-origin',cache:'no-store'")
+    expect(viewer).toContain("if(!sourceBlob.size)throw new Error('PDF response was empty')")
+    expect(viewer).toContain("new Blob([sourceBlob],{type:'application/pdf'})")
     expect(viewer).toContain('URL.createObjectURL(blob)')
     expect(viewer).toContain('URL.revokeObjectURL(objectUrl)')
     expect(viewer).toContain("next.mode==='standard'||!next.manifestUrl")
