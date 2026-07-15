@@ -28,73 +28,54 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-14': [
-    'Large textbooks and other prepared PDFs now open almost instantly through private page-based previews stored in Supabase or Cloudflare R2.',
-    'Added a complete PDF toolbar with direct page entry, zoom, fit, rotation, print, download, fullscreen, and browser-local annotation tools.',
-    'PDF search now supports exact word and phrase highlighting, repeated matches, large textbooks, and automatic scrolling to the highlighted occurrence.',
-    'Improved preview preparation with controlled batches, retry and resume support, storage safeguards, reliable version matching, and broader PDF page-size compatibility.',
-    'Fixed PDF page drift during navigation and layout changes, stale search readiness, and invisible page-number or search input text.',
-    'Added a public changelog with dated, plain-language summaries of released improvements and fixes.',
+    'Large textbooks and other prepared PDFs now open much faster without waiting for the complete file to download.',
+    'Added a complete PDF toolbar with page entry, zoom, fit, rotation, print, download, fullscreen, and annotation tools.',
+    'PDF search now highlights exact words and phrases and scrolls directly to the selected match.',
+    'Improved PDF reliability across very large books, different page formats, repeated searches, and navigation changes.',
+    'Added this public changelog so improvements and fixes are easier to follow.',
   ],
   '2026-07-13': [
-    'Improved large-PDF loading with authenticated preview sessions, safer byte-range handling, continuous scrolling, lazy rendering, and better image decoding support.',
-    'Strengthened large-PDF request limits and activity tracking so repeated range requests do not create duplicate open events.',
+    'Made large PDFs load more smoothly with continuous scrolling and nearby-page loading.',
+    'Improved the reliability of opening, retrying, and moving through long documents.',
   ],
   '2026-07-12': [
-    'Moved PowerPoint previews into the browser so large presentations cannot overload or crash the web server.',
-    'Improved presentation cleanup, embedded-audio handling, slide navigation, progress reporting, file-size display, and download time estimates.',
-    'Fixed duplicate slides, renderer artefacts, and related preview lifecycle issues.',
+    'Made PowerPoint previews safer and more reliable for large presentations.',
+    'Improved slide navigation, embedded audio, loading progress, file-size information, and time estimates.',
+    'Fixed duplicate slides and several visual preview glitches.',
   ],
   '2026-07-10': [
-    'Added disposable-email protection while keeping legitimate sign-ups immediate and free from a manual approval queue.',
-    'Added administrator account suspension with private reasons, optional domain blocking, audit records, and safer allowed-domain handling.',
-    'Suspended and restored accounts now update in near real time, including automatic return to the library after access is restored.',
-    'Improved suspension messaging, administrator controls, privacy boundaries, and notification contrast.',
-  ],
-  '2026-07-09': [
-    'Strengthened resource-usage tracking so membership and Drive-root access are verified before sessions begin.',
-    'Restored reliable not-found responses and corrected a protected-path regression in the test suite.',
-  ],
-  '2026-07-08': [
-    'Added and hardened Docker-based Render deployment, including production configuration and build fixes.',
-    'Expanded administrator usage analytics with friendly file types, resource actions, detailed modals, and per-user breakdowns.',
-    'Added persistent diagnostics, platform housekeeping, session protections, and safer analytics retention.',
-    'Made close controls accessible and kept them visible in long administrator panels and modals.',
+    'Improved sign-up reliability while reducing temporary-email abuse.',
+    'Added clearer account-access messages and faster updates when access changes.',
+    'Improved notification readability across the site.',
   ],
   '2026-07-07': [
-    'Unified Library action menus across list and grid views, prevented viewport clipping, and added accurate indexed folder-size summaries.',
-    'Expanded secure previews for audio, video, spreadsheets, presentations, documents, and other indexed file types.',
-    'Improved global search accuracy, extension matching, request cancellation, navigation speed, and no-results messaging.',
-    'Added server-side identity moderation, clearer username availability messages, clickable resource breadcrumbs, and stronger API request protections.',
-    'Added production diagnostics, privacy and terms pages, and resource usage analytics for platform improvement.',
+    'Improved Library action menus and made folder-size information more accurate.',
+    'Expanded previews for audio, video, spreadsheets, presentations, documents, and other resource types.',
+    'Improved search accuracy, extension matching, navigation speed, and no-results messages.',
+    'Added clearer username availability messages and clickable resource breadcrumbs.',
   ],
   '2026-07-06': [
-    'Improved and simplified the protected Google Sheets master-workbook preview.',
-    'Added support ticket conversations, administrator replies, internal notes, and reusable administrator email search.',
-    'Made Library navigation and the Google Drive index faster, resumable, and safer for large folders.',
-    'Removed confusing external resource actions and corrected deployment migration ordering.',
-    'Resolved a PostCSS security advisory without changing application behaviour.',
+    'Improved the Google Sheets preview and simplified the workbook experience.',
+    'Added support conversations so replies and follow-ups can stay together.',
+    'Made Library navigation and resource indexing faster and more dependable.',
   ],
   '2026-07-05': [
-    'Restored reliable DOCX previews, added the protected Google Sheets embed, and standardised selects and live administrator filters.',
+    'Restored reliable Word document previews and improved Google Sheets and filter controls.',
   ],
   '2026-07-04': [
-    'Added production-ready notifications, protected workbook previews, permanent featured resources, and administrator operations queues.',
-    'Rebuilt the administrator area into a focused operations console with persistent report and support workflows.',
+    'Improved notifications, featured resources, and support and report follow-ups.',
   ],
   '2026-07-02': [
-    'Made the Google Drive index resumable and safe for large libraries, with clearer administrator progress and recovery controls.',
-    'Introduced the current DP Resources header, account menu, Drive-style Library workspace, contextual actions, and details panels.',
-    'Completed the main resource actions, support centre, global search interface, filters, and DP Resources visual styling.',
-    'Added featured resources, higher-fidelity document previews, improved notifications, and stronger index recovery.',
-    'Improved spreadsheet and DOCX reliability and refined the signed-in experience across desktop and mobile.',
+    'Introduced the current DP Resources header, account menu, Library workspace, contextual actions, and details panels.',
+    'Improved resource actions, the support centre, global search, filters, and the overall visual design.',
+    'Added featured resources, higher-quality document previews, and more reliable notifications.',
+    'Improved spreadsheet and Word document previews across desktop and mobile.',
   ],
   '2026-07-01': [
-    'Created DP Resources and replaced the initial prototype with the production Supabase and Google Drive architecture.',
-    'Hardened authentication, protected Drive access, server-side streaming, administrator permissions, and deployment security.',
-    'Separated DP Resources data from MYP Atlas while continuing to share the same secure user accounts.',
-    'Introduced the complete DP Resources sign-up, OTP verification, login, and password setup experience.',
-    'Removed the approval wait so verified users can enter the library immediately.',
-    'Launched the Drive-style resource workspace with global search, previews, saved resources, recent activity, reporting, and support.',
+    'Created DP Resources as a dedicated study-resource library.',
+    'Added the complete sign-up, verification, login, and password setup experience.',
+    'Removed the approval wait so verified users can enter the Library immediately.',
+    'Launched global search, previews, saved resources, recent activity, reporting, and support.',
   ],
 }
 
@@ -102,6 +83,10 @@ function sentenceFromTitle(title: string) {
   const cleaned = title.replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim()
   if (!cleaned) return 'Updated DP Resources.'
   return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}.`
+}
+
+function isUserFacingTitle(title: string) {
+  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2)/i.test(title)
 }
 
 function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
@@ -118,6 +103,8 @@ function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
   if (!/^Merge pull request #(\d+) from\s+/i.test(lines[0] || '')) return null
 
   const title = lines.slice(1).join(' ').trim()
+  if (!isUserFacingTitle(title)) return null
+
   const rawDate = value.commit?.committer?.date || value.commit?.author?.date
   if (typeof rawDate !== 'string' || Number.isNaN(Date.parse(rawDate))) return null
 
