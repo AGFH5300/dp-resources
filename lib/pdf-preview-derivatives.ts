@@ -145,8 +145,13 @@ export async function getPdfPreviewDocument(source: Pick<PdfPreviewSource, 'file
     .eq('version_key', pdfPreviewVersionKey(source))
     .maybeSingle();
   if (error) throw new Error(`Unable to read PDF preview state: ${error.message}`);
-  if (data) return data as PdfPreviewDocument;
-  return findReusablePdfPreviewDocument(sb, source);
+
+  const exact = data as PdfPreviewDocument | null;
+  if (isPdfPreviewViewable(exact)) return exact;
+
+  const reusable = await findReusablePdfPreviewDocument(sb, source);
+  if (isPdfPreviewViewable(reusable)) return reusable;
+  return exact || reusable;
 }
 
 export async function getPdfPreviewManifest(source: Pick<PdfPreviewSource, 'fileId' | 'size' | 'modifiedTime'>) {

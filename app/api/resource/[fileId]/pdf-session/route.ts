@@ -41,14 +41,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ fileId:
   // Web requests must never create work that Render Free cannot process. The manual GitHub
   // workflow prepares derivatives. Normal visits use an existing viewable derivative or fall
   // back immediately to the authenticated original PDF reader.
-  const preview = await getPdfPreviewDocument({
-    fileId,
-    size,
-    modifiedTime: meta.modifiedTime,
-  }).catch((error) => {
+  let preview;
+  try {
+    preview = await getPdfPreviewDocument({
+      fileId,
+      size,
+      modifiedTime: meta.modifiedTime,
+    });
+  } catch (error) {
     console.error('Unable to read PDF preview derivative', { fileId, error });
-    return null;
-  });
+    return new Response('PDF preview availability is temporarily unavailable.', {
+      status: 503,
+      headers: {
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    });
+  }
 
   if (!preview || !isPdfPreviewViewable(preview)) {
     return Response.json({

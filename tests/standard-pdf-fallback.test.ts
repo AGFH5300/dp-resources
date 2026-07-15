@@ -15,6 +15,17 @@ describe('standard PDF fallback', () => {
     expect(route).not.toContain('dp_queue_pdf_preview')
   })
 
+  it('prioritizes completed preview pages and does not downgrade on lookup errors', () => {
+    const derivatives = read('lib/pdf-preview-derivatives.ts')
+    const route = read('app/api/resource/[fileId]/pdf-session/route.ts')
+
+    expect(derivatives).toContain('if (isPdfPreviewViewable(exact)) return exact')
+    expect(derivatives).toContain('if (isPdfPreviewViewable(reusable)) return reusable')
+    expect(derivatives).toContain('return exact || reusable')
+    expect(route).toContain('PDF preview availability is temporarily unavailable.')
+    expect(route).not.toContain("console.error('Unable to read PDF preview derivative', { fileId, error });\n    return null")
+  })
+
   it('returns standard mode immediately when no prepared page preview is viewable', () => {
     const route = read('app/api/resource/[fileId]/pdf-session/route.ts')
 
@@ -33,9 +44,11 @@ describe('standard PDF fallback', () => {
     expect(viewer).toContain("new Blob([sourceBlob],{type:'application/pdf'})")
     expect(viewer).toContain('URL.createObjectURL(blob)')
     expect(viewer).toContain('URL.revokeObjectURL(objectUrl)')
-    expect(viewer).toContain("next.mode==='standard'||!next.manifestUrl")
-    expect(viewer).toContain('setStandardUrl(next.standardUrl||url)')
-    expect(viewer).toContain('if(!response.ok){if(!stopped)setStandardUrl(url);return}')
+    expect(viewer).toContain("if(next.mode==='standard'){setStandardUrl(next.standardUrl||url);return}")
+    expect(viewer).toContain("next.mode!=='prepared'||!next.manifestUrl")
+    expect(viewer).toContain('for(let sessionAttempt=0;sessionAttempt<2;sessionAttempt+=1)')
+    expect(viewer).toContain("setError('The prepared PDF preview could not be opened.")
+    expect(viewer).not.toContain('if(!response.ok){if(!stopped)setStandardUrl(url);return}')
     expect(viewer).toContain('if(standardUrl)return <StandardPdfViewer')
     expect(viewer).not.toContain('else timer=setTimeout(()=>void poll(url),4000)')
   })
