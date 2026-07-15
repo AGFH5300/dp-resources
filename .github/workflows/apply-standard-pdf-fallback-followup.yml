@@ -1,0 +1,30 @@
+name: Apply standard PDF fallback follow-up
+
+on:
+  push:
+    branches:
+      - fix/standard-pdf-fallback
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/standard-pdf-fallback
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/patch-standard-pdf-fallback-followup.py
+      - run: |
+          rm scripts/patch-standard-pdf-fallback-followup.py
+          rm .github/workflows/apply-standard-pdf-fallback-followup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/resource/'[fileId]'/pdf-viewer.tsx tests/pdf-progressive-loader.test.ts scripts/patch-standard-pdf-fallback-followup.py .github/workflows/apply-standard-pdf-fallback-followup.yml
+          git commit -m "Harden standard PDF fallback compatibility"
+          git push origin HEAD:fix/standard-pdf-fallback
