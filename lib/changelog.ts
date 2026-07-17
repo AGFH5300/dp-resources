@@ -27,6 +27,12 @@ type GitHubCommit = {
 }
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-17': [
+    'Added Light, Dark, and System appearance options, with the selected preference remembered across visits.',
+    'Updated the DP Resources wordmark and logo so they remain clear and consistent on dark backgrounds.',
+    'Improved PDF and presentation loading screens with clearer progress indicators in dark mode.',
+    'Refined global search hover states, selections, and borders for a calmer and more consistent dark-mode experience.',
+  ],
   '2026-07-15': [
     'Expanded instant PDF loading to every large PDF currently available in the Library.',
     'Fixed regular PDFs so smaller documents continue to open reliably in the standard reader.',

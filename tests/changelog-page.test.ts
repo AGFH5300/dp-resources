@@ -46,6 +46,10 @@ describe('public changelog page', () => {
     for (const internalTerm of ['administrator', 'production-ready', 'Supabase', 'Cloudflare R2', 'Docker', 'deployment', 'audit records', 'operations console']) {
       expect(summaries).not.toContain(internalTerm)
     }
+    expect(summaries).toContain("'2026-07-17'")
+    expect(summaries).toContain('Added Light, Dark, and System appearance options')
+    expect(summaries).toContain('Improved PDF and presentation loading screens')
+    expect(summaries).toContain('Refined global search hover states')
     expect(summaries).toContain("'2026-07-15'")
     expect(summaries).toContain('Expanded instant PDF loading to every large PDF currently available in the Library.')
     expect(summaries).toContain('Fixed regular PDFs so smaller documents continue to open reliably in the standard reader.')
