@@ -9,6 +9,6 @@ export default defineConfig({
     },
   },
   test: {
-    setupFiles: ['tests/setup/source-text-normalization.ts'],
+    setupFiles: ['tests/setup/source-text-normalization.mjs'],
   },
 });
