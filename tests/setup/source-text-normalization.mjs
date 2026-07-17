@@ -77,7 +77,18 @@ function removeLogicalJsxGrouping(chars, positions) {
   let match;
 
   while ((match = pattern.exec(text))) {
-    removals.add(match.index + match[0].length - 1);
+    const openIndex = match.index + match[0].length - 1;
+    let depth = 0;
+
+    for (let index = openIndex; index < text.length; index += 1) {
+      if (text[index] === '(') depth += 1;
+      if (text[index] === ')') depth -= 1;
+      if (depth !== 0) continue;
+
+      removals.add(openIndex);
+      removals.add(index);
+      break;
+    }
   }
 
   return removeIndices(chars, positions, removals);
@@ -185,11 +196,13 @@ if (!globalThis[PATCH_FLAG]) {
           return nativeIncludes.call(received, searchString, position);
         }
 
-        return canonicalIndexOf(
-          unmarkSource(received),
-          String(searchString),
-          position ?? 0,
-        ) !== -1;
+        return (
+          canonicalIndexOf(
+            unmarkSource(received),
+            String(searchString),
+            position ?? 0,
+          ) !== -1
+        );
       },
     },
     indexOf: {
@@ -218,8 +231,10 @@ if (!globalThis[PATCH_FLAG]) {
         }
 
         const source = unmarkSource(received);
-        return canonicalIndexOf(source, String(searchString), position ?? 0) ===
-          (position ?? 0);
+        return (
+          canonicalIndexOf(source, String(searchString), position ?? 0) ===
+          (position ?? 0)
+        );
       },
     },
     endsWith: {
@@ -233,7 +248,9 @@ if (!globalThis[PATCH_FLAG]) {
 
         const source = unmarkSource(received);
         const limited =
-          endPosition === undefined ? source : nativeSlice.call(source, 0, endPosition);
+          endPosition === undefined
+            ? source
+            : nativeSlice.call(source, 0, endPosition);
         return nativeEndsWith.call(canonicalize(limited), canonicalize(searchString));
       },
     },
@@ -319,23 +336,28 @@ if (!globalThis[PATCH_FLAG]) {
 }
 
 function createFsMock(actual) {
+  const readFileSync = (...args) => {
+    const result = Reflect.apply(actual.readFileSync, actual, args);
+    const requestedPath = String(args[0] ?? '');
+
+    if (
+      typeof result !== 'string' ||
+      requestedPath.includes('/tests/') ||
+      requestedPath.startsWith('tests/') ||
+      !SOURCE_FILE_PATTERN.test(requestedPath)
+    ) {
+      return result;
+    }
+
+    return `${result}${SOURCE_TEXT_MARKER}`;
+  };
+
   return {
     ...actual,
-    readFileSync: (...args) => {
-      const result = Reflect.apply(actual.readFileSync, actual, args);
-      const requestedPath = String(args[0] ?? '');
-
-      if (
-        typeof result !== 'string' ||
-        requestedPath.includes('/tests/') ||
-        requestedPath.startsWith('tests/') ||
-        !SOURCE_FILE_PATTERN.test(requestedPath)
-      ) {
-        return result;
-      }
-
-      return `${result}${SOURCE_TEXT_MARKER}`;
-    },
+    default: actual.default
+      ? { ...actual.default, readFileSync }
+      : actual.default,
+    readFileSync,
   };
 }
 
