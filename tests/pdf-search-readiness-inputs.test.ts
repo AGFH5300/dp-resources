@@ -8,7 +8,9 @@ describe('PDF search readiness and toolbar inputs', () => {
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
     expect(viewer).not.toContain('if(!manifest.searchReady)');
     expect(viewer).toContain('if(data.ready===false)');
-    expect(viewer).toContain('setManifest(previous=>previous?{...previous,searchReady:true}:previous)');
+    expect(viewer).toContain(
+      'setManifest(previous=>previous?{...previous,searchReady:true}:previous)',
+    );
   });
 
   it('keeps PDF toolbar inputs dark and readable while focused', () => {
@@ -22,7 +24,9 @@ describe('PDF search readiness and toolbar inputs', () => {
   });
 
   it('allows private JSON geometry files in the legacy Supabase preview bucket', () => {
-    const migration = read('supabase/migrations/20260714224500_pdf_preview_search_geometry_mime.sql');
+    const migration = read(
+      'supabase/migrations/20260714224500_pdf_preview_search_geometry_mime.sql',
+    );
     expect(migration).toContain("where id = 'pdf-previews'");
     expect(migration).toContain("'image/jpeg'");
     expect(migration).toContain("'application/json'");

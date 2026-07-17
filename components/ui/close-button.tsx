@@ -1,15 +1,15 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes } from 'react';
 
 type CloseButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
-  "type" | "children" | "aria-label"
+  'type' | 'children' | 'aria-label'
 > & {
   label?: string;
 };
 
 export function CloseButton({
-  label = "Close",
-  className = "",
+  label = 'Close',
+  className = '',
   ...props
 }: CloseButtonProps) {
   return (

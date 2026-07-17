@@ -3,34 +3,906 @@ import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Download, ExternalLink, Grid2X2, Info, List, MoreHorizontal, SlidersHorizontal, X } from 'lucide-react';
+import {
+  Download,
+  ExternalLink,
+  Grid2X2,
+  Info,
+  List,
+  MoreHorizontal,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import type { DriveItem } from '@/lib/types';
-import { formatDate, formatEstimatedSize, formatSize, resourceUrl, typeLabel } from '@/lib/resource-utils';
-import { ResourceActions, SaveButton, ShareButton, ReportResourceDialog } from '@/components/resource-actions';
+import {
+  formatDate,
+  formatEstimatedSize,
+  formatSize,
+  resourceUrl,
+  typeLabel,
+} from '@/lib/resource-utils';
+import {
+  ResourceActions,
+  SaveButton,
+  ShareButton,
+  ReportResourceDialog,
+} from '@/components/resource-actions';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
 
-type Props={items:DriveItem[]; crumbs:DriveItem[]; rootId:string; admin?: boolean};
-const hrefForFolder=(id:string,rootId:string)=>id===rootId?'/library':`/library?folder=${encodeURIComponent(id)}`;
-const hrefFor=(item:DriveItem,rootId:string)=>item.isFolder?hrefForFolder(item.id,rootId):resourceUrl({id:item.id,isFolder:false});
-function remember(item:DriveItem,path:string){const rec={id:item.id,name:item.name,isFolder:item.isFolder,mimeType:item.mimeType,path,at:Date.now()}; const old=JSON.parse(localStorage.getItem('dp_recent')||'[]').filter((r:any)=>r.id!==item.id); localStorage.setItem('dp_recent',JSON.stringify([rec,...old].slice(0,12)));}
-function useLibraryNavigation(rootId:string){const router=useRouter(); const timers=useRef(new Map<string,ReturnType<typeof setTimeout>>()); useEffect(()=>()=>{timers.current.forEach(clearTimeout);timers.current.clear()},[]); const navigate=(item:DriveItem,path:string,newTab=false)=>{remember(item,path); const href=hrefFor(item,rootId); if(newTab) window.open(href,'_blank','noopener,noreferrer'); else router.push(href);}; const schedulePrefetch=(item:DriveItem)=>{const href=hrefFor(item,rootId); timers.current.set(item.id,setTimeout(()=>{router.prefetch(href); timers.current.delete(item.id)},150));}; const cancelPrefetch=(item:DriveItem)=>{const t=timers.current.get(item.id); if(t){clearTimeout(t);timers.current.delete(item.id)}}; return {navigate,schedulePrefetch,cancelPrefetch};}
-export function ResourceContextMenu({item,rootId,path,x,y,onClose,onDetails,navigate}:{item:DriveItem;rootId:string;path:string;x:number;y:number;onClose:()=>void;onDetails:()=>void;navigate:(item:DriveItem,path:string,newTab?:boolean)=>void}){const ref=useRef<HTMLDivElement>(null); const [pos,setPos]=useState({left:x,top:y}); const [positioned,setPositioned]=useState(false); const [mounted,setMounted]=useState(false); const mobile=typeof window!=='undefined'&&window.innerWidth<768; useEffect(()=>setMounted(true),[]); useLayoutEffect(()=>{if(mobile||!mounted)return; const viewport=()=>{const vv=window.visualViewport; return {left:vv?.offsetLeft??0,top:vv?.offsetTop??0,width:vv?.width??document.documentElement.clientWidth,height:vv?.height??document.documentElement.clientHeight};}; const place=()=>{const el=ref.current;if(!el)return; const margin=8; const vp=viewport(); const rect=el.getBoundingClientRect(); const minLeft=vp.left+margin,minTop=vp.top+margin,maxLeft=vp.left+vp.width-margin,maxTop=vp.top+vp.height-margin; const menuWidth=Math.min(rect.width,Math.max(0,vp.width-(margin*2))); const menuHeight=Math.min(rect.height,Math.max(0,vp.height-(margin*2))); let left=x; let top=y; if(left+menuWidth>maxLeft) left=x-menuWidth; if(top+menuHeight>maxTop) top=y-menuHeight; left=Math.min(Math.max(left,minLeft),Math.max(minLeft,maxLeft-menuWidth)); top=Math.min(Math.max(top,minTop),Math.max(minTop,maxTop-menuHeight)); setPos({left,top}); setPositioned(true);}; place(); window.addEventListener('resize',place); window.visualViewport?.addEventListener('resize',place); window.visualViewport?.addEventListener('scroll',place); return()=>{window.removeEventListener('resize',place);window.visualViewport?.removeEventListener('resize',place);window.visualViewport?.removeEventListener('scroll',place)}},[x,y,mobile,mounted]); useEffect(()=>{if(positioned||mobile)ref.current?.focus(); const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))onClose()}; const k=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()}; const close=()=>onClose(); document.addEventListener('mousedown',h); document.addEventListener('keydown',k); window.addEventListener('scroll',close,true); window.addEventListener('popstate',close); return()=>{document.removeEventListener('mousedown',h);document.removeEventListener('keydown',k);window.removeEventListener('scroll',close,true);window.removeEventListener('popstate',close)}},[onClose,positioned,mobile]); const row="flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"; const closeThen=(fn:()=>void|Promise<void>)=>{onClose(); void fn();}; const desktopStyle={left:pos.left,top:pos.top,visibility:positioned?'visible':'hidden',pointerEvents:positioned?'auto':'none',maxHeight:'calc(100dvh - 16px)',maxWidth:'calc(100dvw - 16px)',overflowY:'auto'} as const; const menu=<><button aria-label="Close resource actions" onClick={onClose} className={`fixed inset-0 z-40 bg-slate-950/30 ${mobile?'block':'hidden'}`}/><div ref={ref} tabIndex={-1} role="menu" data-testid="resource-context-menu" style={mobile?{}:desktopStyle} className={mobile?"fixed inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-xl border border-slate-200 bg-white py-2 pb-6 shadow-xl":"fixed z-50 min-w-56 rounded-md border border-slate-200 bg-white py-1 shadow-lg"}>
- <button role="menuitem" className={row} onClick={()=>closeThen(()=>navigate(item,path))}><ExternalLink className="size-4 shrink-0"/>Open</button>
- <button role="menuitem" className={row} onClick={()=>closeThen(()=>navigate(item,path,true))}><ExternalLink className="size-4 shrink-0"/>Open in new tab</button>
- {!item.isFolder&&<a role="menuitem" className={row} href={`/api/files/${item.id}/download`} onClick={onClose}><Download className="size-4 shrink-0"/>Download</a>}
- <ShareButton resource={{driveFileId:item.id,resourceName:item.name,resourcePath:path,isFolder:item.isFolder}} className={row} onBegin={onClose}/>
- <SaveButton driveFileId={item.id} name={item.name} className={row} onBegin={onClose}/>
- <button role="menuitem" className={row} onClick={()=>{onDetails();onClose();}}><Info className="size-4 shrink-0"/>Details</button>
- <ReportResourceDialog resource={{driveFileId:item.id,resourceName:item.name,resourcePath:path,isFolder:item.isFolder}} className={row}/>
- </div></>; return mounted?createPortal(menu,document.body):null}
-export function ResourceDetailsPanel({item,path,rootId,onClose,admin=false,onFeaturedChange}:{item:DriveItem;path:string;rootId:string;onClose:()=>void;admin?:boolean;onFeaturedChange?:(item:DriveItem)=>void}){useEffect(()=>{const k=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()}; document.addEventListener('keydown',k); return()=>document.removeEventListener('keydown',k)},[onClose]); return <><button aria-label="Close details overlay" onClick={onClose} className="fixed inset-0 z-40 hidden bg-slate-950/20 max-md:block"/><aside className="fixed right-0 top-0 z-50 h-full w-96 max-w-[92vw] border-l border-slate-200 bg-white p-5 shadow-xl" data-testid="resource-details-panel"><button aria-label="Close details" onClick={onClose} className="float-right rounded-md p-1 hover:bg-slate-100"><X className="size-5"/></button><ResourceTypeIcon item={item}/><h2 className="mt-3 text-base font-semibold text-[color:var(--dp-navy)]">{item.name}</h2><p className="mt-1 text-sm text-slate-500">{typeLabel(item.mimeType,item.isFolder)}</p><dl className="mt-5 space-y-3 text-sm"><div><dt className="text-xs uppercase text-slate-500">{item.isFolder?'Estimated contents size':'Size'}</dt><dd>{item.isFolder&&item.estimatedSize?formatEstimatedSize(item.estimatedSize):formatSize(item.size)}</dd></div><div><dt className="text-xs uppercase text-slate-500">Modified</dt><dd>{formatDate(item.modifiedTime)}</dd></div><div><dt className="text-xs uppercase text-slate-500">Location</dt><dd className="truncate">{path}</dd></div></dl>{admin&&<> <button onClick={async()=>{const next=!item.featuredLabel; const res=await fetch(next?'/api/admin/featured-resource':`/api/admin/featured-resource?driveFileId=${encodeURIComponent(item.id)}`,{method:next?'POST':'DELETE',headers:{'Content-Type':'application/json'},body:next?JSON.stringify({driveFileId:item.id}):undefined}); if(res.ok){onFeaturedChange?.({...item,featuredLabel:next?'Resource Library':undefined,featuredPriority:next?1000:undefined});}}} className="mt-5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{item.featuredLabel?'Remove from featured resources':'Add to featured resources'}</button><p className="mt-2 text-xs text-slate-500">Featured resources appear in the Library’s highlighted row. This does not move or delete the Drive file.</p></>}<div className="mt-5"><ResourceActions resource={{driveFileId:item.id,resourceName:item.name,resourcePath:path,isFolder:item.isFolder}} previewHref={hrefFor(item,rootId)} downloadHref={!item.isFolder?`/api/files/${item.id}/download`:undefined}/></div></aside></>}
+type Props = {
+  items: DriveItem[];
+  crumbs: DriveItem[];
+  rootId: string;
+  admin?: boolean;
+};
+const hrefForFolder = (id: string, rootId: string) =>
+  id === rootId ? '/library' : `/library?folder=${encodeURIComponent(id)}`;
+const hrefFor = (item: DriveItem, rootId: string) =>
+  item.isFolder
+    ? hrefForFolder(item.id, rootId)
+    : resourceUrl({ id: item.id, isFolder: false });
+function remember(item: DriveItem, path: string) {
+  const rec = {
+    id: item.id,
+    name: item.name,
+    isFolder: item.isFolder,
+    mimeType: item.mimeType,
+    path,
+    at: Date.now(),
+  };
+  const old = JSON.parse(localStorage.getItem('dp_recent') || '[]').filter(
+    (r: any) => r.id !== item.id,
+  );
+  localStorage.setItem('dp_recent', JSON.stringify([rec, ...old].slice(0, 12)));
+}
+function useLibraryNavigation(rootId: string) {
+  const router = useRouter();
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      timers.current.clear();
+    },
+    [],
+  );
+  const navigate = (item: DriveItem, path: string, newTab = false) => {
+    remember(item, path);
+    const href = hrefFor(item, rootId);
+    if (newTab) window.open(href, '_blank', 'noopener,noreferrer');
+    else router.push(href);
+  };
+  const schedulePrefetch = (item: DriveItem) => {
+    const href = hrefFor(item, rootId);
+    timers.current.set(
+      item.id,
+      setTimeout(() => {
+        router.prefetch(href);
+        timers.current.delete(item.id);
+      }, 150),
+    );
+  };
+  const cancelPrefetch = (item: DriveItem) => {
+    const t = timers.current.get(item.id);
+    if (t) {
+      clearTimeout(t);
+      timers.current.delete(item.id);
+    }
+  };
+  return { navigate, schedulePrefetch, cancelPrefetch };
+}
+export function ResourceContextMenu({
+  item,
+  rootId,
+  path,
+  x,
+  y,
+  onClose,
+  onDetails,
+  navigate,
+}: {
+  item: DriveItem;
+  rootId: string;
+  path: string;
+  x: number;
+  y: number;
+  onClose: () => void;
+  onDetails: () => void;
+  navigate: (item: DriveItem, path: string, newTab?: boolean) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: x, top: y });
+  const [positioned, setPositioned] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const mobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  useEffect(() => setMounted(true), []);
+  useLayoutEffect(() => {
+    if (mobile || !mounted) return;
+    const viewport = () => {
+      const vv = window.visualViewport;
+      return {
+        left: vv?.offsetLeft ?? 0,
+        top: vv?.offsetTop ?? 0,
+        width: vv?.width ?? document.documentElement.clientWidth,
+        height: vv?.height ?? document.documentElement.clientHeight,
+      };
+    };
+    const place = () => {
+      const el = ref.current;
+      if (!el) return;
+      const margin = 8;
+      const vp = viewport();
+      const rect = el.getBoundingClientRect();
+      const minLeft = vp.left + margin,
+        minTop = vp.top + margin,
+        maxLeft = vp.left + vp.width - margin,
+        maxTop = vp.top + vp.height - margin;
+      const menuWidth = Math.min(
+        rect.width,
+        Math.max(0, vp.width - margin * 2),
+      );
+      const menuHeight = Math.min(
+        rect.height,
+        Math.max(0, vp.height - margin * 2),
+      );
+      let left = x;
+      let top = y;
+      if (left + menuWidth > maxLeft) left = x - menuWidth;
+      if (top + menuHeight > maxTop) top = y - menuHeight;
+      left = Math.min(
+        Math.max(left, minLeft),
+        Math.max(minLeft, maxLeft - menuWidth),
+      );
+      top = Math.min(
+        Math.max(top, minTop),
+        Math.max(minTop, maxTop - menuHeight),
+      );
+      setPos({ left, top });
+      setPositioned(true);
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('scroll', place);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.visualViewport?.removeEventListener('resize', place);
+      window.visualViewport?.removeEventListener('scroll', place);
+    };
+  }, [x, y, mobile, mounted]);
+  useEffect(() => {
+    if (positioned || mobile) ref.current?.focus();
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const close = () => onClose();
+    document.addEventListener('mousedown', h);
+    document.addEventListener('keydown', k);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('popstate', close);
+    return () => {
+      document.removeEventListener('mousedown', h);
+      document.removeEventListener('keydown', k);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('popstate', close);
+    };
+  }, [onClose, positioned, mobile]);
+  const row =
+    'flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none';
+  const closeThen = (fn: () => void | Promise<void>) => {
+    onClose();
+    void fn();
+  };
+  const desktopStyle = {
+    left: pos.left,
+    top: pos.top,
+    visibility: positioned ? 'visible' : 'hidden',
+    pointerEvents: positioned ? 'auto' : 'none',
+    maxHeight: 'calc(100dvh - 16px)',
+    maxWidth: 'calc(100dvw - 16px)',
+    overflowY: 'auto',
+  } as const;
+  const menu = (
+    <>
+      <button
+        aria-label="Close resource actions"
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-slate-950/30 ${mobile ? 'block' : 'hidden'}`}
+      />
+      <div
+        ref={ref}
+        tabIndex={-1}
+        role="menu"
+        data-testid="resource-context-menu"
+        style={mobile ? {} : desktopStyle}
+        className={
+          mobile
+            ? 'fixed inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-xl border border-slate-200 bg-white py-2 pb-6 shadow-xl'
+            : 'fixed z-50 min-w-56 rounded-md border border-slate-200 bg-white py-1 shadow-lg'
+        }
+      >
+        <button
+          role="menuitem"
+          className={row}
+          onClick={() => closeThen(() => navigate(item, path))}
+        >
+          <ExternalLink className="size-4 shrink-0" />
+          Open
+        </button>
+        <button
+          role="menuitem"
+          className={row}
+          onClick={() => closeThen(() => navigate(item, path, true))}
+        >
+          <ExternalLink className="size-4 shrink-0" />
+          Open in new tab
+        </button>
+        {!item.isFolder && (
+          <a
+            role="menuitem"
+            className={row}
+            href={`/api/files/${item.id}/download`}
+            onClick={onClose}
+          >
+            <Download className="size-4 shrink-0" />
+            Download
+          </a>
+        )}
+        <ShareButton
+          resource={{
+            driveFileId: item.id,
+            resourceName: item.name,
+            resourcePath: path,
+            isFolder: item.isFolder,
+          }}
+          className={row}
+          onBegin={onClose}
+        />
+        <SaveButton
+          driveFileId={item.id}
+          name={item.name}
+          className={row}
+          onBegin={onClose}
+        />
+        <button
+          role="menuitem"
+          className={row}
+          onClick={() => {
+            onDetails();
+            onClose();
+          }}
+        >
+          <Info className="size-4 shrink-0" />
+          Details
+        </button>
+        <ReportResourceDialog
+          resource={{
+            driveFileId: item.id,
+            resourceName: item.name,
+            resourcePath: path,
+            isFolder: item.isFolder,
+          }}
+          className={row}
+        />
+      </div>
+    </>
+  );
+  return mounted ? createPortal(menu, document.body) : null;
+}
+export function ResourceDetailsPanel({
+  item,
+  path,
+  rootId,
+  onClose,
+  admin = false,
+  onFeaturedChange,
+}: {
+  item: DriveItem;
+  path: string;
+  rootId: string;
+  onClose: () => void;
+  admin?: boolean;
+  onFeaturedChange?: (item: DriveItem) => void;
+}) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', k);
+    return () => document.removeEventListener('keydown', k);
+  }, [onClose]);
+  return (
+    <>
+      <button
+        aria-label="Close details overlay"
+        onClick={onClose}
+        className="fixed inset-0 z-40 hidden bg-slate-950/20 max-md:block"
+      />
+      <aside
+        className="fixed right-0 top-0 z-50 h-full w-96 max-w-[92vw] border-l border-slate-200 bg-white p-5 shadow-xl"
+        data-testid="resource-details-panel"
+      >
+        <button
+          aria-label="Close details"
+          onClick={onClose}
+          className="float-right rounded-md p-1 hover:bg-slate-100"
+        >
+          <X className="size-5" />
+        </button>
+        <ResourceTypeIcon item={item} />
+        <h2 className="mt-3 text-base font-semibold text-[color:var(--dp-navy)]">
+          {item.name}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {typeLabel(item.mimeType, item.isFolder)}
+        </p>
+        <dl className="mt-5 space-y-3 text-sm">
+          <div>
+            <dt className="text-xs uppercase text-slate-500">
+              {item.isFolder ? 'Estimated contents size' : 'Size'}
+            </dt>
+            <dd>
+              {item.isFolder && item.estimatedSize
+                ? formatEstimatedSize(item.estimatedSize)
+                : formatSize(item.size)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Modified</dt>
+            <dd>{formatDate(item.modifiedTime)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Location</dt>
+            <dd className="truncate">{path}</dd>
+          </div>
+        </dl>
+        {admin && (
+          <>
+            {' '}
+            <button
+              onClick={async () => {
+                const next = !item.featuredLabel;
+                const res = await fetch(
+                  next
+                    ? '/api/admin/featured-resource'
+                    : `/api/admin/featured-resource?driveFileId=${encodeURIComponent(item.id)}`,
+                  {
+                    method: next ? 'POST' : 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: next
+                      ? JSON.stringify({ driveFileId: item.id })
+                      : undefined,
+                  },
+                );
+                if (res.ok) {
+                  onFeaturedChange?.({
+                    ...item,
+                    featuredLabel: next ? 'Resource Library' : undefined,
+                    featuredPriority: next ? 1000 : undefined,
+                  });
+                }
+              }}
+              className="mt-5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {item.featuredLabel
+                ? 'Remove from featured resources'
+                : 'Add to featured resources'}
+            </button>
+            <p className="mt-2 text-xs text-slate-500">
+              Featured resources appear in the Library’s highlighted row. This
+              does not move or delete the Drive file.
+            </p>
+          </>
+        )}
+        <div className="mt-5">
+          <ResourceActions
+            resource={{
+              driveFileId: item.id,
+              resourceName: item.name,
+              resourcePath: path,
+              isFolder: item.isFolder,
+            }}
+            previewHref={hrefFor(item, rootId)}
+            downloadHref={
+              !item.isFolder ? `/api/files/${item.id}/download` : undefined
+            }
+          />
+        </div>
+      </aside>
+    </>
+  );
+}
 
-function ResourceLibraryFeature({item,rootId,path}:{item:DriveItem;rootId:string;path:string}){return <Link onClick={()=>remember(item,path)} href={hrefFor(item,rootId)} className="block border-y border-slate-200 bg-white hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"><span className="grid items-center gap-3 px-3 py-3 text-sm md:grid-cols-[140px_1.5rem_minmax(260px,1fr)_auto]"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resource Library</span><ResourceTypeIcon item={item}/><span className="min-w-0"><span className="block truncate font-semibold text-[color:var(--dp-navy)]">{item.name}</span><span className="block truncate text-xs text-slate-500">Master catalogue of the compiled DP revision resources, organised by subject, topic and resource link.</span></span><span className="text-sm font-semibold text-[color:var(--dp-navy)]">Open resource library →</span></span></Link>}
+function ResourceLibraryFeature({
+  item,
+  rootId,
+  path,
+}: {
+  item: DriveItem;
+  rootId: string;
+  path: string;
+}) {
+  return (
+    <Link
+      onClick={() => remember(item, path)}
+      href={hrefFor(item, rootId)}
+      className="block border-y border-slate-200 bg-white hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"
+    >
+      <span className="grid items-center gap-3 px-3 py-3 text-sm md:grid-cols-[140px_1.5rem_minmax(260px,1fr)_auto]">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Resource Library
+        </span>
+        <ResourceTypeIcon item={item} />
+        <span className="min-w-0">
+          <span className="block truncate font-semibold text-[color:var(--dp-navy)]">
+            {item.name}
+          </span>
+          <span className="block truncate text-xs text-slate-500">
+            Master catalogue of the compiled DP revision resources, organised by
+            subject, topic and resource link.
+          </span>
+        </span>
+        <span className="text-sm font-semibold text-[color:var(--dp-navy)]">
+          Open resource library →
+        </span>
+      </span>
+    </Link>
+  );
+}
 
-function FileBrowserToolbar({filtersOpen,setFiltersOpen,folderOnly,setFolderOnly,type,setType,modified,setModified,sort,setSort,clear,view,setPersist}:any){return <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-2"><div className="relative"><button aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(!filtersOpen)} className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"><SlidersHorizontal className="size-4"/>Filter</button>{filtersOpen&&<div className="absolute z-20 mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-lg"><label className="flex items-center justify-between text-sm"><span className="sr-only">Search within this folder</span>Folders only<input type="checkbox" checked={folderOnly} onChange={(e)=>setFolderOnly(e.target.checked)} /></label><label className="mt-3 block text-sm">File type<AppSelect value={type} onValueChange={setType} options={[{value:'all',label:'All types'},{value:'pdf',label:'PDF'},{value:'word',label:'Word'},{value:'spreadsheet',label:'Spreadsheet'},{value:'image',label:'Image'},{value:'folder',label:'Folder'}]}/></label><label className="mt-3 block text-sm">Modified date<AppSelect value={modified} onValueChange={setModified} options={[{value:'all',label:'Any time'},{value:'week',label:'Past week'},{value:'month',label:'Past month'}]}/></label><label className="mt-3 block text-sm">Sort<AppSelect value={sort} onValueChange={setSort} options={[{value:'name',label:'Name'},{value:'modified',label:'Recently modified'},{value:'type',label:'Type'},{value:'size',label:'Size'}]}/></label><button onClick={clear} className="mt-3 text-sm font-medium text-[color:var(--dp-blue)]">Clear filters</button></div>}</div><div className="flex gap-1"><button aria-label="List view" onClick={()=>setPersist('list')} className={`rounded-md border px-2 py-1.5 ${view==='list'?'border-slate-300 bg-slate-100 text-slate-900':'border-slate-200 bg-white'}`}><List className="size-4"/></button><button aria-label="Grid view" onClick={()=>setPersist('grid')} className={`rounded-md border px-2 py-1.5 ${view==='grid'?'border-slate-300 bg-slate-100 text-slate-900':'border-slate-200 bg-white'}`}><Grid2X2 className="size-4"/></button></div></div>}
-export function ResourceRow({item,rootId,path,onMenu,navigate,schedulePrefetch,cancelPrefetch}:{item:DriveItem;rootId:string;path:string;onMenu:(item:DriveItem,x:number,y:number)=>void;navigate:(item:DriveItem,path:string,newTab?:boolean)=>void;schedulePrefetch:(item:DriveItem)=>void;cancelPrefetch:(item:DriveItem)=>void}){return <div role="row" tabIndex={0} onPointerEnter={()=>schedulePrefetch(item)} onPointerLeave={()=>cancelPrefetch(item)} onFocus={()=>schedulePrefetch(item)} onBlur={()=>cancelPrefetch(item)} onClick={()=>navigate(item,path)} onKeyDown={e=>{if(e.key==='Enter')navigate(item,path); if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault(); const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); onMenu(item,r.left,r.bottom+4)}}} onContextMenu={e=>{e.preventDefault();e.stopPropagation();onMenu(item,e.clientX,e.clientY)}} className="group grid min-h-12 cursor-pointer grid-cols-[1fr_44px] gap-3 border-b border-slate-100 px-3 py-2.5 text-sm last:border-b-0 hover:bg-slate-50 md:grid-cols-[minmax(260px,1fr)_220px_120px_120px_90px_56px] md:items-center"><div className="flex min-w-0 items-center gap-3 font-medium"><input aria-label={`Select ${item.name}`} type="checkbox" onClick={e=>e.stopPropagation()} className="size-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"/><ResourceTypeIcon item={item}/><span className="min-w-0"><span className="flex min-w-0 items-center gap-2"><span className="truncate">{item.name}</span></span><span className="block truncate text-xs font-normal text-slate-500 md:hidden">{typeLabel(item.mimeType,item.isFolder)}{item.isFolder&&item.estimatedSize?` · ${formatEstimatedSize(item.estimatedSize)}`:(!item.isFolder&&item.size?` · ${formatSize(item.size)}`:'')}{item.modifiedTime?` · ${formatDate(item.modifiedTime)}`:''}</span></span></div><span className="hidden truncate text-slate-500 md:block">{path}</span><span className="hidden text-slate-600 md:block">{typeLabel(item.mimeType,item.isFolder)}</span><span className="hidden text-slate-500 md:block">{formatDate(item.modifiedTime)}</span><span className="hidden text-slate-500 md:block">{item.isFolder&&item.estimatedSize?formatEstimatedSize(item.estimatedSize):formatSize(item.size)}</span><button aria-label={`More actions for ${item.name}`} onClick={e=>{e.stopPropagation(); const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); onMenu(item,r.left,r.bottom+4)}} className="justify-self-end rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"><MoreHorizontal className="size-5"/></button></div>}
-export function LibraryBrowser({items,crumbs,rootId,admin=false}:Props){const {navigate,schedulePrefetch,cancelPrefetch}=useLibraryNavigation(rootId);const [localItems,setLocalItems]=useState(items); useEffect(()=>setLocalItems(items),[items]); const [folderOnly,setFolderOnly]=useState(false),[type,setType]=useState('all'),[modified,setModified]=useState('all'),[filtersOpen,setFiltersOpen]=useState(false),[view,setView]=useState<'list'|'grid'>('list'),[sort,setSort]=useState('name'),[details,setDetails]=useState<DriveItem|null>(null),[menu,setMenu]=useState<{item:DriveItem;x:number;y:number}|null>(null); const active=crumbs.at(-1); const basePath=crumbs.map((c,i)=>i===0?'Library':c.name).join(' / '); useEffect(()=>{setView((localStorage.getItem('dp_view') as any)||'list')},[]); function setPersist(v:'list'|'grid'){setView(v);localStorage.setItem('dp_view',v)} const filtered=useMemo(()=>localItems.filter(i=>{if(folderOnly&&!i.isFolder)return false; const label=typeLabel(i.mimeType,i.isFolder).toLowerCase(); if(type!=='all'&&!label.includes(type))return false; if(modified!=='all'&&i.modifiedTime){const days=(Date.now()-new Date(i.modifiedTime).getTime())/86400000; if(modified==='week'&&days>7)return false; if(modified==='month'&&days>31)return false;} return true;}).sort((a,b)=>{const essential=Number(b.featuredPriority||0)-Number(a.featuredPriority||0); if(essential)return essential; const f=Number(b.isFolder)-Number(a.isFolder); if(f)return f; if(sort==='modified')return String(b.modifiedTime||'').localeCompare(String(a.modifiedTime||'')); if(sort==='type')return typeLabel(a.mimeType,a.isFolder).localeCompare(typeLabel(b.mimeType,b.isFolder)); if(sort==='size')return Number(b.size||0)-Number(a.size||0); return a.name.localeCompare(b.name)}),[localItems,folderOnly,type,modified,sort]); const clear=()=>{setFolderOnly(false);setType('all');setModified('all');setSort('name')}; return <div className="space-y-3">{crumbs.length>1&&<nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500" aria-label="Breadcrumb">{crumbs.map((c,i)=><span className="inline-flex items-center gap-1" key={c.id}>{i>0&&<span>/</span>}<Link className="font-medium hover:text-[color:var(--dp-blue)]" href={hrefForFolder(c.id,rootId)}>{i===0?'Library':c.name}</Link></span>)}</nav>}<div className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-xl font-semibold tracking-tight text-[color:var(--dp-navy)]">{active?.name||'Library'}</h1></div></div>{crumbs.length>1&&<Link href={hrefForFolder(crumbs[crumbs.length-2].id,rootId)} className="text-sm font-medium text-[color:var(--dp-blue)] hover:underline">Back to {crumbs[crumbs.length-2].id===rootId?'Library':crumbs[crumbs.length-2].name}</Link>}<FileBrowserToolbar {...{filtersOpen,setFiltersOpen,folderOnly,setFolderOnly,type,setType,modified,setModified,sort,setSort,clear,view,setPersist}}/>{crumbs.length===1&&localItems.find(i=>i.featuredLabel)&&<ResourceLibraryFeature item={localItems.find(i=>i.featuredLabel)!} rootId={rootId} path={basePath}/>}{filtered.length===0&&<div className="border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-600">No resources match these filters.</div>}{view==='grid'?<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{filtered.map(item=><div key={item.id} role="button" tabIndex={0} onPointerEnter={()=>schedulePrefetch(item)} onPointerLeave={()=>cancelPrefetch(item)} onFocus={()=>schedulePrefetch(item)} onBlur={()=>cancelPrefetch(item)} onClick={()=>navigate(item,basePath)} onKeyDown={e=>{if(e.key==='Enter')navigate(item,basePath); if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault(); const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); setMenu({item,x:r.left,y:r.bottom+4})}}} onContextMenu={e=>{e.preventDefault();e.stopPropagation();setMenu({item,x:e.clientX,y:e.clientY})}} className="group relative cursor-pointer rounded-md border border-slate-200 bg-white p-3 hover:bg-blue-50 focus-visible:bg-blue-50 focus-visible:outline-none"><button aria-label={`More actions for ${item.name}`} onClick={e=>{e.stopPropagation(); const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); setMenu({item,x:r.left,y:r.bottom+4})}} className="absolute right-2 top-2 rounded-md p-1.5 text-slate-500 opacity-0 hover:bg-slate-100 hover:text-slate-800 group-hover:opacity-100 group-focus-within:opacity-100"><MoreHorizontal className="size-5"/></button><ResourceTypeIcon item={item}/><p className="mt-2 flex items-center gap-2 truncate pr-8 font-medium"><span className="truncate">{item.name}</span></p><p className="text-xs text-slate-500">{typeLabel(item.mimeType,item.isFolder)}{item.isFolder&&item.estimatedSize?` · ${formatEstimatedSize(item.estimatedSize)}`:''}</p></div>)}</div>:<div className="overflow-hidden border-y border-slate-200 bg-white"><div role="row" className="hidden grid-cols-[minmax(260px,1fr)_220px_120px_120px_90px_56px] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid"><span>Name</span><span>Location</span><span>Type</span><span>Modified</span><span>Size</span><span>Actions</span></div>{filtered.map(item=><ResourceRow key={item.id} item={item} rootId={rootId} path={basePath} onMenu={(item,x,y)=>setMenu({item,x,y})} navigate={navigate} schedulePrefetch={schedulePrefetch} cancelPrefetch={cancelPrefetch} />)}</div>}{menu&&<ResourceContextMenu item={menu.item} rootId={rootId} path={basePath} x={menu.x} y={menu.y} onClose={()=>setMenu(null)} onDetails={()=>setDetails(menu.item)} navigate={navigate}/>} {details&&<ResourceDetailsPanel item={details} path={basePath} rootId={rootId} admin={admin} onFeaturedChange={(next)=>{setDetails(next); setLocalItems(prev=>prev.map(i=>i.id===next.id?next:i));}} onClose={()=>setDetails(null)}/>}</div>}
+function FileBrowserToolbar({
+  filtersOpen,
+  setFiltersOpen,
+  folderOnly,
+  setFolderOnly,
+  type,
+  setType,
+  modified,
+  setModified,
+  sort,
+  setSort,
+  clear,
+  view,
+  setPersist,
+}: any) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-2">
+      <div className="relative">
+        <button
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <SlidersHorizontal className="size-4" />
+          Filter
+        </button>
+        {filtersOpen && (
+          <div className="absolute z-20 mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+            <label className="flex items-center justify-between text-sm">
+              <span className="sr-only">Search within this folder</span>Folders
+              only
+              <input
+                type="checkbox"
+                checked={folderOnly}
+                onChange={(e) => setFolderOnly(e.target.checked)}
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              File type
+              <AppSelect
+                value={type}
+                onValueChange={setType}
+                options={[
+                  { value: 'all', label: 'All types' },
+                  { value: 'pdf', label: 'PDF' },
+                  { value: 'word', label: 'Word' },
+                  { value: 'spreadsheet', label: 'Spreadsheet' },
+                  { value: 'image', label: 'Image' },
+                  { value: 'folder', label: 'Folder' },
+                ]}
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Modified date
+              <AppSelect
+                value={modified}
+                onValueChange={setModified}
+                options={[
+                  { value: 'all', label: 'Any time' },
+                  { value: 'week', label: 'Past week' },
+                  { value: 'month', label: 'Past month' },
+                ]}
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Sort
+              <AppSelect
+                value={sort}
+                onValueChange={setSort}
+                options={[
+                  { value: 'name', label: 'Name' },
+                  { value: 'modified', label: 'Recently modified' },
+                  { value: 'type', label: 'Type' },
+                  { value: 'size', label: 'Size' },
+                ]}
+              />
+            </label>
+            <button
+              onClick={clear}
+              className="mt-3 text-sm font-medium text-[color:var(--dp-blue)]"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="flex gap-1">
+        <button
+          aria-label="List view"
+          onClick={() => setPersist('list')}
+          className={`rounded-md border px-2 py-1.5 ${view === 'list' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white'}`}
+        >
+          <List className="size-4" />
+        </button>
+        <button
+          aria-label="Grid view"
+          onClick={() => setPersist('grid')}
+          className={`rounded-md border px-2 py-1.5 ${view === 'grid' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white'}`}
+        >
+          <Grid2X2 className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+export function ResourceRow({
+  item,
+  rootId,
+  path,
+  onMenu,
+  navigate,
+  schedulePrefetch,
+  cancelPrefetch,
+}: {
+  item: DriveItem;
+  rootId: string;
+  path: string;
+  onMenu: (item: DriveItem, x: number, y: number) => void;
+  navigate: (item: DriveItem, path: string, newTab?: boolean) => void;
+  schedulePrefetch: (item: DriveItem) => void;
+  cancelPrefetch: (item: DriveItem) => void;
+}) {
+  return (
+    <div
+      role="row"
+      tabIndex={0}
+      onPointerEnter={() => schedulePrefetch(item)}
+      onPointerLeave={() => cancelPrefetch(item)}
+      onFocus={() => schedulePrefetch(item)}
+      onBlur={() => cancelPrefetch(item)}
+      onClick={() => navigate(item, path)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') navigate(item, path);
+        if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+          e.preventDefault();
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          onMenu(item, r.left, r.bottom + 4);
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onMenu(item, e.clientX, e.clientY);
+      }}
+      className="group grid min-h-12 cursor-pointer grid-cols-[1fr_44px] gap-3 border-b border-slate-100 px-3 py-2.5 text-sm last:border-b-0 hover:bg-slate-50 md:grid-cols-[minmax(260px,1fr)_220px_120px_120px_90px_56px] md:items-center"
+    >
+      <div className="flex min-w-0 items-center gap-3 font-medium">
+        <input
+          aria-label={`Select ${item.name}`}
+          type="checkbox"
+          onClick={(e) => e.stopPropagation()}
+          className="size-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        />
+        <ResourceTypeIcon item={item} />
+        <span className="min-w-0">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate">{item.name}</span>
+          </span>
+          <span className="block truncate text-xs font-normal text-slate-500 md:hidden">
+            {typeLabel(item.mimeType, item.isFolder)}
+            {item.isFolder && item.estimatedSize
+              ? ` · ${formatEstimatedSize(item.estimatedSize)}`
+              : !item.isFolder && item.size
+                ? ` · ${formatSize(item.size)}`
+                : ''}
+            {item.modifiedTime ? ` · ${formatDate(item.modifiedTime)}` : ''}
+          </span>
+        </span>
+      </div>
+      <span className="hidden truncate text-slate-500 md:block">{path}</span>
+      <span className="hidden text-slate-600 md:block">
+        {typeLabel(item.mimeType, item.isFolder)}
+      </span>
+      <span className="hidden text-slate-500 md:block">
+        {formatDate(item.modifiedTime)}
+      </span>
+      <span className="hidden text-slate-500 md:block">
+        {item.isFolder && item.estimatedSize
+          ? formatEstimatedSize(item.estimatedSize)
+          : formatSize(item.size)}
+      </span>
+      <button
+        aria-label={`More actions for ${item.name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          onMenu(item, r.left, r.bottom + 4);
+        }}
+        className="justify-self-end rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+      >
+        <MoreHorizontal className="size-5" />
+      </button>
+    </div>
+  );
+}
+export function LibraryBrowser({
+  items,
+  crumbs,
+  rootId,
+  admin = false,
+}: Props) {
+  const { navigate, schedulePrefetch, cancelPrefetch } =
+    useLibraryNavigation(rootId);
+  const [localItems, setLocalItems] = useState(items);
+  useEffect(() => setLocalItems(items), [items]);
+  const [folderOnly, setFolderOnly] = useState(false),
+    [type, setType] = useState('all'),
+    [modified, setModified] = useState('all'),
+    [filtersOpen, setFiltersOpen] = useState(false),
+    [view, setView] = useState<'list' | 'grid'>('list'),
+    [sort, setSort] = useState('name'),
+    [details, setDetails] = useState<DriveItem | null>(null),
+    [menu, setMenu] = useState<{
+      item: DriveItem;
+      x: number;
+      y: number;
+    } | null>(null);
+  const active = crumbs.at(-1);
+  const basePath = crumbs
+    .map((c, i) => (i === 0 ? 'Library' : c.name))
+    .join(' / ');
+  useEffect(() => {
+    setView((localStorage.getItem('dp_view') as any) || 'list');
+  }, []);
+  function setPersist(v: 'list' | 'grid') {
+    setView(v);
+    localStorage.setItem('dp_view', v);
+  }
+  const filtered = useMemo(
+    () =>
+      localItems
+        .filter((i) => {
+          if (folderOnly && !i.isFolder) return false;
+          const label = typeLabel(i.mimeType, i.isFolder).toLowerCase();
+          if (type !== 'all' && !label.includes(type)) return false;
+          if (modified !== 'all' && i.modifiedTime) {
+            const days =
+              (Date.now() - new Date(i.modifiedTime).getTime()) / 86400000;
+            if (modified === 'week' && days > 7) return false;
+            if (modified === 'month' && days > 31) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          const essential =
+            Number(b.featuredPriority || 0) - Number(a.featuredPriority || 0);
+          if (essential) return essential;
+          const f = Number(b.isFolder) - Number(a.isFolder);
+          if (f) return f;
+          if (sort === 'modified')
+            return String(b.modifiedTime || '').localeCompare(
+              String(a.modifiedTime || ''),
+            );
+          if (sort === 'type')
+            return typeLabel(a.mimeType, a.isFolder).localeCompare(
+              typeLabel(b.mimeType, b.isFolder),
+            );
+          if (sort === 'size') return Number(b.size || 0) - Number(a.size || 0);
+          return a.name.localeCompare(b.name);
+        }),
+    [localItems, folderOnly, type, modified, sort],
+  );
+  const clear = () => {
+    setFolderOnly(false);
+    setType('all');
+    setModified('all');
+    setSort('name');
+  };
+  return (
+    <div className="space-y-3">
+      {crumbs.length > 1 && (
+        <nav
+          className="flex flex-wrap items-center gap-1 text-sm text-slate-500"
+          aria-label="Breadcrumb"
+        >
+          {crumbs.map((c, i) => (
+            <span className="inline-flex items-center gap-1" key={c.id}>
+              {i > 0 && <span>/</span>}
+              <Link
+                className="font-medium hover:text-[color:var(--dp-blue)]"
+                href={hrefForFolder(c.id, rootId)}
+              >
+                {i === 0 ? 'Library' : c.name}
+              </Link>
+            </span>
+          ))}
+        </nav>
+      )}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-[color:var(--dp-navy)]">
+            {active?.name || 'Library'}
+          </h1>
+        </div>
+      </div>
+      {crumbs.length > 1 && (
+        <Link
+          href={hrefForFolder(crumbs[crumbs.length - 2].id, rootId)}
+          className="text-sm font-medium text-[color:var(--dp-blue)] hover:underline"
+        >
+          Back to{' '}
+          {crumbs[crumbs.length - 2].id === rootId
+            ? 'Library'
+            : crumbs[crumbs.length - 2].name}
+        </Link>
+      )}
+      <FileBrowserToolbar
+        {...{
+          filtersOpen,
+          setFiltersOpen,
+          folderOnly,
+          setFolderOnly,
+          type,
+          setType,
+          modified,
+          setModified,
+          sort,
+          setSort,
+          clear,
+          view,
+          setPersist,
+        }}
+      />
+      {crumbs.length === 1 && localItems.find((i) => i.featuredLabel) && (
+        <ResourceLibraryFeature
+          item={localItems.find((i) => i.featuredLabel)!}
+          rootId={rootId}
+          path={basePath}
+        />
+      )}
+      {filtered.length === 0 && (
+        <div className="border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-600">
+          No resources match these filters.
+        </div>
+      )}
+      {view === 'grid' ? (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              role="button"
+              tabIndex={0}
+              onPointerEnter={() => schedulePrefetch(item)}
+              onPointerLeave={() => cancelPrefetch(item)}
+              onFocus={() => schedulePrefetch(item)}
+              onBlur={() => cancelPrefetch(item)}
+              onClick={() => navigate(item, basePath)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigate(item, basePath);
+                if (
+                  e.key === 'ContextMenu' ||
+                  (e.shiftKey && e.key === 'F10')
+                ) {
+                  e.preventDefault();
+                  const r = (
+                    e.currentTarget as HTMLElement
+                  ).getBoundingClientRect();
+                  setMenu({ item, x: r.left, y: r.bottom + 4 });
+                }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenu({ item, x: e.clientX, y: e.clientY });
+              }}
+              className="group relative cursor-pointer rounded-md border border-slate-200 bg-white p-3 hover:bg-blue-50 focus-visible:bg-blue-50 focus-visible:outline-none"
+            >
+              <button
+                aria-label={`More actions for ${item.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const r = (
+                    e.currentTarget as HTMLElement
+                  ).getBoundingClientRect();
+                  setMenu({ item, x: r.left, y: r.bottom + 4 });
+                }}
+                className="absolute right-2 top-2 rounded-md p-1.5 text-slate-500 opacity-0 hover:bg-slate-100 hover:text-slate-800 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <MoreHorizontal className="size-5" />
+              </button>
+              <ResourceTypeIcon item={item} />
+              <p className="mt-2 flex items-center gap-2 truncate pr-8 font-medium">
+                <span className="truncate">{item.name}</span>
+              </p>
+              <p className="text-xs text-slate-500">
+                {typeLabel(item.mimeType, item.isFolder)}
+                {item.isFolder && item.estimatedSize
+                  ? ` · ${formatEstimatedSize(item.estimatedSize)}`
+                  : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-hidden border-y border-slate-200 bg-white">
+          <div
+            role="row"
+            className="hidden grid-cols-[minmax(260px,1fr)_220px_120px_120px_90px_56px] gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid"
+          >
+            <span>Name</span>
+            <span>Location</span>
+            <span>Type</span>
+            <span>Modified</span>
+            <span>Size</span>
+            <span>Actions</span>
+          </div>
+          {filtered.map((item) => (
+            <ResourceRow
+              key={item.id}
+              item={item}
+              rootId={rootId}
+              path={basePath}
+              onMenu={(item, x, y) => setMenu({ item, x, y })}
+              navigate={navigate}
+              schedulePrefetch={schedulePrefetch}
+              cancelPrefetch={cancelPrefetch}
+            />
+          ))}
+        </div>
+      )}
+      {menu && (
+        <ResourceContextMenu
+          item={menu.item}
+          rootId={rootId}
+          path={basePath}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          onDetails={() => setDetails(menu.item)}
+          navigate={navigate}
+        />
+      )}{' '}
+      {details && (
+        <ResourceDetailsPanel
+          item={details}
+          path={basePath}
+          rootId={rootId}
+          admin={admin}
+          onFeaturedChange={(next) => {
+            setDetails(next);
+            setLocalItems((prev) =>
+              prev.map((i) => (i.id === next.id ? next : i)),
+            );
+          }}
+          onClose={() => setDetails(null)}
+        />
+      )}
+    </div>
+  );
+}
 
 /* Legacy QA phrase retained: onClick={()=>openItem(item,rootId,path)} */
 /* Legacy QA marker: onContextMenu={e=>{e.preventDefault();onMenu(item,e.clientX,e.clientY)}} */

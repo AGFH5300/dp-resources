@@ -33,13 +33,19 @@ export async function getCachedDriveAccessToken() {
   return tokenRefresh;
 }
 
-export async function getFastDriveMediaFetch(fileId: string, range?: string | null) {
+export async function getFastDriveMediaFetch(
+  fileId: string,
+  range?: string | null,
+) {
   const token = await getCachedDriveAccessToken();
-  return fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(range ? { Range: range } : {}),
+  return fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(range ? { Range: range } : {}),
+      },
+      cache: 'no-store',
     },
-    cache: 'no-store',
-  });
+  );
 }

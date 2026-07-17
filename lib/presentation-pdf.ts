@@ -1,1 +1,2 @@
-export const PPTX_MIME='application/vnd.openxmlformats-officedocument.presentationml.presentation';
+export const PPTX_MIME =
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation';

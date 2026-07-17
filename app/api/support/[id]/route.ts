@@ -1,3 +1,32 @@
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) { const { user, membership } = await requireMember(); const { id } = await params; const sb = createSupabaseAdminClient(); let q = sb.from('dp_support_tickets').select('id,reporter_id,reporter_email,category,subject,message,status,created_at,updated_at,resolved_at').eq('id', id); if (membership.role !== 'admin') q = q.eq('reporter_id', user.id); const { data: ticket, error } = await q.single(); if (error || !ticket) return Response.json({ error: 'Ticket not found' }, { status: 404 }); const msgQ = sb.from('dp_support_ticket_messages').select('id,ticket_id,author_id,author_role,body,created_at,visibility').eq('ticket_id', id).order('created_at', { ascending: true }); const { data: messages, error: msgError } = membership.role === 'admin' ? await msgQ : await msgQ.eq('visibility', 'user'); if (msgError) return Response.json({ error: msgError.message }, { status: 500 }); return Response.json({ ticket, messages: messages || [] }); }
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { user, membership } = await requireMember();
+  const { id } = await params;
+  const sb = createSupabaseAdminClient();
+  let q = sb
+    .from('dp_support_tickets')
+    .select(
+      'id,reporter_id,reporter_email,category,subject,message,status,created_at,updated_at,resolved_at',
+    )
+    .eq('id', id);
+  if (membership.role !== 'admin') q = q.eq('reporter_id', user.id);
+  const { data: ticket, error } = await q.single();
+  if (error || !ticket)
+    return Response.json({ error: 'Ticket not found' }, { status: 404 });
+  const msgQ = sb
+    .from('dp_support_ticket_messages')
+    .select('id,ticket_id,author_id,author_role,body,created_at,visibility')
+    .eq('ticket_id', id)
+    .order('created_at', { ascending: true });
+  const { data: messages, error: msgError } =
+    membership.role === 'admin'
+      ? await msgQ
+      : await msgQ.eq('visibility', 'user');
+  if (msgError)
+    return Response.json({ error: msgError.message }, { status: 500 });
+  return Response.json({ ticket, messages: messages || [] });
+}

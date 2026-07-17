@@ -7,7 +7,11 @@ export async function POST(req: Request) {
   if (forbidden) return forbidden;
   await requireMember();
   const body = await req.json().catch(() => ({}));
-  const folderIds = Array.isArray(body.folderIds) ? body.folderIds.filter((id: unknown): id is string => typeof id === 'string') : [];
+  const folderIds = Array.isArray(body.folderIds)
+    ? body.folderIds.filter(
+        (id: unknown): id is string => typeof id === 'string',
+      )
+    : [];
   const summaries = await getIndexedFolderSizeSummaries(folderIds);
   return Response.json({ summaries: Object.fromEntries(summaries) });
 }

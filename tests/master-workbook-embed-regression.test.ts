@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const preview = () => readFileSync('app/resource/[fileId]/resource-preview.tsx', 'utf8');
+const preview = () =>
+  readFileSync('app/resource/[fileId]/resource-preview.tsx', 'utf8');
 
 describe('master workbook Google Sheets embed regression', () => {
   it('keeps the iframe on the published embed URL without custom gid selection', () => {

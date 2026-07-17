@@ -16,7 +16,11 @@ export type ResourceRecord = {
 export { FOLDER_MIME, typeLabel } from './resource-capabilities';
 
 export function normalizeResourceName(value: string) {
-  return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim();
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 }
 
 export function formatSize(size?: string | number | null) {
@@ -25,12 +29,19 @@ export function formatSize(size?: string | number | null) {
   if (!Number.isFinite(bytes)) return '—';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 export function formatDate(value?: string | null) {
-  return value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  return value
+    ? new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '—';
 }
 
 export function itemToResource(item: DriveItem, path: string): ResourceRecord {
@@ -47,9 +58,16 @@ export function itemToResource(item: DriveItem, path: string): ResourceRecord {
   };
 }
 
-export function resourceUrl(item: { drive_file_id?: string; id?: string; is_folder?: boolean; isFolder?: boolean }) {
+export function resourceUrl(item: {
+  drive_file_id?: string;
+  id?: string;
+  is_folder?: boolean;
+  isFolder?: boolean;
+}) {
   const id = item.drive_file_id || item.id || '';
-  return (item.is_folder || item.isFolder) ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`;
+  return item.is_folder || item.isFolder
+    ? `/library?folder=${encodeURIComponent(id)}`
+    : `/resource/${encodeURIComponent(id)}`;
 }
 
 export function formatEstimatedSize(size?: string | number | null) {

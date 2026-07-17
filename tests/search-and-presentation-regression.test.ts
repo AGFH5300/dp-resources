@@ -4,7 +4,9 @@ const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('search consistency and PPTX viewer regressions', () => {
   it('normalizes filename and MIME separators in the generated search vector without ILIKE fallback', () => {
-    const sql = read('supabase/migrations/20260707184500_separator_normalized_resource_search_vector.sql');
+    const sql = read(
+      'supabase/migrations/20260707184500_separator_normalized_resource_search_vector.sql',
+    );
     expect(sql).not.toMatch(/regexp_replace/i);
     expect(sql).not.toContain('concat_ws');
     expect(sql).toContain('to_tsvector(');
@@ -12,19 +14,47 @@ describe('search consistency and PPTX viewer regressions', () => {
     expect(sql).toContain("coalesce(name,'') || ' ' ||");
     expect(sql).toContain("coalesce(path,'') || ' ' ||");
     expect(sql).toContain("coalesce(mime_type,'') || ' ' ||");
-    for (const separator of ['.', '/', '_', '-', ':', ',', ';', '(', ')', '[', ']', '{', '}']) {
+    for (const separator of [
+      '.',
+      '/',
+      '_',
+      '-',
+      ':',
+      ',',
+      ';',
+      '(',
+      ')',
+      '[',
+      ']',
+      '{',
+      '}',
+    ]) {
       expect(sql).toContain(`'${separator}', ' '`);
     }
     for (const term of ['mp4', 'pdf', 'docx', 'pptx', 'xlsx', 'mp3', 'png']) {
-      expect([`en.${term}`, `video/${term}`, `some_file-name.${term}`, `chemistry:hl.${term}`].map(value =>
-        ['.', '/', '_', '-', ':', ',', ';', '(', ')', '[', ']', '{', '}'].reduce(
-          (normalized, separator) => normalized.replaceAll(separator, ' '),
-          value,
-        ).split(/\s+/),
-      ).every(tokens => tokens.includes(term))).toBe(true);
+      expect(
+        [
+          `en.${term}`,
+          `video/${term}`,
+          `some_file-name.${term}`,
+          `chemistry:hl.${term}`,
+        ]
+          .map((value) =>
+            ['.', '/', '_', '-', ':', ',', ';', '(', ')', '[', ']', '{', '}']
+              .reduce(
+                (normalized, separator) =>
+                  normalized.replaceAll(separator, ' '),
+                value,
+              )
+              .split(/\s+/),
+          )
+          .every((tokens) => tokens.includes(term)),
+      ).toBe(true);
     }
     expect(sql).toContain('using gin (search_vector)');
-    expect(read('supabase/migrations/20260707143000_token_search_resources_rpc.sql')).not.toMatch(/ilike/i);
+    expect(
+      read('supabase/migrations/20260707143000_token_search_resources_rpc.sql'),
+    ).not.toMatch(/ilike/i);
   });
 
   it('global search uses monotonic request ownership, aborts, timeout, and retry without query edits', () => {
@@ -36,17 +66,25 @@ describe('search consistency and PPTX viewer regressions', () => {
     expect(source).toContain('7000');
     expect(source).toContain('setRetryNonce(n=>n+1)');
     expect(source).toContain('Search timed out. Please retry.');
-    expect(source).toContain("'updating'")
-    expect(source).not.toContain('Library results are updating')
-    expect(read('app/search/page.tsx')).not.toContain('Library results are updating')
+    expect(source).toContain("'updating'");
+    expect(source).not.toContain('Library results are updating');
+    expect(read('app/search/page.tsx')).not.toContain(
+      'Library results are updating',
+    );
   });
 
   it('PPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling', () => {
     const resourcePreview = read('app/resource/[fileId]/resource-preview.tsx');
     const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
-    expect(resourcePreview).toContain('return <PresentationViewer url={url} fileId={fileId} name={name} />');
-    expect(resourcePreview).not.toContain('PresentationViewer url={`/api/resource/${fileId}/presentation-pdf`}');
-    expect(viewer).toContain("fetch(url, { credentials: 'same-origin', signal: controller.signal })");
+    expect(resourcePreview).toContain(
+      'return <PresentationViewer url={url} fileId={fileId} name={name} />',
+    );
+    expect(resourcePreview).not.toContain(
+      'PresentationViewer url={`/api/resource/${fileId}/presentation-pdf`}',
+    );
+    expect(viewer).toContain(
+      "fetch(url, { credentials: 'same-origin', signal: controller.signal })",
+    );
     expect(viewer).toContain("import('@vue-office/pptx')");
     expect(viewer).toContain("import('vue')");
     expect(viewer).toContain("import('@/lib/pptx-audio')");
@@ -82,9 +120,13 @@ describe('search consistency and PPTX viewer regressions', () => {
     expect(viewer).toContain('Total size: ${formatBytes(downloadTotal)}');
     expect(viewer).toContain('smoothedBytesPerSecond');
     expect(viewer).toContain('setRenderedSlides(root.current.querySelectorAll');
-    expect(viewer).toContain('Download progress reflects the actual presentation bytes received.');
+    expect(viewer).toContain(
+      'Download progress reflects the actual presentation bytes received.',
+    );
     expect(viewer).toContain('Slide rendering does not expose a percentage');
-    expect(viewer).not.toContain('The ETA is based on the recent download speed');
+    expect(viewer).not.toContain(
+      'The ETA is based on the recent download speed',
+    );
     expect(contentRoute).toContain("'x-file-size': String(meta.size)");
     expect(viewer).not.toContain('progress={pages ? 100 : 45}');
   });
@@ -100,7 +142,9 @@ describe('search consistency and PPTX viewer regressions', () => {
   });
 
   it('PPTX viewer supports selecting slides and bounded left/right navigation', () => {
-    const compact = read('app/resource/[fileId]/presentation-viewer.tsx').replace(/\s+/g, '');
+    const compact = read(
+      'app/resource/[fileId]/presentation-viewer.tsx',
+    ).replace(/\s+/g, '');
     expect(compact).toContain('Array.from({length:pages||1}');
     expect(compact).toContain('onClick={()=>setPage(slide)}');
     expect(compact).toContain('Math.max(1,current-1)');

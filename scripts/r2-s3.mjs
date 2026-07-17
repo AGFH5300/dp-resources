@@ -9,29 +9,49 @@ function hmac(key, value) {
 }
 
 function encodePathSegment(value) {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
 }
 
 function r2Configuration() {
   const accountId = process.env.R2_ACCOUNT_ID?.trim();
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
-  const endpoint = process.env.R2_ENDPOINT?.trim() || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '');
+  const endpoint =
+    process.env.R2_ENDPOINT?.trim() ||
+    (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '');
   if (!endpoint || !accessKeyId || !secretAccessKey) return null;
-  return { endpoint: endpoint.replace(/\/+$/, ''), accessKeyId, secretAccessKey };
+  return {
+    endpoint: endpoint.replace(/\/+$/, ''),
+    accessKeyId,
+    secretAccessKey,
+  };
 }
 
 export function assertR2Configured() {
   const configuration = r2Configuration();
   if (!configuration) {
-    throw new Error('R2_ACCOUNT_ID (or R2_ENDPOINT), R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required for R2 previews');
+    throw new Error(
+      'R2_ACCOUNT_ID (or R2_ENDPOINT), R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required for R2 previews',
+    );
   }
   return configuration;
 }
 
-async function signedR2Request({ method, bucket, key, body, contentType, cacheControl, signal }) {
+async function signedR2Request({
+  method,
+  bucket,
+  key,
+  body,
+  contentType,
+  cacheControl,
+  signal,
+}) {
   const configuration = assertR2Configured();
-  if (!bucket?.trim() || !key?.trim()) throw new Error('R2 bucket and object key are required');
+  if (!bucket?.trim() || !key?.trim())
+    throw new Error('R2 bucket and object key are required');
 
   const endpoint = new URL(configuration.endpoint);
   const basePath = endpoint.pathname.replace(/\/+$/, '');
@@ -55,14 +75,28 @@ async function signedR2Request({ method, bucket, key, body, contentType, cacheCo
   const headerNames = Object.keys(signedHeaderValues).sort();
   const canonicalHeaders = `${headerNames.map((name) => `${name}:${String(signedHeaderValues[name]).trim().replace(/\s+/g, ' ')}`).join('\n')}\n`;
   const signedHeaders = headerNames.join(';');
-  const canonicalRequest = [method, endpoint.pathname, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+  const canonicalRequest = [
+    method,
+    endpoint.pathname,
+    '',
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n');
   const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
-  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, sha256Hex(canonicalRequest)].join('\n');
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join('\n');
   const dateKey = hmac(`AWS4${configuration.secretAccessKey}`, dateStamp);
   const regionKey = hmac(dateKey, 'auto');
   const serviceKey = hmac(regionKey, 's3');
   const signingKey = hmac(serviceKey, 'aws4_request');
-  const signature = createHmac('sha256', signingKey).update(stringToSign).digest('hex');
+  const signature = createHmac('sha256', signingKey)
+    .update(stringToSign)
+    .digest('hex');
   const authorization = `AWS4-HMAC-SHA256 Credential=${configuration.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
   const headers = {
@@ -84,12 +118,21 @@ async function signedR2Request({ method, bucket, key, body, contentType, cacheCo
 
 async function errorFromResponse(prefix, response) {
   const details = (await response.text().catch(() => '')).slice(0, 500);
-  const error = new Error(`${prefix} failed with status ${response.status}${details ? `: ${details}` : ''}`);
+  const error = new Error(
+    `${prefix} failed with status ${response.status}${details ? `: ${details}` : ''}`,
+  );
   error.statusCode = response.status;
   return error;
 }
 
-export async function putPrivateR2Object({ bucket, key, body, contentType = 'application/octet-stream', cacheControl = 'private, max-age=31536000, immutable', signal }) {
+export async function putPrivateR2Object({
+  bucket,
+  key,
+  body,
+  contentType = 'application/octet-stream',
+  cacheControl = 'private, max-age=31536000, immutable',
+  signal,
+}) {
   const response = await signedR2Request({
     method: 'PUT',
     bucket,
@@ -104,13 +147,23 @@ export async function putPrivateR2Object({ bucket, key, body, contentType = 'app
 }
 
 export async function getPrivateR2Object({ bucket, key, signal }) {
-  const response = await signedR2Request({ method: 'GET', bucket, key, signal });
+  const response = await signedR2Request({
+    method: 'GET',
+    bucket,
+    key,
+    signal,
+  });
   if (response.ok || response.status === 404) return response;
   throw await errorFromResponse('R2 read', response);
 }
 
 export async function deletePrivateR2Object({ bucket, key, signal }) {
-  const response = await signedR2Request({ method: 'DELETE', bucket, key, signal });
+  const response = await signedR2Request({
+    method: 'DELETE',
+    bucket,
+    key,
+    signal,
+  });
   if (response.ok || response.status === 404) return;
   throw await errorFromResponse('R2 cleanup', response);
 }

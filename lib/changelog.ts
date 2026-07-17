@@ -1,30 +1,30 @@
-import 'server-only'
+import 'server-only';
 
-const REPOSITORY = 'AGFH5300/dp-resources'
-const COMMITS_PER_PAGE = 100
-const MAX_COMMIT_PAGES = 10
-const REVALIDATE_SECONDS = 60 * 60
+const REPOSITORY = 'AGFH5300/dp-resources';
+const COMMITS_PER_PAGE = 100;
+const MAX_COMMIT_PAGES = 10;
+const REVALIDATE_SECONDS = 60 * 60;
 
 export type ChangelogEntry = {
-  id: string
-  summary: string
-  date: string
-}
+  id: string;
+  summary: string;
+  date: string;
+};
 
 export type ChangelogResult = {
-  entries: ChangelogEntry[]
-  source: 'github' | 'fallback'
-}
+  entries: ChangelogEntry[];
+  source: 'github' | 'fallback';
+};
 
 type GitHubCommit = {
-  sha?: unknown
+  sha?: unknown;
   commit?: {
-    message?: unknown
-    committer?: { date?: unknown } | null
-    author?: { date?: unknown } | null
-  } | null
-  parents?: Array<{ sha?: unknown }>
-}
+    message?: unknown;
+    committer?: { date?: unknown } | null;
+    author?: { date?: unknown } | null;
+  } | null;
+  parents?: Array<{ sha?: unknown }>;
+};
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-17': [
@@ -90,46 +90,52 @@ const historicalSummaries: Record<string, string[]> = {
     'Removed the approval wait so verified users can enter the Library immediately.',
     'Launched global search, previews, saved resources, recent activity, reporting, and support.',
   ],
-}
+};
 
 function sentenceFromTitle(title: string) {
-  const cleaned = title.replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim()
-  if (!cleaned) return 'Updated DP Resources.'
-  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}.`
+  const cleaned = title
+    .replace(/\s+/g, ' ')
+    .replace(/[.!?]+$/, '')
+    .trim();
+  if (!cleaned) return 'Updated DP Resources.';
+  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}.`;
 }
 
 function isUserFacingTitle(title: string) {
-  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2)/i.test(title)
+  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2)/i.test(
+    title,
+  );
 }
 
 function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
-  if (!Array.isArray(value.parents) || value.parents.length < 2) return null
-  if (typeof value.sha !== 'string') return null
+  if (!Array.isArray(value.parents) || value.parents.length < 2) return null;
+  if (typeof value.sha !== 'string') return null;
 
-  const message = value.commit?.message
-  if (typeof message !== 'string') return null
+  const message = value.commit?.message;
+  if (typeof message !== 'string') return null;
 
   const lines = message
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean)
-  if (!/^Merge pull request #(\d+) from\s+/i.test(lines[0] || '')) return null
+    .filter(Boolean);
+  if (!/^Merge pull request #(\d+) from\s+/i.test(lines[0] || '')) return null;
 
-  const title = lines.slice(1).join(' ').trim()
-  if (!isUserFacingTitle(title)) return null
+  const title = lines.slice(1).join(' ').trim();
+  if (!isUserFacingTitle(title)) return null;
 
-  const rawDate = value.commit?.committer?.date || value.commit?.author?.date
-  if (typeof rawDate !== 'string' || Number.isNaN(Date.parse(rawDate))) return null
+  const rawDate = value.commit?.committer?.date || value.commit?.author?.date;
+  if (typeof rawDate !== 'string' || Number.isNaN(Date.parse(rawDate)))
+    return null;
 
   return {
     id: value.sha,
     summary: sentenceFromTitle(title),
     date: new Date(rawDate).toISOString(),
-  }
+  };
 }
 
 function dateKey(date: string) {
-  return new Date(date).toISOString().slice(0, 10)
+  return new Date(date).toISOString().slice(0, 10);
 }
 
 function historicalFallbackEntries() {
@@ -141,32 +147,35 @@ function historicalFallbackEntries() {
         summary,
         date: `${date}T12:00:00.000Z`,
       })),
-    )
+    );
 }
 
 function consolidateHistory(entries: ChangelogEntry[]) {
-  const byDate = new Map<string, ChangelogEntry[]>()
+  const byDate = new Map<string, ChangelogEntry[]>();
   for (const entry of entries) {
-    const key = dateKey(entry.date)
-    const current = byDate.get(key) || []
-    current.push(entry)
-    byDate.set(key, current)
+    const key = dateKey(entry.date);
+    const current = byDate.get(key) || [];
+    current.push(entry);
+    byDate.set(key, current);
   }
 
-  const dates = new Set([...byDate.keys(), ...Object.keys(historicalSummaries)])
+  const dates = new Set([
+    ...byDate.keys(),
+    ...Object.keys(historicalSummaries),
+  ]);
   return [...dates]
     .sort((left, right) => right.localeCompare(left))
     .flatMap((date) => {
-      const summaries = historicalSummaries[date]
+      const summaries = historicalSummaries[date];
       if (summaries) {
         return summaries.map((summary, index) => ({
           id: `historical-${date}-${index}`,
           summary,
           date: `${date}T12:00:00.000Z`,
-        }))
+        }));
       }
-      return byDate.get(date) || []
-    })
+      return byDate.get(date) || [];
+    });
 }
 
 async function fetchCommitPage(page: number): Promise<GitHubCommit[]> {
@@ -180,40 +189,42 @@ async function fetchCommitPage(page: number): Promise<GitHubCommit[]> {
       },
       next: { revalidate: REVALIDATE_SECONDS },
     },
-  )
+  );
 
-  if (!response.ok) throw new Error(`GitHub commits request failed with ${response.status}`)
+  if (!response.ok)
+    throw new Error(`GitHub commits request failed with ${response.status}`);
 
-  const value: unknown = await response.json()
-  if (!Array.isArray(value)) throw new Error('GitHub commits response was invalid')
-  return value as GitHubCommit[]
+  const value: unknown = await response.json();
+  if (!Array.isArray(value))
+    throw new Error('GitHub commits response was invalid');
+  return value as GitHubCommit[];
 }
 
 async function fetchAllMergeCommits() {
-  const commits: GitHubCommit[] = []
+  const commits: GitHubCommit[] = [];
 
   for (let page = 1; page <= MAX_COMMIT_PAGES; page += 1) {
-    const next = await fetchCommitPage(page)
-    commits.push(...next)
-    if (next.length < COMMITS_PER_PAGE) break
+    const next = await fetchCommitPage(page);
+    commits.push(...next);
+    if (next.length < COMMITS_PER_PAGE) break;
   }
 
-  const unique = new Map<string, ChangelogEntry>()
+  const unique = new Map<string, ChangelogEntry>();
   for (const commit of commits) {
-    const parsed = parseMergeCommit(commit)
-    if (parsed) unique.set(parsed.id, parsed)
+    const parsed = parseMergeCommit(commit);
+    if (parsed) unique.set(parsed.id, parsed);
   }
 
-  return consolidateHistory([...unique.values()])
+  return consolidateHistory([...unique.values()]);
 }
 
 export async function getChangelog(): Promise<ChangelogResult> {
   try {
-    const entries = await fetchAllMergeCommits()
-    if (!entries.length) throw new Error('No merged updates were returned')
-    return { entries, source: 'github' }
+    const entries = await fetchAllMergeCommits();
+    if (!entries.length) throw new Error('No merged updates were returned');
+    return { entries, source: 'github' };
   } catch (error) {
-    console.error('Unable to refresh the public changelog from GitHub.', error)
-    return { entries: historicalFallbackEntries(), source: 'fallback' }
+    console.error('Unable to refresh the public changelog from GitHub.', error);
+    return { entries: historicalFallbackEntries(), source: 'fallback' };
   }
 }

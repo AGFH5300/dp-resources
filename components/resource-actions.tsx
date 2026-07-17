@@ -1,17 +1,367 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useFavoriteState } from './favorites-provider';
-import { Bookmark, BookmarkCheck, ExternalLink, Flag, Share2 } from 'lucide-react';
+import {
+  Bookmark,
+  BookmarkCheck,
+  ExternalLink,
+  Flag,
+  Share2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTypeIcon } from './resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
 
-type ResourceContext = { driveFileId: string; resourceName: string; resourcePath?: string; isFolder?: boolean; mimeType?: string };
-function appUrl(id: string, isFolder?: boolean) { return `${window.location.origin}${isFolder ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`}`; }
-async function copyText(text: string) { try { await navigator.clipboard.writeText(text); return true; } catch { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } }
-const actionClass = 'inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 disabled:opacity-60';
-export function ShareButton({ resource, className = actionClass, onBegin }: { resource: ResourceContext; className?: string; onBegin?: () => void }) { return <button type="button" aria-label={`Share ${resource.resourceName}`} onClick={async () => { onBegin?.(); const url = appUrl(resource.driveFileId, resource.isFolder); if (navigator.share) { try { await navigator.share({ title: resource.resourceName, url }); toast.success('Link shared'); return; } catch {} } const ok = await copyText(url); ok ? toast.success('Link copied') : toast.error('Could not copy link'); }} className={className}><Share2 className="size-4" /> Share</button>; }
-export function SaveButton({ driveFileId, name, className = actionClass, label, onBegin, initialSaved }: { driveFileId: string; name: string; className?: string; label?: string; onBegin?: () => void; initialSaved?: boolean }) { const {saved,setSaved}=useFavoriteState(driveFileId, initialSaved); const [busy, setBusy] = useState(false); async function toggle() { onBegin?.(); const next = !saved; setSaved(driveFileId,next); setBusy(true); try { const res = await fetch(next ? '/api/favorites' : `/api/favorites?driveFileId=${encodeURIComponent(driveFileId)}`, { method: next ? 'POST' : 'DELETE', headers: { 'Content-Type': 'application/json' }, body: next ? JSON.stringify({ driveFileId }) : undefined }); if (!res.ok) throw new Error('Save failed'); toast.success(next ? 'Resource saved' : 'Resource removed from saved'); } catch { setSaved(driveFileId,!next); toast.error('Could not update saved status'); } finally { setBusy(false); } } const Icon = saved ? BookmarkCheck : Bookmark; return <button type="button" disabled={busy} aria-pressed={saved} aria-label={`${saved ? 'Unsave' : 'Save'} ${name}`} onClick={toggle} className={className}><Icon className="size-4" /> {label || (saved ? 'Saved' : 'Save')}</button>; }
-export function ReportResourceDialog({ resource, className = actionClass, onBegin }: { resource: ResourceContext; className?: string; onBegin?: () => void }) { const [open, setOpen] = useState(false); const [message, setMessage] = useState(''); const [category, setCategory] = useState('Broken file'); const [busy, setBusy] = useState(false); const [error,setError]=useState(''); const [sent,setSent]=useState(false); const triggerRef = useRef<HTMLButtonElement>(null); const panelRef = useRef<HTMLFormElement>(null); function close(){ if (busy) return; setOpen(false); setTimeout(()=>triggerRef.current?.focus(), 0); } useEffect(()=>{ if(!open) return; panelRef.current?.querySelector<HTMLElement>('button,textarea')?.focus(); const onKey=(e:KeyboardEvent)=>{ if(e.key==='Escape') close(); }; document.addEventListener('keydown', onKey); return()=>document.removeEventListener('keydown', onKey); },[open,busy,sent]); async function submit(e: React.FormEvent) { e.preventDefault(); setBusy(true); setError(''); try { const res = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ driveFileId: resource.driveFileId, resourceName: resource.resourceName, resourcePath: resource.resourcePath || '', category, message }) }); if (!res.ok) throw new Error('Report failed'); setSent(true); toast.success('Report sent'); } catch { setError('We could not send this report. Please check your connection and try again.'); toast.error('Could not submit report'); } finally { setBusy(false); } } return <><button ref={triggerRef} type="button" aria-label={`Report issue with ${resource.resourceName}`} onClick={() => {onBegin?.(); setOpen(true); setSent(false); setError('');}} className={className}><Flag className="size-4" /> Report issue</button>{open && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="report-title" aria-describedby="report-resource-summary" onMouseDown={(e)=>{ if(e.target===e.currentTarget) close(); }}><form ref={panelRef} onMouseDown={e=>e.stopPropagation()} onSubmit={submit} className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"><div className="flex gap-3"><ResourceTypeIcon item={{ isFolder: resource.isFolder || false, mimeType: resource.mimeType || '' }} /><div className="min-w-0"><h2 id="report-title" className="text-lg font-semibold text-[color:var(--dp-navy)]">Report resource issue</h2><p id="report-resource-summary" className="mt-1 truncate text-sm font-medium text-[color:var(--dp-ink)]">{resource.resourceName}</p><p className="truncate text-xs text-[color:var(--dp-ink)]/60">{resource.resourcePath || 'Library'}</p></div></div>{sent?<div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"><p className="font-semibold">Report sent</p><p>Thank you — the issue has been recorded.</p><button type="button" onClick={close} className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 font-medium">Done</button></div>:<><label className="mt-4 block text-sm font-medium">Category<AppSelect value={category} onValueChange={setCategory} options={['Broken file','Incorrect resource','Outdated content','Duplicate','Other'].map(c=>({value:c,label:c}))}/></label><label className="mt-3 block text-sm font-medium">Message<textarea required value={message} onChange={e => setMessage(e.target.value)} rows={5} className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 focus:border-[color:var(--dp-navy)] focus:outline-none focus:bg-slate-50" placeholder="Tell us what is wrong and what you expected." /></label>{error&&<p className="mt-2 text-sm text-red-700">{error}</p>}<div className="mt-4 flex justify-end gap-2"><button type="button" disabled={busy} onClick={close} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">Cancel</button><button disabled={busy} className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60">{busy ? 'Submitting…' : 'Submit report'}</button></div></>}</form></div>}</>; }
-export function ResourceActions({ resource, downloadHref, previewHref, openHref, initialSaved }: { resource: ResourceContext; downloadHref?: string; previewHref?: string; openHref?: string; initialSaved?: boolean }) { return <div className="flex flex-wrap gap-2">{previewHref ? <a aria-label={`Preview or open ${resource.resourceName}`} className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]" href={previewHref}>Preview/Open</a> : null}{downloadHref ? <a aria-label={`Download ${resource.resourceName}`} className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]" href={downloadHref}>Download</a> : null}<ShareButton resource={resource}/><SaveButton driveFileId={resource.driveFileId} name={resource.resourceName} initialSaved={initialSaved}/><ReportResourceDialog resource={resource}/>{openHref ? <a aria-label={`Open ${resource.resourceName} in a new tab`} className={actionClass} target="_blank" rel="noreferrer" href={openHref}>Open in new tab <ExternalLink className="size-4"/></a> : null}</div>; }
+type ResourceContext = {
+  driveFileId: string;
+  resourceName: string;
+  resourcePath?: string;
+  isFolder?: boolean;
+  mimeType?: string;
+};
+function appUrl(id: string, isFolder?: boolean) {
+  return `${window.location.origin}${isFolder ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`}`;
+}
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }
+}
+const actionClass =
+  'inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 disabled:opacity-60';
+export function ShareButton({
+  resource,
+  className = actionClass,
+  onBegin,
+}: {
+  resource: ResourceContext;
+  className?: string;
+  onBegin?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Share ${resource.resourceName}`}
+      onClick={async () => {
+        onBegin?.();
+        const url = appUrl(resource.driveFileId, resource.isFolder);
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: resource.resourceName, url });
+            toast.success('Link shared');
+            return;
+          } catch {}
+        }
+        const ok = await copyText(url);
+        ok ? toast.success('Link copied') : toast.error('Could not copy link');
+      }}
+      className={className}
+    >
+      <Share2 className="size-4" /> Share
+    </button>
+  );
+}
+export function SaveButton({
+  driveFileId,
+  name,
+  className = actionClass,
+  label,
+  onBegin,
+  initialSaved,
+}: {
+  driveFileId: string;
+  name: string;
+  className?: string;
+  label?: string;
+  onBegin?: () => void;
+  initialSaved?: boolean;
+}) {
+  const { saved, setSaved } = useFavoriteState(driveFileId, initialSaved);
+  const [busy, setBusy] = useState(false);
+  async function toggle() {
+    onBegin?.();
+    const next = !saved;
+    setSaved(driveFileId, next);
+    setBusy(true);
+    try {
+      const res = await fetch(
+        next
+          ? '/api/favorites'
+          : `/api/favorites?driveFileId=${encodeURIComponent(driveFileId)}`,
+        {
+          method: next ? 'POST' : 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: next ? JSON.stringify({ driveFileId }) : undefined,
+        },
+      );
+      if (!res.ok) throw new Error('Save failed');
+      toast.success(next ? 'Resource saved' : 'Resource removed from saved');
+    } catch {
+      setSaved(driveFileId, !next);
+      toast.error('Could not update saved status');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const Icon = saved ? BookmarkCheck : Bookmark;
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      aria-pressed={saved}
+      aria-label={`${saved ? 'Unsave' : 'Save'} ${name}`}
+      onClick={toggle}
+      className={className}
+    >
+      <Icon className="size-4" /> {label || (saved ? 'Saved' : 'Save')}
+    </button>
+  );
+}
+export function ReportResourceDialog({
+  resource,
+  className = actionClass,
+  onBegin,
+}: {
+  resource: ResourceContext;
+  className?: string;
+  onBegin?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [category, setCategory] = useState('Broken file');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLFormElement>(null);
+  function close() {
+    if (busy) return;
+    setOpen(false);
+    setTimeout(() => triggerRef.current?.focus(), 0);
+  }
+  useEffect(() => {
+    if (!open) return;
+    panelRef.current?.querySelector<HTMLElement>('button,textarea')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, busy, sent]);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driveFileId: resource.driveFileId,
+          resourceName: resource.resourceName,
+          resourcePath: resource.resourcePath || '',
+          category,
+          message,
+        }),
+      });
+      if (!res.ok) throw new Error('Report failed');
+      setSent(true);
+      toast.success('Report sent');
+    } catch {
+      setError(
+        'We could not send this report. Please check your connection and try again.',
+      );
+      toast.error('Could not submit report');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`Report issue with ${resource.resourceName}`}
+        onClick={() => {
+          onBegin?.();
+          setOpen(true);
+          setSent(false);
+          setError('');
+        }}
+        className={className}
+      >
+        <Flag className="size-4" /> Report issue
+      </button>
+      {open && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-title"
+          aria-describedby="report-resource-summary"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
+          <form
+            ref={panelRef}
+            onMouseDown={(e) => e.stopPropagation()}
+            onSubmit={submit}
+            className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"
+          >
+            <div className="flex gap-3">
+              <ResourceTypeIcon
+                item={{
+                  isFolder: resource.isFolder || false,
+                  mimeType: resource.mimeType || '',
+                }}
+              />
+              <div className="min-w-0">
+                <h2
+                  id="report-title"
+                  className="text-lg font-semibold text-[color:var(--dp-navy)]"
+                >
+                  Report resource issue
+                </h2>
+                <p
+                  id="report-resource-summary"
+                  className="mt-1 truncate text-sm font-medium text-[color:var(--dp-ink)]"
+                >
+                  {resource.resourceName}
+                </p>
+                <p className="truncate text-xs text-[color:var(--dp-ink)]/60">
+                  {resource.resourcePath || 'Library'}
+                </p>
+              </div>
+            </div>
+            {sent ? (
+              <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                <p className="font-semibold">Report sent</p>
+                <p>Thank you — the issue has been recorded.</p>
+                <button
+                  type="button"
+                  onClick={close}
+                  className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 font-medium"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <label className="mt-4 block text-sm font-medium">
+                  Category
+                  <AppSelect
+                    value={category}
+                    onValueChange={setCategory}
+                    options={[
+                      'Broken file',
+                      'Incorrect resource',
+                      'Outdated content',
+                      'Duplicate',
+                      'Other',
+                    ].map((c) => ({ value: c, label: c }))}
+                  />
+                </label>
+                <label className="mt-3 block text-sm font-medium">
+                  Message
+                  <textarea
+                    required
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={5}
+                    className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 focus:border-[color:var(--dp-navy)] focus:outline-none focus:bg-slate-50"
+                    placeholder="Tell us what is wrong and what you expected."
+                  />
+                </label>
+                {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={close}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={busy}
+                    className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {busy ? 'Submitting…' : 'Submit report'}
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+export function ResourceActions({
+  resource,
+  downloadHref,
+  previewHref,
+  openHref,
+  initialSaved,
+}: {
+  resource: ResourceContext;
+  downloadHref?: string;
+  previewHref?: string;
+  openHref?: string;
+  initialSaved?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {previewHref ? (
+        <a
+          aria-label={`Preview or open ${resource.resourceName}`}
+          className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]"
+          href={previewHref}
+        >
+          Preview/Open
+        </a>
+      ) : null}
+      {downloadHref ? (
+        <a
+          aria-label={`Download ${resource.resourceName}`}
+          className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]"
+          href={downloadHref}
+        >
+          Download
+        </a>
+      ) : null}
+      <ShareButton resource={resource} />
+      <SaveButton
+        driveFileId={resource.driveFileId}
+        name={resource.resourceName}
+        initialSaved={initialSaved}
+      />
+      <ReportResourceDialog resource={resource} />
+      {openHref ? (
+        <a
+          aria-label={`Open ${resource.resourceName} in a new tab`}
+          className={actionClass}
+          target="_blank"
+          rel="noreferrer"
+          href={openHref}
+        >
+          Open in new tab <ExternalLink className="size-4" />
+        </a>
+      ) : null}
+    </div>
+  );
+}
 /* Legacy QA marker: toast('Could not submit report', 'error'); */

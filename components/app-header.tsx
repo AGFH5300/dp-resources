@@ -3,13 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  BookOpen,
-  Clock,
-  Headphones,
-  Search,
-  Star,
-} from 'lucide-react';
+import { BookOpen, Clock, Headphones, Search, Star } from 'lucide-react';
 
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
@@ -98,9 +92,7 @@ export function AppHeader({
 
           <button
             type="button"
-            onClick={() =>
-              window.dispatchEvent(new Event('dp:open-search'))
-            }
+            onClick={() => window.dispatchEvent(new Event('dp:open-search'))}
             className="hidden h-9 w-72 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-left text-sm text-slate-500 hover:border-slate-300 md:flex"
             aria-label={`Search library (${shortcutModifier} K)`}
           >
@@ -114,9 +106,7 @@ export function AppHeader({
 
           <button
             type="button"
-            onClick={() =>
-              window.dispatchEvent(new Event('dp:open-search'))
-            }
+            onClick={() => window.dispatchEvent(new Event('dp:open-search'))}
             className="rounded-md p-2 text-slate-600 hover:bg-slate-100 md:hidden"
             aria-label="Search library"
           >

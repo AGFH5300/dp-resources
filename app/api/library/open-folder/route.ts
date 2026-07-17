@@ -22,9 +22,16 @@ export async function POST(req: Request) {
     folderId = String(form.get('folderId') || '');
   }
 
-  if (!(await assertInsideRoot(folderId))) return new Response('Not found', { status: 404 });
+  if (!(await assertInsideRoot(folderId)))
+    return new Response('Not found', { status: 404 });
   const folder = await getDriveMetadata(folderId);
   if (!folder?.isFolder) return new Response('Not found', { status: 404 });
-  await recordActivity({ userId: user.id, userEmail: user.email!, fileId: folderId, fileName: folderName || folder.name, action: 'folder_opened' });
+  await recordActivity({
+    userId: user.id,
+    userEmail: user.email!,
+    fileId: folderId,
+    fileName: folderName || folder.name,
+    action: 'folder_opened',
+  });
   return new Response(null, { status: 204 });
 }

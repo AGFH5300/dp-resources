@@ -45,7 +45,9 @@ describe('Render Free PDF preview preparation', () => {
     expect(queue).toContain(".in('status', ['queued', 'failed'])");
     expect(queue).toContain(".is('locked_by', null)");
     expect(prepare).toContain(".eq('version_key', version)");
-    expect(prepare).toContain("provider === 'r2' ? 'scripts/pdf-preview-worker-r2.mjs' : 'scripts/pdf-preview-worker.mjs'");
+    expect(prepare).toContain(
+      "provider === 'r2' ? 'scripts/pdf-preview-worker-r2.mjs' : 'scripts/pdf-preview-worker.mjs'",
+    );
     expect(prepare).toContain('queued_at: priorityTime');
     expect(prepare).toContain("completed.status !== 'ready'");
     expect(prepare).toContain('Boolean(document.text_ready_at)');
@@ -74,7 +76,7 @@ describe('Render Free PDF preview preparation', () => {
     expect(workflow).toContain("PDF_PREVIEW_UPLOAD_ATTEMPTS: '5'");
     expect(worker).toContain('pdf_preview_upload_retry');
     expect(worker).toContain('mapConcurrent(rendered, UPLOAD_CONCURRENCY');
-    expect(worker).toContain(".upsert(rows, {");
+    expect(worker).toContain('.upsert(rows, {');
     expect(worker).toContain('pdf_preview_resume_state');
     expect(worker).toContain('existingReadyPages(job.id)');
     expect(worker).toContain("execFile('pdftotext'");
@@ -87,8 +89,12 @@ describe('Render Free PDF preview preparation', () => {
     const preview = read('app/resource/[fileId]/resource-preview.tsx');
     const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
     expect(preview).not.toContain('Preview not prepared? Open standard reader');
-    expect(preview).toContain("if (cap.previewMode === 'pdf') return <PdfViewer");
+    expect(preview).toContain(
+      "if (cap.previewMode === 'pdf') return <PdfViewer",
+    );
     expect(viewer).toContain('Open standard reader');
-    expect(viewer).toContain("window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${currentRef.current}`");
+    expect(viewer).toContain(
+      'window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${currentRef.current}`',
+    );
   });
 });

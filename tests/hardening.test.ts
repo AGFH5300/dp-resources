@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { dayAfter, dayStart, validAction } from '../lib/admin-filters';
-import { normalizeSearch, safeDownloadName, workspaceExportFor } from '../lib/drive-utils';
+import {
+  normalizeSearch,
+  safeDownloadName,
+  workspaceExportFor,
+} from '../lib/drive-utils';
 
 describe('route authorization expectations', () => {
   it('documents protected route redirects', () => {
@@ -18,9 +22,16 @@ describe('Drive root containment helpers', () => {
 
 describe('Google Workspace export selection', () => {
   it('selects safe export formats and rejects unsupported native files', () => {
-    expect(workspaceExportFor('application/vnd.google-apps.document')).toEqual({ mimeType: 'application/pdf', extension: 'pdf' });
-    expect(workspaceExportFor('application/vnd.google-apps.spreadsheet')?.extension).toBe('xlsx');
-    expect(workspaceExportFor('application/vnd.google-apps.presentation')?.mimeType).toBe('application/pdf');
+    expect(workspaceExportFor('application/vnd.google-apps.document')).toEqual({
+      mimeType: 'application/pdf',
+      extension: 'pdf',
+    });
+    expect(
+      workspaceExportFor('application/vnd.google-apps.spreadsheet')?.extension,
+    ).toBe('xlsx');
+    expect(
+      workspaceExportFor('application/vnd.google-apps.presentation')?.mimeType,
+    ).toBe('application/pdf');
     expect(workspaceExportFor('application/vnd.google-apps.form')).toBeNull();
   });
 

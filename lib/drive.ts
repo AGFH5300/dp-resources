@@ -3,7 +3,11 @@ import { Readable } from 'node:stream';
 import { unstable_cache } from 'next/cache';
 import { google, drive_v3 } from 'googleapis';
 import type { DriveItem } from './types';
-import { normalizeSearch, safeDownloadName, workspaceExportFor } from './drive-utils';
+import {
+  normalizeSearch,
+  safeDownloadName,
+  workspaceExportFor,
+} from './drive-utils';
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 export { normalizeSearch, safeDownloadName, workspaceExportFor };
@@ -12,7 +16,11 @@ let cachedDrive: drive_v3.Drive | null = null;
 let cachedSheets: ReturnType<typeof google.sheets> | null = null;
 
 export function isDriveConfigured() {
-  return Boolean(process.env.GOOGLE_DRIVE_FOLDER_ID && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
+  return Boolean(
+    process.env.GOOGLE_DRIVE_FOLDER_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+  );
 }
 
 export const rootFolderId = () => process.env.GOOGLE_DRIVE_FOLDER_ID!;
@@ -22,7 +30,10 @@ export function normalizeServiceAccountPrivateKey(raw = '') {
 
   // Render env values are sometimes pasted with wrapping quotes. Keep the actual
   // secret server-side, but normalize common safe formatting mistakes here.
-  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
     key = key.slice(1, -1).trim();
   }
 
@@ -45,18 +56,28 @@ export function normalizeServiceAccountPrivateKey(raw = '') {
 }
 
 function assertServiceAccountKeyLooksValid(key: string) {
-  if (!key.includes('-----BEGIN PRIVATE KEY-----') || !key.includes('-----END PRIVATE KEY-----')) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is not a valid PEM private key. Paste the private_key value from the service account JSON, without wrapping quotes.');
+  if (
+    !key.includes('-----BEGIN PRIVATE KEY-----') ||
+    !key.includes('-----END PRIVATE KEY-----')
+  ) {
+    throw new Error(
+      'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is not a valid PEM private key. Paste the private_key value from the service account JSON, without wrapping quotes.',
+    );
   }
 }
 
 export function driveAuth() {
-  const key = normalizeServiceAccountPrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '');
+  const key = normalizeServiceAccountPrivateKey(
+    process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '',
+  );
   assertServiceAccountKeyLooksValid(key);
   return new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes: [
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
+    ],
   });
 }
 
@@ -67,17 +88,28 @@ export async function getDriveAccessToken() {
     if (!value) throw new Error('Unable to authorize Drive request');
     return value;
   } catch (error) {
-    console.error('Google Drive auth failed', { message: error instanceof Error ? error.message : String(error) });
+    console.error('Google Drive auth failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }
 
-export async function getDriveMediaFetch(fileId: string, range?: string | null) {
+export async function getDriveMediaFetch(
+  fileId: string,
+  range?: string | null,
+) {
   const token = await getDriveAccessToken();
-  return fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
-    headers: { authorization: `Bearer ${token}`, ...(range ? { range } : {}) },
-    cache: 'no-store',
-  });
+  return fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(range ? { range } : {}),
+      },
+      cache: 'no-store',
+    },
+  );
 }
 
 function drive() {
@@ -87,7 +119,9 @@ function drive() {
 }
 
 function escapeDriveQueryValue(value: string) {
-  return value.replaceAll(String.fromCharCode(92), String.fromCharCode(92, 92)).replaceAll("'", String.fromCharCode(92, 39));
+  return value
+    .replaceAll(String.fromCharCode(92), String.fromCharCode(92, 92))
+    .replaceAll("'", String.fromCharCode(92, 39));
 }
 
 function toItem(f: drive_v3.Schema$File): DriveItem {
@@ -102,10 +136,18 @@ function toItem(f: drive_v3.Schema$File): DriveItem {
 }
 
 async function getRawMetadataUncached(fileId: string) {
-  const res = await drive().files.get({ fileId, fields: 'id,name,mimeType,size,modifiedTime,parents', supportsAllDrives: true });
+  const res = await drive().files.get({
+    fileId,
+    fields: 'id,name,mimeType,size,modifiedTime,parents',
+    supportsAllDrives: true,
+  });
   return res.data;
 }
-const getRawMetadata = unstable_cache(getRawMetadataUncached, ['drive-metadata-v2'], { revalidate: 90 });
+const getRawMetadata = unstable_cache(
+  getRawMetadataUncached,
+  ['drive-metadata-v2'],
+  { revalidate: 90 },
+);
 
 export function sheetsClient() {
   if (cachedSheets) return cachedSheets;
@@ -118,13 +160,17 @@ export async function getDriveMetadata(fileId: string) {
   try {
     return toItem(await getRawMetadata(fileId));
   } catch (error) {
-    console.error('Google Drive metadata fetch failed', { fileId, message: error instanceof Error ? error.message : String(error) });
+    console.error('Google Drive metadata fetch failed', {
+      fileId,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
 
 async function resolvePathUncached(rootId: string, folderId: string) {
-  if (!folderId || !isDriveConfigured()) return { insideRoot: false, crumbs: [] as DriveItem[] };
+  if (!folderId || !isDriveConfigured())
+    return { insideRoot: false, crumbs: [] as DriveItem[] };
   const crumbs: DriveItem[] = [];
   let current = folderId;
   const seen = new Set<string>();
@@ -141,10 +187,17 @@ async function resolvePathUncached(rootId: string, folderId: string) {
   return { insideRoot: false, crumbs: [] as DriveItem[] };
 }
 
-const cachedResolvePath = unstable_cache(resolvePathUncached, ['drive-path-v2'], { revalidate: 90 });
+const cachedResolvePath = unstable_cache(
+  resolvePathUncached,
+  ['drive-path-v2'],
+  { revalidate: 90 },
+);
 
 async function listFolderUncached(rootId: string, folderId: string) {
-  const query = [`'${escapeDriveQueryValue(folderId)}' in parents`, 'trashed=false'];
+  const query = [
+    `'${escapeDriveQueryValue(folderId)}' in parents`,
+    'trashed=false',
+  ];
   const files: DriveItem[] = [];
   let pageToken: string | undefined;
 
@@ -162,10 +215,17 @@ async function listFolderUncached(rootId: string, folderId: string) {
     pageToken = res.data.nextPageToken || undefined;
   } while (pageToken);
 
-  return files.sort((a, b) => Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name));
+  return files.sort(
+    (a, b) =>
+      Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name),
+  );
 }
 
-const cachedListFolder = unstable_cache(listFolderUncached, ['drive-folder-v2'], { revalidate: 90 });
+const cachedListFolder = unstable_cache(
+  listFolderUncached,
+  ['drive-folder-v2'],
+  { revalidate: 90 },
+);
 
 export async function isInsideRoot(fileId: string) {
   if (fileId === rootFolderId()) return true;
@@ -177,10 +237,12 @@ export async function assertInsideRoot(fileId: string) {
 }
 
 export async function getFolderView(folderId = rootFolderId()) {
-  if (!isDriveConfigured()) return { items: [] as DriveItem[], crumbs: [] as DriveItem[] };
+  if (!isDriveConfigured())
+    return { items: [] as DriveItem[], crumbs: [] as DriveItem[] };
   const rootId = rootFolderId();
   const path = await cachedResolvePath(rootId, folderId);
-  if (!path.insideRoot) return { items: [] as DriveItem[], crumbs: [] as DriveItem[] };
+  if (!path.insideRoot)
+    return { items: [] as DriveItem[], crumbs: [] as DriveItem[] };
   const items = await cachedListFolder(rootId, folderId);
   return { items, crumbs: path.crumbs };
 }
@@ -200,21 +262,63 @@ export function nodeToWebStream(stream: NodeJS.ReadableStream) {
   return Readable.toWeb(stream as Readable) as ReadableStream;
 }
 
-export async function getDriveStream(fileId: string, mimeType: string, range?: string | null) {
+export async function getDriveStream(
+  fileId: string,
+  mimeType: string,
+  range?: string | null,
+) {
   const exportSpec = workspaceExportFor(mimeType);
-  if (mimeType.startsWith('application/vnd.google-apps.') && !exportSpec) return { unavailable: true as const };
+  if (mimeType.startsWith('application/vnd.google-apps.') && !exportSpec)
+    return { unavailable: true as const };
   if (exportSpec) {
-    const res = await drive().files.export({ fileId, mimeType: exportSpec.mimeType }, { responseType: 'stream' });
-    return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: exportSpec.mimeType, extension: exportSpec.extension, headers: res.headers };
+    const res = await drive().files.export(
+      { fileId, mimeType: exportSpec.mimeType },
+      { responseType: 'stream' },
+    );
+    return {
+      stream: nodeToWebStream(res.data as NodeJS.ReadableStream),
+      contentType: exportSpec.mimeType,
+      extension: exportSpec.extension,
+      headers: res.headers,
+    };
   }
-  const res = await drive().files.get({ fileId, alt: 'media', supportsAllDrives: true }, { responseType: 'stream', headers: range ? { Range: range } : undefined, validateStatus: (s) => s >= 200 && s < 300 });
-  return { stream: nodeToWebStream(res.data as NodeJS.ReadableStream), contentType: mimeType, headers: res.headers };
+  const res = await drive().files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    {
+      responseType: 'stream',
+      headers: range ? { Range: range } : undefined,
+      validateStatus: (s) => s >= 200 && s < 300,
+    },
+  );
+  return {
+    stream: nodeToWebStream(res.data as NodeJS.ReadableStream),
+    contentType: mimeType,
+    headers: res.headers,
+  };
 }
 
-export type DriveIndexFolderCursor = { id: string; path: string; parent: string | null; pageToken?: string };
-export type DriveIndexRow = { drive_file_id: string; parent_drive_file_id: string | null; name: string; normalized_name: string; path: string; mime_type: string; is_folder: boolean; size_bytes: number | null; modified_at: string | null };
+export type DriveIndexFolderCursor = {
+  id: string;
+  path: string;
+  parent: string | null;
+  pageToken?: string;
+};
+export type DriveIndexRow = {
+  drive_file_id: string;
+  parent_drive_file_id: string | null;
+  name: string;
+  normalized_name: string;
+  path: string;
+  mime_type: string;
+  is_folder: boolean;
+  size_bytes: number | null;
+  modified_at: string | null;
+};
 
-function indexRow(folder: DriveIndexFolderCursor, item: DriveItem): DriveIndexRow {
+function indexRow(
+  folder: DriveIndexFolderCursor,
+  item: DriveItem,
+): DriveIndexRow {
   const path = `${folder.path} / ${item.name}`;
   return {
     drive_file_id: item.id,
@@ -229,9 +333,15 @@ function indexRow(folder: DriveIndexFolderCursor, item: DriveItem): DriveIndexRo
   };
 }
 
-export async function listDriveIndexPage(folder: DriveIndexFolderCursor, pageSize = 1000) {
+export async function listDriveIndexPage(
+  folder: DriveIndexFolderCursor,
+  pageSize = 1000,
+) {
   const res = await drive().files.list({
-    q: [`'${escapeDriveQueryValue(folder.id)}' in parents`, 'trashed=false'].join(' and '),
+    q: [
+      `'${escapeDriveQueryValue(folder.id)}' in parents`,
+      'trashed=false',
+    ].join(' and '),
     fields: 'nextPageToken,files(id,name,mimeType,size,modifiedTime)',
     orderBy: 'folder,name',
     pageSize: Math.min(pageSize, 1000),
@@ -241,11 +351,25 @@ export async function listDriveIndexPage(folder: DriveIndexFolderCursor, pageSiz
   });
   const items = (res.data.files || []).map(toItem);
   const rows = items.map((item) => indexRow(folder, item));
-  const childFolders = items.filter((item) => item.isFolder).map((item) => ({ id: item.id, path: `${folder.path} / ${item.name}`, parent: folder.id }));
-  return { rows, childFolders, nextPageToken: res.data.nextPageToken || undefined };
+  const childFolders = items
+    .filter((item) => item.isFolder)
+    .map((item) => ({
+      id: item.id,
+      path: `${folder.path} / ${item.name}`,
+      parent: folder.id,
+    }));
+  return {
+    rows,
+    childFolders,
+    nextPageToken: res.data.nextPageToken || undefined,
+  };
 }
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>) {
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+) {
   const results: R[] = [];
   let next = 0;
   let active = 0;
@@ -255,7 +379,11 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
       while (active < limit && next < items.length) {
         const index = next++;
         active += 1;
-        fn(items[index]).then((result) => { results[index] = result; active -= 1; launch(); }, reject);
+        fn(items[index]).then((result) => {
+          results[index] = result;
+          active -= 1;
+          launch();
+        }, reject);
       }
     };
     launch();
@@ -263,7 +391,14 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results;
 }
 
-export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCursor[]; maxFolders?: number; maxItems?: number; concurrency?: number; timeBudgetMs?: number; onWave?: () => Promise<void> | void }) {
+export async function crawlDriveIndexChunk(options: {
+  queue: DriveIndexFolderCursor[];
+  maxFolders?: number;
+  maxItems?: number;
+  concurrency?: number;
+  timeBudgetMs?: number;
+  onWave?: () => Promise<void> | void;
+}) {
   const maxFolders = options.maxFolders ?? Number.POSITIVE_INFINITY;
   const maxItems = options.maxItems ?? Number.POSITIVE_INFINITY;
   const concurrency = Math.min(options.concurrency ?? 6, 6);
@@ -273,24 +408,50 @@ export async function crawlDriveIndexChunk(options: { queue: DriveIndexFolderCur
   if (!queue.length) queue.push({ id: rootId, path: 'Library', parent: null });
   const rows: DriveIndexRow[] = [];
   let processedFolders = 0;
-  while (queue.length && processedFolders < maxFolders && rows.length < maxItems && Date.now() < deadline) {
-    const wave = queue.splice(0, Math.min(concurrency, queue.length, maxFolders - processedFolders));
-    const pages = await mapWithConcurrency(wave, concurrency, (folder) => listDriveIndexPage(folder, 1000));
+  while (
+    queue.length &&
+    processedFolders < maxFolders &&
+    rows.length < maxItems &&
+    Date.now() < deadline
+  ) {
+    const wave = queue.splice(
+      0,
+      Math.min(concurrency, queue.length, maxFolders - processedFolders),
+    );
+    const pages = await mapWithConcurrency(wave, concurrency, (folder) =>
+      listDriveIndexPage(folder, 1000),
+    );
     for (let i = 0; i < pages.length; i += 1) {
       const folder = wave[i];
       const page = pages[i];
       rows.push(...page.rows);
       queue.push(...page.childFolders);
-      if (page.nextPageToken) queue.push({ ...folder, pageToken: page.nextPageToken });
+      if (page.nextPageToken)
+        queue.push({ ...folder, pageToken: page.nextPageToken });
       else processedFolders += 1;
     }
     if (options.onWave) await options.onWave();
   }
-  return { rows, queue, complete: queue.length === 0, remainingFolders: queue.length, processedFolders };
+  return {
+    rows,
+    queue,
+    complete: queue.length === 0,
+    remainingFolders: queue.length,
+    processedFolders,
+  };
 }
 
 export async function crawlDriveIndex(options: { maxItems?: number } = {}) {
-  const chunk = await crawlDriveIndexChunk({ queue: [{ id: rootFolderId(), path: 'Library', parent: null }], maxItems: options.maxItems ?? 500, concurrency: 1, timeBudgetMs: 30_000 });
-  return { rows: chunk.rows, complete: chunk.complete, remainingFolders: chunk.remainingFolders };
+  const chunk = await crawlDriveIndexChunk({
+    queue: [{ id: rootFolderId(), path: 'Library', parent: null }],
+    maxItems: options.maxItems ?? 500,
+    concurrency: 1,
+    timeBudgetMs: 30_000,
+  });
+  return {
+    rows: chunk.rows,
+    complete: chunk.complete,
+    remainingFolders: chunk.remainingFolders,
+  };
 }
 /* Legacy QA phrase retained: maxItems = options.maxItems ?? 500 */

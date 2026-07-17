@@ -20,9 +20,17 @@ async function bodyBuffer(body) {
 }
 
 globalThis.fetch = async (input, init = {}) => {
-  const requestUrl = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
-  const method = (init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
-  if (!requestUrl.startsWith(storagePrefix) || !['POST', 'PUT'].includes(method)) {
+  const requestUrl =
+    typeof input === 'string' || input instanceof URL
+      ? String(input)
+      : input.url;
+  const method = (
+    init.method || (input instanceof Request ? input.method : 'GET')
+  ).toUpperCase();
+  if (
+    !requestUrl.startsWith(storagePrefix) ||
+    !['POST', 'PUT'].includes(method)
+  ) {
     return nativeFetch(input, init);
   }
 
@@ -32,7 +40,9 @@ globalThis.fetch = async (input, init = {}) => {
   if (!requestedBucket || !keyParts.length) return nativeFetch(input, init);
 
   const key = keyParts.map(decodeURIComponent).join('/');
-  const bytes = await bodyBuffer(init.body ?? (input instanceof Request ? input.body : null));
+  const bytes = await bodyBuffer(
+    init.body ?? (input instanceof Request ? input.body : null),
+  );
   const result = await putPrivateR2Object({
     bucket: r2Bucket,
     key,

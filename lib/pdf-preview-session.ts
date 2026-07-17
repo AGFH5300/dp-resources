@@ -19,7 +19,10 @@ export type PdfPreviewSessionPayload = {
   expiresAt: number;
 };
 
-type NewPdfPreviewSession = Omit<PdfPreviewSessionPayload, 'version' | 'audience' | 'expiresAt'>;
+type NewPdfPreviewSession = Omit<
+  PdfPreviewSessionPayload,
+  'version' | 'audience' | 'expiresAt'
+>;
 
 export const PDF_PREVIEW_SESSION_TTL_SECONDS = 2 * 60 * 60;
 
@@ -33,7 +36,9 @@ export function pdfPreviewSessionCookiePath(fileId: string) {
 }
 
 function signingSecret() {
-  const secret = process.env.PDF_PREVIEW_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret =
+    process.env.PDF_PREVIEW_SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret) throw new Error('PDF preview sessions are not configured');
   return secret;
 }
@@ -42,19 +47,31 @@ function signatureFor(encodedPayload: string) {
   return createHmac('sha256', signingSecret()).update(encodedPayload).digest();
 }
 
-export function createPdfPreviewSession(input: NewPdfPreviewSession, nowMs = Date.now()) {
+export function createPdfPreviewSession(
+  input: NewPdfPreviewSession,
+  nowMs = Date.now(),
+) {
   const payload: PdfPreviewSessionPayload = {
     version: 1,
     audience: 'pdf-preview',
     ...input,
     expiresAt: Math.floor(nowMs / 1000) + PDF_PREVIEW_SESSION_TTL_SECONDS,
   };
-  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString(
+    'base64url',
+  );
   const signature = signatureFor(encodedPayload).toString('base64url');
-  return { token: `${encodedPayload}.${signature}`, expiresAt: payload.expiresAt };
+  return {
+    token: `${encodedPayload}.${signature}`,
+    expiresAt: payload.expiresAt,
+  };
 }
 
-export function verifyPdfPreviewSession(token: string | null, expectedFileId: string, nowMs = Date.now()) {
+export function verifyPdfPreviewSession(
+  token: string | null,
+  expectedFileId: string,
+  nowMs = Date.now(),
+) {
   if (!token) return null;
   const [encodedPayload, encodedSignature, extra] = token.split('.');
   if (!encodedPayload || !encodedSignature || extra) return null;
@@ -66,11 +83,17 @@ export function verifyPdfPreviewSession(token: string | null, expectedFileId: st
     return null;
   }
   const expectedSignature = signatureFor(encodedPayload);
-  if (providedSignature.length !== expectedSignature.length || !timingSafeEqual(providedSignature, expectedSignature)) return null;
+  if (
+    providedSignature.length !== expectedSignature.length ||
+    !timingSafeEqual(providedSignature, expectedSignature)
+  )
+    return null;
 
   let parsed: Partial<PdfPreviewSessionPayload>;
   try {
-    parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as Partial<PdfPreviewSessionPayload>;
+    parsed = JSON.parse(
+      Buffer.from(encodedPayload, 'base64url').toString('utf8'),
+    ) as Partial<PdfPreviewSessionPayload>;
   } catch {
     return null;
   }
@@ -90,20 +113,24 @@ export function verifyPdfPreviewSession(token: string | null, expectedFileId: st
     parsed.previewVersionKey.length < 32 ||
     !Number.isSafeInteger(parsed.expiresAt) ||
     Number(parsed.expiresAt) <= Math.floor(nowMs / 1000)
-  ) return null;
+  )
+    return null;
 
   // Sessions issued before R2 support did not contain storage fields. Keep those
   // short-lived cookies valid by resolving them to the original Supabase location.
   const previewStorageProvider = parsed.previewStorageProvider || 'supabase';
   const previewStorageBucket = parsed.previewStorageBucket || 'pdf-previews';
-  const previewStoragePrefix = parsed.previewStoragePrefix || `${parsed.fileId}/${parsed.previewVersionKey}`;
+  const previewStoragePrefix =
+    parsed.previewStoragePrefix ||
+    `${parsed.fileId}/${parsed.previewVersionKey}`;
   if (
     !['supabase', 'r2'].includes(previewStorageProvider) ||
     typeof previewStorageBucket !== 'string' ||
     !previewStorageBucket.trim() ||
     typeof previewStoragePrefix !== 'string' ||
     !previewStoragePrefix.trim()
-  ) return null;
+  )
+    return null;
 
   return {
     ...parsed,
@@ -120,7 +147,8 @@ function cookieValue(req: Request, name: string) {
     const trimmed = part.trim();
     const separator = trimmed.indexOf('=');
     if (separator <= 0) continue;
-    if (trimmed.slice(0, separator) === name) return trimmed.slice(separator + 1) || null;
+    if (trimmed.slice(0, separator) === name)
+      return trimmed.slice(separator + 1) || null;
   }
   return null;
 }

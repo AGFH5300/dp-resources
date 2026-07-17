@@ -3,11 +3,14 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const MIME_LABELS: Record<string, string> = {
   [FOLDER_MIME]: 'Folder',
   'application/pdf': 'PDF',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel spreadsheet',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+    'Excel spreadsheet',
   'application/vnd.ms-excel': 'Excel spreadsheet',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word document',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    'Word document',
   'application/msword': 'Word document',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint presentation',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+    'PowerPoint presentation',
   'application/vnd.ms-powerpoint': 'PowerPoint presentation',
   'application/vnd.google-apps.spreadsheet': 'Google Sheet',
   'application/vnd.google-apps.document': 'Google Doc',
@@ -52,7 +55,10 @@ function extensionFor(fileName?: string | null) {
   return match?.[1] || '';
 }
 
-export function formatMimeType(mimeType?: string | null, fileName?: string | null): string {
+export function formatMimeType(
+  mimeType?: string | null,
+  fileName?: string | null,
+): string {
   const mime = (mimeType || '').toLowerCase().trim();
   const ext = extensionFor(fileName);
 

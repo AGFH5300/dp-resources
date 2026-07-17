@@ -2,4 +2,47 @@ import { sameOriginOrForbidden } from '@/lib/request-security';
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
-export async function POST(req: Request) { const forbidden=sameOriginOrForbidden(req); if(forbidden)return forbidden; const { user } = await requireMember(); const limited=await rateLimit(privacySafeRequestKey(req,'support-create'),10,60*60*1000,'support-create'); if(!limited.ok)return Response.json({error:'Too many requests. Please try again later.'},{status:429}); const body = await req.json().catch(() => null); if (!body || typeof body !== 'object') return Response.json({ error: 'Expected JSON request body' }, { status: 400 }); const category = String(body.category || '').trim(); const subject = String(body.subject || '').trim(); const message = String(body.message || '').trim(); if (!category || !subject || !message) return Response.json({ error: 'Category, subject, and message are required' }, { status: 400 }); const sb = createSupabaseAdminClient(); const { data, error } = await sb.from('dp_support_tickets').insert({ reporter_id: user.id, reporter_email: user.email, category, subject, message }).select('id,category,subject,message,status,created_at,updated_at').single(); if (error) return Response.json({ error: error.message }, { status: 500 }); return Response.json({ ticket: data }, { status: 201 }); }
+export async function POST(req: Request) {
+  const forbidden = sameOriginOrForbidden(req);
+  if (forbidden) return forbidden;
+  const { user } = await requireMember();
+  const limited = await rateLimit(
+    privacySafeRequestKey(req, 'support-create'),
+    10,
+    60 * 60 * 1000,
+    'support-create',
+  );
+  if (!limited.ok)
+    return Response.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    );
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object')
+    return Response.json(
+      { error: 'Expected JSON request body' },
+      { status: 400 },
+    );
+  const category = String(body.category || '').trim();
+  const subject = String(body.subject || '').trim();
+  const message = String(body.message || '').trim();
+  if (!category || !subject || !message)
+    return Response.json(
+      { error: 'Category, subject, and message are required' },
+      { status: 400 },
+    );
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_support_tickets')
+    .insert({
+      reporter_id: user.id,
+      reporter_email: user.email,
+      category,
+      subject,
+      message,
+    })
+    .select('id,category,subject,message,status,created_at,updated_at')
+    .single();
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ticket: data }, { status: 201 });
+}
