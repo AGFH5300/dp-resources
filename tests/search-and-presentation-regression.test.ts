@@ -37,7 +37,8 @@ describe('search consistency and PPTX viewer regressions', () => {
     expect(source).toContain('setRetryNonce(n=>n+1)');
     expect(source).toContain('Search timed out. Please retry.');
     expect(source).toContain("'updating'")
-    expect(source).toContain('Existing results remain available.')
+    expect(source).not.toContain('Library results are updating')
+    expect(read('app/search/page.tsx')).not.toContain('Library results are updating')
   });
 
   it('PPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling', () => {
