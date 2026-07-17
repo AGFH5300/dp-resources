@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { BrandWordmark } from '@/components/brand-wordmark'
 import { publicPageMetadata } from '@/lib/seo'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Terms of Use',
@@ -42,7 +43,8 @@ function LegalHeader() {
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 sm:gap-4">
         <BrandWordmark href="/" className="text-base sm:text-lg" />
         <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-3">
-          <Link href="/privacy" className="whitespace-nowrap text-slate-600 hover:text-[#10243f]">Privacy</Link>
+          <ThemeToggle />
+          <Link href="/privacy" className="hidden whitespace-nowrap text-slate-600 hover:text-[#10243f] sm:inline">Privacy</Link>
           <Link href="/auth/login" className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4">Log in</Link>
         </nav>
       </div>

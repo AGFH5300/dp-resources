@@ -5,6 +5,7 @@ import { publicPageMetadata } from '@/lib/seo'
 import { getSessionResourceMembership } from '@/lib/supabase'
 import { ClearSuspensionReasonButton, SuspensionReasonFallback } from './suspension-reason-fallback'
 import { UnsuspensionWatcher } from './unsuspension-watcher'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Account suspended',
@@ -20,7 +21,7 @@ export default async function AccountSuspendedPage() {
   return (
     <main className="min-h-screen bg-[color:var(--dp-warm-surface)] px-4 py-10 text-[#10243f] sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-2xl flex-col justify-center">
-        <BrandWordmark href="/" className="mb-8 text-xl" />
+        <div className="mb-8 flex items-center justify-between"><BrandWordmark href="/" className="text-xl" /><ThemeToggle /></div>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--dp-blue)]">Account access</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[color:var(--dp-navy)] sm:text-4xl">Your account has been suspended.</h1>

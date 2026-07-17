@@ -62,10 +62,31 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#10243f',
-  colorScheme: 'light',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f4f8ff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+  ],
+  colorScheme: 'light dark',
 };
 
+const themeBootstrap = `(() => {
+  try {
+    const stored = localStorage.getItem('dp-theme');
+    const preference = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+    const resolved = preference === 'system'
+      ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : preference;
+    const root = document.documentElement;
+    root.dataset.theme = resolved;
+    root.dataset.themePreference = preference;
+    root.style.colorScheme = resolved;
+  } catch (_) {
+    const resolved = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved;
+  }
+})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body><div className="flex min-h-dvh flex-col bg-[#f6f1e8]"><div className="flex-1 bg-white">{children}</div><SiteFooter /></div><GlobalSearch /><AppToaster /></body></html>;
+  return <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /></head><body><div className="flex min-h-dvh flex-col bg-[#f6f1e8]"><div className="flex-1 bg-white">{children}</div><SiteFooter /></div><GlobalSearch /><AppToaster /></body></html>;
 }

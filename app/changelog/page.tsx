@@ -4,6 +4,7 @@ import { BrandWordmark } from '@/components/brand-wordmark'
 import { ChangelogList } from './changelog-list'
 import { getChangelog } from '@/lib/changelog'
 import { publicPageMetadata } from '@/lib/seo'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const revalidate = 3600
 
@@ -22,6 +23,7 @@ export default async function ChangelogPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 sm:gap-4">
           <BrandWordmark href="/" className="text-base sm:text-lg" />
           <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-4" aria-label="Changelog navigation">
+            <ThemeToggle />
             <Link href="/privacy" className="hidden whitespace-nowrap text-slate-600 hover:text-[#10243f] sm:inline">Privacy</Link>
             <Link href="/terms" className="hidden whitespace-nowrap text-slate-600 hover:text-[#10243f] sm:inline">Terms</Link>
             <Link href="/library" className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4">

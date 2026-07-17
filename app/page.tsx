@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { BrandWordmark } from '@/components/brand-wordmark'
 import { BrandMark } from '@/components/brand-mark'
 import { publicPageMetadata } from '@/lib/seo'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Free DP Study Resource Library',
@@ -15,10 +16,11 @@ export default function Home() {
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
         <header className="flex items-center justify-between gap-3 border-b border-[#d9ccba] pb-5 sm:gap-4">
-          <BrandWordmark href="/" className="text-lg sm:text-xl" />
+          <BrandWordmark href="/" className="text-base sm:text-xl" />
           <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-3">
-            <Link href="/privacy" className="whitespace-nowrap text-[#5d6470] hover:text-[#10243f]">Privacy</Link>
-            <Link href="/terms" className="whitespace-nowrap text-[#5d6470] hover:text-[#10243f]">Terms</Link>
+            <ThemeToggle />
+            <Link href="/privacy" className="hidden whitespace-nowrap text-[#5d6470] hover:text-[#10243f] sm:inline">Privacy</Link>
+            <Link href="/terms" className="hidden whitespace-nowrap text-[#5d6470] hover:text-[#10243f] sm:inline">Terms</Link>
             <Link href="/auth/login" className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4">Log in</Link>
           </nav>
         </header>
