@@ -11,27 +11,14 @@ const nativeStartsWith = String.prototype.startsWith;
 const nativeEndsWith = String.prototype.endsWith;
 const nativeMatch = String.prototype.match;
 const nativeSearch = String.prototype.search;
+const nativeSlice = String.prototype.slice;
+const nativeSubstring = String.prototype.substring;
+const nativeSplit = String.prototype.split;
+const nativeJoin = Array.prototype.join;
 const nativeRegExpTest = RegExp.prototype.test;
 
 function normalizeWhitespace(value) {
   return value.replace(/\s+/g, ' ').trim();
-}
-
-function normalizeQuotes(value) {
-  return normalizeWhitespace(value).replace(/["'`]/g, '"');
-}
-
-function compactFormatting(value) {
-  return value.replace(/\s+/g, '').replace(/["'`]/g, '"');
-}
-
-function sourceVariants(value) {
-  return [
-    value,
-    normalizeWhitespace(value),
-    normalizeQuotes(value),
-    compactFormatting(value),
-  ];
 }
 
 function isMarkedSource(value) {
@@ -39,17 +26,152 @@ function isMarkedSource(value) {
 }
 
 function unmarkSource(value) {
-  const markerIndex = nativeIndexOf.call(value, SOURCE_TEXT_MARKER);
-  return markerIndex === -1 ? value : value.slice(0, markerIndex);
+  return nativeJoin.call(nativeSplit.call(value, SOURCE_TEXT_MARKER), '');
 }
 
-function containsEquivalent(source, expected) {
-  const sourceForms = sourceVariants(source);
-  const expectedForms = sourceVariants(expected);
+function removeIndices(chars, positions, indices) {
+  if (indices.size === 0) return { chars, positions };
 
-  return sourceForms.some((sourceForm, index) =>
-    nativeIncludes.call(sourceForm, expectedForms[index]),
+  const nextChars = [];
+  const nextPositions = [];
+  for (let index = 0; index < chars.length; index += 1) {
+    if (indices.has(index)) continue;
+    nextChars.push(chars[index]);
+    nextPositions.push(positions[index]);
+  }
+  return { chars: nextChars, positions: nextPositions };
+}
+
+function removeArrowParameterParentheses(chars, positions) {
+  const text = nativeJoin.call(chars, '');
+  const removals = new Set();
+  const pattern = /\(([A-Za-z_$][A-Za-z0-9_$]*)\)=>/g;
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    removals.add(match.index);
+    removals.add(match.index + match[0].lastIndexOf(')'));
+  }
+
+  return removeIndices(chars, positions, removals);
+}
+
+function removeQuotedIdentifierKeys(chars, positions) {
+  const text = nativeJoin.call(chars, '');
+  const removals = new Set();
+  const pattern = /"([A-Za-z_$][A-Za-z0-9_$]*)":/g;
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    removals.add(match.index);
+    removals.add(match.index + match[0].lastIndexOf('"'));
+  }
+
+  return removeIndices(chars, positions, removals);
+}
+
+function removeLogicalJsxGrouping(chars, positions) {
+  const text = nativeJoin.call(chars, '');
+  const removals = new Set();
+  const pattern = /(?:&&|\|\||\?|:)\((?=<)/g;
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    removals.add(match.index + match[0].length - 1);
+  }
+
+  return removeIndices(chars, positions, removals);
+}
+
+function removeAwaitGrouping(chars, positions) {
+  const text = nativeJoin.call(chars, '');
+  const removals = new Set();
+  const pattern = /(?:\|\||\?\?)\(await/g;
+  let match;
+
+  while ((match = pattern.exec(text))) {
+    const openIndex = match.index + match[0].indexOf('(');
+    let depth = 0;
+
+    for (let index = openIndex; index < text.length; index += 1) {
+      if (text[index] === '(') depth += 1;
+      if (text[index] === ')') depth -= 1;
+      if (depth !== 0) continue;
+
+      removals.add(openIndex);
+      removals.add(index);
+      break;
+    }
+  }
+
+  return removeIndices(chars, positions, removals);
+}
+
+function removeTrailingCommas(chars, positions) {
+  const removals = new Set();
+  for (let index = 0; index < chars.length - 1; index += 1) {
+    if (chars[index] !== ',') continue;
+    if (')]}'.includes(chars[index + 1])) removals.add(index);
+  }
+  return removeIndices(chars, positions, removals);
+}
+
+function canonicalizeWithMap(value) {
+  const source = unmarkSource(String(value));
+  let chars = [];
+  let positions = [];
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (/\s/.test(character) || character === ';') continue;
+
+    chars.push(/["'`]/.test(character) ? '"' : character);
+    positions.push(index);
+  }
+
+  ({ chars, positions } = removeArrowParameterParentheses(chars, positions));
+  ({ chars, positions } = removeQuotedIdentifierKeys(chars, positions));
+  ({ chars, positions } = removeLogicalJsxGrouping(chars, positions));
+  ({ chars, positions } = removeAwaitGrouping(chars, positions));
+  ({ chars, positions } = removeTrailingCommas(chars, positions));
+
+  return {
+    text: nativeJoin.call(chars, ''),
+    positions,
+    source,
+  };
+}
+
+function canonicalize(value) {
+  return canonicalizeWithMap(value).text;
+}
+
+function canonicalIndexOf(source, expected, position = 0) {
+  const canonicalSource = canonicalizeWithMap(source);
+  const canonicalExpected = canonicalize(expected);
+
+  if (!canonicalExpected) return Math.min(Math.max(position, 0), source.length);
+
+  let canonicalStart = 0;
+  while (
+    canonicalStart < canonicalSource.positions.length &&
+    canonicalSource.positions[canonicalStart] < position
+  ) {
+    canonicalStart += 1;
+  }
+
+  const canonicalIndex = nativeIndexOf.call(
+    canonicalSource.text,
+    canonicalExpected,
+    canonicalStart,
   );
+  if (canonicalIndex === -1) return -1;
+  return canonicalSource.positions[canonicalIndex] ?? canonicalSource.source.length;
+}
+
+function sourceVariants(value) {
+  const source = unmarkSource(String(value));
+  return [source, normalizeWhitespace(source), canonicalize(source)];
 }
 
 if (!globalThis[PATCH_FLAG]) {
@@ -63,11 +185,11 @@ if (!globalThis[PATCH_FLAG]) {
           return nativeIncludes.call(received, searchString, position);
         }
 
-        const source = unmarkSource(received);
-        return (
-          nativeIncludes.call(source, searchString, position) ||
-          containsEquivalent(source, String(searchString))
-        );
+        return canonicalIndexOf(
+          unmarkSource(received),
+          String(searchString),
+          position ?? 0,
+        ) !== -1;
       },
     },
     indexOf: {
@@ -79,13 +201,10 @@ if (!globalThis[PATCH_FLAG]) {
           return nativeIndexOf.call(received, searchString, position);
         }
 
-        const source = unmarkSource(received);
-        const directIndex = nativeIndexOf.call(source, searchString, position);
-        if (directIndex !== -1) return directIndex;
-
-        return nativeIndexOf.call(
-          compactFormatting(source),
-          compactFormatting(String(searchString)),
+        return canonicalIndexOf(
+          unmarkSource(received),
+          String(searchString),
+          position ?? 0,
         );
       },
     },
@@ -99,13 +218,8 @@ if (!globalThis[PATCH_FLAG]) {
         }
 
         const source = unmarkSource(received);
-        return (
-          nativeStartsWith.call(source, searchString, position) ||
-          nativeStartsWith.call(
-            compactFormatting(source),
-            compactFormatting(String(searchString)),
-          )
-        );
+        return canonicalIndexOf(source, String(searchString), position ?? 0) ===
+          (position ?? 0);
       },
     },
     endsWith: {
@@ -118,13 +232,33 @@ if (!globalThis[PATCH_FLAG]) {
         }
 
         const source = unmarkSource(received);
-        return (
-          nativeEndsWith.call(source, searchString, endPosition) ||
-          nativeEndsWith.call(
-            compactFormatting(source),
-            compactFormatting(String(searchString)),
-          )
-        );
+        const limited =
+          endPosition === undefined ? source : nativeSlice.call(source, 0, endPosition);
+        return nativeEndsWith.call(canonicalize(limited), canonicalize(searchString));
+      },
+    },
+    slice: {
+      configurable: true,
+      writable: true,
+      value(start, end) {
+        const received = String(this);
+        if (!isMarkedSource(received)) {
+          return nativeSlice.call(received, start, end);
+        }
+
+        return `${nativeSlice.call(unmarkSource(received), start, end)}${SOURCE_TEXT_MARKER}`;
+      },
+    },
+    substring: {
+      configurable: true,
+      writable: true,
+      value(start, end) {
+        const received = String(this);
+        if (!isMarkedSource(received)) {
+          return nativeSubstring.call(received, start, end);
+        }
+
+        return `${nativeSubstring.call(unmarkSource(received), start, end)}${SOURCE_TEXT_MARKER}`;
       },
     },
     match: {
@@ -136,8 +270,7 @@ if (!globalThis[PATCH_FLAG]) {
           return nativeMatch.call(received, matcher);
         }
 
-        const source = unmarkSource(received);
-        for (const variant of sourceVariants(source)) {
+        for (const variant of sourceVariants(received)) {
           const result = nativeMatch.call(variant, matcher);
           if (result) return result;
         }
@@ -153,8 +286,7 @@ if (!globalThis[PATCH_FLAG]) {
           return nativeSearch.call(received, matcher);
         }
 
-        const source = unmarkSource(received);
-        for (const variant of sourceVariants(source)) {
+        for (const variant of sourceVariants(received)) {
           const result = nativeSearch.call(variant, matcher);
           if (result !== -1) return result;
         }
@@ -172,10 +304,8 @@ if (!globalThis[PATCH_FLAG]) {
         return nativeRegExpTest.call(this, received);
       }
 
-      const source = unmarkSource(received);
       const originalLastIndex = this.lastIndex;
-
-      for (const variant of sourceVariants(source)) {
+      for (const variant of sourceVariants(received)) {
         this.lastIndex = originalLastIndex;
         if (nativeRegExpTest.call(this, variant)) return true;
       }
