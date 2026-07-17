@@ -1,7 +1,7 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const outputFile = '.vitest-results.json';
+const outputFile = 'vitest-results.json';
 const vitestEntry = 'node_modules/vitest/vitest.mjs';
 
 rmSync(outputFile, { force: true });
