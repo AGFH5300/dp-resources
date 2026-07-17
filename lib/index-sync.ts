@@ -96,7 +96,9 @@ export async function runIndexSyncChunk() {
       indexed_resources: baseIndexedResources,
       started_at: startedAt,
       updated_at: now,
-      completed_at: null,
+      // Keep the last successful completion marker during a refresh so readers
+      // can continue serving the existing index until this run finishes.
+      completed_at: initialRunIncomplete ? null : state.completed_at,
       error_message: null,
       lock_token: lockToken,
       lock_expires_at: lockExpiresAt(),
