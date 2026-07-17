@@ -191,11 +191,14 @@ html[data-theme='dark'] body {
 }
 
 html[data-theme='dark'] .dp-brand-wordmark {
-  border-radius: .5rem;
-  background: rgb(255 255 255 / .94);
-  padding: .05rem .3rem;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16);
+  background: transparent;
 }
+
+.dp-wordmark-dark,
+.dp-logo-dark { display: none; }
+
+html[data-theme='dark'] :is(.dp-wordmark-light, .dp-logo-light) { display: none; }
+html[data-theme='dark'] :is(.dp-wordmark-dark, .dp-logo-dark) { display: block; }
 
 /* Compatibility layer for the existing utility-based interface. Keeping the
    mapping here makes every current page theme-aware and gives new UI one set

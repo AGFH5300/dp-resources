@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const read = (path: string) => readFileSync(path, 'utf8')
+const pngSize = (path: string) => {
+  const png = readFileSync(path)
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20), colourType: png[25] }
+}
 
 describe('dark mode', () => {
   it('bootstraps the saved or system theme before hydration', () => {
@@ -44,5 +48,18 @@ describe('dark mode', () => {
     expect(css).toContain("[class~='text-[color:var(--dp-navy)]']")
     expect(css).toContain('[data-theme-preserve-light]')
     expect(pdf).toContain('data-theme-preserve-light')
+  })
+
+  it('uses exact-size transparent dark logo variants', () => {
+    const lightWordmark = 'public/brand/dp-wordmark.png'
+    const darkWordmark = 'public/brand/dp-wordmark-dark.png'
+    const lightLogo = 'public/brand/dp-logo.png'
+    const darkLogo = 'public/brand/dp-logo-dark.png'
+    expect(existsSync(darkWordmark)).toBe(true)
+    expect(existsSync(darkLogo)).toBe(true)
+    expect(pngSize(darkWordmark)).toMatchObject({ ...pngSize(lightWordmark), colourType: 6 })
+    expect(pngSize(darkLogo)).toMatchObject({ ...pngSize(lightLogo), colourType: 6 })
+    expect(read('components/brand-wordmark.tsx')).toContain('/brand/dp-wordmark-dark.png')
+    expect(read('components/brand-mark.tsx')).toContain('/brand/dp-logo-dark.png')
   })
 })
