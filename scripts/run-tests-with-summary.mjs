@@ -45,7 +45,9 @@ try {
 } catch (error) {
   console.error('Unable to read the Vitest JSON report:', error);
 } finally {
-  rmSync(outputFile, { force: true });
+  if (!process.env.GITHUB_ACTIONS) {
+    rmSync(outputFile, { force: true });
+  }
 }
 
 process.exit(run.status ?? 1);
