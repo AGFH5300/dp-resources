@@ -40,6 +40,15 @@ describe('resumable Drive index sync locking', () => {
     expect(catchBlock).not.toContain('delete()');
   });
 
+  it('keeps the last completed index available while a refresh runs', () => {
+    const sync = read('lib/index-sync.ts');
+    const search = read('app/api/search/route.ts');
+    expect(sync).toContain('completed_at: initialRunIncomplete ? null : state.completed_at');
+    expect(search).toContain("updating:available&&state?.status!=='complete'");
+    expect(search).toContain("if(!available)return Response.json({folders:[],files:[],indexState:'preparing'})");
+    expect(search).toContain('Response.json({...hit.payload,indexState}')
+  });
+
   it('adds the singleton row and lock columns in a later migration', () => {
     const migration = read('supabase/migrations/20260702053000_fix_resource_index_sync_locking.sql');
     expect(migration).toContain('00000000-0000-0000-0000-000000000001');
