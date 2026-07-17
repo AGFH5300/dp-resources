@@ -11,7 +11,7 @@
     "pdf-previews:queue": "node scripts/queue-pdf-previews.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "node scripts/run-tests-with-summary.mjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.3.2",
