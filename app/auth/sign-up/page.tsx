@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthShell } from '@/components/auth-shell'
 import { isValidEmail } from '@/lib/auth-email'
-import { Spinnebr } from '@/components/ui/spinner'
+import { Spinner } from '@/components/ui/spinner'
 import { safeInternalReturnPath } from '@/lib/auth-redirect'
 
 type AvailabilityResponse = {
