@@ -1,6 +1,7 @@
 "use client"
 
 import { BrandWordmark } from '@/components/brand-wordmark'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type AuthShellProps = {
   eyebrow: string
@@ -36,8 +37,8 @@ export function AuthShell({ eyebrow, title, description, quote, attribution, chi
         <main className="flex min-h-screen items-center justify-center p-6 md:p-10 lg:p-12">
           <div className="w-full max-w-md rounded-md border border-[#c3c6ce66] bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)] md:p-10">
             <div className="mb-8 flex items-center justify-between">
-              <BrandWordmark className="text-xl" />
-
+              <BrandWordmark className="text-base sm:text-xl" />
+              <ThemeToggle />
             </div>
             {children}
           </div>

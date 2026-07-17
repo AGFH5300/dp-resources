@@ -139,3 +139,224 @@ button:disabled:hover {
 .dp-sonner-close { background: transparent !important; color: rgb(255 255 255 / 0.82) !important; border-color: transparent !important; inset-inline-start: auto !important; inset-inline-end: 8px !important; }
 .dp-sonner-close:hover { color: #fff !important; background: rgb(255 255 255 / 0.14) !important; }
 @media (max-width: 767px) { [data-sonner-toaster][data-position='bottom-right'] { bottom: calc(5.75rem + env(safe-area-inset-bottom)) !important; right: 0.75rem !important; left: 0.75rem !important; } }
+
+/* Theme tokens. The inline bootstrap in app/layout.tsx sets the resolved theme
+   before React hydrates, preventing a light flash when dark mode is selected. */
+:root {
+  --dp-page: #ffffff;
+  --dp-page-background: #f4f8ff;
+  --dp-surface-muted: #f8fafc;
+  --dp-surface-high: #e2e8f0;
+  --dp-heading: #0b1f3a;
+  --dp-body-text: #334155;
+  --dp-muted-text: #64748b;
+  --dp-theme-border: #e2e8f0;
+}
+
+html[data-theme='dark'] {
+  --dp-soft-sky: #0b1220;
+  --dp-warm-surface: #111b2e;
+  --dp-ink: #e6edf7;
+  --dp-blue: #60a5fa;
+  --dp-teal: #5eead4;
+  --dp-gold: #f6c453;
+  --background: #0b1220;
+  --surface: #0b1220;
+  --surface-container: #172235;
+  --surface-container-low: #111b2e;
+  --surface-container-high: #1e2a3f;
+  --surface-container-highest: #26344b;
+  --surface-container-lowest: #111827;
+  --surface-variant: #1e2a3f;
+  --primary: #dbeafe;
+  --secondary: #f6c453;
+  --primary-container: #17385f;
+  --on-primary-container: #bfdbfe;
+  --text: #e6edf7;
+  --text-muted: #aab6c8;
+  --outline: #42516a;
+  --dp-page: #111827;
+  --dp-page-background: #0b1220;
+  --dp-surface-muted: #172235;
+  --dp-surface-high: #243148;
+  --dp-heading: #eef6ff;
+  --dp-body-text: #cbd5e1;
+  --dp-muted-text: #9aa9be;
+  --dp-theme-border: #33445f;
+}
+
+html[data-theme='dark'] body {
+  background: var(--dp-page-background);
+  color: var(--dp-ink);
+}
+
+html[data-theme='dark'] .dp-brand-wordmark {
+  border-radius: .5rem;
+  background: rgb(255 255 255 / .94);
+  padding: .05rem .3rem;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16);
+}
+
+/* Compatibility layer for the existing utility-based interface. Keeping the
+   mapping here makes every current page theme-aware and gives new UI one set
+   of semantic colours to adopt without a risky page-by-page rewrite. */
+html[data-theme='dark'] :is(
+  [class~='bg-white'],
+  [class~='bg-white/95'],
+  [class~='bg-white/90'],
+  [class~='bg-white/80'],
+  [class~='bg-white/70'],
+  [class~='bg-[#fffdf8]'],
+  [class~='bg-[#fffaf1]'],
+  [class~='bg-[color:var(--dp-warm-surface)]'],
+  [class~='bg-[color:var(--dp-warm-surface)]/95']
+) { background-color: var(--dp-page); }
+
+html[data-theme='dark'] :is(
+  [class~='bg-[#f6f1e8]'],
+  [class~='bg-[#f8f6f1]'],
+  [class~='bg-[color:var(--dp-soft-sky)]']
+) { background-color: var(--dp-page-background); }
+
+html[data-theme='dark'] :is(
+  [class~='bg-slate-50'],
+  [class~='bg-slate-100'],
+  [class~='bg-[#ece7db]'],
+  [class~='bg-[#f5f3ee]'],
+  [class~='bg-[#e7ebf1]'],
+  [class~='bg-[#d6dce5]']
+) { background-color: var(--dp-surface-muted); }
+
+html[data-theme='dark'] :is(
+  [class~='bg-slate-200'],
+  [class~='bg-slate-200/90'],
+  [class~='bg-slate-300']
+) { background-color: var(--dp-surface-high); }
+
+html[data-theme='dark'] :is(
+  [class~='bg-[color:var(--dp-navy)]'],
+  [class~='bg-[#00152a]'],
+  [class~='bg-[#10243f]'],
+  [class~='bg-[#08284a]'],
+  [class~='bg-[#102d52]']
+) { background-color: #2563eb; }
+
+html[data-theme='dark'] :is(
+  [class~='text-slate-950'],
+  [class~='text-slate-900'],
+  [class~='text-slate-800'],
+  [class~='text-slate-700'],
+  [class~='text-[#10243f]'],
+  [class~='text-[#00152a]'],
+  [class~='text-[#061a34]'],
+  [class~='text-[#1b1c19]'],
+  [class~='text-[color:var(--dp-navy)]'],
+  [class~='text-[color:var(--dp-ink)]']
+) { color: var(--dp-heading); }
+
+html[data-theme='dark'] :is(
+  [class~='text-slate-600'],
+  [class~='text-[#43474d]'],
+  [class~='text-[#4b5563]'],
+  [class~='text-[#334155]'],
+  [class~='text-[#5d6470]'],
+  [class~='text-[#58616c]'],
+  [class~='text-[#667281]'],
+  [class~='text-[#6b7280]']
+) { color: var(--dp-body-text); }
+
+html[data-theme='dark'] :is(
+  [class~='text-slate-500'],
+  [class~='text-slate-400'],
+  [class~='text-slate-300'],
+  [class~='text-[#9d937f]']
+) { color: var(--dp-muted-text); }
+
+html[data-theme='dark'] :is([class~='text-[#b5832d]'], [class~='text-[#735b2b]']) { color: var(--dp-gold); }
+
+html[data-theme='dark'] :is(
+  [class~='border-slate-100'],
+  [class~='border-slate-200'],
+  [class~='border-slate-300'],
+  [class~='border-slate-400'],
+  [class~='border-stone-200'],
+  [class~='border-stone-300'],
+  [class~='border-stone-400'],
+  [class~='border-[#e5dccd]'],
+  [class~='border-[#e1d7c7]'],
+  [class~='border-[#d9ccba]'],
+  [class~='border-[#eadfce]'],
+  [class~='border-[#e4dbc9]'],
+  [class~='border-[#c3c6ce]'],
+  [class~='border-[#c3c6ce55]'],
+  [class~='border-[#c3c6ce66]'],
+  [class~='border-[#b6bec8]'],
+  [class~='border-[#10243f]'],
+  [class~='border-[#00152a]']
+) { border-color: var(--dp-theme-border); }
+
+html[data-theme='dark'] :is(
+  [class~='hover:bg-white']:hover,
+  [class~='hover:bg-slate-50']:hover,
+  [class~='hover:bg-slate-100']:hover,
+  [class~='hover:bg-blue-50']:hover,
+  [class~='hover:bg-blue-50/60']:hover,
+  [class~='focus-visible:bg-slate-50']:focus-visible
+) { background-color: var(--dp-surface-high); }
+
+html[data-theme='dark'] :is(
+  [class~='hover:text-[#10243f]']:hover,
+  [class~='hover:text-[#061a34]']:hover,
+  [class~='hover:text-[color:var(--dp-navy)]']:hover
+) { color: #f8fbff; }
+
+html[data-theme='dark'] :is([class~='bg-blue-50'], [class~='bg-blue-50/60']) { background-color: rgb(37 99 235 / .14); }
+html[data-theme='dark'] :is([class~='text-blue-950'], [class~='text-blue-800'], [class~='text-blue-700'], [class~='text-blue-600']) { color: #bfdbfe; }
+html[data-theme='dark'] [class~='border-blue-100'] { border-color: #1e4f8f; }
+
+html[data-theme='dark'] :is([class~='bg-amber-50'], [class~='bg-amber-50/70'], [class~='bg-amber-100']) { background-color: rgb(180 83 9 / .18); }
+html[data-theme='dark'] :is([class~='text-amber-950'], [class~='text-amber-900'], [class~='text-amber-800'], [class~='text-amber-700'], [class~='text-amber-600']) { color: #fde68a; }
+html[data-theme='dark'] :is([class~='border-amber-100'], [class~='border-amber-200'], [class~='border-amber-300']) { border-color: #92400e; }
+
+html[data-theme='dark'] :is([class~='bg-red-50'], [class~='bg-red-100']) { background-color: rgb(153 27 27 / .18); }
+html[data-theme='dark'] :is([class~='text-red-800'], [class~='text-red-700'], [class~='text-red-600']) { color: #fecaca; }
+html[data-theme='dark'] [class~='border-red-200'] { border-color: #7f1d1d; }
+
+html[data-theme='dark'] [class~='bg-emerald-50'] { background-color: rgb(6 95 70 / .2); }
+html[data-theme='dark'] :is([class~='text-emerald-900'], [class~='text-emerald-800'], [class~='text-emerald-700']) { color: #a7f3d0; }
+html[data-theme='dark'] :is([class~='border-emerald-200'], [class~='border-emerald-300']) { border-color: #065f46; }
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea { color-scheme: dark; }
+
+html[data-theme='dark'] input:focus-visible,
+html[data-theme='dark'] select:focus-visible,
+html[data-theme='dark'] textarea:focus-visible {
+  background-color: var(--dp-surface-muted);
+}
+
+html[data-theme='dark'] .tsm-btn-primary {
+  border-color: #3b82f6;
+  background: #2563eb;
+  color: #fff;
+}
+
+html[data-theme='dark'] .tsm-btn-secondary { color: var(--dp-heading); }
+html[data-theme='dark'] .dp-docx-wrapper .docx-wrapper { background: var(--dp-surface-high); }
+
+/* Rendered files are source content, not application chrome. */
+html[data-theme='dark'] [data-theme-preserve-light],
+html[data-theme='dark'] [data-theme-preserve-light] [class~='bg-white'] {
+  background-color: #fff;
+  color: #172033;
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body, header, footer, nav, main, section, article, aside, input, select, textarea, button, a {
+    transition-property: background-color, border-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}
