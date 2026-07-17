@@ -10,7 +10,7 @@ import { PresentationViewer } from './presentation-viewer';
 const WorkbookPreview = dynamic(() => import('./xlsx-preview').then(m => m.WorkbookPreview), { ssr: false, loading: () => <PreviewLoading /> });
 
 function PreviewLoading() {
-  return <div className="grid min-h-64 place-items-center border border-slate-200 bg-white" aria-label="Loading preview"><div className="size-8 animate-spin rounded-full border-2 border-slate-200 border-t-[color:var(--dp-navy)]" /></div>;
+  return <div className="dp-loading-card grid min-h-64 place-items-center border" aria-label="Loading preview" role="status"><div className="dp-loading-spinner size-8 animate-spin rounded-full border-2" /></div>;
 }
 
 function MediaPreview({ kind, url, fileId }: { kind: 'audio' | 'video'; url: string; name: string; fileId: string }) {
