@@ -1,6 +1,7 @@
 # DP Resources Production Deployment Checklist
 
 ## Required environment variables
+
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -12,12 +13,14 @@
 - Render/Next.js runtime variables required by the deployment environment
 
 ## Migration order
+
 1. Apply existing migrations in timestamp order.
 2. Apply `supabase/migrations/20260708090000_persistent_rate_limit_and_diagnostics.sql`.
 3. Apply `supabase/migrations/20260708091000_resource_usage_analytics.sql`.
 4. Confirm RPC grants and RLS are present before public traffic.
 
 ## Supabase backup/restore checklist
+
 - Take a full database backup before applying migrations.
 - Export auth users and storage settings if managed separately.
 - Record current migration version and deployment commit.
@@ -25,6 +28,7 @@
 - Verify service-role keys are rotated if exposed during an incident.
 
 ## Smoke tests
+
 - Verify the homepage loads.
 - Verify `/privacy` and `/terms` are reachable and accurate.
 - Sign up with a new test account.
@@ -45,16 +49,17 @@
 - Confirm no service-role key appears in client bundles or `NEXT_PUBLIC_*` settings.
 
 ## Admin analytics verification
+
 - Open Admin → Usage analytics.
 - Confirm active viewing time appears after viewing a resource for at least one heartbeat interval.
 - Confirm normal users cannot call admin usage RPCs or open `/admin`.
 
 ## Rollback steps
+
 1. Disable public traffic or roll back the Render deployment.
 2. Restore the pre-migration Supabase backup if schema rollback is required.
 3. Re-apply only migrations known to be compatible with the rollback commit.
 4. Verify admin login, signup, search, preview, PPTX, media seeking, support, reports, and analytics.
-
 
 ## Disposable Email and User Suspension Deployment
 

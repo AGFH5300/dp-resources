@@ -8,4 +8,7 @@ export default defineConfig({
       '@': path.resolve(__dirname),
     },
   },
+  test: {
+    setupFiles: ['tests/setup/source-text-normalization.mjs'],
+  },
 });

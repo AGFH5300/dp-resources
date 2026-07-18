@@ -8,12 +8,16 @@ describe('PDF exact-search match focus', () => {
     expect(viewer).toContain('scrollToSearchMatch');
     expect(viewer).toContain('data-pdf-search-match={matchIndex}');
     expect(viewer).toContain('hitRect.top-rootRect.top');
-    expect(viewer).toContain("root.scrollTo({top:Math.max(0,target),behavior})");
+    expect(viewer).toContain(
+      'root.scrollTo({top:Math.max(0,target),behavior})',
+    );
     expect(viewer).not.toContain('scrollIntoView');
   });
 
   it('makes the active match stronger and cycles matches within a page', () => {
-    expect(viewer).toContain("activeSearchMatchIndex===matchIndex?'bg-orange-300/85");
+    expect(viewer).toContain(
+      "activeSearchMatchIndex===matchIndex?'bg-orange-300/85",
+    );
     expect(viewer).toContain('candidate>=0&&candidate<matches.length');
     expect(viewer).toContain("direction<0?'last':'first'");
   });

@@ -21,12 +21,18 @@ function defineReadOnlyTests() {
       const sync = read('lib/index-sync.ts');
       expect(drive).toContain('pageToken?: string');
       expect(drive).toContain('pageToken: folder.pageToken');
-      expect(drive).toContain('queue.push({ ...folder, pageToken: page.nextPageToken })');
+      expect(drive).toContain(
+        'queue.push({ ...folder, pageToken: page.nextPageToken })',
+      );
       expect(sync).toContain('pageToken?: string');
     });
 
     it('trusts queued folders discovered from the configured root without repeated root assertions or folder views', () => {
-      const chunk = read('lib/drive.ts').slice(read('lib/drive.ts').indexOf('export async function crawlDriveIndexChunk'));
+      const chunk = read('lib/drive.ts').slice(
+        read('lib/drive.ts').indexOf(
+          'export async function crawlDriveIndexChunk',
+        ),
+      );
       expect(chunk).not.toContain('assertInsideRoot(');
       expect(chunk).not.toContain('getFolderView(');
       expect(chunk).toContain('listDriveIndexPage(folder, 1000)');
@@ -41,14 +47,21 @@ function defineReadOnlyTests() {
 
     it('resumes a paused initial run with the existing queue and sync run id', () => {
       const sync = read('lib/index-sync.ts');
-      expect(sync).toContain('const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id');
+      expect(sync).toContain(
+        'const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id',
+      );
       expect(sync).toContain('state.folder_queue');
-      expect(sync).toContain('const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0');
+      expect(sync).toContain(
+        'const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0',
+      );
     });
 
     it('deletes stale rows only after a genuinely complete sync', () => {
       const sync = read('lib/index-sync.ts');
-      const completeBlock = sync.slice(sync.indexOf('if (chunk.complete)'), sync.indexOf('} else {', sync.indexOf('if (chunk.complete)')));
+      const completeBlock = sync.slice(
+        sync.indexOf('if (chunk.complete)'),
+        sync.indexOf('} else {', sync.indexOf('if (chunk.complete)')),
+      );
       expect(completeBlock).toContain('delete()');
       expect(completeBlock).toContain('last_seen_sync_run_id.neq');
     });
@@ -58,7 +71,9 @@ function defineReadOnlyTests() {
     it('does not parse empty or non-JSON error responses as JSON', () => {
       const panel = read('app/admin/index-sync-panel.tsx');
       expect(panel).toContain("contentType.includes('application/json')");
-      expect(panel.indexOf('await response.text()')).toBeLessThan(panel.indexOf('await response.json()'));
+      expect(panel.indexOf('await response.text()')).toBeLessThan(
+        panel.indexOf('await response.json()'),
+      );
       expect(panel).toContain('readIndexResponse(r)');
     });
 

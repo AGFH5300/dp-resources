@@ -8,7 +8,8 @@ export async function GET() {
   return Response.json(
     {
       status: 'disabled',
-      message: 'Server-side PPTX conversion has been permanently removed. Presentations are rendered in the authenticated browser preview.',
+      message:
+        'Server-side PPTX conversion has been permanently removed. Presentations are rendered in the authenticated browser preview.',
     },
     {
       status: 410,

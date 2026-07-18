@@ -3,6 +3,7 @@
 Scope: `app/api/**/route.ts`. This is an internal audit of server-side access control, sensitive backend access, write protections, and abuse controls. The in-memory rate limiter noted below is process-local only and is not globally distributed protection.
 
 ## `app/api/admin/activity/export/route.ts`
+
 - Methods: GET
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -12,6 +13,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/admin/featured-resource/route.ts`
+
 - Methods: POST, DELETE
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -21,6 +23,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/admin/index/route.ts`
+
 - Methods: GET, POST
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -30,6 +33,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/admin/reports/[id]/route.ts`
+
 - Methods: PATCH
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -39,6 +43,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/admin/support/[id]/messages/route.ts`
+
 - Methods: POST
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -48,6 +53,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/admin/support/[id]/route.ts`
+
 - Methods: PATCH
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -57,6 +63,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/admin/users/search/route.ts`
+
 - Methods: GET
 - Classification: Admin-only
 - Guard: requireAdmin()
@@ -66,6 +73,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/auth/availability/route.ts`
+
 - Methods: GET
 - Classification: Public
 - Guard: Public auth/signup endpoint
@@ -75,6 +83,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: uses SQL username status
 
 ## `app/api/auth/signout/route.ts`
+
 - Methods: POST
 - Classification: Public
 - Guard: Public auth/signup endpoint
@@ -84,6 +93,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/auth/start-signup/route.ts`
+
 - Methods: POST
 - Classification: Public
 - Guard: Public auth/signup endpoint
@@ -93,6 +103,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check, uses SQL username status
 
 ## `app/api/favorites/route.ts`
+
 - Methods: GET, POST, DELETE
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -102,6 +113,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/files/[fileId]/download/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -111,6 +123,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/files/[fileId]/open/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -120,6 +133,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/library/folder-summaries/route.ts`
+
 - Methods: POST
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -129,6 +143,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/library/open-folder/route.ts`
+
 - Methods: POST
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -138,6 +153,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/reports/route.ts`
+
 - Methods: POST
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -147,6 +163,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: same-origin write check
 
 ## `app/api/resource/[fileId]/content/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -156,6 +173,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/resource/[fileId]/presentation-pdf/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -165,6 +183,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/search/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -174,6 +193,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/support/[id]/route.ts`
+
 - Methods: GET
 - Classification: Authenticated member
 - Guard: requireMember()
@@ -183,6 +203,7 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 - Security change made: Audited; no code change required.
 
 ## `app/api/support/route.ts`
+
 - Methods: POST
 - Classification: Authenticated member
 - Guard: requireMember()

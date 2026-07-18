@@ -7,7 +7,12 @@ export const INDEX_SYNC_STATE_ID = '00000000-0000-0000-0000-000000000001';
 const LOCK_TTL_MS = 2 * 60 * 1000;
 const UPSERT_BATCH_SIZE = 750;
 
-type FolderQueueItem = { id: string; path: string; parent: string | null; pageToken?: string };
+type FolderQueueItem = {
+  id: string;
+  path: string;
+  parent: string | null;
+  pageToken?: string;
+};
 export type IndexSyncState = {
   id: string;
   status: 'idle' | 'indexing' | 'complete' | 'paused' | 'failed';
@@ -40,11 +45,26 @@ async function ensureIndexSyncStateRow() {
 
 export async function getIndexSyncStatus() {
   const sb = createSupabaseAdminClient();
-  const [{ data: state }, { count }, { count: folderCount }, { count: fileCount }] = await Promise.all([
-    sb.from('dp_resource_index_sync_state').select('*').eq('id', INDEX_SYNC_STATE_ID).maybeSingle(),
+  const [
+    { data: state },
+    { count },
+    { count: folderCount },
+    { count: fileCount },
+  ] = await Promise.all([
+    sb
+      .from('dp_resource_index_sync_state')
+      .select('*')
+      .eq('id', INDEX_SYNC_STATE_ID)
+      .maybeSingle(),
     sb.from('dp_resource_index').select('id', { count: 'exact', head: true }),
-    sb.from('dp_resource_index').select('id', { count: 'exact', head: true }).eq('is_folder', true),
-    sb.from('dp_resource_index').select('id', { count: 'exact', head: true }).eq('is_folder', false),
+    sb
+      .from('dp_resource_index')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_folder', true),
+    sb
+      .from('dp_resource_index')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_folder', false),
   ]);
   const typedState = state as IndexSyncState | null;
   return {
@@ -53,7 +73,9 @@ export async function getIndexSyncStatus() {
     folderIndexed: folderCount || 0,
     fileIndexed: fileCount || 0,
     lastCompletedAt: typedState?.completed_at || null,
-    lastCompletedCount: typedState?.completed_at ? typedState.indexed_resources : count || 0,
+    lastCompletedCount: typedState?.completed_at
+      ? typedState.indexed_resources
+      : count || 0,
   };
 }
 
@@ -64,7 +86,12 @@ export async function runIndexSyncChunk() {
   const lockToken = randomUUID();
   const { data: current, error: lockError } = await sb
     .from('dp_resource_index_sync_state')
-    .update({ status: 'indexing', lock_token: lockToken, lock_expires_at: lockExpiresAt(), updated_at: now })
+    .update({
+      status: 'indexing',
+      lock_token: lockToken,
+      lock_expires_at: lockExpiresAt(),
+      updated_at: now,
+    })
     .eq('id', INDEX_SYNC_STATE_ID)
     .or(`status.neq.indexing,lock_expires_at.lt.${now}`)
     .select('*')
@@ -73,17 +100,27 @@ export async function runIndexSyncChunk() {
 
   let state = current as IndexSyncState | null;
   if (!state) {
-    const { data: existing, error } = await sb.from('dp_resource_index_sync_state').select('*').eq('id', INDEX_SYNC_STATE_ID).maybeSingle();
+    const { data: existing, error } = await sb
+      .from('dp_resource_index_sync_state')
+      .select('*')
+      .eq('id', INDEX_SYNC_STATE_ID)
+      .maybeSingle();
     if (error) throw new Error(error.message);
     return { busy: true, state: existing as IndexSyncState | null };
   }
 
-  const startingNewRun = !state.sync_run_id || (Boolean(state.completed_at) && !state.folder_queue?.length);
+  const startingNewRun =
+    !state.sync_run_id ||
+    (Boolean(state.completed_at) && !state.folder_queue?.length);
   const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id;
   const queue = startingNewRun ? [] : state.folder_queue || [];
   const startedAt = startingNewRun ? now : state.started_at || now;
-  const baseProcessedFolders = startingNewRun ? 0 : state.processed_folders || 0;
-  const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0;
+  const baseProcessedFolders = startingNewRun
+    ? 0
+    : state.processed_folders || 0;
+  const baseIndexedResources = startingNewRun
+    ? 0
+    : state.indexed_resources || 0;
   const initialRunIncomplete = !state.completed_at;
 
   const { data: prepared, error: prepareError } = await sb
@@ -118,14 +155,32 @@ export async function runIndexSyncChunk() {
       concurrency: initialRunIncomplete ? 6 : 2,
       timeBudgetMs: initialRunIncomplete ? 35_000 : 20_000,
       onWave: async () => {
-        await sb.from('dp_resource_index_sync_state').update({ lock_expires_at: lockExpiresAt(), updated_at: new Date().toISOString() }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+        await sb
+          .from('dp_resource_index_sync_state')
+          .update({
+            lock_expires_at: lockExpiresAt(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', INDEX_SYNC_STATE_ID)
+          .eq('lock_token', lockToken);
       },
     });
-    await sb.from('dp_resource_index_sync_state').update({ lock_expires_at: lockExpiresAt(), updated_at: new Date().toISOString() }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+    await sb
+      .from('dp_resource_index_sync_state')
+      .update({
+        lock_expires_at: lockExpiresAt(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', INDEX_SYNC_STATE_ID)
+      .eq('lock_token', lockToken);
 
     for (let i = 0; i < chunk.rows.length; i += UPSERT_BATCH_SIZE) {
-      const batch = chunk.rows.slice(i, i + UPSERT_BATCH_SIZE).map((r) => ({ ...r, last_seen_sync_run_id: syncRunId }));
-      const { error } = await sb.from('dp_resource_index').upsert(batch, { onConflict: 'drive_file_id' });
+      const batch = chunk.rows
+        .slice(i, i + UPSERT_BATCH_SIZE)
+        .map((r) => ({ ...r, last_seen_sync_run_id: syncRunId }));
+      const { error } = await sb
+        .from('dp_resource_index')
+        .upsert(batch, { onConflict: 'drive_file_id' });
       if (error) throw new Error(error.message);
     }
 
@@ -139,15 +194,43 @@ export async function runIndexSyncChunk() {
     };
 
     if (chunk.complete) {
-      const { error: cleanupError } = await sb.from('dp_resource_index').delete().or(`last_seen_sync_run_id.neq.${syncRunId},last_seen_sync_run_id.is.null`);
+      const { error: cleanupError } = await sb
+        .from('dp_resource_index')
+        .delete()
+        .or(
+          `last_seen_sync_run_id.neq.${syncRunId},last_seen_sync_run_id.is.null`,
+        );
       if (cleanupError) throw new Error(cleanupError.message);
-      await sb.from('dp_resource_index_sync_state').update({ ...next, status: 'complete', completed_at: new Date().toISOString(), error_message: null }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+      await sb
+        .from('dp_resource_index_sync_state')
+        .update({
+          ...next,
+          status: 'complete',
+          completed_at: new Date().toISOString(),
+          error_message: null,
+        })
+        .eq('id', INDEX_SYNC_STATE_ID)
+        .eq('lock_token', lockToken);
     } else {
-      await sb.from('dp_resource_index_sync_state').update({ ...next, status: 'paused' }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+      await sb
+        .from('dp_resource_index_sync_state')
+        .update({ ...next, status: 'paused' })
+        .eq('id', INDEX_SYNC_STATE_ID)
+        .eq('lock_token', lockToken);
     }
     return getIndexSyncStatus();
   } catch (e) {
-    await sb.from('dp_resource_index_sync_state').update({ status: 'failed', lock_token: null, lock_expires_at: null, updated_at: new Date().toISOString(), error_message: e instanceof Error ? e.message : 'Index sync failed' }).eq('id', INDEX_SYNC_STATE_ID).eq('lock_token', lockToken);
+    await sb
+      .from('dp_resource_index_sync_state')
+      .update({
+        status: 'failed',
+        lock_token: null,
+        lock_expires_at: null,
+        updated_at: new Date().toISOString(),
+        error_message: e instanceof Error ? e.message : 'Index sync failed',
+      })
+      .eq('id', INDEX_SYNC_STATE_ID)
+      .eq('lock_token', lockToken);
     throw e;
   }
 }

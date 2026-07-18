@@ -1,12 +1,29 @@
-export type PdfSearchGeometryWord = [string, number, number, number, number, number];
-export type PdfSearchGeometryPayload = { v: number; p: number; w: PdfSearchGeometryWord[] };
-export type PdfSearchRect = { x: number; y: number; width: number; height: number };
+export type PdfSearchGeometryWord = [
+  string,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
+export type PdfSearchGeometryPayload = {
+  v: number;
+  p: number;
+  w: PdfSearchGeometryWord[];
+};
+export type PdfSearchRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 export type PdfSearchMatch = { rects: PdfSearchRect[] };
 
 type Segment = { start: number; end: number; word: PdfSearchGeometryWord };
 type RectWithLine = PdfSearchRect & { line: number };
 
-const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min = 0, max = 1) =>
+  Math.min(max, Math.max(min, value));
 
 export function normalizePdfSearchText(value: string) {
   return value
@@ -17,15 +34,30 @@ export function normalizePdfSearchText(value: string) {
     .trim();
 }
 
-export function validatePdfSearchGeometry(value: unknown, pageNumber: number): PdfSearchGeometryPayload | null {
+export function validatePdfSearchGeometry(
+  value: unknown,
+  pageNumber: number,
+): PdfSearchGeometryPayload | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<PdfSearchGeometryPayload>;
-  if (candidate.v !== 1 || candidate.p !== pageNumber || !Array.isArray(candidate.w)) return null;
-  const words = candidate.w.filter((word): word is PdfSearchGeometryWord => Array.isArray(word)
-    && word.length === 6
-    && typeof word[0] === 'string'
-    && word.slice(1).every((part) => typeof part === 'number' && Number.isFinite(part)));
-  return words.length === candidate.w.length ? { v: 1, p: pageNumber, w: words } : null;
+  if (
+    candidate.v !== 1 ||
+    candidate.p !== pageNumber ||
+    !Array.isArray(candidate.w)
+  )
+    return null;
+  const words = candidate.w.filter(
+    (word): word is PdfSearchGeometryWord =>
+      Array.isArray(word) &&
+      word.length === 6 &&
+      typeof word[0] === 'string' &&
+      word
+        .slice(1)
+        .every((part) => typeof part === 'number' && Number.isFinite(part)),
+  );
+  return words.length === candidate.w.length
+    ? { v: 1, p: pageNumber, w: words }
+    : null;
 }
 
 function mergeMatchedWords(words: PdfSearchGeometryWord[]): PdfSearchRect[] {
@@ -34,10 +66,18 @@ function mergeMatchedWords(words: PdfSearchGeometryWord[]): PdfSearchRect[] {
     const [, x, y, width, height, line] = word;
     const previous = rects[rects.length - 1];
     const right = x + width;
-    if (previous && previous.line === line && x - (previous.x + previous.width) <= 0.018) {
+    if (
+      previous &&
+      previous.line === line &&
+      x - (previous.x + previous.width) <= 0.018
+    ) {
       const top = Math.min(previous.y, y);
       const bottom = Math.max(previous.y + previous.height, y + height);
-      previous.width = clamp(Math.max(previous.x + previous.width, right) - previous.x, 0, 1 - previous.x);
+      previous.width = clamp(
+        Math.max(previous.x + previous.width, right) - previous.x,
+        0,
+        1 - previous.x,
+      );
       previous.y = top;
       previous.height = clamp(bottom - top, 0.003, 1 - top);
     } else {
@@ -55,7 +95,10 @@ function mergeMatchedWords(words: PdfSearchGeometryWord[]): PdfSearchRect[] {
   return rects.map(({ x, y, width, height }) => ({ x, y, width, height }));
 }
 
-export function findPdfSearchMatches(payload: PdfSearchGeometryPayload, query: string): PdfSearchMatch[] {
+export function findPdfSearchMatches(
+  payload: PdfSearchGeometryPayload,
+  query: string,
+): PdfSearchMatch[] {
   const normalizedQuery = normalizePdfSearchText(query);
   if (!normalizedQuery) return [];
 

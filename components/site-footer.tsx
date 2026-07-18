@@ -1,7 +1,7 @@
-import Link from 'next/link'
+import Link from 'next/link';
 
 export function SiteFooter() {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
 
   return (
     <footer className="border-t border-[#e5dccd] bg-[#f6f1e8] px-4 py-5 sm:px-6 lg:px-8">
@@ -16,7 +16,9 @@ export function SiteFooter() {
           >
             Changelog
           </Link>
-          <span aria-hidden="true" className="mx-2 text-slate-300">·</span>
+          <span aria-hidden="true" className="mx-2 text-slate-300">
+            ·
+          </span>
           Made by{' '}
           <a
             href="https://anshgupta.cc"
@@ -29,5 +31,5 @@ export function SiteFooter() {
         </p>
       </div>
     </footer>
-  )
+  );
 }

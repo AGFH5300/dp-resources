@@ -1,8 +1,8 @@
-import type { MetadataRoute } from 'next'
-import { absoluteUrl } from '@/lib/seo'
+import type { MetadataRoute } from 'next';
+import { absoluteUrl } from '@/lib/seo';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date()
+  const lastModified = new Date();
 
   return [
     {
@@ -41,5 +41,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
-  ]
+  ];
 }

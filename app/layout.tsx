@@ -5,7 +5,7 @@ import { GlobalSearch } from '@/components/global-search';
 import { SiteFooter } from '@/components/site-footer';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 
-const FAVICON_URL = '/brand/dp-favicon.png?v=134a33c'
+const FAVICON_URL = '/brand/dp-favicon.png?v=134a33c';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -39,7 +39,14 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: 'website',
     locale: 'en_US',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'DP Resources' }],
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'DP Resources',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -87,6 +94,24 @@ const themeBootstrap = `(() => {
   }
 })();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /></head><body><div className="flex min-h-dvh flex-col bg-[#f6f1e8]"><div className="flex-1 bg-white">{children}</div><SiteFooter /></div><GlobalSearch /><AppToaster /></body></html>;
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
+      <body>
+        <div className="flex min-h-dvh flex-col bg-[#f6f1e8]">
+          <div className="flex-1 bg-white">{children}</div>
+          <SiteFooter />
+        </div>
+        <GlobalSearch />
+        <AppToaster />
+      </body>
+    </html>
+  );
 }

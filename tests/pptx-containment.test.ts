@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 describe('PPTX viewer containment', () => {
-  const viewer = readFileSync('app/resource/[fileId]/presentation-viewer.tsx', 'utf8');
+  const viewer = readFileSync(
+    'app/resource/[fileId]/presentation-viewer.tsx',
+    'utf8',
+  );
 
   it('has bounded normal-page height and overflow-hidden shell without an extra top border', () => {
     expect(viewer).toContain('h-[min(78dvh,calc(100dvh-9rem))]');
@@ -21,7 +24,7 @@ describe('PPTX viewer containment', () => {
     expect(viewer).toContain('aria-label="Slide picker"');
     expect(viewer).toContain('min-h-0 overflow-y-auto');
     expect(viewer).toContain('activeSlideRef.current?.scrollIntoView');
-    expect(viewer).toContain("stage.current?.scrollTo({ top: 0, left: 0 })");
+    expect(viewer).toContain('stage.current?.scrollTo({ top: 0, left: 0 })');
   });
 
   it('shows only the active rendered slide so adjacent pages cannot look duplicated', () => {
@@ -48,11 +51,17 @@ describe('PPTX viewer containment', () => {
     expect(viewer).toContain('smoothedBytesPerSecond');
     expect(viewer).toContain('instantBytesPerSecond');
     expect(viewer).toContain('downloadEtaSeconds');
-    expect(viewer).toContain('Download progress reflects the actual presentation bytes received.');
+    expect(viewer).toContain(
+      'Download progress reflects the actual presentation bytes received.',
+    );
     expect(viewer).toContain('Slide rendering does not expose a percentage');
-    expect(viewer).not.toContain('The ETA is based on the recent download speed');
+    expect(viewer).not.toContain(
+      'The ETA is based on the recent download speed',
+    );
     expect(viewer).toContain('MutationObserver');
-    expect(viewer).toContain("querySelectorAll('.pptx-preview-slide-wrapper').length");
+    expect(viewer).toContain(
+      "querySelectorAll('.pptx-preview-slide-wrapper').length",
+    );
     expect(viewer).not.toContain('progress={pages ? 100 : 45}');
   });
 
@@ -62,10 +71,17 @@ describe('PPTX viewer containment', () => {
   });
 
   it('gets the authoritative resource size from the authenticated content route', () => {
-    const route = readFileSync('app/api/resource/[fileId]/content/route.ts', 'utf8');
+    const route = readFileSync(
+      'app/api/resource/[fileId]/content/route.ts',
+      'utf8',
+    );
     expect(route).toContain("'x-file-size': String(meta.size)");
-    expect(route).toContain("nativeHeaders.set('x-file-size', String(meta.size))");
-    expect(route).toContain("else if (!shouldServeRange) headers.set('content-length', String(meta.size))");
+    expect(route).toContain(
+      "nativeHeaders.set('x-file-size', String(meta.size))",
+    );
+    expect(route).toContain(
+      "else if (!shouldServeRange) headers.set('content-length', String(meta.size))",
+    );
   });
 
   it('removes literal undefined text created by the third-party renderer', () => {
@@ -76,13 +92,17 @@ describe('PPTX viewer containment', () => {
 
   it('overlaps renderer module loading with the file download and defers audio parsing', () => {
     expect(viewer).toContain('const rendererModulesPromise = Promise.all');
-    expect(viewer.indexOf('const rendererModulesPromise = Promise.all')).toBeLessThan(viewer.indexOf('await fetch(url'));
+    expect(
+      viewer.indexOf('const rendererModulesPromise = Promise.all'),
+    ).toBeLessThan(viewer.indexOf('await fetch(url'));
     expect(viewer).toContain('scheduleAudioExtraction(buffer)');
     expect(viewer).toContain('}, 500);');
   });
 
   it('stops failed render attempts instead of only hiding them', () => {
-    expect(viewer).toContain("watchdog = setTimeout(() => failAttempt('Presentation rendering timed out.')");
+    expect(viewer).toContain(
+      "watchdog = setTimeout(() => failAttempt('Presentation rendering timed out.')",
+    );
     expect(viewer).toContain('mountedApp.unmount()');
     expect(viewer).toContain('root.current?.replaceChildren()');
     expect(viewer).toContain('controller.abort()');

@@ -1,4 +1,4 @@
-import type { LucideProps } from 'lucide-react'
+import type { LucideProps } from 'lucide-react';
 import {
   ArrowRight,
   Atom,
@@ -25,7 +25,7 @@ import {
   Settings,
   Sparkles,
   Target,
-} from 'lucide-react'
+} from 'lucide-react';
 
 const iconMap = {
   dashboard: Home,
@@ -63,11 +63,15 @@ const iconMap = {
   chevron_right: ChevronRight,
   target: Target,
   explore: Compass,
-} as const
+} as const;
 
-type IconName = keyof typeof iconMap
+type IconName = keyof typeof iconMap;
 
-export function AppIcon({ name, className, ...props }: { name: string } & LucideProps) {
-  const Icon = iconMap[name as IconName] ?? BookOpen
-  return <Icon aria-hidden="true" className={className} {...props} />
+export function AppIcon({
+  name,
+  className,
+  ...props
+}: { name: string } & LucideProps) {
+  const Icon = iconMap[name as IconName] ?? BookOpen;
+  return <Icon aria-hidden="true" className={className} {...props} />;
 }

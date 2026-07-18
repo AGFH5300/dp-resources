@@ -1,7 +1,45 @@
 import { sameOriginOrForbidden } from '@/lib/request-security';
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
-export const dynamic='force-dynamic';
-export async function GET(){const {user}=await requireMember(); const sb=createSupabaseAdminClient(); const {data,error}=await sb.from('dp_resource_favorites').select('drive_file_id,created_at').eq('user_id',user.id); if(error)return Response.json({error:error.message},{status:500}); return Response.json({favorites:data||[]});}
-export async function POST(req:Request){const forbidden=sameOriginOrForbidden(req); if(forbidden)return forbidden;const {user}=await requireMember(); const {driveFileId}=await req.json(); if(!driveFileId)return Response.json({error:'Missing resource'},{status:400}); const sb=createSupabaseAdminClient(); const {error}=await sb.from('dp_resource_favorites').upsert({user_id:user.id,drive_file_id:driveFileId},{onConflict:'user_id,drive_file_id'}); if(error)return Response.json({error:error.message},{status:500}); return Response.json({saved:true});}
-export async function DELETE(req:Request){const forbidden=sameOriginOrForbidden(req); if(forbidden)return forbidden;const {user}=await requireMember(); const driveFileId=new URL(req.url).searchParams.get('driveFileId'); const sb=createSupabaseAdminClient(); const {error}=await sb.from('dp_resource_favorites').delete().eq('user_id',user.id).eq('drive_file_id',driveFileId); if(error)return Response.json({error:error.message},{status:500}); return Response.json({saved:false});}
+export const dynamic = 'force-dynamic';
+export async function GET() {
+  const { user } = await requireMember();
+  const sb = createSupabaseAdminClient();
+  const { data, error } = await sb
+    .from('dp_resource_favorites')
+    .select('drive_file_id,created_at')
+    .eq('user_id', user.id);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ favorites: data || [] });
+}
+export async function POST(req: Request) {
+  const forbidden = sameOriginOrForbidden(req);
+  if (forbidden) return forbidden;
+  const { user } = await requireMember();
+  const { driveFileId } = await req.json();
+  if (!driveFileId)
+    return Response.json({ error: 'Missing resource' }, { status: 400 });
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from('dp_resource_favorites')
+    .upsert(
+      { user_id: user.id, drive_file_id: driveFileId },
+      { onConflict: 'user_id,drive_file_id' },
+    );
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ saved: true });
+}
+export async function DELETE(req: Request) {
+  const forbidden = sameOriginOrForbidden(req);
+  if (forbidden) return forbidden;
+  const { user } = await requireMember();
+  const driveFileId = new URL(req.url).searchParams.get('driveFileId');
+  const sb = createSupabaseAdminClient();
+  const { error } = await sb
+    .from('dp_resource_favorites')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('drive_file_id', driveFileId);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ saved: false });
+}

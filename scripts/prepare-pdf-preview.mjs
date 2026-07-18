@@ -6,38 +6,69 @@ for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
   if (!process.env[key]) throw new Error(`${key} is required`);
 }
 
-const driveFileArgument = process.argv.find((value) => value.startsWith('--drive-file-id='));
-const driveFileId = driveFileArgument?.slice('--drive-file-id='.length).trim() || '';
-if (!driveFileId) throw new Error('Usage: node scripts/prepare-pdf-preview.mjs --drive-file-id=<Google Drive file ID> [--storage-provider=r2|supabase]');
+const driveFileArgument = process.argv.find((value) =>
+  value.startsWith('--drive-file-id='),
+);
+const driveFileId =
+  driveFileArgument?.slice('--drive-file-id='.length).trim() || '';
+if (!driveFileId)
+  throw new Error(
+    'Usage: node scripts/prepare-pdf-preview.mjs --drive-file-id=<Google Drive file ID> [--storage-provider=r2|supabase]',
+  );
 
-const providerArgument = process.argv.find((value) => value.startsWith('--storage-provider='));
-const requestedProvider = (providerArgument?.slice('--storage-provider='.length) || process.env.PDF_PREVIEW_STORAGE_PROVIDER || 'supabase').trim().toLowerCase();
-if (!['supabase', 'r2'].includes(requestedProvider)) throw new Error('Storage provider must be supabase or r2');
+const providerArgument = process.argv.find((value) =>
+  value.startsWith('--storage-provider='),
+);
+const requestedProvider = (
+  providerArgument?.slice('--storage-provider='.length) ||
+  process.env.PDF_PREVIEW_STORAGE_PROVIDER ||
+  'supabase'
+)
+  .trim()
+  .toLowerCase();
+if (!['supabase', 'r2'].includes(requestedProvider))
+  throw new Error('Storage provider must be supabase or r2');
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: { persistSession: false, autoRefreshToken: false },
+  },
+);
 
 function normalizeModifiedTime(value) {
   const trimmed = value?.trim() || '';
   if (!trimmed) return '';
   const timestamp = Date.parse(trimmed);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().replace(/Z$/, '+00:00') : trimmed;
+  return Number.isFinite(timestamp)
+    ? new Date(timestamp).toISOString().replace(/Z$/, '+00:00')
+    : trimmed;
 }
 
 function versionKey(file) {
   return createHash('sha256')
-    .update(`${file.drive_file_id}\n${normalizeModifiedTime(file.modified_at)}\n${file.size_bytes}`)
+    .update(
+      `${file.drive_file_id}\n${normalizeModifiedTime(file.modified_at)}\n${file.size_bytes}`,
+    )
     .digest('hex');
 }
 
 function run(command, args, extraEnv = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: 'inherit', env: { ...process.env, ...extraEnv } });
+    const child = spawn(command, args, {
+      stdio: 'inherit',
+      env: { ...process.env, ...extraEnv },
+    });
     child.once('error', reject);
     child.once('exit', (code, signal) => {
       if (code === 0) resolve();
-      else reject(new Error(`${command} exited with ${code ?? signal ?? 'unknown status'}`));
+      else
+        reject(
+          new Error(
+            `${command} exited with ${code ?? signal ?? 'unknown status'}`,
+          ),
+        );
     });
   });
 }
@@ -50,8 +81,14 @@ async function indexedResource() {
     .eq('is_folder', false)
     .eq('mime_type', 'application/pdf')
     .maybeSingle();
-  if (error) throw new Error(`Unable to read the targeted PDF resource: ${error.message}`);
-  if (!data) throw new Error(`No indexed PDF was found for Drive file ID ${driveFileId}`);
+  if (error)
+    throw new Error(
+      `Unable to read the targeted PDF resource: ${error.message}`,
+    );
+  if (!data)
+    throw new Error(
+      `No indexed PDF was found for Drive file ID ${driveFileId}`,
+    );
   return { ...data, size_bytes: Number(data.size_bytes) };
 }
 
@@ -62,14 +99,24 @@ async function targetDocument(version) {
     .eq('drive_file_id', driveFileId)
     .eq('version_key', version)
     .maybeSingle();
-  if (error) throw new Error(`Unable to read the targeted preview document: ${error.message}`);
+  if (error)
+    throw new Error(
+      `Unable to read the targeted preview document: ${error.message}`,
+    );
   return data || null;
 }
 
 async function main() {
   const resource = await indexedResource();
   const version = versionKey(resource);
-  console.log(JSON.stringify({ event: 'pdf_preview_manual_prepare_started', driveFileId, version, requestedProvider }));
+  console.log(
+    JSON.stringify({
+      event: 'pdf_preview_manual_prepare_started',
+      driveFileId,
+      version,
+      requestedProvider,
+    }),
+  );
 
   await run(process.execPath, [
     'scripts/queue-pdf-previews.mjs',
@@ -78,22 +125,27 @@ async function main() {
   ]);
 
   const document = await targetDocument(version);
-  if (!document) throw new Error(`Queueing did not create preview version ${version} for ${driveFileId}`);
+  if (!document)
+    throw new Error(
+      `Queueing did not create preview version ${version} for ${driveFileId}`,
+    );
   if (
-    document.status === 'ready'
-    && Number(document.pages_ready) === Number(document.page_count)
-    && Boolean(document.text_ready_at)
-    && Boolean(document.search_geometry_ready_at)
+    document.status === 'ready' &&
+    Number(document.pages_ready) === Number(document.page_count) &&
+    Boolean(document.text_ready_at) &&
+    Boolean(document.search_geometry_ready_at)
   ) {
-    console.log(JSON.stringify({
-      event: 'pdf_preview_manual_prepare_already_ready',
-      driveFileId,
-      pageCount: document.page_count,
-      searchReady: true,
-      exactHighlightsReady: true,
-      storageProvider: document.storage_provider,
-      storageBucket: document.storage_bucket,
-    }));
+    console.log(
+      JSON.stringify({
+        event: 'pdf_preview_manual_prepare_already_ready',
+        driveFileId,
+        pageCount: document.page_count,
+        searchReady: true,
+        exactHighlightsReady: true,
+        storageProvider: document.storage_provider,
+        storageBucket: document.storage_bucket,
+      }),
+    );
     return;
   }
 
@@ -114,30 +166,49 @@ async function main() {
       updated_at: new Date().toISOString(),
     })
     .eq('id', document.id);
-  if (priorityError) throw new Error(`Unable to prioritize the targeted preview job: ${priorityError.message}`);
+  if (priorityError)
+    throw new Error(
+      `Unable to prioritize the targeted preview job: ${priorityError.message}`,
+    );
 
   const provider = document.storage_provider || 'supabase';
-  const worker = provider === 'r2' ? 'scripts/pdf-preview-worker-r2.mjs' : 'scripts/pdf-preview-worker.mjs';
-  await run(process.execPath, [worker, '--once'], { PDF_PREVIEW_STORAGE_PROVIDER: provider });
+  const worker =
+    provider === 'r2'
+      ? 'scripts/pdf-preview-worker-r2.mjs'
+      : 'scripts/pdf-preview-worker.mjs';
+  await run(process.execPath, [worker, '--once'], {
+    PDF_PREVIEW_STORAGE_PROVIDER: provider,
+  });
 
   const completed = await targetDocument(version);
   if (!completed || completed.id !== document.id) {
-    throw new Error('The targeted preview document changed while it was being prepared');
+    throw new Error(
+      'The targeted preview document changed while it was being prepared',
+    );
   }
-  if (completed.status !== 'ready' || Number(completed.pages_ready) !== Number(completed.page_count)) {
-    throw new Error(`Preview preparation did not finish: status=${completed.status}, pages=${completed.pages_ready}/${completed.page_count}`);
+  if (
+    completed.status !== 'ready' ||
+    Number(completed.pages_ready) !== Number(completed.page_count)
+  ) {
+    throw new Error(
+      `Preview preparation did not finish: status=${completed.status}, pages=${completed.pages_ready}/${completed.page_count}`,
+    );
   }
 
-  console.log(JSON.stringify({
-    event: 'pdf_preview_manual_prepare_ready',
-    driveFileId,
-    pageCount: completed.page_count,
-    pagesReady: completed.pages_ready,
-    searchReady: Boolean(completed.text_ready_at && completed.search_geometry_ready_at),
-    exactHighlightsReady: Boolean(completed.search_geometry_ready_at),
-    storageProvider: completed.storage_provider,
-    storageBucket: completed.storage_bucket,
-  }));
+  console.log(
+    JSON.stringify({
+      event: 'pdf_preview_manual_prepare_ready',
+      driveFileId,
+      pageCount: completed.page_count,
+      pagesReady: completed.pages_ready,
+      searchReady: Boolean(
+        completed.text_ready_at && completed.search_geometry_ready_at,
+      ),
+      exactHighlightsReady: Boolean(completed.search_geometry_ready_at),
+      storageProvider: completed.storage_provider,
+      storageBucket: completed.storage_bucket,
+    }),
+  );
 }
 
 main().catch((error) => {

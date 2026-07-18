@@ -1,39 +1,1460 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Download, Eraser, Expand, ExternalLink, Highlighter, Minus, Pencil, Plus, Printer, Redo2, RotateCcw, RotateCw, Search, Trash2, Undo2, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Eraser,
+  Expand,
+  ExternalLink,
+  Highlighter,
+  Minus,
+  Pencil,
+  Plus,
+  Printer,
+  Redo2,
+  RotateCcw,
+  RotateCw,
+  Search,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type Status='queued'|'processing'|'partial'|'ready'|'failed';
-type State={mode?:'prepared'|'standard';status:Status|string;pageCount:number|null;pagesReady:number;manifestUrl:string|null;statusUrl?:string|null;standardUrl?:string;searchReady?:boolean;message?:string};
-type Page={pageNumber:number;width:number;height:number;ready:boolean};
-type Manifest={status:Status;versionKey:string;pageCount:number;pagesReady:number;searchReady?:boolean;pages:Page[]};
-type Point={x:number;y:number};
-type Stroke={id:string;tool:'pen'|'highlight';color:string;width:number;points:Point[]};
-type Marks=Record<string,Stroke[]>;
-type Tool='none'|'pen'|'highlight'|'eraser';
-type Rotation=0|90|180|270;
-type Result={pageNumber:number;snippet:string};type SearchRect={x:number;y:number;width:number;height:number};type SearchMatch={rects:SearchRect[]};
+type Status = 'queued' | 'processing' | 'partial' | 'ready' | 'failed';
+type State = {
+  mode?: 'prepared' | 'standard';
+  status: Status | string;
+  pageCount: number | null;
+  pagesReady: number;
+  manifestUrl: string | null;
+  statusUrl?: string | null;
+  standardUrl?: string;
+  searchReady?: boolean;
+  message?: string;
+};
+type Page = {
+  pageNumber: number;
+  width: number;
+  height: number;
+  ready: boolean;
+};
+type Manifest = {
+  status: Status;
+  versionKey: string;
+  pageCount: number;
+  pagesReady: number;
+  searchReady?: boolean;
+  pages: Page[];
+};
+type Point = { x: number; y: number };
+type Stroke = {
+  id: string;
+  tool: 'pen' | 'highlight';
+  color: string;
+  width: number;
+  points: Point[];
+};
+type Marks = Record<string, Stroke[]>;
+type Tool = 'none' | 'pen' | 'highlight' | 'eraser';
+type Rotation = 0 | 90 | 180 | 270;
+type Result = { pageNumber: number; snippet: string };
+type SearchRect = { x: number; y: number; width: number; height: number };
+type SearchMatch = { rects: SearchRect[] };
 
-const icon='inline-flex size-9 shrink-0 items-center justify-center rounded text-white/90 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-35';
-const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
+const icon =
+  'inline-flex size-9 shrink-0 items-center justify-center rounded text-white/90 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-35';
+const clamp = (n: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, n));
 
-function Loading({state}:{state:State|null}){const progress=Boolean(state?.pageCount&&state.pagesReady>0&&state.pagesReady<state.pageCount);const percent=progress&&state?.pageCount?Math.round(state.pagesReady/state.pageCount*100):null;const detail=state?.status==='failed'?'Preview preparation needs to be retried.':state?.pageCount?(state.pagesReady?`Prepared ${state.pagesReady.toLocaleString()} of ${state.pageCount.toLocaleString()} pages`:'Preparing the first page…'):'Opening the document…';return <div className="dp-loading-overlay absolute inset-0 z-20 grid place-items-center px-6 backdrop-blur-sm" aria-label="Loading PDF preview" role="status" aria-live="polite"><div className="dp-loading-card w-full max-w-md rounded-2xl border p-5 shadow-lg"><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold text-[color:var(--dp-navy)]">Preparing PDF preview</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div><span className="text-sm font-semibold">{percent===null?'Loading':`${percent}%`}</span></div><div className="dp-loading-track mt-4 h-2 overflow-hidden rounded-full" role={percent===null?undefined:'progressbar'} aria-label={percent===null?undefined:'PDF preparation progress'} aria-valuemin={percent===null?undefined:0} aria-valuemax={percent===null?undefined:100} aria-valuenow={percent??undefined}>{percent===null?<div className="dp-loading-bar h-full w-2/5 animate-pulse rounded-full"/>:<div className="dp-loading-bar h-full rounded-full transition-[width] duration-150" style={{width:`${percent}%`}}/>}</div></div></div>}
-function Fallback({fileId,message,onRetry}:{fileId:string;message:string;onRetry:()=>void}){return <section role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"><h2 className="text-base font-semibold">PDF preview could not be displayed</h2><p className="mt-2">{message}</p><div className="mt-4 flex gap-3"><button type="button" onClick={onRetry} className="inline-flex items-center gap-2 rounded-md bg-[color:var(--dp-navy)] px-3 py-2 text-white"><RotateCcw className="size-4"/>Retry preview</button><a href={`/api/files/${fileId}/download`} className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2"><Download className="size-4"/>Download PDF</a></div></section>}function StandardPdfViewer({url,fileId,name}:{url:string;fileId:string;name:string}){const[attempt,setAttempt]=useState(0);const[blobUrl,setBlobUrl]=useState('');const[loading,setLoading]=useState(true);const[error,setError]=useState('');useEffect(()=>{const controller=new AbortController();let objectUrl='';setBlobUrl('');setLoading(true);setError('');void(async()=>{try{const response=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!response.ok)throw new Error(`PDF request failed (${response.status})`);const sourceBlob=await response.blob();if(!sourceBlob.size)throw new Error('PDF response was empty');const blob=sourceBlob.type.toLowerCase().includes('pdf')?sourceBlob:new Blob([sourceBlob],{type:'application/pdf'});if(controller.signal.aborted)return;objectUrl=URL.createObjectURL(blob);setBlobUrl(objectUrl)}catch(reason){if(reason instanceof DOMException&&reason.name==='AbortError')return;setError('The standard PDF preview could not be loaded. You can retry or download the original file.')}finally{if(!controller.signal.aborted)setLoading(false)}})();return()=>{controller.abort();if(objectUrl)URL.revokeObjectURL(objectUrl)}},[attempt,url]);if(error)return <Fallback fileId={fileId} message={error} onRetry={()=>setAttempt(value=>value+1)}/>;return <section className="relative h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px] overflow-hidden border border-slate-300 bg-white" aria-label={`${name} standard PDF preview`}>{loading?<div className="dp-loading-overlay absolute inset-0 z-10 grid place-items-center" role="status" aria-live="polite"><div className="dp-loading-card flex items-center gap-3 rounded-xl border px-5 py-4 text-sm font-medium text-[color:var(--dp-navy)] shadow"><span className="dp-loading-spinner size-5 animate-spin rounded-full border-2"/>Loading PDF…</div></div>:null}{blobUrl?<iframe title={name} src={blobUrl} className="h-full w-full bg-white"/>:null}</section>}
-function pointer(e:React.PointerEvent<SVGSVGElement>):Point|null{const m=e.currentTarget.getScreenCTM();if(!m)return null;const p=e.currentTarget.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const local=p.matrixTransform(m.inverse());return{x:clamp(local.x/1000,0,1),y:clamp(local.y/1000,0,1)}}
+function Loading({ state }: { state: State | null }) {
+  const progress = Boolean(
+    state?.pageCount &&
+      state.pagesReady > 0 &&
+      state.pagesReady < state.pageCount,
+  );
+  const percent =
+    progress && state?.pageCount
+      ? Math.round((state.pagesReady / state.pageCount) * 100)
+      : null;
+  const detail =
+    state?.status === 'failed'
+      ? 'Preview preparation needs to be retried.'
+      : state?.pageCount
+        ? state.pagesReady
+          ? `Prepared ${state.pagesReady.toLocaleString()} of ${state.pageCount.toLocaleString()} pages`
+          : 'Preparing the first page…'
+        : 'Opening the document…';
+  return (
+    <div
+      className="dp-loading-overlay absolute inset-0 z-20 grid place-items-center px-6 backdrop-blur-sm"
+      aria-label="Loading PDF preview"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="dp-loading-card w-full max-w-md rounded-2xl border p-5 shadow-lg">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[color:var(--dp-navy)]">
+              Preparing PDF preview
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{detail}</p>
+          </div>
+          <span className="text-sm font-semibold">
+            {percent === null ? 'Loading' : `${percent}%`}
+          </span>
+        </div>
+        <div
+          className="dp-loading-track mt-4 h-2 overflow-hidden rounded-full"
+          role={percent === null ? undefined : 'progressbar'}
+          aria-label={percent === null ? undefined : 'PDF preparation progress'}
+          aria-valuemin={percent === null ? undefined : 0}
+          aria-valuemax={percent === null ? undefined : 100}
+          aria-valuenow={percent ?? undefined}
+        >
+          {percent === null ? (
+            <div className="dp-loading-bar h-full w-2/5 animate-pulse rounded-full" />
+          ) : (
+            <div
+              className="dp-loading-bar h-full rounded-full transition-[width] duration-150"
+              style={{ width: `${percent}%` }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+function Fallback({
+  fileId,
+  message,
+  onRetry,
+}: {
+  fileId: string;
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <section
+      role="alert"
+      className="rounded-md border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"
+    >
+      <h2 className="text-base font-semibold">
+        PDF preview could not be displayed
+      </h2>
+      <p className="mt-2">{message}</p>
+      <div className="mt-4 flex gap-3">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 rounded-md bg-[color:var(--dp-navy)] px-3 py-2 text-white"
+        >
+          <RotateCcw className="size-4" />
+          Retry preview
+        </button>
+        <a
+          href={`/api/files/${fileId}/download`}
+          className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2"
+        >
+          <Download className="size-4" />
+          Download PDF
+        </a>
+      </div>
+    </section>
+  );
+}
+function StandardPdfViewer({
+  url,
+  fileId,
+  name,
+}: {
+  url: string;
+  fileId: string;
+  name: string;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [blobUrl, setBlobUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl = '';
+    setBlobUrl('');
+    setLoading(true);
+    setError('');
+    void (async () => {
+      try {
+        const response = await fetch(url, {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (!response.ok)
+          throw new Error(`PDF request failed (${response.status})`);
+        const sourceBlob = await response.blob();
+        if (!sourceBlob.size) throw new Error('PDF response was empty');
+        const blob = sourceBlob.type.toLowerCase().includes('pdf')
+          ? sourceBlob
+          : new Blob([sourceBlob], { type: 'application/pdf' });
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      } catch (reason) {
+        if (reason instanceof DOMException && reason.name === 'AbortError')
+          return;
+        setError(
+          'The standard PDF preview could not be loaded. You can retry or download the original file.',
+        );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [attempt, url]);
+  if (error)
+    return (
+      <Fallback
+        fileId={fileId}
+        message={error}
+        onRetry={() => setAttempt((value) => value + 1)}
+      />
+    );
+  return (
+    <section
+      className="relative h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px] overflow-hidden border border-slate-300 bg-white"
+      aria-label={`${name} standard PDF preview`}
+    >
+      {loading ? (
+        <div
+          className="dp-loading-overlay absolute inset-0 z-10 grid place-items-center"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="dp-loading-card flex items-center gap-3 rounded-xl border px-5 py-4 text-sm font-medium text-[color:var(--dp-navy)] shadow">
+            <span className="dp-loading-spinner size-5 animate-spin rounded-full border-2" />
+            Loading PDF…
+          </div>
+        </div>
+      ) : null}
+      {blobUrl ? (
+        <iframe title={name} src={blobUrl} className="h-full w-full bg-white" />
+      ) : null}
+    </section>
+  );
+}
+function pointer(e: React.PointerEvent<SVGSVGElement>): Point | null {
+  const m = e.currentTarget.getScreenCTM();
+  if (!m) return null;
+  const p = e.currentTarget.createSVGPoint();
+  p.x = e.clientX;
+  p.y = e.clientY;
+  const local = p.matrixTransform(m.inverse());
+  return { x: clamp(local.x / 1000, 0, 1), y: clamp(local.y / 1000, 0, 1) };
+}
 
-const PdfPage=memo(function PdfPage({fileId,version,page,active,zoom,rotation,register,onFirst,tool,color,marks,onAdd,onErase,searchMatches,activeSearchMatchIndex}:{fileId:string;version:string;page:Page;active:boolean;zoom:number;rotation:Rotation;register:(n:number,node:HTMLElement|null)=>void;onFirst:()=>void;tool:Tool;color:string;marks:Stroke[];onAdd:(n:number,s:Stroke)=>void;onErase:(n:number,p:Point)=>void;searchMatches:SearchMatch[];activeSearchMatchIndex:number|null}){const[attempt,setAttempt]=useState(0);const[loaded,setLoaded]=useState(false);const[failed,setFailed]=useState(false);const[draft,setDraft]=useState<Stroke|null>(null);const rotated=rotation===90||rotation===270;const base=Math.min(1100,Math.max(280,rotated?page.height:page.width));const width=Math.max(240,Math.round(base*zoom));const height=Math.max(240,Math.round(width*(rotated?page.width/page.height:page.height/page.width)));const planeWidth=rotated?height:width;const planeHeight=rotated?width:height;const ref=useCallback((node:HTMLElement|null)=>register(page.pageNumber,node),[page.pageNumber,register]);useEffect(()=>{if(!active){setLoaded(false);setFailed(false);setDraft(null)}},[active]);const finish=()=>{if(!draft)return;onAdd(page.pageNumber,draft.points.length===1?{...draft,points:[draft.points[0],draft.points[0]]}:draft);setDraft(null)};const down=(e:React.PointerEvent<SVGSVGElement>)=>{if(tool==='none')return;const p=pointer(e);if(!p)return;e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);if(tool==='eraser'){onErase(page.pageNumber,p);return}setDraft({id:crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`,tool,color:tool==='highlight'?'#facc15':color,width:tool==='highlight'?.028:.0045,points:[p]})};const move=(e:React.PointerEvent<SVGSVGElement>)=>{if(!draft)return;const p=pointer(e);if(!p)return;e.preventDefault();setDraft(s=>{if(!s)return s;const last=s.points[s.points.length-1];return Math.hypot(last.x-p.x,last.y-p.y)<.0015?s:{...s,points:[...s.points,p]}})};const visible=draft?[...marks,draft]:marks;return <article ref={ref} data-page-number={page.pageNumber} className="flex w-full justify-center px-4 py-3" aria-label={`Page ${page.pageNumber}`}><div data-theme-preserve-light className="relative shrink-0 overflow-hidden bg-white shadow-lg ring-1 ring-black/15" style={{width,height}}><div className="absolute left-1/2 top-1/2" style={{width:planeWidth,height:planeHeight,transform:`translate(-50%,-50%) rotate(${rotation}deg)`}}>{active&&page.ready?<img key={attempt} src={`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/page/${page.pageNumber}?v=${encodeURIComponent(version)}&attempt=${attempt}`} alt={`PDF page ${page.pageNumber}`} draggable={false} loading={page.pageNumber===1?'eager':'lazy'} fetchPriority={page.pageNumber===1?'high':'auto'} onLoad={()=>{setLoaded(true);setFailed(false);if(page.pageNumber===1)onFirst()}} onError={()=>{setLoaded(false);setFailed(true)}} className={`absolute inset-0 h-full w-full object-contain ${loaded?'opacity-100':'opacity-0'}`}/>:null}{searchMatches.length?<div className="pointer-events-none absolute inset-0 z-[1]" aria-label={`${searchMatches.length} exact search match${searchMatches.length===1?'':'es'} on page ${page.pageNumber}`}>{searchMatches.flatMap((match,matchIndex)=>match.rects.map((rect,rectIndex)=><span key={`${matchIndex}-${rectIndex}`} data-pdf-search-match={matchIndex} className={`absolute rounded-[2px] ${activeSearchMatchIndex===matchIndex?'bg-orange-300/85 ring-2 ring-orange-600/90':'bg-yellow-300/70 ring-1 ring-amber-500/70'}`} style={{left:`${rect.x*100}%`,top:`${rect.y*100}%`,width:`${rect.width*100}%`,height:`${rect.height*100}%`,mixBlendMode:'multiply'}}/>))}</div>:null}<svg viewBox="0 0 1000 1000" aria-label={`Annotations for page ${page.pageNumber}`} className={`absolute inset-0 h-full w-full ${tool==='none'?'pointer-events-none':tool==='eraser'?'cursor-cell':'cursor-crosshair'}`} style={{touchAction:tool==='none'?'auto':'none'}} onPointerDown={down} onPointerMove={move} onPointerUp={finish} onPointerCancel={()=>setDraft(null)}>{visible.map(s=><polyline key={s.id} points={s.points.map(p=>`${p.x*1000},${p.y*1000}`).join(' ')} fill="none" stroke={s.color} strokeWidth={s.width*1000} strokeLinecap="round" strokeLinejoin="round" opacity={s.tool==='highlight'?.38:1} style={s.tool==='highlight'?{mixBlendMode:'multiply'}:undefined}/>)}</svg></div>{(!active||!page.ready||!loaded)&&!failed?<div className="absolute inset-0 grid place-items-center bg-white text-sm text-slate-500">{page.ready?'Loading page…':'Preparing page…'}</div>:null}{failed?<div className="absolute inset-0 grid place-items-center bg-amber-50 text-sm"><button type="button" onClick={()=>{setFailed(false);setAttempt(v=>v+1)}} className="rounded border bg-white px-3 py-2"><RotateCcw className="mr-2 inline size-4"/>Retry page</button></div>:null}</div></article>});
+const PdfPage = memo(function PdfPage({
+  fileId,
+  version,
+  page,
+  active,
+  zoom,
+  rotation,
+  register,
+  onFirst,
+  tool,
+  color,
+  marks,
+  onAdd,
+  onErase,
+  searchMatches,
+  activeSearchMatchIndex,
+}: {
+  fileId: string;
+  version: string;
+  page: Page;
+  active: boolean;
+  zoom: number;
+  rotation: Rotation;
+  register: (n: number, node: HTMLElement | null) => void;
+  onFirst: () => void;
+  tool: Tool;
+  color: string;
+  marks: Stroke[];
+  onAdd: (n: number, s: Stroke) => void;
+  onErase: (n: number, p: Point) => void;
+  searchMatches: SearchMatch[];
+  activeSearchMatchIndex: number | null;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [draft, setDraft] = useState<Stroke | null>(null);
+  const rotated = rotation === 90 || rotation === 270;
+  const base = Math.min(
+    1100,
+    Math.max(280, rotated ? page.height : page.width),
+  );
+  const width = Math.max(240, Math.round(base * zoom));
+  const height = Math.max(
+    240,
+    Math.round(
+      width * (rotated ? page.width / page.height : page.height / page.width),
+    ),
+  );
+  const planeWidth = rotated ? height : width;
+  const planeHeight = rotated ? width : height;
+  const ref = useCallback(
+    (node: HTMLElement | null) => register(page.pageNumber, node),
+    [page.pageNumber, register],
+  );
+  useEffect(() => {
+    if (!active) {
+      setLoaded(false);
+      setFailed(false);
+      setDraft(null);
+    }
+  }, [active]);
+  const finish = () => {
+    if (!draft) return;
+    onAdd(
+      page.pageNumber,
+      draft.points.length === 1
+        ? { ...draft, points: [draft.points[0], draft.points[0]] }
+        : draft,
+    );
+    setDraft(null);
+  };
+  const down = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (tool === 'none') return;
+    const p = pointer(e);
+    if (!p) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (tool === 'eraser') {
+      onErase(page.pageNumber, p);
+      return;
+    }
+    setDraft({
+      id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      tool,
+      color: tool === 'highlight' ? '#facc15' : color,
+      width: tool === 'highlight' ? 0.028 : 0.0045,
+      points: [p],
+    });
+  };
+  const move = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!draft) return;
+    const p = pointer(e);
+    if (!p) return;
+    e.preventDefault();
+    setDraft((s) => {
+      if (!s) return s;
+      const last = s.points[s.points.length - 1];
+      return Math.hypot(last.x - p.x, last.y - p.y) < 0.0015
+        ? s
+        : { ...s, points: [...s.points, p] };
+    });
+  };
+  const visible = draft ? [...marks, draft] : marks;
+  return (
+    <article
+      ref={ref}
+      data-page-number={page.pageNumber}
+      className="flex w-full justify-center px-4 py-3"
+      aria-label={`Page ${page.pageNumber}`}
+    >
+      <div
+        data-theme-preserve-light
+        className="relative shrink-0 overflow-hidden bg-white shadow-lg ring-1 ring-black/15"
+        style={{ width, height }}
+      >
+        <div
+          className="absolute left-1/2 top-1/2"
+          style={{
+            width: planeWidth,
+            height: planeHeight,
+            transform: `translate(-50%,-50%) rotate(${rotation}deg)`,
+          }}
+        >
+          {active && page.ready ? (
+            <img
+              key={attempt}
+              src={`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/page/${page.pageNumber}?v=${encodeURIComponent(version)}&attempt=${attempt}`}
+              alt={`PDF page ${page.pageNumber}`}
+              draggable={false}
+              loading={page.pageNumber === 1 ? 'eager' : 'lazy'}
+              fetchPriority={page.pageNumber === 1 ? 'high' : 'auto'}
+              onLoad={() => {
+                setLoaded(true);
+                setFailed(false);
+                if (page.pageNumber === 1) onFirst();
+              }}
+              onError={() => {
+                setLoaded(false);
+                setFailed(true);
+              }}
+              className={`absolute inset-0 h-full w-full object-contain ${loaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : null}
+          {searchMatches.length ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              aria-label={`${searchMatches.length} exact search match${searchMatches.length === 1 ? '' : 'es'} on page ${page.pageNumber}`}
+            >
+              {searchMatches.flatMap((match, matchIndex) =>
+                match.rects.map((rect, rectIndex) => (
+                  <span
+                    key={`${matchIndex}-${rectIndex}`}
+                    data-pdf-search-match={matchIndex}
+                    className={`absolute rounded-[2px] ${activeSearchMatchIndex === matchIndex ? 'bg-orange-300/85 ring-2 ring-orange-600/90' : 'bg-yellow-300/70 ring-1 ring-amber-500/70'}`}
+                    style={{
+                      left: `${rect.x * 100}%`,
+                      top: `${rect.y * 100}%`,
+                      width: `${rect.width * 100}%`,
+                      height: `${rect.height * 100}%`,
+                      mixBlendMode: 'multiply',
+                    }}
+                  />
+                )),
+              )}
+            </div>
+          ) : null}
+          <svg
+            viewBox="0 0 1000 1000"
+            aria-label={`Annotations for page ${page.pageNumber}`}
+            className={`absolute inset-0 h-full w-full ${tool === 'none' ? 'pointer-events-none' : tool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair'}`}
+            style={{ touchAction: tool === 'none' ? 'auto' : 'none' }}
+            onPointerDown={down}
+            onPointerMove={move}
+            onPointerUp={finish}
+            onPointerCancel={() => setDraft(null)}
+          >
+            {visible.map((s) => (
+              <polyline
+                key={s.id}
+                points={s.points
+                  .map((p) => `${p.x * 1000},${p.y * 1000}`)
+                  .join(' ')}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={s.width * 1000}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={s.tool === 'highlight' ? 0.38 : 1}
+                style={
+                  s.tool === 'highlight'
+                    ? { mixBlendMode: 'multiply' }
+                    : undefined
+                }
+              />
+            ))}
+          </svg>
+        </div>
+        {(!active || !page.ready || !loaded) && !failed ? (
+          <div className="absolute inset-0 grid place-items-center bg-white text-sm text-slate-500">
+            {page.ready ? 'Loading page…' : 'Preparing page…'}
+          </div>
+        ) : null}
+        {failed ? (
+          <div className="absolute inset-0 grid place-items-center bg-amber-50 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setFailed(false);
+                setAttempt((v) => v + 1);
+              }}
+              className="rounded border bg-white px-3 py-2"
+            >
+              <RotateCcw className="mr-2 inline size-4" />
+              Retry page
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+});
 
-function stored(raw:string|null):Marks{try{const value=raw?JSON.parse(raw):{};return value&&typeof value==='object'&&!Array.isArray(value)?value as Marks:{}}catch{return{}}}
+function stored(raw: string | null): Marks {
+  try {
+    const value = raw ? JSON.parse(raw) : {};
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Marks)
+      : {};
+  } catch {
+    return {};
+  }
+}
 
-export function PdfViewer({url,fileId,name}:{url:string;fileId:string;name:string}){const wrap=useRef<HTMLElement>(null);const scroller=useRef<HTMLDivElement>(null);const lazyObserver=useRef<IntersectionObserver|null>(null);const currentObserver=useRef<IntersectionObserver|null>(null);const nodes=useRef(new Map<number,HTMLElement>());const pageRef=useRef<HTMLInputElement>(null);const searchRef=useRef<HTMLInputElement>(null);const marksRef=useRef<Marks>({});const searchMatchesRef=useRef<Record<number,SearchMatch[]>>({});const searchRequests=useRef(new Map<string,Promise<SearchMatch[]>>());const currentRef=useRef(1);const suppressCurrentUntil=useRef(0);const[attempt,setAttempt]=useState(0);const[state,setState]=useState<State|null>(null);const[manifest,setManifest]=useState<Manifest|null>(null);const[active,setActive]=useState(()=>new Set([1]));const[current,setCurrent]=useState(1);const[pageInput,setPageInput]=useState('1');const[zoom,setZoom]=useState(1);const[rotation,setRotation]=useState<Rotation>(0);const[firstReady,setFirstReady]=useState(false);const[standardUrl,setStandardUrl]=useState('');const[error,setError]=useState('');const[fullscreen,setFullscreen]=useState(false);const[message,setMessage]=useState('');const[searchOpen,setSearchOpen]=useState(false);const[query,setQuery]=useState('');const[results,setResults]=useState<Result[]>([]);const[resultIndex,setResultIndex]=useState(-1);const[searching,setSearching]=useState(false);const[searchMessage,setSearchMessage]=useState('');const[searchedQuery,setSearchedQuery]=useState('');const[searchMatches,setSearchMatches]=useState<Record<number,SearchMatch[]>>({});const[activeSearchMatch,setActiveSearchMatch]=useState<{pageNumber:number;matchIndex:number}|null>(null);const[annotationOpen,setAnnotationOpen]=useState(false);const[tool,setTool]=useState<Tool>('none');const[color,setColor]=useState('#2563eb');const[marks,setMarks]=useState<Marks>({});const[past,setPast]=useState<Marks[]>([]);const[future,setFuture]=useState<Marks[]>([]);
-const loadManifest=useCallback(async(url:string,signal:AbortSignal)=>{const r=await fetch(url,{credentials:'same-origin',signal,cache:'no-store'});if(!r.ok)throw new Error(`PDF manifest failed (${r.status})`);const next=await r.json() as Manifest;if(typeof next.versionKey!=='string'||next.versionKey.length<32||!Number.isSafeInteger(next.pageCount)||next.pageCount<1||next.pages.length!==next.pageCount)throw new Error('PDF manifest response was invalid');setManifest(next);setState(s=>({status:next.status,pageCount:next.pageCount,pagesReady:next.pagesReady,manifestUrl:s?.manifestUrl||url,statusUrl:s?.statusUrl,searchReady:Boolean(next.searchReady)}))},[]);
-useEffect(()=>{const controller=new AbortController();let stopped=false;const wait=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));setState(null);setManifest(null);setStandardUrl('');setFirstReady(false);setError('');setZoom(1);setRotation(0);currentRef.current=1;setCurrent(1);setActive(new Set([1]));void(async()=>{let lastError:unknown=null;for(let sessionAttempt=0;sessionAttempt<2;sessionAttempt+=1){try{const response=await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-session`,{method:'POST',credentials:'same-origin',signal:controller.signal,cache:'no-store'});if(!response.ok)throw new Error(`PDF session failed (${response.status})`);const next=await response.json() as State;if(stopped)return;setState(next);if(next.mode==='standard'){setStandardUrl(next.standardUrl||url);return}if(next.mode!=='prepared'||!next.manifestUrl)throw new Error('PDF session response was invalid');await loadManifest(next.manifestUrl,controller.signal);return}catch(reason){if(stopped||(reason instanceof DOMException&&reason.name==='AbortError'))return;lastError=reason;if(sessionAttempt===0)await wait(250)}}if(!stopped){console.error('Unable to open prepared PDF preview',{fileId,error:lastError});setError('The prepared PDF preview could not be opened. Retry the preview or download the original file.')}})();return()=>{stopped=true;controller.abort()}},[attempt,fileId,loadManifest,url]);
-const register=useCallback((n:number,node:HTMLElement|null)=>{const old=nodes.current.get(n);if(old&&old!==node){lazyObserver.current?.unobserve(old);currentObserver.current?.unobserve(old)}if(!node){nodes.current.delete(n);return}nodes.current.set(n,node);lazyObserver.current?.observe(node);currentObserver.current?.observe(node)},[]);
-useEffect(()=>{const root=scroller.current;if(!root||!manifest||typeof IntersectionObserver==='undefined')return;const lazy=new IntersectionObserver(entries=>setActive(previous=>{const next=new Set(previous);for(const entry of entries){const n=Number((entry.target as HTMLElement).dataset.pageNumber);if(Number.isSafeInteger(n))entry.isIntersecting?next.add(n):next.delete(n)}return next}),{root,rootMargin:'1600px 0px',threshold:0});const visible=new Map<number,number>();const now=new IntersectionObserver(entries=>{for(const entry of entries){const n=Number((entry.target as HTMLElement).dataset.pageNumber);if(Number.isSafeInteger(n))entry.isIntersecting?visible.set(n,entry.intersectionRatio):visible.delete(n)}const best=[...visible.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0]?.[0];if(best&&Date.now()>=suppressCurrentUntil.current){currentRef.current=best;setCurrent(best)}},{root,threshold:[0,.25,.5,.75,1]});lazyObserver.current=lazy;currentObserver.current=now;for(const node of nodes.current.values()){lazy.observe(node);now.observe(node)}return()=>{lazy.disconnect();now.disconnect();lazyObserver.current=null;currentObserver.current=null}},[manifest]);
-useEffect(()=>{if(document.activeElement!==pageRef.current)setPageInput(String(current))},[current]);useEffect(()=>{const fn=()=>setFullscreen(document.fullscreenElement===wrap.current);document.addEventListener('fullscreenchange',fn);return()=>document.removeEventListener('fullscreenchange',fn)},[]);
-const storageKey=manifest?`dp-pdf-annotations:${fileId}:${manifest.versionKey}`:'';useEffect(()=>{if(!storageKey)return;const value=stored(localStorage.getItem(storageKey));marksRef.current=value;setMarks(value);setPast([]);setFuture([])},[storageKey]);useEffect(()=>{if(storageKey)localStorage.setItem(storageKey,JSON.stringify(marks))},[marks,storageKey]);
-const replace=useCallback((next:Marks)=>{const previous=marksRef.current;marksRef.current=next;setMarks(next);setPast(s=>[...s.slice(-49),previous]);setFuture([])},[]);const add=useCallback((n:number,s:Stroke)=>replace({...marksRef.current,[String(n)]:[...(marksRef.current[String(n)]||[]),s]}),[replace]);const erase=useCallback((n:number,p:Point)=>{const key=String(n),list=marksRef.current[key]||[];let index=-1,distance=Infinity;list.forEach((s,i)=>s.points.forEach(q=>{const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<distance){distance=d;index=i}}));if(index>=0&&distance<=.04)replace({...marksRef.current,[key]:list.filter((_,i)=>i!==index)})},[replace]);const undo=()=>{const previous=past[past.length-1];if(!previous)return;setFuture(s=>[...s.slice(-49),marksRef.current]);marksRef.current=previous;setMarks(previous);setPast(s=>s.slice(0,-1))};const redo=()=>{const next=future[future.length-1];if(!next)return;setPast(s=>[...s.slice(-49),marksRef.current]);marksRef.current=next;setMarks(next);setFuture(s=>s.slice(0,-1))};
-const pageTop=useCallback((n:number)=>{const root=scroller.current,node=nodes.current.get(n);if(!root||!node)return null;return node.getBoundingClientRect().top-root.getBoundingClientRect().top+root.scrollTop},[]);const jump=useCallback((requested:number,behavior:ScrollBehavior='smooth')=>{if(!manifest)return;const n=clamp(Math.round(requested),1,manifest.pageCount);setActive(s=>new Set(s).add(n));currentRef.current=n;setCurrent(n);setPageInput(String(n));suppressCurrentUntil.current=Date.now()+(behavior==='smooth'?900:250);requestAnimationFrame(()=>{const root=scroller.current,top=pageTop(n);if(root&&top!==null)root.scrollTo({top:Math.max(0,top-8),behavior})})},[manifest,pageTop]);const scrollToSearchMatch=useCallback((pageNumber:number,matchIndex:number,behavior:ScrollBehavior='smooth')=>{suppressCurrentUntil.current=Date.now()+(behavior==='smooth'?1100:350);requestAnimationFrame(()=>requestAnimationFrame(()=>{const root=scroller.current,pageNode=nodes.current.get(pageNumber),hit=pageNode?.querySelector<HTMLElement>(`[data-pdf-search-match="${matchIndex}"]`);if(!root||!hit)return;const rootRect=root.getBoundingClientRect(),hitRect=hit.getBoundingClientRect();const target=root.scrollTop+(hitRect.top-rootRect.top)-Math.max(32,root.clientHeight*.32);root.scrollTo({top:Math.max(0,target),behavior});currentRef.current=pageNumber;setCurrent(pageNumber);setPageInput(String(pageNumber))}))},[]);const preserveCurrentPage=useCallback((mutate:()=>void)=>{const root=scroller.current,n=currentRef.current,node=nodes.current.get(n);const before=root&&node?node.getBoundingClientRect().top-root.getBoundingClientRect().top:null;suppressCurrentUntil.current=Date.now()+900;mutate();requestAnimationFrame(()=>requestAnimationFrame(()=>{const nextRoot=scroller.current,nextNode=nodes.current.get(n);if(nextRoot&&nextNode&&before!==null){const after=nextNode.getBoundingClientRect().top-nextRoot.getBoundingClientRect().top;nextRoot.scrollTop+=after-before}currentRef.current=n;setCurrent(n);setPageInput(String(n));suppressCurrentUntil.current=Date.now()+250}))},[]);const submitPage=(e:React.FormEvent)=>{e.preventDefault();const n=Number(pageInput);if(Number.isFinite(n))jump(n);else setPageInput(String(currentRef.current));pageRef.current?.blur()};const setZoomStable=useCallback((next:number)=>preserveCurrentPage(()=>setZoom(clamp(+next.toFixed(2),.5,2.5))),[preserveCurrentPage]);const fit=()=>{const root=scroller.current,p=manifest?.pages[currentRef.current-1];if(!root||!p)return;const rotated=rotation===90||rotation===270;setZoomStable((root.clientWidth-48)/Math.min(1100,Math.max(280,rotated?p.height:p.width)))};const rotate=()=>preserveCurrentPage(()=>setRotation(v=>((v+90)%360) as Rotation));const openOriginal=useCallback((purpose:'reader'|'print')=>{window.open(`/api/resource/${encodeURIComponent(fileId)}/content#page=${currentRef.current}`,'_blank','noopener,noreferrer');setMessage(purpose==='print'?'The original PDF opened in a new tab. Use its print control.':'The original PDF opened in a new tab.');setTimeout(()=>setMessage(''),5000)},[fileId]);const toggleFullscreen=async()=>document.fullscreenElement?document.exitFullscreen():wrap.current?.requestFullscreen?.();
-const loadExactMatches=useCallback(async(pageNumber:number,q:string):Promise<SearchMatch[]>=>{if(!manifest||!q)return[];const cached=searchMatchesRef.current[pageNumber];if(cached)return cached;const key=`${manifest.versionKey}:${q}:${pageNumber}`;const existing=searchRequests.current.get(key);if(existing)return existing;const request=(async()=>{try{const r=await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/search?q=${encodeURIComponent(q)}&v=${encodeURIComponent(manifest.versionKey)}&page=${pageNumber}`,{credentials:'same-origin',cache:'no-store'});const data=await r.json() as{ready?:boolean;matches?:SearchMatch[]};if(!r.ok||!data.ready)return[];const matches=Array.isArray(data.matches)?data.matches:[];searchMatchesRef.current={...searchMatchesRef.current,[pageNumber]:matches};setSearchMatches(searchMatchesRef.current);return matches}catch{return[]}finally{searchRequests.current.delete(key)}})();searchRequests.current.set(key,request);return request},[fileId,manifest]);const focusSearchResult=useCallback(async(pageNumber:number,q:string,edge:'first'|'last'='first')=>{jump(pageNumber,'auto');const matches=await loadExactMatches(pageNumber,q);if(!matches.length){setActiveSearchMatch(null);return}const matchIndex=edge==='last'?matches.length-1:0;setActiveSearchMatch({pageNumber,matchIndex});scrollToSearchMatch(pageNumber,matchIndex)},[jump,loadExactMatches,scrollToSearchMatch]);const runSearch=useCallback(async(e?:React.FormEvent)=>{e?.preventDefault();if(!manifest)return;const q=query.trim();if(q.length<2){setSearchMessage('Enter at least two characters.');return}setSearching(true);try{const r=await fetch(`/api/resource/${encodeURIComponent(fileId)}/pdf-preview/search?q=${encodeURIComponent(q)}&v=${encodeURIComponent(manifest.versionKey)}`,{credentials:'same-origin',cache:'no-store'});const data=await r.json() as{ready?:boolean;results?:Result[];message?:string};if(!r.ok&&r.status!==202)throw new Error(data.message||`Search failed (${r.status})`);if(data.ready===false){setResults([]);setResultIndex(-1);setSearchedQuery('');searchMatchesRef.current={};setSearchMatches({});setActiveSearchMatch(null);setSearchMessage('Exact search highlighting is not indexed yet. Run the preparation workflow once more for this PDF.');return}const found=Array.isArray(data.results)?data.results:[];setManifest(previous=>previous?{...previous,searchReady:true}:previous);setState(previous=>previous?{...previous,searchReady:true}:previous);searchRequests.current.clear();searchMatchesRef.current={};setSearchMatches({});setActiveSearchMatch(null);setSearchedQuery(q);setResults(found);setResultIndex(found.length?0:-1);setSearchMessage(found.length?`${found.length} matching page${found.length===1?'':'s'}. Matching words are highlighted in yellow.`:'No matches found.');if(found[0])void focusSearchResult(found[0].pageNumber,q)}catch(err){setResults([]);setResultIndex(-1);setSearchedQuery('');searchMatchesRef.current={};setSearchMatches({});setActiveSearchMatch(null);setSearchMessage(err instanceof Error?err.message:'Search failed.')}finally{setSearching(false)}},[fileId,focusSearchResult,manifest,query]);const moveResult=async(direction:-1|1)=>{if(!results.length)return;const currentResult=results[resultIndex];if(currentResult){const matches=await loadExactMatches(currentResult.pageNumber,searchedQuery);const currentMatchIndex=activeSearchMatch?.pageNumber===currentResult.pageNumber?activeSearchMatch.matchIndex:(direction>0?-1:matches.length);const candidate=currentMatchIndex+direction;if(candidate>=0&&candidate<matches.length){setActiveSearchMatch({pageNumber:currentResult.pageNumber,matchIndex:candidate});scrollToSearchMatch(currentResult.pageNumber,candidate);return}}const next=(resultIndex+direction+results.length)%results.length;setResultIndex(next);await focusSearchResult(results[next].pageNumber,searchedQuery,direction<0?'last':'first')};
-useEffect(()=>{const fn=(e:KeyboardEvent)=>{const mod=e.metaKey||e.ctrlKey;if(mod&&e.key.toLowerCase()==='f'){e.preventDefault();setSearchOpen(true);setTimeout(()=>searchRef.current?.focus(),0)}else if(mod&&e.key.toLowerCase()==='p'){e.preventDefault();openOriginal('print')}else if(e.key==='Escape'){setSearchOpen(false);setAnnotationOpen(false);setTool('none')}};document.addEventListener('keydown',fn);return()=>document.removeEventListener('keydown',fn)},[openOriginal]);
-const pages=useMemo(()=>manifest?.pages||[],[manifest]);const activeResult=resultIndex>=0?results[resultIndex]:null;const resultPages=useMemo(()=>new Set(results.map(result=>result.pageNumber)),[results]);useEffect(()=>{if(!searchedQuery)return;for(const pageNumber of active)if(resultPages.has(pageNumber)&&searchMatches[pageNumber]===undefined)void loadExactMatches(pageNumber,searchedQuery)},[active,loadExactMatches,resultPages,searchMatches,searchedQuery]);if(standardUrl)return <StandardPdfViewer url={standardUrl} fileId={fileId} name={name}/>;if(error)return <Fallback fileId={fileId} message={error} onRetry={()=>setAttempt(v=>v+1)}/>;return <section ref={wrap} className={`flex flex-col overflow-hidden border border-slate-300 bg-slate-100 ${fullscreen?'h-screen min-h-0':'h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px]'}`}><header className="flex shrink-0 items-center gap-1 overflow-x-auto bg-[#323639] px-2 py-1.5 text-white"><form onSubmit={submitPage} className="flex items-center gap-1" aria-label="Go to page"><input ref={pageRef} aria-label="Page number" type="text" autoComplete="off" spellCheck={false} inputMode="numeric" value={pageInput} onChange={e=>setPageInput(e.target.value.replace(/\D/g,'').slice(0,6))} onFocus={e=>e.currentTarget.select()} onBlur={()=>setPageInput(String(currentRef.current))} className="h-8 w-14 rounded-sm border border-white/25 bg-[#1f2022] px-2 text-center text-sm font-medium text-white placeholder:text-white/50 outline-none focus:border-white/60" style={{backgroundColor:'#1f2022',color:'#fff',WebkitTextFillColor:'#fff',caretColor:'#fff',colorScheme:'dark'}}/><span className="px-1 text-sm text-white/80">/ {manifest?.pageCount??'—'}</span></form><div className="mx-1 h-6 w-px bg-white/20"/><button type="button" aria-label="Zoom out" title="Zoom out" disabled={zoom<=.5} onClick={()=>setZoomStable(zoom-.15)} className={icon}><Minus className="size-5"/></button><button type="button" aria-label="Reset zoom" onClick={()=>setZoomStable(1)} className="h-8 min-w-16 rounded px-2 text-sm hover:bg-white/10">{Math.round(zoom*100)}%</button><button type="button" aria-label="Zoom in" title="Zoom in" disabled={zoom>=2.5} onClick={()=>setZoomStable(zoom+.15)} className={icon}><Plus className="size-5"/></button><button type="button" aria-label="Fit to width" onClick={fit} className="h-8 rounded px-2 text-xs font-semibold hover:bg-white/10">Fit</button><div className="mx-1 h-6 w-px bg-white/20"/><button type="button" aria-label="Rotate pages" onClick={rotate} className={icon}><RotateCw className="size-5"/></button><button type="button" aria-label="Search document" onClick={()=>{setSearchOpen(v=>!v);setTimeout(()=>searchRef.current?.focus(),0)}} className={`${icon} ${searchOpen?'bg-white/15':''}`}><Search className="size-5"/></button><button type="button" aria-label="Annotations" onClick={()=>setAnnotationOpen(v=>{if(v)setTool('none');return!v})} className={`${icon} ${annotationOpen?'bg-white/15':''}`}><Pencil className="size-5"/></button><button type="button" aria-label="Undo annotation" disabled={!past.length} onClick={undo} className={icon}><Undo2 className="size-5"/></button><button type="button" aria-label="Redo annotation" disabled={!future.length} onClick={redo} className={icon}><Redo2 className="size-5"/></button><div className="ml-auto h-6 w-px bg-white/20"/><a aria-label="Download PDF" title="Download PDF" href={`/api/files/${fileId}/download`} className={icon}><Download className="size-5"/></a><button type="button" aria-label="Print PDF" title="Print PDF" onClick={()=>openOriginal('print')} className={icon}><Printer className="size-5"/></button><button type="button" aria-label="Open standard reader" title="Open standard reader" onClick={()=>openOriginal('reader')} className={icon}><ExternalLink className="size-5"/></button><button type="button" aria-label={fullscreen?'Exit full screen':'Full screen'} onClick={()=>void toggleFullscreen()} className={icon}><Expand className="size-5"/></button></header>{searchOpen?<div className="shrink-0 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white"><form onSubmit={e=>void runSearch(e)} className="flex items-center gap-2"><Search className="size-4 text-white/60"/><input ref={searchRef} aria-label="Search PDF text" type="text" autoComplete="off" spellCheck={false} value={query} onChange={e=>setQuery(e.target.value.slice(0,100))} placeholder="Search in document" className="h-8 min-w-48 flex-1 rounded border border-white/25 bg-[#202124] px-2 text-sm font-medium text-white placeholder:text-white/45 outline-none focus:border-white/60" style={{backgroundColor:'#202124',color:'#fff',WebkitTextFillColor:'#fff',caretColor:'#fff',colorScheme:'dark'}}/><button type="submit" disabled={searching} className="h-8 rounded bg-white/15 px-3 text-sm">{searching?'Searching…':'Find'}</button>{results.length?<><button type="button" aria-label="Previous search result" onClick={()=>void moveResult(-1)} className={icon}><ChevronUp className="size-5"/></button><button type="button" aria-label="Next search result" onClick={()=>void moveResult(1)} className={icon}><ChevronDown className="size-5"/></button><span className="text-xs">{resultIndex+1} of {results.length}</span></>:null}<button type="button" aria-label="Close search" onClick={()=>setSearchOpen(false)} className={icon}><X className="size-5"/></button></form><div className="mt-1 flex min-h-5 gap-2 text-xs text-white/70" aria-live="polite"><span>{searchMessage}</span>{activeResult?<button type="button" onClick={()=>void focusSearchResult(activeResult.pageNumber,searchedQuery)} className="truncate text-left hover:underline"><strong>Page {activeResult.pageNumber}:</strong> {activeResult.snippet}</button>:null}</div></div>:null}{annotationOpen?<div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white"><span className="text-xs font-semibold uppercase text-white/60">Annotate</span><button type="button" onClick={()=>setTool('pen')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='pen'?'bg-white/15':''}`}><Pencil className="size-4"/>Pen</button><button type="button" onClick={()=>setTool('highlight')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='highlight'?'bg-white/15':''}`}><Highlighter className="size-4"/>Highlight</button><button type="button" onClick={()=>setTool('eraser')} className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool==='eraser'?'bg-white/15':''}`}><Eraser className="size-4"/>Erase</button><label className="inline-flex items-center gap-2 text-xs text-white/70">Pen colour<input aria-label="Annotation colour" type="color" value={color} onChange={e=>setColor(e.target.value)} className="size-7"/></label><button type="button" disabled={!(marks[String(current)]||[]).length} onClick={()=>replace({...marksRef.current,[String(current)]:[]})} className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"><Trash2 className="size-4"/>Clear page</button><button type="button" disabled={!Object.values(marks as Record<string,Stroke[]>).some((list:Stroke[])=>list.length)} onClick={()=>replace({})} className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"><Trash2 className="size-4"/>Clear all</button><span className="ml-auto text-xs text-white/50">Saved only in this browser.</span></div>:null}{message?<p className="shrink-0 bg-[#3c4043] px-3 pb-2 text-xs text-white/70" role="status">{message}</p>:null}<div ref={scroller} className="relative min-h-0 flex-1 overflow-auto bg-slate-300" aria-label={`${name} continuous PDF preview`}>{(!manifest||!firstReady)&&<Loading state={state}/>} {pages.map(page=><PdfPage key={page.pageNumber} fileId={fileId} version={manifest!.versionKey} page={page} active={active.has(page.pageNumber)} zoom={zoom} rotation={rotation} register={register} onFirst={()=>setFirstReady(true)} tool={tool} color={color} marks={marks[String(page.pageNumber)]||[]} onAdd={add} onErase={erase} searchMatches={searchMatches[page.pageNumber]||[]} activeSearchMatchIndex={activeSearchMatch?.pageNumber===page.pageNumber?activeSearchMatch.matchIndex:null}/>)}</div></section>}
+export function PdfViewer({
+  url,
+  fileId,
+  name,
+}: {
+  url: string;
+  fileId: string;
+  name: string;
+}) {
+  const wrap = useRef<HTMLElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const lazyObserver = useRef<IntersectionObserver | null>(null);
+  const currentObserver = useRef<IntersectionObserver | null>(null);
+  const nodes = useRef(new Map<number, HTMLElement>());
+  const pageRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const marksRef = useRef<Marks>({});
+  const searchMatchesRef = useRef<Record<number, SearchMatch[]>>({});
+  const searchRequests = useRef(new Map<string, Promise<SearchMatch[]>>());
+  const currentRef = useRef(1);
+  const suppressCurrentUntil = useRef(0);
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<State | null>(null);
+  const [manifest, setManifest] = useState<Manifest | null>(null);
+  const [active, setActive] = useState(() => new Set([1]));
+  const [current, setCurrent] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState<Rotation>(0);
+  const [firstReady, setFirstReady] = useState(false);
+  const [standardUrl, setStandardUrl] = useState('');
+  const [error, setError] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Result[]>([]);
+  const [resultIndex, setResultIndex] = useState(-1);
+  const [searching, setSearching] = useState(false);
+  const [searchMessage, setSearchMessage] = useState('');
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [searchMatches, setSearchMatches] = useState<
+    Record<number, SearchMatch[]>
+  >({});
+  const [activeSearchMatch, setActiveSearchMatch] = useState<{
+    pageNumber: number;
+    matchIndex: number;
+  } | null>(null);
+  const [annotationOpen, setAnnotationOpen] = useState(false);
+  const [tool, setTool] = useState<Tool>('none');
+  const [color, setColor] = useState('#2563eb');
+  const [marks, setMarks] = useState<Marks>({});
+  const [past, setPast] = useState<Marks[]>([]);
+  const [future, setFuture] = useState<Marks[]>([]);
+  const loadManifest = useCallback(async (url: string, signal: AbortSignal) => {
+    const r = await fetch(url, {
+      credentials: 'same-origin',
+      signal,
+      cache: 'no-store',
+    });
+    if (!r.ok) throw new Error(`PDF manifest failed (${r.status})`);
+    const next = (await r.json()) as Manifest;
+    if (
+      typeof next.versionKey !== 'string' ||
+      next.versionKey.length < 32 ||
+      !Number.isSafeInteger(next.pageCount) ||
+      next.pageCount < 1 ||
+      next.pages.length !== next.pageCount
+    )
+      throw new Error('PDF manifest response was invalid');
+    setManifest(next);
+    setState((s) => ({
+      status: next.status,
+      pageCount: next.pageCount,
+      pagesReady: next.pagesReady,
+      manifestUrl: s?.manifestUrl || url,
+      statusUrl: s?.statusUrl,
+      searchReady: Boolean(next.searchReady),
+    }));
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    let stopped = false;
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
+    setState(null);
+    setManifest(null);
+    setStandardUrl('');
+    setFirstReady(false);
+    setError('');
+    setZoom(1);
+    setRotation(0);
+    currentRef.current = 1;
+    setCurrent(1);
+    setActive(new Set([1]));
+    void (async () => {
+      let lastError: unknown = null;
+      for (let sessionAttempt = 0; sessionAttempt < 2; sessionAttempt += 1) {
+        try {
+          const response = await fetch(
+            `/api/resource/${encodeURIComponent(fileId)}/pdf-session`,
+            {
+              method: 'POST',
+              credentials: 'same-origin',
+              signal: controller.signal,
+              cache: 'no-store',
+            },
+          );
+          if (!response.ok)
+            throw new Error(`PDF session failed (${response.status})`);
+          const next = (await response.json()) as State;
+          if (stopped) return;
+          setState(next);
+          if (next.mode === 'standard') {
+            setStandardUrl(next.standardUrl || url);
+            return;
+          }
+          if (next.mode !== 'prepared' || !next.manifestUrl)
+            throw new Error('PDF session response was invalid');
+          await loadManifest(next.manifestUrl, controller.signal);
+          return;
+        } catch (reason) {
+          if (
+            stopped ||
+            (reason instanceof DOMException && reason.name === 'AbortError')
+          )
+            return;
+          lastError = reason;
+          if (sessionAttempt === 0) await wait(250);
+        }
+      }
+      if (!stopped) {
+        console.error('Unable to open prepared PDF preview', {
+          fileId,
+          error: lastError,
+        });
+        setError(
+          'The prepared PDF preview could not be opened. Retry the preview or download the original file.',
+        );
+      }
+    })();
+    return () => {
+      stopped = true;
+      controller.abort();
+    };
+  }, [attempt, fileId, loadManifest, url]);
+  const register = useCallback((n: number, node: HTMLElement | null) => {
+    const old = nodes.current.get(n);
+    if (old && old !== node) {
+      lazyObserver.current?.unobserve(old);
+      currentObserver.current?.unobserve(old);
+    }
+    if (!node) {
+      nodes.current.delete(n);
+      return;
+    }
+    nodes.current.set(n, node);
+    lazyObserver.current?.observe(node);
+    currentObserver.current?.observe(node);
+  }, []);
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root || !manifest || typeof IntersectionObserver === 'undefined')
+      return;
+    const lazy = new IntersectionObserver(
+      (entries) =>
+        setActive((previous) => {
+          const next = new Set(previous);
+          for (const entry of entries) {
+            const n = Number((entry.target as HTMLElement).dataset.pageNumber);
+            if (Number.isSafeInteger(n))
+              entry.isIntersecting ? next.add(n) : next.delete(n);
+          }
+          return next;
+        }),
+      { root, rootMargin: '1600px 0px', threshold: 0 },
+    );
+    const visible = new Map<number, number>();
+    const now = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const n = Number((entry.target as HTMLElement).dataset.pageNumber);
+          if (Number.isSafeInteger(n))
+            entry.isIntersecting
+              ? visible.set(n, entry.intersectionRatio)
+              : visible.delete(n);
+        }
+        const best = [...visible.entries()].sort(
+          (a, b) => b[1] - a[1] || a[0] - b[0],
+        )[0]?.[0];
+        if (best && Date.now() >= suppressCurrentUntil.current) {
+          currentRef.current = best;
+          setCurrent(best);
+        }
+      },
+      { root, threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    lazyObserver.current = lazy;
+    currentObserver.current = now;
+    for (const node of nodes.current.values()) {
+      lazy.observe(node);
+      now.observe(node);
+    }
+    return () => {
+      lazy.disconnect();
+      now.disconnect();
+      lazyObserver.current = null;
+      currentObserver.current = null;
+    };
+  }, [manifest]);
+  useEffect(() => {
+    if (document.activeElement !== pageRef.current)
+      setPageInput(String(current));
+  }, [current]);
+  useEffect(() => {
+    const fn = () => setFullscreen(document.fullscreenElement === wrap.current);
+    document.addEventListener('fullscreenchange', fn);
+    return () => document.removeEventListener('fullscreenchange', fn);
+  }, []);
+  const storageKey = manifest
+    ? `dp-pdf-annotations:${fileId}:${manifest.versionKey}`
+    : '';
+  useEffect(() => {
+    if (!storageKey) return;
+    const value = stored(localStorage.getItem(storageKey));
+    marksRef.current = value;
+    setMarks(value);
+    setPast([]);
+    setFuture([]);
+  }, [storageKey]);
+  useEffect(() => {
+    if (storageKey) localStorage.setItem(storageKey, JSON.stringify(marks));
+  }, [marks, storageKey]);
+  const replace = useCallback((next: Marks) => {
+    const previous = marksRef.current;
+    marksRef.current = next;
+    setMarks(next);
+    setPast((s) => [...s.slice(-49), previous]);
+    setFuture([]);
+  }, []);
+  const add = useCallback(
+    (n: number, s: Stroke) =>
+      replace({
+        ...marksRef.current,
+        [String(n)]: [...(marksRef.current[String(n)] || []), s],
+      }),
+    [replace],
+  );
+  const erase = useCallback(
+    (n: number, p: Point) => {
+      const key = String(n),
+        list = marksRef.current[key] || [];
+      let index = -1,
+        distance = Infinity;
+      list.forEach((s, i) =>
+        s.points.forEach((q) => {
+          const d = Math.hypot(q.x - p.x, q.y - p.y);
+          if (d < distance) {
+            distance = d;
+            index = i;
+          }
+        }),
+      );
+      if (index >= 0 && distance <= 0.04)
+        replace({
+          ...marksRef.current,
+          [key]: list.filter((_, i) => i !== index),
+        });
+    },
+    [replace],
+  );
+  const undo = () => {
+    const previous = past[past.length - 1];
+    if (!previous) return;
+    setFuture((s) => [...s.slice(-49), marksRef.current]);
+    marksRef.current = previous;
+    setMarks(previous);
+    setPast((s) => s.slice(0, -1));
+  };
+  const redo = () => {
+    const next = future[future.length - 1];
+    if (!next) return;
+    setPast((s) => [...s.slice(-49), marksRef.current]);
+    marksRef.current = next;
+    setMarks(next);
+    setFuture((s) => s.slice(0, -1));
+  };
+  const pageTop = useCallback((n: number) => {
+    const root = scroller.current,
+      node = nodes.current.get(n);
+    if (!root || !node) return null;
+    return (
+      node.getBoundingClientRect().top -
+      root.getBoundingClientRect().top +
+      root.scrollTop
+    );
+  }, []);
+  const jump = useCallback(
+    (requested: number, behavior: ScrollBehavior = 'smooth') => {
+      if (!manifest) return;
+      const n = clamp(Math.round(requested), 1, manifest.pageCount);
+      setActive((s) => new Set(s).add(n));
+      currentRef.current = n;
+      setCurrent(n);
+      setPageInput(String(n));
+      suppressCurrentUntil.current =
+        Date.now() + (behavior === 'smooth' ? 900 : 250);
+      requestAnimationFrame(() => {
+        const root = scroller.current,
+          top = pageTop(n);
+        if (root && top !== null)
+          root.scrollTo({ top: Math.max(0, top - 8), behavior });
+      });
+    },
+    [manifest, pageTop],
+  );
+  const scrollToSearchMatch = useCallback(
+    (
+      pageNumber: number,
+      matchIndex: number,
+      behavior: ScrollBehavior = 'smooth',
+    ) => {
+      suppressCurrentUntil.current =
+        Date.now() + (behavior === 'smooth' ? 1100 : 350);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const root = scroller.current,
+            pageNode = nodes.current.get(pageNumber),
+            hit = pageNode?.querySelector<HTMLElement>(
+              `[data-pdf-search-match="${matchIndex}"]`,
+            );
+          if (!root || !hit) return;
+          const rootRect = root.getBoundingClientRect(),
+            hitRect = hit.getBoundingClientRect();
+          const target =
+            root.scrollTop +
+            (hitRect.top - rootRect.top) -
+            Math.max(32, root.clientHeight * 0.32);
+          root.scrollTo({ top: Math.max(0, target), behavior });
+          currentRef.current = pageNumber;
+          setCurrent(pageNumber);
+          setPageInput(String(pageNumber));
+        }),
+      );
+    },
+    [],
+  );
+  const preserveCurrentPage = useCallback((mutate: () => void) => {
+    const root = scroller.current,
+      n = currentRef.current,
+      node = nodes.current.get(n);
+    const before =
+      root && node
+        ? node.getBoundingClientRect().top - root.getBoundingClientRect().top
+        : null;
+    suppressCurrentUntil.current = Date.now() + 900;
+    mutate();
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const nextRoot = scroller.current,
+          nextNode = nodes.current.get(n);
+        if (nextRoot && nextNode && before !== null) {
+          const after =
+            nextNode.getBoundingClientRect().top -
+            nextRoot.getBoundingClientRect().top;
+          nextRoot.scrollTop += after - before;
+        }
+        currentRef.current = n;
+        setCurrent(n);
+        setPageInput(String(n));
+        suppressCurrentUntil.current = Date.now() + 250;
+      }),
+    );
+  }, []);
+  const submitPage = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = Number(pageInput);
+    if (Number.isFinite(n)) jump(n);
+    else setPageInput(String(currentRef.current));
+    pageRef.current?.blur();
+  };
+  const setZoomStable = useCallback(
+    (next: number) =>
+      preserveCurrentPage(() => setZoom(clamp(+next.toFixed(2), 0.5, 2.5))),
+    [preserveCurrentPage],
+  );
+  const fit = () => {
+    const root = scroller.current,
+      p = manifest?.pages[currentRef.current - 1];
+    if (!root || !p) return;
+    const rotated = rotation === 90 || rotation === 270;
+    setZoomStable(
+      (root.clientWidth - 48) /
+        Math.min(1100, Math.max(280, rotated ? p.height : p.width)),
+    );
+  };
+  const rotate = () =>
+    preserveCurrentPage(() => setRotation((v) => ((v + 90) % 360) as Rotation));
+  const openOriginal = useCallback(
+    (purpose: 'reader' | 'print') => {
+      window.open(
+        `/api/resource/${encodeURIComponent(fileId)}/content#page=${currentRef.current}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      setMessage(
+        purpose === 'print'
+          ? 'The original PDF opened in a new tab. Use its print control.'
+          : 'The original PDF opened in a new tab.',
+      );
+      setTimeout(() => setMessage(''), 5000);
+    },
+    [fileId],
+  );
+  const toggleFullscreen = async () =>
+    document.fullscreenElement
+      ? document.exitFullscreen()
+      : wrap.current?.requestFullscreen?.();
+  const loadExactMatches = useCallback(
+    async (pageNumber: number, q: string): Promise<SearchMatch[]> => {
+      if (!manifest || !q) return [];
+      const cached = searchMatchesRef.current[pageNumber];
+      if (cached) return cached;
+      const key = `${manifest.versionKey}:${q}:${pageNumber}`;
+      const existing = searchRequests.current.get(key);
+      if (existing) return existing;
+      const request = (async () => {
+        try {
+          const r = await fetch(
+            `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/search?q=${encodeURIComponent(q)}&v=${encodeURIComponent(manifest.versionKey)}&page=${pageNumber}`,
+            { credentials: 'same-origin', cache: 'no-store' },
+          );
+          const data = (await r.json()) as {
+            ready?: boolean;
+            matches?: SearchMatch[];
+          };
+          if (!r.ok || !data.ready) return [];
+          const matches = Array.isArray(data.matches) ? data.matches : [];
+          searchMatchesRef.current = {
+            ...searchMatchesRef.current,
+            [pageNumber]: matches,
+          };
+          setSearchMatches(searchMatchesRef.current);
+          return matches;
+        } catch {
+          return [];
+        } finally {
+          searchRequests.current.delete(key);
+        }
+      })();
+      searchRequests.current.set(key, request);
+      return request;
+    },
+    [fileId, manifest],
+  );
+  const focusSearchResult = useCallback(
+    async (pageNumber: number, q: string, edge: 'first' | 'last' = 'first') => {
+      jump(pageNumber, 'auto');
+      const matches = await loadExactMatches(pageNumber, q);
+      if (!matches.length) {
+        setActiveSearchMatch(null);
+        return;
+      }
+      const matchIndex = edge === 'last' ? matches.length - 1 : 0;
+      setActiveSearchMatch({ pageNumber, matchIndex });
+      scrollToSearchMatch(pageNumber, matchIndex);
+    },
+    [jump, loadExactMatches, scrollToSearchMatch],
+  );
+  const runSearch = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
+      if (!manifest) return;
+      const q = query.trim();
+      if (q.length < 2) {
+        setSearchMessage('Enter at least two characters.');
+        return;
+      }
+      setSearching(true);
+      try {
+        const r = await fetch(
+          `/api/resource/${encodeURIComponent(fileId)}/pdf-preview/search?q=${encodeURIComponent(q)}&v=${encodeURIComponent(manifest.versionKey)}`,
+          { credentials: 'same-origin', cache: 'no-store' },
+        );
+        const data = (await r.json()) as {
+          ready?: boolean;
+          results?: Result[];
+          message?: string;
+        };
+        if (!r.ok && r.status !== 202)
+          throw new Error(data.message || `Search failed (${r.status})`);
+        if (data.ready === false) {
+          setResults([]);
+          setResultIndex(-1);
+          setSearchedQuery('');
+          searchMatchesRef.current = {};
+          setSearchMatches({});
+          setActiveSearchMatch(null);
+          setSearchMessage(
+            'Exact search highlighting is not indexed yet. Run the preparation workflow once more for this PDF.',
+          );
+          return;
+        }
+        const found = Array.isArray(data.results) ? data.results : [];
+        setManifest((previous) =>
+          previous ? { ...previous, searchReady: true } : previous,
+        );
+        setState((previous) =>
+          previous ? { ...previous, searchReady: true } : previous,
+        );
+        searchRequests.current.clear();
+        searchMatchesRef.current = {};
+        setSearchMatches({});
+        setActiveSearchMatch(null);
+        setSearchedQuery(q);
+        setResults(found);
+        setResultIndex(found.length ? 0 : -1);
+        setSearchMessage(
+          found.length
+            ? `${found.length} matching page${found.length === 1 ? '' : 's'}. Matching words are highlighted in yellow.`
+            : 'No matches found.',
+        );
+        if (found[0]) void focusSearchResult(found[0].pageNumber, q);
+      } catch (err) {
+        setResults([]);
+        setResultIndex(-1);
+        setSearchedQuery('');
+        searchMatchesRef.current = {};
+        setSearchMatches({});
+        setActiveSearchMatch(null);
+        setSearchMessage(err instanceof Error ? err.message : 'Search failed.');
+      } finally {
+        setSearching(false);
+      }
+    },
+    [fileId, focusSearchResult, manifest, query],
+  );
+  const moveResult = async (direction: -1 | 1) => {
+    if (!results.length) return;
+    const currentResult = results[resultIndex];
+    if (currentResult) {
+      const matches = await loadExactMatches(
+        currentResult.pageNumber,
+        searchedQuery,
+      );
+      const currentMatchIndex =
+        activeSearchMatch?.pageNumber === currentResult.pageNumber
+          ? activeSearchMatch.matchIndex
+          : direction > 0
+            ? -1
+            : matches.length;
+      const candidate = currentMatchIndex + direction;
+      if (candidate >= 0 && candidate < matches.length) {
+        setActiveSearchMatch({
+          pageNumber: currentResult.pageNumber,
+          matchIndex: candidate,
+        });
+        scrollToSearchMatch(currentResult.pageNumber, candidate);
+        return;
+      }
+    }
+    const next = (resultIndex + direction + results.length) % results.length;
+    setResultIndex(next);
+    await focusSearchResult(
+      results[next].pageNumber,
+      searchedQuery,
+      direction < 0 ? 'last' : 'first',
+    );
+  };
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+        setTimeout(() => searchRef.current?.focus(), 0);
+      } else if (mod && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        openOriginal('print');
+      } else if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setAnnotationOpen(false);
+        setTool('none');
+      }
+    };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
+  }, [openOriginal]);
+  const pages = useMemo(() => manifest?.pages || [], [manifest]);
+  const activeResult = resultIndex >= 0 ? results[resultIndex] : null;
+  const resultPages = useMemo(
+    () => new Set(results.map((result) => result.pageNumber)),
+    [results],
+  );
+  useEffect(() => {
+    if (!searchedQuery) return;
+    for (const pageNumber of active)
+      if (
+        resultPages.has(pageNumber) &&
+        searchMatches[pageNumber] === undefined
+      )
+        void loadExactMatches(pageNumber, searchedQuery);
+  }, [active, loadExactMatches, resultPages, searchMatches, searchedQuery]);
+  if (standardUrl)
+    return <StandardPdfViewer url={standardUrl} fileId={fileId} name={name} />;
+  if (error)
+    return (
+      <Fallback
+        fileId={fileId}
+        message={error}
+        onRetry={() => setAttempt((v) => v + 1)}
+      />
+    );
+  return (
+    <section
+      ref={wrap}
+      className={`flex flex-col overflow-hidden border border-slate-300 bg-slate-100 ${fullscreen ? 'h-screen min-h-0' : 'h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px]'}`}
+    >
+      <header className="flex shrink-0 items-center gap-1 overflow-x-auto bg-[#323639] px-2 py-1.5 text-white">
+        <form
+          onSubmit={submitPage}
+          className="flex items-center gap-1"
+          aria-label="Go to page"
+        >
+          <input
+            ref={pageRef}
+            aria-label="Page number"
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            inputMode="numeric"
+            value={pageInput}
+            onChange={(e) =>
+              setPageInput(e.target.value.replace(/\D/g, '').slice(0, 6))
+            }
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={() => setPageInput(String(currentRef.current))}
+            className="h-8 w-14 rounded-sm border border-white/25 bg-[#1f2022] px-2 text-center text-sm font-medium text-white placeholder:text-white/50 outline-none focus:border-white/60"
+            style={{
+              backgroundColor: '#1f2022',
+              color: '#fff',
+              WebkitTextFillColor: '#fff',
+              caretColor: '#fff',
+              colorScheme: 'dark',
+            }}
+          />
+          <span className="px-1 text-sm text-white/80">
+            / {manifest?.pageCount ?? '—'}
+          </span>
+        </form>
+        <div className="mx-1 h-6 w-px bg-white/20" />
+        <button
+          type="button"
+          aria-label="Zoom out"
+          title="Zoom out"
+          disabled={zoom <= 0.5}
+          onClick={() => setZoomStable(zoom - 0.15)}
+          className={icon}
+        >
+          <Minus className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Reset zoom"
+          onClick={() => setZoomStable(1)}
+          className="h-8 min-w-16 rounded px-2 text-sm hover:bg-white/10"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          title="Zoom in"
+          disabled={zoom >= 2.5}
+          onClick={() => setZoomStable(zoom + 0.15)}
+          className={icon}
+        >
+          <Plus className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Fit to width"
+          onClick={fit}
+          className="h-8 rounded px-2 text-xs font-semibold hover:bg-white/10"
+        >
+          Fit
+        </button>
+        <div className="mx-1 h-6 w-px bg-white/20" />
+        <button
+          type="button"
+          aria-label="Rotate pages"
+          onClick={rotate}
+          className={icon}
+        >
+          <RotateCw className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Search document"
+          onClick={() => {
+            setSearchOpen((v) => !v);
+            setTimeout(() => searchRef.current?.focus(), 0);
+          }}
+          className={`${icon} ${searchOpen ? 'bg-white/15' : ''}`}
+        >
+          <Search className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Annotations"
+          onClick={() =>
+            setAnnotationOpen((v) => {
+              if (v) setTool('none');
+              return !v;
+            })
+          }
+          className={`${icon} ${annotationOpen ? 'bg-white/15' : ''}`}
+        >
+          <Pencil className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Undo annotation"
+          disabled={!past.length}
+          onClick={undo}
+          className={icon}
+        >
+          <Undo2 className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Redo annotation"
+          disabled={!future.length}
+          onClick={redo}
+          className={icon}
+        >
+          <Redo2 className="size-5" />
+        </button>
+        <div className="ml-auto h-6 w-px bg-white/20" />
+        <a
+          aria-label="Download PDF"
+          title="Download PDF"
+          href={`/api/files/${fileId}/download`}
+          className={icon}
+        >
+          <Download className="size-5" />
+        </a>
+        <button
+          type="button"
+          aria-label="Print PDF"
+          title="Print PDF"
+          onClick={() => openOriginal('print')}
+          className={icon}
+        >
+          <Printer className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Open standard reader"
+          title="Open standard reader"
+          onClick={() => openOriginal('reader')}
+          className={icon}
+        >
+          <ExternalLink className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+          onClick={() => void toggleFullscreen()}
+          className={icon}
+        >
+          <Expand className="size-5" />
+        </button>
+      </header>
+      {searchOpen ? (
+        <div className="shrink-0 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white">
+          <form
+            onSubmit={(e) => void runSearch(e)}
+            className="flex items-center gap-2"
+          >
+            <Search className="size-4 text-white/60" />
+            <input
+              ref={searchRef}
+              aria-label="Search PDF text"
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              value={query}
+              onChange={(e) => setQuery(e.target.value.slice(0, 100))}
+              placeholder="Search in document"
+              className="h-8 min-w-48 flex-1 rounded border border-white/25 bg-[#202124] px-2 text-sm font-medium text-white placeholder:text-white/45 outline-none focus:border-white/60"
+              style={{
+                backgroundColor: '#202124',
+                color: '#fff',
+                WebkitTextFillColor: '#fff',
+                caretColor: '#fff',
+                colorScheme: 'dark',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={searching}
+              className="h-8 rounded bg-white/15 px-3 text-sm"
+            >
+              {searching ? 'Searching…' : 'Find'}
+            </button>
+            {results.length ? (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous search result"
+                  onClick={() => void moveResult(-1)}
+                  className={icon}
+                >
+                  <ChevronUp className="size-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next search result"
+                  onClick={() => void moveResult(1)}
+                  className={icon}
+                >
+                  <ChevronDown className="size-5" />
+                </button>
+                <span className="text-xs">
+                  {resultIndex + 1} of {results.length}
+                </span>
+              </>
+            ) : null}
+            <button
+              type="button"
+              aria-label="Close search"
+              onClick={() => setSearchOpen(false)}
+              className={icon}
+            >
+              <X className="size-5" />
+            </button>
+          </form>
+          <div
+            className="mt-1 flex min-h-5 gap-2 text-xs text-white/70"
+            aria-live="polite"
+          >
+            <span>{searchMessage}</span>
+            {activeResult ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void focusSearchResult(activeResult.pageNumber, searchedQuery)
+                }
+                className="truncate text-left hover:underline"
+              >
+                <strong>Page {activeResult.pageNumber}:</strong>{' '}
+                {activeResult.snippet}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {annotationOpen ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 bg-[#3c4043] px-3 py-2 text-white">
+          <span className="text-xs font-semibold uppercase text-white/60">
+            Annotate
+          </span>
+          <button
+            type="button"
+            onClick={() => setTool('pen')}
+            className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool === 'pen' ? 'bg-white/15' : ''}`}
+          >
+            <Pencil className="size-4" />
+            Pen
+          </button>
+          <button
+            type="button"
+            onClick={() => setTool('highlight')}
+            className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool === 'highlight' ? 'bg-white/15' : ''}`}
+          >
+            <Highlighter className="size-4" />
+            Highlight
+          </button>
+          <button
+            type="button"
+            onClick={() => setTool('eraser')}
+            className={`inline-flex h-8 items-center gap-2 rounded px-2 text-sm ${tool === 'eraser' ? 'bg-white/15' : ''}`}
+          >
+            <Eraser className="size-4" />
+            Erase
+          </button>
+          <label className="inline-flex items-center gap-2 text-xs text-white/70">
+            Pen colour
+            <input
+              aria-label="Annotation colour"
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              className="size-7"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!(marks[String(current)] || []).length}
+            onClick={() =>
+              replace({ ...marksRef.current, [String(current)]: [] })
+            }
+            className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"
+          >
+            <Trash2 className="size-4" />
+            Clear page
+          </button>
+          <button
+            type="button"
+            disabled={
+              !Object.values(marks as Record<string, Stroke[]>).some(
+                (list: Stroke[]) => list.length,
+              )
+            }
+            onClick={() => replace({})}
+            className="inline-flex h-8 items-center gap-2 rounded px-2 text-sm disabled:opacity-35"
+          >
+            <Trash2 className="size-4" />
+            Clear all
+          </button>
+          <span className="ml-auto text-xs text-white/50">
+            Saved only in this browser.
+          </span>
+        </div>
+      ) : null}
+      {message ? (
+        <p
+          className="shrink-0 bg-[#3c4043] px-3 pb-2 text-xs text-white/70"
+          role="status"
+        >
+          {message}
+        </p>
+      ) : null}
+      <div
+        ref={scroller}
+        className="relative min-h-0 flex-1 overflow-auto bg-slate-300"
+        aria-label={`${name} continuous PDF preview`}
+      >
+        {(!manifest || !firstReady) && <Loading state={state} />}{' '}
+        {pages.map((page) => (
+          <PdfPage
+            key={page.pageNumber}
+            fileId={fileId}
+            version={manifest!.versionKey}
+            page={page}
+            active={active.has(page.pageNumber)}
+            zoom={zoom}
+            rotation={rotation}
+            register={register}
+            onFirst={() => setFirstReady(true)}
+            tool={tool}
+            color={color}
+            marks={marks[String(page.pageNumber)] || []}
+            onAdd={add}
+            onErase={erase}
+            searchMatches={searchMatches[page.pageNumber] || []}
+            activeSearchMatchIndex={
+              activeSearchMatch?.pageNumber === page.pageNumber
+                ? activeSearchMatch.matchIndex
+                : null
+            }
+          />
+        ))}
+      </div>
+    </section>
+  );
+}

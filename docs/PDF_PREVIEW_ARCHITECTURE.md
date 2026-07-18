@@ -140,16 +140,16 @@ The automatic selector intentionally does not process all indexed PDFs. The reso
 
 The deployment should be rejected or rolled back if an already prepared preview exceeds these normal broadband targets:
 
-| Metric | Budget |
-|---|---:|
-| Authenticated preview session | under 1.0 s warm; under 2.0 s cold |
-| First network byte for manifest/page 1 | under 750 ms each |
-| Metadata/page count available | under 1.5 s warm |
-| Page 1 visibly rendered | under 3.0 s warm; under 5.0 s cold |
-| Bytes before page 1 | under 2 MiB; target under 750 KiB |
-| Requests before page 1 | no more than 5 after the HTML document |
-| Active decoded pages during normal scroll | target 4–12, never the full document |
-| Rapid distant scrolling | no full-document fetch; only nearby page requests |
+| Metric                                    |                                            Budget |
+| ----------------------------------------- | ------------------------------------------------: |
+| Authenticated preview session             |                under 1.0 s warm; under 2.0 s cold |
+| First network byte for manifest/page 1    |                                 under 750 ms each |
+| Metadata/page count available             |                                  under 1.5 s warm |
+| Page 1 visibly rendered                   |                under 3.0 s warm; under 5.0 s cold |
+| Bytes before page 1                       |                 under 2 MiB; target under 750 KiB |
+| Requests before page 1                    |            no more than 5 after the HTML document |
+| Active decoded pages during normal scroll |              target 4–12, never the full document |
+| Rapid distant scrolling                   | no full-document fetch; only nearby page requests |
 
 No ETA is shown. A percentage is shown only when both page count and a real number of prepared pages are available.
 

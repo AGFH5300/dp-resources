@@ -13,8 +13,18 @@ describe('library clarity repair', () => {
   });
   it('list and grid expose the same context menu actions and grid supports right-click and three-dot', () => {
     const s = read('app/library/library-browser.tsx');
-    for (const label of ['Open in new tab', 'Download', 'ShareButton', 'SaveButton', 'Details', 'ReportResourceDialog']) expect(s).toContain(label);
-    expect(s).toContain("onContextMenu={e=>{e.preventDefault();e.stopPropagation();setMenu({item,x:e.clientX,y:e.clientY})}}");
+    for (const label of [
+      'Open in new tab',
+      'Download',
+      'ShareButton',
+      'SaveButton',
+      'Details',
+      'ReportResourceDialog',
+    ])
+      expect(s).toContain(label);
+    expect(s).toContain(
+      'onContextMenu={e=>{e.preventDefault();e.stopPropagation();setMenu({item,x:e.clientX,y:e.clientY})}}',
+    );
     expect(s).toContain('More actions for ${item.name}');
   });
   it('desktop menu is portaled and collision aware', () => {
@@ -38,7 +48,9 @@ describe('library clarity repair', () => {
   });
   it('folder summaries are batched from indexed descendants and incomplete index returns no estimate', () => {
     const s = read('lib/folder-summaries.ts');
-    expect(s).toContain("sb.rpc('dp_folder_size_summaries', { folder_ids: unique })");
+    expect(s).toContain(
+      "sb.rpc('dp_folder_size_summaries', { folder_ids: unique })",
+    );
     expect(s).not.toContain(".select('path,size_bytes')");
     expect(s).not.toContain('file.path.startsWith(prefix)');
     expect(s).toContain('!syncComplete(state)');

@@ -1,159 +1,204 @@
-"use client"
+'use client';
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useMemo, useRef, useState } from 'react'
-import { AuthShell } from '@/components/auth-shell'
-import { Spinner } from '@/components/ui/spinner'
-import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useMemo, useRef, useState } from 'react';
+import { AuthShell } from '@/components/auth-shell';
+import { Spinner } from '@/components/ui/spinner';
+import { createClient } from '@/lib/supabase/client';
 
-const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile'
-const OTP_LENGTH = 6
-const EMPTY_OTP = ' '.repeat(OTP_LENGTH)
+const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
+const OTP_LENGTH = 6;
+const EMPTY_OTP = ' '.repeat(OTP_LENGTH);
 
 function EmailIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6 shrink-0" fill="none">
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-6 shrink-0"
+      fill="none"
+    >
       <path d="M4.75 6.75h14.5v10.5H4.75V6.75Z" className="fill-white" />
-      <path d="m5 7 7 5.4L19 7" stroke="#00152a" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.75 6.75h14.5v10.5H4.75V6.75Z" stroke="#00152a" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="m5 7 7 5.4L19 7"
+        stroke="#00152a"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.75 6.75h14.5v10.5H4.75V6.75Z"
+        stroke="#00152a"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
-  )
+  );
 }
 
-export function VerifyOtpForm({ email, username, fullName, next }: { email: string; username: string; fullName: string; next: string }) {
-  const router = useRouter()
-  const [otpCode, setOtpCode] = useState(EMPTY_OTP)
-  const [loading, setLoading] = useState(false)
-  const [resending, setResending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const inputRefs = useRef<Array<HTMLInputElement | null>>([])
+export function VerifyOtpForm({
+  email,
+  username,
+  fullName,
+  next,
+}: {
+  email: string;
+  username: string;
+  fullName: string;
+  next: string;
+}) {
+  const router = useRouter();
+  const [otpCode, setOtpCode] = useState(EMPTY_OTP);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const normalizedEmail = email.trim().toLowerCase()
-  const sanitizedOtpCode = otpCode.replace(/\s/g, '')
-  const canVerify = /^\d{6}$/.test(sanitizedOtpCode) && !loading
+  const normalizedEmail = email.trim().toLowerCase();
+  const sanitizedOtpCode = otpCode.replace(/\s/g, '');
+  const canVerify = /^\d{6}$/.test(sanitizedOtpCode) && !loading;
 
-  const fallbackToSignUp = useMemo(() => `/auth/sign-up?restoreDraft=1&next=${encodeURIComponent(next)}`, [next])
+  const fallbackToSignUp = useMemo(
+    () => `/auth/sign-up?restoreDraft=1&next=${encodeURIComponent(next)}`,
+    [next],
+  );
 
-  const getOtpChars = () => otpCode.padEnd(OTP_LENGTH, ' ').slice(0, OTP_LENGTH).split('')
+  const getOtpChars = () =>
+    otpCode.padEnd(OTP_LENGTH, ' ').slice(0, OTP_LENGTH).split('');
 
   const focusIndex = (index: number) => {
-    const clampedIndex = Math.max(0, Math.min(index, OTP_LENGTH - 1))
-    const target = inputRefs.current[clampedIndex]
-    target?.focus()
-    target?.select()
-  }
+    const clampedIndex = Math.max(0, Math.min(index, OTP_LENGTH - 1));
+    const target = inputRefs.current[clampedIndex];
+    target?.focus();
+    target?.select();
+  };
 
   const updateOtpChars = (nextChars: string[]) => {
-    const nextOtp = nextChars.join('').slice(0, OTP_LENGTH).padEnd(OTP_LENGTH, ' ')
-    setOtpCode(nextOtp)
-    setError(null)
-  }
+    const nextOtp = nextChars
+      .join('')
+      .slice(0, OTP_LENGTH)
+      .padEnd(OTP_LENGTH, ' ');
+    setOtpCode(nextOtp);
+    setError(null);
+  };
 
   const setDigitAt = (index: number, digit: string) => {
-    const chars = getOtpChars()
-    chars[index] = digit
-    updateOtpChars(chars)
-  }
+    const chars = getOtpChars();
+    chars[index] = digit;
+    updateOtpChars(chars);
+  };
 
   const mergePastedDigits = (startIndex: number, rawValue: string) => {
-    const sanitizedDigits = rawValue.replace(/\s/g, '').replace(/\D/g, '').slice(0, OTP_LENGTH)
+    const sanitizedDigits = rawValue
+      .replace(/\s/g, '')
+      .replace(/\D/g, '')
+      .slice(0, OTP_LENGTH);
 
     if (!sanitizedDigits) {
-      return null
+      return null;
     }
 
-    const chars = getOtpChars()
-    let nextIndex = Math.max(0, Math.min(startIndex, OTP_LENGTH - 1))
+    const chars = getOtpChars();
+    let nextIndex = Math.max(0, Math.min(startIndex, OTP_LENGTH - 1));
 
     for (const digit of sanitizedDigits) {
       if (nextIndex >= OTP_LENGTH) {
-        break
+        break;
       }
 
-      chars[nextIndex] = digit
-      nextIndex += 1
+      chars[nextIndex] = digit;
+      nextIndex += 1;
     }
 
-    updateOtpChars(chars)
-    focusIndex(nextIndex)
+    updateOtpChars(chars);
+    focusIndex(nextIndex);
 
-    return chars
-  }
+    return chars;
+  };
 
-  const handleOtpPaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
-    event.preventDefault()
-    event.stopPropagation()
+  const handleOtpPaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+    index: number,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
 
     if (loading) {
-      return
+      return;
     }
 
-    const pastedText = event.clipboardData.getData('text')
-    mergePastedDigits(index, pastedText)
-  }
+    const pastedText = event.clipboardData.getData('text');
+    mergePastedDigits(index, pastedText);
+  };
 
   async function handleVerify(e: React.FormEvent) {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!canVerify || !normalizedEmail) {
-      return
+      return;
     }
 
-    setLoading(true)
-    setError(null)
-    setNotice(null)
+    setLoading(true);
+    setError(null);
+    setNotice(null);
 
-    const supabase = createClient()
+    const supabase = createClient();
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email: normalizedEmail,
       token: sanitizedOtpCode,
       type: 'signup',
-    })
+    });
 
     if (verifyError) {
-      setError(verifyError.message)
-      setLoading(false)
-      return
+      setError(verifyError.message);
+      setLoading(false);
+      return;
     }
 
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(
         SIGNUP_DRAFT_KEY,
-        JSON.stringify({ email: normalizedEmail, username: username.trim(), fullName: fullName.trim(), next }),
-      )
+        JSON.stringify({
+          email: normalizedEmail,
+          username: username.trim(),
+          fullName: fullName.trim(),
+          next,
+        }),
+      );
     }
 
-    router.push(`/auth/set-password?next=${encodeURIComponent(next)}`)
+    router.push(`/auth/set-password?next=${encodeURIComponent(next)}`);
   }
 
   async function handleResend() {
     if (!normalizedEmail || resending) {
-      return
+      return;
     }
 
-    setResending(true)
-    setError(null)
-    setNotice(null)
+    setResending(true);
+    setError(null);
+    setNotice(null);
 
-    const supabase = createClient()
+    const supabase = createClient();
     const { error: resendError } = await supabase.auth.resend({
       type: 'signup',
       email: normalizedEmail,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
-    })
+    });
 
     if (resendError) {
-      setError(resendError.message)
-      setResending(false)
-      return
+      setError(resendError.message);
+      setResending(false);
+      return;
     }
 
-    setNotice(`A new ${OTP_LENGTH}-digit code has been sent to your email.`)
-    setResending(false)
+    setNotice(`A new ${OTP_LENGTH}-digit code has been sent to your email.`);
+    setResending(false);
   }
 
   return (
@@ -162,14 +207,19 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
       title="Verify your email to continue sign-up."
       description={`Use the one-time ${OTP_LENGTH}-digit code sent to your inbox. After verification, you will set your password and be signed in automatically.`}
     >
-      <h1 className="font-headline text-4xl text-[#00152a]">Verify email code</h1>
+      <h1 className="font-headline text-4xl text-[#00152a]">
+        Verify email code
+      </h1>
       <p className="mt-3 font-body text-[#43474d]">
-        Enter the one-time code sent to <span className="font-semibold">{normalizedEmail || 'your email'}</span>.
+        Enter the one-time code sent to{' '}
+        <span className="font-semibold">{normalizedEmail || 'your email'}</span>
+        .
       </p>
 
       <div className="mt-5 rounded-2xl border border-[#e4dbc9] bg-[#fffaf1] p-4 sm:p-5">
         <p className="text-sm leading-6 text-[#43474d]">
-          Open your inbox below. If you do not see the OTP, check your spam or junk folder.
+          Open your inbox below. If you do not see the OTP, check your spam or
+          junk folder.
         </p>
         <div className="mt-4 grid gap-3">
           <a
@@ -188,7 +238,9 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Open Gmail</span>
-              <span className="block text-xs text-[#6b7280]">Check your Gmail inbox</span>
+              <span className="block text-xs text-[#6b7280]">
+                Check your Gmail inbox
+              </span>
             </span>
           </a>
           <a
@@ -207,7 +259,9 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Open Outlook</span>
-              <span className="block text-xs text-[#6b7280]">Check your Outlook inbox</span>
+              <span className="block text-xs text-[#6b7280]">
+                Check your Outlook inbox
+              </span>
             </span>
           </a>
           <a
@@ -219,8 +273,12 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
               <EmailIcon />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Open email app</span>
-              <span className="block text-xs text-[#6b7280]">Use your default email app</span>
+              <span className="block text-sm font-semibold">
+                Open email app
+              </span>
+              <span className="block text-xs text-[#6b7280]">
+                Use your default email app
+              </span>
             </span>
           </a>
         </div>
@@ -228,20 +286,29 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
 
       <form onSubmit={handleVerify} className="mt-8 space-y-6" noValidate>
         <div>
-          <label htmlFor="otp-digit-1" className="mb-3 block font-label text-xs uppercase tracking-widest text-[#43474d]">Verification code</label>
+          <label
+            htmlFor="otp-digit-1"
+            className="mb-3 block font-label text-xs uppercase tracking-widest text-[#43474d]"
+          >
+            Verification code
+          </label>
           <div
             className="grid w-full gap-2"
-            style={{ gridTemplateColumns: `repeat(${OTP_LENGTH}, minmax(0, 1fr))` }}
+            style={{
+              gridTemplateColumns: `repeat(${OTP_LENGTH}, minmax(0, 1fr))`,
+            }}
           >
             {Array.from({ length: OTP_LENGTH }).map((_, index) => {
-              const slotValue = /\d/.test(otpCode[index] ?? '') ? otpCode[index] : ''
+              const slotValue = /\d/.test(otpCode[index] ?? '')
+                ? otpCode[index]
+                : '';
 
               return (
                 <input
                   key={index}
                   id={`otp-digit-${index + 1}`}
                   ref={(node) => {
-                    inputRefs.current[index] = node
+                    inputRefs.current[index] = node;
                   }}
                   type="text"
                   value={slotValue}
@@ -253,105 +320,115 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
                   aria-label={`Verification code digit ${index + 1}`}
                   className="h-12 w-full rounded-sm border border-[#c3c6ce] bg-white text-center text-base disabled:cursor-not-allowed"
                   onFocus={(event) => {
-                    event.currentTarget.select()
+                    event.currentTarget.select();
                   }}
                   onKeyDown={(event) => {
                     if (loading) {
-                      return
+                      return;
                     }
 
                     if (event.metaKey || event.ctrlKey || event.altKey) {
-                      return
+                      return;
                     }
 
-                    const { key } = event
+                    const { key } = event;
 
                     if (key === 'ArrowLeft') {
-                      event.preventDefault()
-                      focusIndex(index - 1)
-                      return
+                      event.preventDefault();
+                      focusIndex(index - 1);
+                      return;
                     }
 
                     if (key === 'ArrowRight') {
-                      event.preventDefault()
-                      focusIndex(index + 1)
-                      return
+                      event.preventDefault();
+                      focusIndex(index + 1);
+                      return;
                     }
 
                     if (key === 'Backspace') {
-                      event.preventDefault()
-                      const chars = getOtpChars()
+                      event.preventDefault();
+                      const chars = getOtpChars();
 
                       if (chars[index] !== ' ') {
-                        chars[index] = ' '
-                        updateOtpChars(chars)
-                        focusIndex(index)
-                        return
+                        chars[index] = ' ';
+                        updateOtpChars(chars);
+                        focusIndex(index);
+                        return;
                       }
 
                       if (index > 0) {
-                        chars[index - 1] = ' '
-                        updateOtpChars(chars)
-                        focusIndex(index - 1)
+                        chars[index - 1] = ' ';
+                        updateOtpChars(chars);
+                        focusIndex(index - 1);
                       }
 
-                      return
+                      return;
                     }
 
                     if (key === 'Delete') {
-                      event.preventDefault()
-                      const chars = getOtpChars()
-                      chars[index] = ' '
-                      updateOtpChars(chars)
-                      focusIndex(index)
-                      return
+                      event.preventDefault();
+                      const chars = getOtpChars();
+                      chars[index] = ' ';
+                      updateOtpChars(chars);
+                      focusIndex(index);
+                      return;
                     }
 
                     if (/^\d$/.test(key)) {
-                      event.preventDefault()
-                      setDigitAt(index, key)
-                      focusIndex(index + 1)
-                      return
+                      event.preventDefault();
+                      setDigitAt(index, key);
+                      focusIndex(index + 1);
+                      return;
                     }
 
-                    const navigationKeys = new Set(['Tab', 'Shift', 'Meta', 'Control', 'Alt', 'Home', 'End'])
+                    const navigationKeys = new Set([
+                      'Tab',
+                      'Shift',
+                      'Meta',
+                      'Control',
+                      'Alt',
+                      'Home',
+                      'End',
+                    ]);
                     if (navigationKeys.has(key)) {
-                      return
+                      return;
                     }
 
                     if (key.length === 1) {
-                      event.preventDefault()
+                      event.preventDefault();
                     }
                   }}
                   onChange={(event) => {
                     if (loading) {
-                      return
+                      return;
                     }
 
-                    const nextValue = event.currentTarget.value
-                    const pastedChars = nextValue.replace(/\s/g, '').replace(/\D/g, '')
+                    const nextValue = event.currentTarget.value;
+                    const pastedChars = nextValue
+                      .replace(/\s/g, '')
+                      .replace(/\D/g, '');
 
                     if (pastedChars.length > 1) {
-                      mergePastedDigits(index, pastedChars)
-                      return
+                      mergePastedDigits(index, pastedChars);
+                      return;
                     }
 
                     if (!pastedChars) {
-                      const chars = getOtpChars()
-                      chars[index] = ' '
-                      updateOtpChars(chars)
-                      return
+                      const chars = getOtpChars();
+                      chars[index] = ' ';
+                      updateOtpChars(chars);
+                      return;
                     }
 
-                    setDigitAt(index, pastedChars)
-                    focusIndex(index + 1)
+                    setDigitAt(index, pastedChars);
+                    focusIndex(index + 1);
                   }}
                   onPaste={(event) => {
-                    event.stopPropagation()
-                    handleOtpPaste(event, index)
+                    event.stopPropagation();
+                    handleOtpPaste(event, index);
                   }}
                 />
-              )
+              );
             })}
           </div>
         </div>
@@ -397,5 +474,5 @@ export function VerifyOtpForm({ email, username, fullName, next }: { email: stri
         </Link>
       </div>
     </AuthShell>
-  )
+  );
 }

@@ -1,94 +1,103 @@
-'use client'
+'use client';
 
-import { Check, Monitor, Moon, Sun } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-type ThemePreference = 'light' | 'dark' | 'system'
-type ResolvedTheme = 'light' | 'dark'
+type ThemePreference = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
 
-const STORAGE_KEY = 'dp-theme'
-const options: Array<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+const STORAGE_KEY = 'dp-theme';
+const options: Array<{
+  value: ThemePreference;
+  label: string;
+  Icon: typeof Sun;
+}> = [
   { value: 'light', label: 'Light', Icon: Sun },
   { value: 'dark', label: 'Dark', Icon: Moon },
   { value: 'system', label: 'System', Icon: Monitor },
-]
+];
 
 function isThemePreference(value: string | null): value is ThemePreference {
-  return value === 'light' || value === 'dark' || value === 'system'
+  return value === 'light' || value === 'dark' || value === 'system';
 }
 
 function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  if (preference !== 'system') return preference
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  if (preference !== 'system') return preference;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 }
 
 function readPreference(): ThemePreference {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return isThemePreference(stored) ? stored : 'system'
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return isThemePreference(stored) ? stored : 'system';
   } catch {
-    return 'system'
+    return 'system';
   }
 }
 
 function applyTheme(preference: ThemePreference) {
-  const resolved = resolveTheme(preference)
-  const root = document.documentElement
-  root.dataset.theme = resolved
-  root.dataset.themePreference = preference
-  root.style.colorScheme = resolved
-  window.dispatchEvent(new CustomEvent('dp:theme-change', { detail: { preference, resolved } }))
-  return resolved
+  const resolved = resolveTheme(preference);
+  const root = document.documentElement;
+  root.dataset.theme = resolved;
+  root.dataset.themePreference = preference;
+  root.style.colorScheme = resolved;
+  window.dispatchEvent(
+    new CustomEvent('dp:theme-change', { detail: { preference, resolved } }),
+  );
+  return resolved;
 }
 
 export function ThemeToggle({ className = '' }: { className?: string }) {
-  const [open, setOpen] = useState(false)
-  const [preference, setPreference] = useState<ThemePreference>('system')
-  const [resolved, setResolved] = useState<ResolvedTheme>('light')
-  const ref = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false);
+  const [preference, setPreference] = useState<ThemePreference>('system');
+  const [resolved, setResolved] = useState<ResolvedTheme>('light');
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const initial = readPreference()
-    setPreference(initial)
-    setResolved(applyTheme(initial))
+    const initial = readPreference();
+    setPreference(initial);
+    setResolved(applyTheme(initial));
 
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemChange = () => {
       if (readPreference() === 'system') {
-        setResolved(applyTheme('system'))
+        setResolved(applyTheme('system'));
       }
-    }
-    media.addEventListener('change', handleSystemChange)
-    return () => media.removeEventListener('change', handleSystemChange)
-  }, [])
+    };
+    media.addEventListener('change', handleSystemChange);
+    return () => media.removeEventListener('change', handleSystemChange);
+  }, []);
 
   useEffect(() => {
     const handlePointer = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
-    }
+      if (ref.current && !ref.current.contains(event.target as Node))
+        setOpen(false);
+    };
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', handlePointer)
-    document.addEventListener('keydown', handleKey)
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
     return () => {
-      document.removeEventListener('mousedown', handlePointer)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [])
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, []);
 
   const choose = (next: ThemePreference) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, next)
+      window.localStorage.setItem(STORAGE_KEY, next);
     } catch {
       // The selected theme still applies for this page when storage is blocked.
     }
-    setPreference(next)
-    setResolved(applyTheme(next))
-    setOpen(false)
-  }
+    setPreference(next);
+    setResolved(applyTheme(next));
+    setOpen(false);
+  };
 
-  const ActiveIcon = resolved === 'dark' ? Moon : Sun
+  const ActiveIcon = resolved === 'dark' ? Moon : Sun;
   return (
     <div ref={ref} className={`relative ${className}`}>
       <button
@@ -118,11 +127,16 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
             >
               <Icon className="size-4 text-slate-500" aria-hidden="true" />
               <span>{label}</span>
-              {preference === value ? <Check className="ml-auto size-4 text-[color:var(--dp-blue)]" aria-hidden="true" /> : null}
+              {preference === value ? (
+                <Check
+                  className="ml-auto size-4 text-[color:var(--dp-blue)]"
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
           ))}
         </div>
       ) : null}
     </div>
-  )
+  );
 }

@@ -17,12 +17,19 @@ describe('Render Dockerfile contract', () => {
 
   it('makes public Supabase env vars available during the Next build only', () => {
     const file = dockerfile();
-    const builderStage = file.split('FROM node:24-bookworm-slim AS builder')[1]?.split('FROM node:24-bookworm-slim AS runner')[0] ?? '';
+    const builderStage =
+      file
+        .split('FROM node:24-bookworm-slim AS builder')[1]
+        ?.split('FROM node:24-bookworm-slim AS runner')[0] ?? '';
 
     expect(builderStage).toContain('ARG NEXT_PUBLIC_SUPABASE_URL');
     expect(builderStage).toContain('ARG NEXT_PUBLIC_SUPABASE_ANON_KEY');
-    expect(builderStage).toContain('NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL');
-    expect(builderStage).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    expect(builderStage).toContain(
+      'NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL',
+    );
+    expect(builderStage).toContain(
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    );
     expect(file).not.toContain('ARG SUPABASE_SERVICE_ROLE_KEY');
     expect(file).not.toContain('ARG GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
     expect(file).not.toContain('ARG GOOGLE_SERVICE_ACCOUNT_EMAIL');
@@ -31,7 +38,8 @@ describe('Render Dockerfile contract', () => {
 
   it('keeps the web runtime lean while including the isolated PDF worker tooling', () => {
     const file = dockerfile();
-    const runnerStage = file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
+    const runnerStage =
+      file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
 
     expect(runnerStage).not.toContain('libreoffice');
     expect(runnerStage).not.toContain('libreoffice-impress');
@@ -52,11 +60,14 @@ describe('Render Dockerfile contract', () => {
 
   it('keeps production installs free of dev-only TypeScript runtime requirements', () => {
     const file = dockerfile();
-    const runnerStage = file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
+    const runnerStage =
+      file.split('FROM node:24-bookworm-slim AS runner')[1] ?? '';
 
     expect(file).toContain('RUN npm ci --omit=dev && npm cache clean --force');
     expect(file).toContain('COPY --from=builder /app/next.config.* ./');
-    expect(runnerStage).not.toMatch(/npm\s+(?:install|i|add)\s+[^\n]*typescript/i);
+    expect(runnerStage).not.toMatch(
+      /npm\s+(?:install|i|add)\s+[^\n]*typescript/i,
+    );
   });
 });
 
@@ -73,10 +84,18 @@ describe('Next config runtime contract', () => {
     expect(file).toContain("frame-ancestors 'none'");
     expect(file).toContain("{ key: 'X-Frame-Options', value: 'DENY' }");
     expect(file).not.toContain('SAMEORIGIN');
-    expect(file).toContain("frame-src 'self' blob: https://docs.google.com https://drive.google.com");
-    expect(file).toContain("{ key: 'X-Content-Type-Options', value: 'nosniff' }");
-    expect(file).toContain("{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }");
-    expect(file).toContain("{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }");
+    expect(file).toContain(
+      "frame-src 'self' blob: https://docs.google.com https://drive.google.com",
+    );
+    expect(file).toContain(
+      "{ key: 'X-Content-Type-Options', value: 'nosniff' }",
+    );
+    expect(file).toContain(
+      "{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }",
+    );
+    expect(file).toContain(
+      "{ key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' }",
+    );
     expect(file).toContain("source: '/api/:path*'");
   });
 });

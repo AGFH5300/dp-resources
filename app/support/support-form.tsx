@@ -4,13 +4,285 @@ import { CloseButton } from '@/components/ui/close-button';
 import { toast } from 'sonner';
 import { AppSelect } from '@/components/ui/app-select';
 
-type RequestState='idle'|'submitting'|'success'|'error';
-export type UserTicket={id:string;category:string;subject:string;message:string;status:'open'|'in_review'|'resolved'|'closed';created_at:string;updated_at:string;latest_preview?:string|null};
-const categories=['Report a bug','Request an improvement','Content feedback','Account help','Other'];
-const friendly:Record<string,string>={open:'Received',in_review:'Being reviewed',resolved:'Resolved',closed:'Closed'};
-function chip(s:string){const c=s==='open'?'bg-amber-50 text-amber-800 border-amber-200':s==='in_review'?'bg-indigo-50 text-indigo-800 border-indigo-200':s==='resolved'?'bg-emerald-50 text-emerald-800 border-emerald-200':'bg-slate-100 text-slate-700 border-slate-200';return <span className={`rounded border px-2 py-0.5 text-xs font-medium ${c}`}>{friendly[s]||s}</span>}
-function preview(t:UserTicket){return t.latest_preview||'Your request has been received and will be reviewed.'}
-export function SupportForm({ initialTickets=[] }:{ initialTickets?:UserTicket[] }){const [requestState,setRequestState]=useState<RequestState>('idle'); const [error,setError]=useState(''); const [category,setCategory]=useState('Report a bug'); const [subject,setSubject]=useState(''); const [message,setMessage]=useState(''); const [tickets,setTickets]=useState<UserTicket[]>(initialTickets); const [selected,setSelected]=useState<UserTicket|null>(initialTickets[0]||null); const [detail,setDetail]=useState<any|null>(null); const [detailLoading,setDetailLoading]=useState(false);
- async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault(); setRequestState('submitting'); setError(''); try{const res=await fetch('/api/support',{method:'POST',body:JSON.stringify({category,subject,message}),headers:{'Content-Type':'application/json'}}); const json=await res.json().catch(()=>null); if(!res.ok||!json?.ticket) throw new Error(json?.error||'Ticket submission failed'); const ticket=json.ticket as UserTicket; setTickets(prev=>[ticket,...prev]); setSelected(ticket); setDetail(null); setSubject(''); setMessage(''); setRequestState('success'); toast.success('Support request sent');}catch{setRequestState('error'); toast.error('Could not submit support request'); setError('We could not submit your ticket. Please keep your message here and try again.');}}
- async function openTicket(t:UserTicket){setSelected(t); setDetail(null); setDetailLoading(true); const res=await fetch(`/api/support/${t.id}`); const json=await res.json().catch(()=>null); setDetailLoading(false); if(res.ok) setDetail(json); else toast.error('Could not open ticket');}
- return <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]"><div className="space-y-4"><div className="grid gap-2 sm:grid-cols-2">{categories.slice(0,4).map((c,i)=><button type="button" key={c} onClick={()=>setCategory(c)} className="rounded-md border border-slate-200 bg-white p-3 text-left hover:bg-blue-50"><span className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${i===0?'bg-red-50 text-red-700':i===1?'bg-amber-50 text-amber-800':i===2?'bg-teal-50 text-teal-700':'bg-blue-50 text-blue-800'}`}>{c}</span><p className="mt-2 text-sm text-slate-600">{c==='Report a bug'?'Something is broken or confusing.':c==='Request an improvement'?'Suggest a focused workflow improvement.':c==='Content feedback'?'Flag resource content issues.':'Get help with access or profile.'}</p></button>)}</div><form onSubmit={submit} autoComplete="off" className="border-y border-slate-200 bg-white p-4"><label className="block text-sm font-medium">What do you need?<AppSelect name="category" value={category} onValueChange={setCategory} options={categories.map(c=>({value:c,label:c}))}/></label><label className="mt-3 block text-sm font-medium">Subject<input name="subject" value={subject} onChange={e=>setSubject(e.target.value)} autoComplete="off" required placeholder="Example: Cannot preview the Year 12 worksheet" className="mt-1 w-full rounded-md border border-slate-300 bg-[color:var(--dp-warm-surface)] p-2 outline-none focus-visible:border-slate-400"/></label><label className="mt-3 block text-sm font-medium">Detailed message<textarea name="message" autoComplete="off" required rows={6} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Include the resource name, what happened, and what you expected." className="mt-1 w-full rounded-md border border-slate-300 bg-[color:var(--dp-warm-surface)] p-2 outline-none focus-visible:border-slate-400"/></label><p className="text-right text-xs text-slate-500">{message.length} characters</p><button disabled={requestState==='submitting'} className="mt-3 rounded-md bg-[color:var(--dp-blue)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{requestState==='submitting'?'Submitting…':'Submit ticket'}</button>{requestState==='error'&&error&&<p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}{requestState==='success'&&<div className="mt-3 text-sm text-teal-700"><p className="font-medium">Support request sent</p><p>Your request has been added to your tickets.</p></div>}</form></div><aside><div className="flex items-center gap-2"><h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Your tickets</h2>{tickets.length>0&&<span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{tickets.length}</span>}</div><div className="mt-3 overflow-hidden border-y border-slate-200 bg-white">{tickets.length?tickets.map(t=><button key={t.id} type="button" onClick={()=>openTicket(t)} className="block w-full border-b border-slate-100 p-3 text-left hover:bg-slate-50 last:border-b-0"><div className="flex items-center justify-between gap-2"><b className="truncate text-sm">{t.subject}</b>{chip(t.status||'open')}</div><p className="mt-1 text-xs font-medium text-slate-500">{t.category} · {new Date(t.created_at).toLocaleString()}</p><p className="mt-1 line-clamp-2 text-sm text-slate-600">{preview(t)}</p></button>):<div className="bg-white p-5 text-sm text-slate-600">No tickets yet. Submit a request and it will appear here immediately.</div>}</div>{selected&&<div className="fixed inset-0 z-40 overflow-auto bg-white p-5 lg:static lg:mt-4 lg:border-y lg:border-slate-200 lg:p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-[color:var(--dp-navy)]">{selected.subject}</h3><p className="mt-1 text-xs text-slate-500">{selected.category} · {new Date(selected.created_at).toLocaleString()}</p></div><CloseButton onClick={()=>setSelected(null)} /></div><div className="mt-3">{chip((detail?.ticket?.status||selected.status)||'open')}</div><p className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-700">{detail?.ticket?.message||selected.message}</p><div className="mt-4 space-y-3 text-sm"><div className="rounded-md border border-amber-100 bg-amber-50 p-3 text-amber-900"><b>Received</b><p>Your request has been received and will be reviewed.</p></div>{detailLoading&&<p className="text-slate-500">Loading updates…</p>}{(detail?.messages||[]).map((m:any)=><div key={m.id} className="rounded-md border border-blue-100 bg-blue-50 p-3 text-blue-950"><b>{m.author_role==='admin'?'Admin reply':'Update'}</b><p className="mt-1 whitespace-pre-wrap">{m.body}</p><p className="mt-2 text-xs text-blue-700">{new Date(m.created_at).toLocaleString()}</p></div>)}</div><p className="mt-4 text-xs text-slate-500">Last updated {new Date(detail?.ticket?.updated_at||selected.updated_at||selected.created_at).toLocaleString()}</p></div>}</aside></div>}
+type RequestState = 'idle' | 'submitting' | 'success' | 'error';
+export type UserTicket = {
+  id: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_review' | 'resolved' | 'closed';
+  created_at: string;
+  updated_at: string;
+  latest_preview?: string | null;
+};
+const categories = [
+  'Report a bug',
+  'Request an improvement',
+  'Content feedback',
+  'Account help',
+  'Other',
+];
+const friendly: Record<string, string> = {
+  open: 'Received',
+  in_review: 'Being reviewed',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+function chip(s: string) {
+  const c =
+    s === 'open'
+      ? 'bg-amber-50 text-amber-800 border-amber-200'
+      : s === 'in_review'
+        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+        : s === 'resolved'
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          : 'bg-slate-100 text-slate-700 border-slate-200';
+  return (
+    <span className={`rounded border px-2 py-0.5 text-xs font-medium ${c}`}>
+      {friendly[s] || s}
+    </span>
+  );
+}
+function preview(t: UserTicket) {
+  return (
+    t.latest_preview || 'Your request has been received and will be reviewed.'
+  );
+}
+export function SupportForm({
+  initialTickets = [],
+}: {
+  initialTickets?: UserTicket[];
+}) {
+  const [requestState, setRequestState] = useState<RequestState>('idle');
+  const [error, setError] = useState('');
+  const [category, setCategory] = useState('Report a bug');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [tickets, setTickets] = useState<UserTicket[]>(initialTickets);
+  const [selected, setSelected] = useState<UserTicket | null>(
+    initialTickets[0] || null,
+  );
+  const [detail, setDetail] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setRequestState('submitting');
+    setError('');
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        body: JSON.stringify({ category, subject, message }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ticket)
+        throw new Error(json?.error || 'Ticket submission failed');
+      const ticket = json.ticket as UserTicket;
+      setTickets((prev) => [ticket, ...prev]);
+      setSelected(ticket);
+      setDetail(null);
+      setSubject('');
+      setMessage('');
+      setRequestState('success');
+      toast.success('Support request sent');
+    } catch {
+      setRequestState('error');
+      toast.error('Could not submit support request');
+      setError(
+        'We could not submit your ticket. Please keep your message here and try again.',
+      );
+    }
+  }
+  async function openTicket(t: UserTicket) {
+    setSelected(t);
+    setDetail(null);
+    setDetailLoading(true);
+    const res = await fetch(`/api/support/${t.id}`);
+    const json = await res.json().catch(() => null);
+    setDetailLoading(false);
+    if (res.ok) setDetail(json);
+    else toast.error('Could not open ticket');
+  }
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="space-y-4">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {categories.slice(0, 4).map((c, i) => (
+            <button
+              type="button"
+              key={c}
+              onClick={() => setCategory(c)}
+              className="rounded-md border border-slate-200 bg-white p-3 text-left hover:bg-blue-50"
+            >
+              <span
+                className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold ${i === 0 ? 'bg-red-50 text-red-700' : i === 1 ? 'bg-amber-50 text-amber-800' : i === 2 ? 'bg-teal-50 text-teal-700' : 'bg-blue-50 text-blue-800'}`}
+              >
+                {c}
+              </span>
+              <p className="mt-2 text-sm text-slate-600">
+                {c === 'Report a bug'
+                  ? 'Something is broken or confusing.'
+                  : c === 'Request an improvement'
+                    ? 'Suggest a focused workflow improvement.'
+                    : c === 'Content feedback'
+                      ? 'Flag resource content issues.'
+                      : 'Get help with access or profile.'}
+              </p>
+            </button>
+          ))}
+        </div>
+        <form
+          onSubmit={submit}
+          autoComplete="off"
+          className="border-y border-slate-200 bg-white p-4"
+        >
+          <label className="block text-sm font-medium">
+            What do you need?
+            <AppSelect
+              name="category"
+              value={category}
+              onValueChange={setCategory}
+              options={categories.map((c) => ({ value: c, label: c }))}
+            />
+          </label>
+          <label className="mt-3 block text-sm font-medium">
+            Subject
+            <input
+              name="subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              autoComplete="off"
+              required
+              placeholder="Example: Cannot preview the Year 12 worksheet"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-[color:var(--dp-warm-surface)] p-2 outline-none focus-visible:border-slate-400"
+            />
+          </label>
+          <label className="mt-3 block text-sm font-medium">
+            Detailed message
+            <textarea
+              name="message"
+              autoComplete="off"
+              required
+              rows={6}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Include the resource name, what happened, and what you expected."
+              className="mt-1 w-full rounded-md border border-slate-300 bg-[color:var(--dp-warm-surface)] p-2 outline-none focus-visible:border-slate-400"
+            />
+          </label>
+          <p className="text-right text-xs text-slate-500">
+            {message.length} characters
+          </p>
+          <button
+            disabled={requestState === 'submitting'}
+            className="mt-3 rounded-md bg-[color:var(--dp-blue)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {requestState === 'submitting' ? 'Submitting…' : 'Submit ticket'}
+          </button>
+          {requestState === 'error' && error && (
+            <p role="alert" className="mt-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          {requestState === 'success' && (
+            <div className="mt-3 text-sm text-teal-700">
+              <p className="font-medium">Support request sent</p>
+              <p>Your request has been added to your tickets.</p>
+            </div>
+          )}
+        </form>
+      </div>
+      <aside>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Your tickets
+          </h2>
+          {tickets.length > 0 && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              {tickets.length}
+            </span>
+          )}
+        </div>
+        <div className="mt-3 overflow-hidden border-y border-slate-200 bg-white">
+          {tickets.length ? (
+            tickets.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => openTicket(t)}
+                className="block w-full border-b border-slate-100 p-3 text-left hover:bg-slate-50 last:border-b-0"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <b className="truncate text-sm">{t.subject}</b>
+                  {chip(t.status || 'open')}
+                </div>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  {t.category} · {new Date(t.created_at).toLocaleString()}
+                </p>
+                <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                  {preview(t)}
+                </p>
+              </button>
+            ))
+          ) : (
+            <div className="bg-white p-5 text-sm text-slate-600">
+              No tickets yet. Submit a request and it will appear here
+              immediately.
+            </div>
+          )}
+        </div>
+        {selected && (
+          <div className="fixed inset-0 z-40 overflow-auto bg-white p-5 lg:static lg:mt-4 lg:border-y lg:border-slate-200 lg:p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-[color:var(--dp-navy)]">
+                  {selected.subject}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {selected.category} ·{' '}
+                  {new Date(selected.created_at).toLocaleString()}
+                </p>
+              </div>
+              <CloseButton onClick={() => setSelected(null)} />
+            </div>
+            <div className="mt-3">
+              {chip(detail?.ticket?.status || selected.status || 'open')}
+            </div>
+            <p className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+              {detail?.ticket?.message || selected.message}
+            </p>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded-md border border-amber-100 bg-amber-50 p-3 text-amber-900">
+                <b>Received</b>
+                <p>Your request has been received and will be reviewed.</p>
+              </div>
+              {detailLoading && (
+                <p className="text-slate-500">Loading updates…</p>
+              )}
+              {(detail?.messages || []).map((m: any) => (
+                <div
+                  key={m.id}
+                  className="rounded-md border border-blue-100 bg-blue-50 p-3 text-blue-950"
+                >
+                  <b>{m.author_role === 'admin' ? 'Admin reply' : 'Update'}</b>
+                  <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                  <p className="mt-2 text-xs text-blue-700">
+                    {new Date(m.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Last updated{' '}
+              {new Date(
+                detail?.ticket?.updated_at ||
+                  selected.updated_at ||
+                  selected.created_at,
+              ).toLocaleString()}
+            </p>
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}
