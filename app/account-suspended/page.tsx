@@ -37,8 +37,15 @@ export default async function AccountSuspendedPage() {
             Your account has been suspended.
           </h1>
           <p className="mt-4 text-base leading-7 text-slate-700">
-            You no longer have access to DP Resources. Contact the site
-            administrator if you believe this is a mistake.
+            You no longer have access to DP Resources. If you believe this is a
+            mistake, contact the site administrator at{' '}
+            <a
+              href="mailto:dxb.avg@gmail.com"
+              className="font-semibold text-[color:var(--dp-blue)] hover:underline"
+            >
+              dxb.avg@gmail.com
+            </a>
+            .
           </p>
           <SuspensionReasonFallback initialReason={suspensionReason} />
           <UnsuspensionWatcher initialUserId={user?.id ?? null} />

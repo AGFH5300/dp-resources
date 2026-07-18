@@ -29,6 +29,9 @@ type GitHubCommit = {
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-18': [
     'Fixed dropdown menus so selected and highlighted options remain clear and readable in dark mode.',
+    'Softened dark-mode borders and improved the readability of disabled and loading account buttons.',
+    'Added matching search-term highlights to the complete search results page.',
+    'Made Recent resources consistent across search, saved links, direct links, folders, and devices.',
   ],
   '2026-07-17': [
     'Added Light, Dark, and System appearance options, with the selected preference remembered across visits.',

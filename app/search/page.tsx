@@ -10,6 +10,7 @@ import {
   formatDate,
 } from '@/lib/resource-utils';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
+import { SearchHighlight } from '@/components/search-highlight';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
 
 export default async function SearchPage({
@@ -101,16 +102,18 @@ export default async function SearchPage({
                   />
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{r.name}</span>
+                      <span className="truncate">
+                        <SearchHighlight text={r.name} query={q} />
+                      </span>
                     </span>
                     <span className="block truncate text-xs font-normal text-slate-500 md:hidden">
-                      {r.path || 'Library'} ·{' '}
+                      <SearchHighlight text={r.path || 'Library'} query={q} /> ·{' '}
                       {typeLabel(r.mime_type, r.is_folder)}
                     </span>
                   </span>
                 </span>
                 <span className="hidden truncate text-slate-500 md:block">
-                  {r.path || 'Library'}
+                  <SearchHighlight text={r.path || 'Library'} query={q} />
                 </span>
                 <span className="hidden text-slate-600 md:block">
                   {typeLabel(r.mime_type, r.is_folder)}

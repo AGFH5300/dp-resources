@@ -2,12 +2,25 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
-export function RecentClient() {
-  const [rows, setRows] = useState<any[]>([]);
-  useEffect(
-    () => setRows(JSON.parse(localStorage.getItem('dp_recent') || '[]')),
-    [],
-  );
+import { readRecentResources } from '@/lib/recent-client-storage';
+import {
+  mergeRecentResources,
+  type RecentResource,
+} from '@/lib/recent-resources';
+
+export function RecentClient({ initialRows }: { initialRows: RecentResource[] }) {
+  const [rows, setRows] = useState(initialRows);
+  useEffect(() => {
+    const refresh = () =>
+      setRows(mergeRecentResources(initialRows, readRecentResources()));
+    refresh();
+    window.addEventListener('storage', refresh);
+    window.addEventListener('dp:recent-updated', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('dp:recent-updated', refresh);
+    };
+  }, [initialRows]);
   return (
     <div className="mt-5 border-y border-slate-200 bg-white">
       {rows.length ? (

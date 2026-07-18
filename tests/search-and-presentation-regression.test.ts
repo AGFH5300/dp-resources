@@ -73,6 +73,18 @@ describe('search consistency and PPTX viewer regressions', () => {
     );
   });
 
+  it('uses the same search-term highlighting in the modal and all-results page', () => {
+    const highlight = read('components/search-highlight.tsx');
+    const modal = read('components/global-search.tsx');
+    const page = read('app/search/page.tsx');
+    expect(highlight).toContain('<mark className="bg-amber-100 text-amber-950">');
+    expect(modal).toContain('<SearchHighlight text={r.name} query={q} />');
+    expect(page).toContain('<SearchHighlight text={r.name} query={q} />');
+    expect(page).toContain(
+      "<SearchHighlight text={r.path || 'Library'} query={q} />",
+    );
+  });
+
   it('PPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling', () => {
     const resourcePreview = read('app/resource/[fileId]/resource-preview.tsx');
     const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');

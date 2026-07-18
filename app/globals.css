@@ -296,7 +296,7 @@ html[data-theme='dark'] {
   --on-primary-container: #bfdbfe;
   --text: #e6edf7;
   --text-muted: #aab6c8;
-  --outline: #42516a;
+  --outline: #334158;
   --dp-page: #111827;
   --dp-page-background: #0b1220;
   --dp-surface-muted: #172235;
@@ -304,7 +304,7 @@ html[data-theme='dark'] {
   --dp-heading: #eef6ff;
   --dp-body-text: #cbd5e1;
   --dp-muted-text: #9aa9be;
-  --dp-theme-border: #27374d;
+  --dp-theme-border: #1c293b;
   --dp-progress-track: #22324a;
   --dp-progress-fill: #60a5fa;
   --dp-search-hover: #19273a;
@@ -387,6 +387,12 @@ html[data-theme='dark'] :is(.dp-wordmark-dark, .dp-logo-dark) {
 }
 .dp-select-indicator {
   color: var(--dp-muted-text);
+}
+
+.dp-auth-primary:disabled,
+.dp-auth-primary:disabled:hover {
+  color: #fff;
+  opacity: 0.7;
 }
 
 .dp-loading-track {

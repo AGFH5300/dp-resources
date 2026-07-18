@@ -17,6 +17,7 @@ import { FavoritesProvider } from '@/components/favorites-provider';
 import { MASTER_WORKBOOK_FILE_ID } from '@/lib/resource-capabilities';
 import { ResourceUsageTracker } from './usage-tracker';
 import { privatePageMetadata } from '@/lib/seo';
+import { RecentResourceRecorder } from '@/components/recent-resource-recorder';
 
 export const metadata: Metadata = privatePageMetadata('Resource');
 
@@ -57,6 +58,7 @@ export default async function Page({
   );
   const crumbs = await breadcrumbsToRoot(fileId).catch(() => []);
   const folderCrumbs = crumbs.filter((crumb) => crumb.isFolder);
+  const resourcePath = indexedMeta?.path || 'Library';
   const isPdf =
     meta.mimeType === 'application/pdf' ||
     meta.name.toLowerCase().endsWith('.pdf');
@@ -111,7 +113,7 @@ export default async function Page({
                 resource={{
                   driveFileId: fileId,
                   resourceName: meta.name,
-                  resourcePath: indexedMeta?.path || 'Library',
+                  resourcePath,
                   mimeType: meta.mimeType,
                 }}
                 downloadHref={
@@ -124,6 +126,17 @@ export default async function Page({
             </FavoritesProvider>
           </div>
         </div>
+        {!meta.isFolder && (
+          <RecentResourceRecorder
+            resource={{
+              id: fileId,
+              name: meta.name,
+              isFolder: false,
+              mimeType: meta.mimeType,
+              path: resourcePath,
+            }}
+          />
+        )}
         <ResourceUsageTracker fileId={fileId} />
         <ResourcePreview
           fileId={fileId}
