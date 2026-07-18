@@ -109,4 +109,28 @@ describe('dark mode', () => {
     expect(css).toContain('background-color: var(--dp-surface-high)');
     expect(css).toContain('color: var(--dp-heading)');
   });
+
+  it('uses subtle dark borders and readable disabled auth actions', () => {
+    const css = read('app/globals.css');
+    expect(css).toContain('--dp-theme-border: #1c293b');
+    expect(css).toContain('.dp-auth-primary:disabled');
+    for (const path of [
+      'app/auth/login/page.tsx',
+      'app/auth/sign-up/page.tsx',
+      'app/auth/verify-otp/verify-otp-form.tsx',
+      'app/auth/set-password/page.tsx',
+    ]) {
+      const source = read(path);
+      expect(source, path).toContain('dp-auth-primary');
+      expect(source, path).toContain('disabled:opacity-70');
+    }
+    for (const path of [
+      'app/auth/verify-otp/verify-otp-form.tsx',
+      'app/auth/set-password/page.tsx',
+    ]) {
+      const source = read(path);
+      expect(source, path).not.toContain('disabled:bg-[#d6dce5]');
+      expect(source, path).not.toContain('disabled:text-[#667281]');
+    }
+  });
 });

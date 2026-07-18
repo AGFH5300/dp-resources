@@ -14,7 +14,7 @@ type ActivityInput = {
 export async function recordActivity(input: ActivityInput) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
   const h = await headers();
-  await createSupabaseAdminClient()
+  const { error } = await createSupabaseAdminClient()
     .from('dp_resource_activity_logs')
     .insert({
       user_id: input.userId,
@@ -25,6 +25,7 @@ export async function recordActivity(input: ActivityInput) {
       ip_address: h.get('x-forwarded-for')?.split(',')[0] || null,
       user_agent: h.get('user-agent'),
     });
+  if (error) throw new Error(`Unable to record resource activity: ${error.message}`);
 }
 
 export async function recordFileOpenedOnce(

@@ -25,9 +25,9 @@ describe('suspension UX regression coverage', () => {
     const page = read('app/account-suspended/page.tsx');
     const middleware = read('middleware.ts');
     expect(page).toContain('Your account has been suspended.');
-    expect(page).toContain(
-      'You no longer have access to DP Resources. Contact the site administrator if you believe this is a mistake.',
-    );
+    expect(page).toContain('contact the site administrator at');
+    expect(page).toContain('href="mailto:dxb.avg@gmail.com"');
+    expect(page).toContain('dxb.avg@gmail.com');
     expect(page).toContain('action="/api/auth/signout"');
     expect(page).toContain('SuspensionReasonFallback');
     expect(page).toContain("redirect('/library')");

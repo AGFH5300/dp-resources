@@ -29,6 +29,7 @@ import {
 } from '@/components/resource-actions';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
+import { rememberRecentResource } from '@/lib/recent-client-storage';
 
 type Props = {
   items: DriveItem[];
@@ -43,18 +44,14 @@ const hrefFor = (item: DriveItem, rootId: string) =>
     ? hrefForFolder(item.id, rootId)
     : resourceUrl({ id: item.id, isFolder: false });
 function remember(item: DriveItem, path: string) {
-  const rec = {
+  rememberRecentResource({
     id: item.id,
     name: item.name,
     isFolder: item.isFolder,
     mimeType: item.mimeType,
     path,
     at: Date.now(),
-  };
-  const old = JSON.parse(localStorage.getItem('dp_recent') || '[]').filter(
-    (r: any) => r.id !== item.id,
-  );
-  localStorage.setItem('dp_recent', JSON.stringify([rec, ...old].slice(0, 12)));
+  });
 }
 function useLibraryNavigation(rootId: string) {
   const router = useRouter();
@@ -674,6 +671,16 @@ export function LibraryBrowser({
   const basePath = crumbs
     .map((c, i) => (i === 0 ? 'Library' : c.name))
     .join(' / ');
+  useEffect(() => {
+    if (!active || active.id === rootId) return;
+    remember(active, basePath);
+    void fetch('/api/library/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderId: active.id, folderName: active.name }),
+      keepalive: true,
+    }).catch(() => undefined);
+  }, [active, basePath, rootId]);
   useEffect(() => {
     setView((localStorage.getItem('dp_view') as any) || 'list');
   }, []);

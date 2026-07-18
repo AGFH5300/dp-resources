@@ -62,6 +62,9 @@ describe('public changelog page', () => {
     expect(summaries).toContain(
       'Fixed dropdown menus so selected and highlighted options remain clear and readable in dark mode.',
     );
+    expect(summaries).toContain('Softened dark-mode borders');
+    expect(summaries).toContain('matching search-term highlights');
+    expect(summaries).toContain('Made Recent resources consistent');
     expect(summaries).toContain("'2026-07-17'");
     expect(summaries).toContain(
       'Added Light, Dark, and System appearance options',

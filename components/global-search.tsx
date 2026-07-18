@@ -6,25 +6,11 @@ import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Search, X } from 'lucide-react';
 import { resourceUrl, typeLabel } from '@/lib/resource-utils';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
+import { SearchHighlight } from '@/components/search-highlight';
 import type { ResourceIndex } from '@/lib/types';
 
 type Result = ResourceIndex;
 type IndexState = 'unknown' | 'ready' | 'empty' | 'preparing' | 'updating';
-function mark(text: string, q: string) {
-  const part = q.trim();
-  if (!part) return text;
-  const idx = text.toLowerCase().indexOf(part.toLowerCase());
-  if (idx < 0) return text;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-amber-100 text-amber-950">
-        {text.slice(idx, idx + part.length)}
-      </mark>
-      {text.slice(idx + part.length)}
-    </>
-  );
-}
 function resultRow(
   r: Result,
   q: string,
@@ -48,10 +34,11 @@ function resultRow(
       />
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-[color:var(--dp-navy)]">
-          {mark(r.name, q)}
+          <SearchHighlight text={r.name} query={q} />
         </span>
         <span className="block truncate text-xs text-[color:var(--dp-ink)]/55">
-          {mark(r.path || 'Library', q)} · {typeLabel(r.mime_type, r.is_folder)}
+          <SearchHighlight text={r.path || 'Library'} query={q} /> ·{' '}
+          {typeLabel(r.mime_type, r.is_folder)}
         </span>
       </span>
       {opening && (
