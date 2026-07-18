@@ -358,6 +358,37 @@ html[data-theme='dark'] :is(.dp-wordmark-dark, .dp-logo-dark) {
   background-color: var(--dp-search-active);
 }
 
+.dp-select-trigger {
+  border-color: var(--outline);
+  background-color: var(--dp-warm-surface);
+  color: var(--dp-heading);
+}
+.dp-select-trigger:hover,
+.dp-select-trigger:focus-visible,
+.dp-select-trigger[data-state='open'] {
+  border-color: color-mix(in srgb, var(--dp-heading) 32%, var(--outline));
+  background-color: var(--dp-surface-muted);
+}
+.dp-select-content {
+  border-color: var(--dp-theme-border);
+  background-color: var(--dp-page);
+  color: var(--dp-heading);
+}
+.dp-select-item {
+  color: var(--dp-heading);
+}
+.dp-select-item[data-state='checked'] {
+  background-color: var(--dp-surface-muted);
+}
+.dp-select-item[data-highlighted],
+.dp-select-item[data-state='checked'][data-highlighted] {
+  background-color: var(--dp-surface-high);
+  color: var(--dp-heading);
+}
+.dp-select-indicator {
+  color: var(--dp-muted-text);
+}
+
 .dp-loading-track {
   background-color: var(--dp-progress-track);
   box-shadow: inset 0 0 0 1px rgb(100 116 139 / 0.12);
