@@ -95,4 +95,18 @@ describe('dark mode', () => {
     expect(pdf).toContain('PDF preparation progress');
     expect(presentation).toContain('Presentation download progress');
   });
+
+  it('keeps shared dropdown triggers, menus, and selected options dark-safe', () => {
+    const css = read('app/globals.css');
+    const select = read('components/ui/app-select.tsx');
+    expect(select).toContain('dp-select-trigger');
+    expect(select).toContain('dp-select-content');
+    expect(select).toContain('dp-select-item');
+    expect(select).not.toContain('data-[state=checked]:bg-slate-50');
+    expect(select).not.toContain('data-[highlighted]:bg-slate-100');
+    expect(css).toContain(".dp-select-item[data-state='checked']");
+    expect(css).toContain('.dp-select-item[data-highlighted]');
+    expect(css).toContain('background-color: var(--dp-surface-high)');
+    expect(css).toContain('color: var(--dp-heading)');
+  });
 });
