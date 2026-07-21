@@ -27,6 +27,12 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-21': [
+    'Added password recovery with secure reset emails, password-strength guidance, password matching, and quick links to popular mail apps.',
+    'Suspended accounts now open a dedicated page that clearly explains the suspension reason and how to contact the support team.',
+    'Added notification badges for new support tickets and resource reports, plus user alerts when a ticket receives a reply or status update.',
+    'Fixed password-reset links so they reliably return to the public DP Resources website.',
+  ],
   '2026-07-18': [
     'Fixed dropdown menus so selected and highlighted options remain clear and readable in dark mode.',
     'Softened dark-mode borders and improved the readability of disabled and loading account buttons.',
