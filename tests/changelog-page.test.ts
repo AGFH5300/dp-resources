@@ -14,7 +14,9 @@ describe('public changelog page', () => {
 
     expect(page).toContain("path: '/changelog'");
     expect(page).toContain('getChangelog()');
-    expect(page).toContain('A plain-language record');
+    expect(page).toContain(
+      'A listed record of all the features, improvements, and fixes',
+    );
     expect(list).toContain("month: 'long'");
     expect(list).toContain("day: 'numeric'");
     expect(list).toContain('group.entries.map');

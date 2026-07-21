@@ -157,6 +157,17 @@ export async function getPrivateR2Object({ bucket, key, signal }) {
   throw await errorFromResponse('R2 read', response);
 }
 
+export async function headPrivateR2Object({ bucket, key, signal }) {
+  const response = await signedR2Request({
+    method: 'HEAD',
+    bucket,
+    key,
+    signal,
+  });
+  if (response.ok || response.status === 404) return response;
+  throw await errorFromResponse('R2 metadata read', response);
+}
+
 export async function deletePrivateR2Object({ bucket, key, signal }) {
   const response = await signedR2Request({
     method: 'DELETE',

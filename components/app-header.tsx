@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, Clock, Headphones, Search, Star } from 'lucide-react';
+import {
+  BookOpen,
+  BookOpenCheck,
+  Clock,
+  Headphones,
+  Search,
+  Star,
+} from 'lucide-react';
 
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
@@ -43,6 +50,7 @@ export function AppHeader({
 
   const links: Array<[string, string, number]> = [
     ['/library', 'Library', 0],
+    ['/question-bank', 'Question Bank', 0],
     ['/recent', 'Recent', 0],
     ['/saved', 'Saved', 0],
     ['/support', 'Support', notificationFeed.summary.userTickets],
@@ -57,6 +65,7 @@ export function AppHeader({
 
   const mobile = [
     ['/library', 'Library', BookOpen],
+    ['/question-bank', 'Questions', BookOpenCheck],
     ['/search', 'Search', Search],
     ['/recent', 'Recent', Clock],
     ['/saved', 'Saved', Star],
@@ -148,7 +157,7 @@ export function AppHeader({
       </header>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-[color:var(--dp-warm-surface)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-[color:var(--dp-warm-surface)] md:hidden"
         aria-label="Mobile navigation"
       >
         {mobile.map(([href, label, Icon]) => {

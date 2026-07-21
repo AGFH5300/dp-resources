@@ -1,5 +1,16 @@
 node_modules/
+.next/
 dist/
 .env.local
 *.log
 /public/pdfjs/
+.question-bank-reports/
+processed-*/
+*question-bank*.zip
+all-questions.ndjson
+all-topics.ndjson
+image-manifest.json
+image-urls.json
+decrypted-datasets/
+assets.revisionvillage.com/
+tsconfig.tsbuildinfo

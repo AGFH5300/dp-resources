@@ -20,6 +20,10 @@ Copy `.env.example` to `.env.local` and fill in values:
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Google service account email.
 - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`: service account private key, using `\n` for newlines in env storage.
 - `ADMIN_EMAILS`: comma-separated bootstrap admin emails stored as a server-side environment variable. When one of these users signs in, server-only service-role code creates or updates only that user's `dp_resource_memberships` row to `role = 'admin'`. The legacy `is_approved` and `approved_at` fields may still be populated for backward compatibility, but they do not control access.
+- `QUESTION_BANK_STORAGE_PROVIDER`: private question-image provider, `r2` (preferred) or `supabase`.
+- `R2_QUESTION_BANK_BUCKET`: dedicated private question-image bucket when using R2.
+- `QUESTION_BANK_SUPABASE_BUCKET`: dedicated private bucket when using Supabase Storage.
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and optional `R2_ENDPOINT`: server-only R2 credentials shared with the existing private-object integration.
 
 ## Supabase setup for DP Resources authentication
 
@@ -86,6 +90,14 @@ where lower(email) = lower('admin@example.com');
 7. Run or trigger the resource index sync before production smoke testing.
 
 The app never sends raw Google Drive URLs to users. Folder navigation, file open, preview, and download requests go through authenticated Next.js route handlers. Requested Drive IDs are accepted only if they exist in the completed DP Resources index or the server can confirm containment under `GOOGLE_DRIVE_FOLDER_ID`; outside IDs return `404` and are not logged.
+
+## IB DP Question Bank
+
+The normalized question bank, private image pipeline, review-first importer, RLS
+model, operational commands, verified archive counts, and rollback procedure are
+documented in [docs/QUESTION_BANK_ARCHITECTURE.md](docs/QUESTION_BANK_ARCHITECTURE.md).
+Production import write modes require an explicit `--confirm-production` flag;
+the feature migration itself inserts no question content and creates no bucket.
 
 ## Local run
 

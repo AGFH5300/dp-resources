@@ -860,6 +860,7 @@ export function AdminConsole({
   }, [reports, section, sp.reportId, sp.ticketId, tickets]);
   const tabs: Array<[string, string, number]> = [
     ['index', 'Library index', 0],
+    ['question-bank', 'Question bank', 0],
     ['reports', 'Resource reports', notificationFeed.summary.adminReports],
     ['tickets', 'Support tickets', notificationFeed.summary.adminTickets],
     ['users', 'Users', 0],
@@ -882,7 +883,7 @@ export function AdminConsole({
         {tabs.map(([id, label, unread]) => (
           <Link
             key={id}
-            href={sectionHref(sp, id)}
+            href={id === 'question-bank' ? '/admin/question-bank' : sectionHref(sp, id)}
             className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 ${section === id ? 'bg-slate-100 font-semibold text-[color:var(--dp-navy)]' : 'text-slate-600 hover:bg-slate-50'}`}
           >
             {label}
