@@ -7,15 +7,25 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { AuthShell } from '@/components/auth-shell';
 import { safeInternalReturnPath } from '@/lib/auth-redirect';
+import {
+  SUSPENDED_USER_ID_STORAGE_KEY,
+  SUSPENSION_REASON_STORAGE_KEY,
+} from '@/components/suspension-storage';
+import { isSuspendedAuthError } from '@/lib/suspension-auth';
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
 const DEFAULT_NEXT_PATH = '/library';
 const SUSPENDED_MESSAGE =
   'This account has been suspended. Contact the site administrator if you believe this is a mistake.';
+
+type SuspendedLoginResponse = {
+  suspended?: boolean;
+  userId?: string | null;
+  suspensionReason?: string | null;
+};
+
 function friendlyLoginError(message: string) {
-  return /ban|banned|suspend|suspended/i.test(message)
-    ? SUSPENDED_MESSAGE
-    : message;
+  return isSuspendedAuthError(message) ? SUSPENDED_MESSAGE : message;
 }
 
 function readNextPath() {
@@ -24,6 +34,26 @@ function readNextPath() {
     new URLSearchParams(window.location.search).get('next'),
     DEFAULT_NEXT_PATH,
   );
+}
+
+function storeSuspensionDetails(details: SuspendedLoginResponse) {
+  if (details.suspensionReason) {
+    window.sessionStorage.setItem(
+      SUSPENSION_REASON_STORAGE_KEY,
+      details.suspensionReason,
+    );
+  } else {
+    window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY);
+  }
+
+  if (details.userId) {
+    window.sessionStorage.setItem(
+      SUSPENDED_USER_ID_STORAGE_KEY,
+      details.userId,
+    );
+  } else {
+    window.sessionStorage.removeItem(SUSPENDED_USER_ID_STORAGE_KEY);
+  }
 }
 
 export default function LoginPage() {
@@ -50,6 +80,23 @@ export default function LoginPage() {
       .catch(() => undefined);
   }, []);
 
+  async function openSuspendedAccountPage() {
+    const response = await fetch('/api/auth/suspended-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
+    const details = (await response
+      .json()
+      .catch(() => null)) as SuspendedLoginResponse | null;
+
+    if (!response.ok || details?.suspended !== true) return false;
+
+    storeSuspensionDetails(details);
+    router.replace('/account-suspended');
+    return true;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
@@ -61,6 +108,13 @@ export default function LoginPage() {
       password,
     });
     if (error) {
+      if (isSuspendedAuthError(error)) {
+        try {
+          if (await openSuspendedAccountPage()) return;
+        } catch {
+          // Fall back to the privacy-safe suspended message below.
+        }
+      }
       setError(friendlyLoginError(error.message));
       setLoading(false);
       return;
