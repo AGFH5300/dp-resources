@@ -58,6 +58,17 @@ describe('public changelog page', () => {
     ]) {
       expect(summaries).not.toContain(internalTerm);
     }
+    expect(summaries).toContain("'2026-07-21'");
+    expect(summaries).toContain('Added password recovery with secure reset emails');
+    expect(summaries).toContain(
+      'Suspended accounts now open a dedicated page',
+    );
+    expect(summaries).toContain(
+      'Added notification badges for new support tickets and resource reports',
+    );
+    expect(summaries).toContain(
+      'Fixed password-reset links so they reliably return to the public DP Resources website.',
+    );
     expect(summaries).toContain("'2026-07-18'");
     expect(summaries).toContain(
       'Fixed dropdown menus so selected and highlighted options remain clear and readable in dark mode.',
