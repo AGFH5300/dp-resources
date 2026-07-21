@@ -5,6 +5,7 @@ import { isSuspendedAuthError } from '../lib/suspension-auth';
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
+  vi.unstubAllEnvs();
 });
 
 describe('suspended login error detection', () => {
@@ -25,6 +26,8 @@ describe('suspended login details endpoint', () => {
       suspension_reason: string | null;
     } | null;
   }) {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key');
     const signInWithPassword = vi.fn(async () => ({
       data: { user: null, session: null },
       error: options.authError,
