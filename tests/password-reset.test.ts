@@ -24,6 +24,18 @@ describe('password reset flow', () => {
     expect(updatePage).toContain("signOut({ scope: 'global' })");
   });
 
+  it('uses the trusted public origin for production callbacks', () => {
+    expect(callbackRoute).toContain(
+      "process.env.NODE_ENV === 'production'",
+    );
+    expect(callbackRoute).toContain('? SITE_URL');
+    expect(callbackRoute).toContain('new URL(next, origin)');
+    expect(callbackRoute).not.toContain(
+      'const { searchParams, origin } = request.nextUrl',
+    );
+    expect(callbackRoute).not.toContain('`${origin}');
+  });
+
   it('returns invalid recovery callbacks to the request screen', () => {
     expect(callbackRoute).toContain("next === '/auth/update-password'");
     expect(callbackRoute).toContain(
