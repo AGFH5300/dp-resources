@@ -23,3 +23,17 @@ services:
         sync: false
       - key: ADMIN_EMAILS
         sync: false
+      - key: QUESTION_BANK_STORAGE_PROVIDER
+        value: r2
+      - key: R2_QUESTION_BANK_BUCKET
+        sync: false
+      - key: QUESTION_BANK_SUPABASE_BUCKET
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false

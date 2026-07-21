@@ -20,6 +20,8 @@ export default function robots(): MetadataRoute.Robots {
           '/api/',
           '/admin',
           '/admin/',
+          '/question-bank',
+          '/question-bank/',
           '/library',
           '/library/',
           '/resource/',

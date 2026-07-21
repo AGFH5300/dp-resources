@@ -18,6 +18,14 @@ export default async function Saved() {
   const { data: rows = [] } = ids.length
     ? await sb.from('dp_resource_index').select('*').in('drive_file_id', ids)
     : { data: [] as any[] };
+  const { data: savedQuestions = [] } = await sb
+    .from('dp_qb_user_saved_questions')
+    .select(
+      'question_id,last_variant_id,created_at,question:dp_qb_questions!question_id(reference),variant:dp_qb_question_variants!last_variant_id(id,course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug)),topic:dp_qb_topics!topic_id(name))',
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
   return (
     <>
       <Nav
@@ -30,8 +38,46 @@ export default async function Saved() {
           Saved
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Folders and resources you saved for quick access.
+          Resources and question-bank items you saved for quick access.
         </p>
+        <section id="question-bank" className="dp-qb-panel mt-5 scroll-mt-24">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-[color:var(--dp-navy)]">
+                Saved questions
+              </h2>
+              <p className="text-sm text-slate-600">
+                Continue directly in the course and topic where you saved them.
+              </p>
+            </div>
+            <Link href="/question-bank" className="text-sm font-medium text-blue-700">
+              Open Question Bank
+            </Link>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {(savedQuestions as any[]).length ? (
+              (savedQuestions as any[]).map((row) => (
+                <Link
+                  key={row.question_id}
+                  href={`/question-bank/${row.variant.course.subject.slug}/${row.variant.course.slug}/questions/${row.last_variant_id}`}
+                  className="dp-qb-course-link"
+                >
+                  <span>
+                    <strong>{row.question.reference}</strong>
+                    <small>
+                      {row.variant.course.name} · {row.variant.topic.name}
+                    </small>
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <p className="text-sm text-slate-600">No saved questions yet.</p>
+            )}
+          </div>
+        </section>
+        <h2 className="mt-6 font-semibold text-[color:var(--dp-navy)]">
+          Saved library resources
+        </h2>
         <FavoritesProvider initialSavedIds={ids}>
           <div className="mt-5 border-y border-slate-200 bg-white">
             {(rows as any[]).length ? (
