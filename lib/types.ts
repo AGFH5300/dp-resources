@@ -1,6 +1,7 @@
 export type ResourceMembership = {
   id: string;
   email: string;
+  username?: string | null;
   full_name?: string | null;
   role: 'user' | 'admin';
   is_approved: boolean;
