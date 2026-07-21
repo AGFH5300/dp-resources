@@ -5,6 +5,8 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/',
   '/auth',
   '/auth/login',
+  '/auth/forgot-password',
+  '/auth/update-password',
   '/auth/sign-up',
   '/auth/verify-otp',
   '/auth/set-password',

@@ -9,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: [
           '/',
           '/auth/login',
+          '/auth/forgot-password',
           '/auth/sign-up',
           '/privacy',
           '/terms',
@@ -25,6 +26,7 @@ export default function robots(): MetadataRoute.Robots {
           '/auth/callback',
           '/auth/verify-otp',
           '/auth/set-password',
+          '/auth/update-password',
         ],
       },
     ],
