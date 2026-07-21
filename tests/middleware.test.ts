@@ -7,6 +7,8 @@ describe('middleware auth route bypasses', () => {
       '/',
       '/auth',
       '/auth/login',
+      '/auth/forgot-password',
+      '/auth/update-password',
       '/auth/sign-up',
       '/auth/verify-otp',
       '/auth/set-password',

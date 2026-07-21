@@ -15,5 +15,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (next === '/auth/update-password') {
+    return NextResponse.redirect(
+      `${origin}/auth/forgot-password?error=invalid_link`,
+    );
+  }
+
   return NextResponse.redirect(`${origin}/auth/login`);
 }
