@@ -797,6 +797,7 @@ export function AdminConsole({
   usageResource = null,
   usageUsers = [],
   usageUserResources = [],
+  usageSelectedUser = null,
   diagnostics = [],
   counts,
   pages,
@@ -815,6 +816,7 @@ export function AdminConsole({
   usageResource?: any;
   usageUsers?: any[];
   usageUserResources?: any[];
+  usageSelectedUser?: ResourceMembership | null;
   diagnostics?: any[];
   counts: any;
   pages: any;
@@ -899,6 +901,7 @@ export function AdminConsole({
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <tr>
                   <th className="p-2">Full name</th>
+                  <th className="p-2">Username</th>
                   <th className="p-2">Email</th>
                   <th className="p-2">Role</th>
                   <th className="p-2">Joined</th>
@@ -910,9 +913,50 @@ export function AdminConsole({
                 {memberships.map((u) => (
                   <tr key={u.id} className="border-t border-slate-100">
                     <td className="whitespace-nowrap p-2 font-medium">
-                      {u.full_name || '—'}
+                      <Link
+                        className="text-[color:var(--dp-blue)] hover:underline"
+                        href={{
+                          query: {
+                            ...sp,
+                            section: 'users',
+                            userUsageId: u.id,
+                            userUsageRange: sp.userUsageRange || 'all',
+                          },
+                        }}
+                      >
+                        {u.full_name || '—'}
+                      </Link>
                     </td>
-                    <td className="p-2 font-medium">{u.email}</td>
+                    <td className="whitespace-nowrap p-2 font-medium">
+                      <Link
+                        className="text-[color:var(--dp-blue)] hover:underline"
+                        href={{
+                          query: {
+                            ...sp,
+                            section: 'users',
+                            userUsageId: u.id,
+                            userUsageRange: sp.userUsageRange || 'all',
+                          },
+                        }}
+                      >
+                        {u.username ? `@${u.username}` : '—'}
+                      </Link>
+                    </td>
+                    <td className="p-2 font-medium">
+                      <Link
+                        className="text-[color:var(--dp-blue)] hover:underline"
+                        href={{
+                          query: {
+                            ...sp,
+                            section: 'users',
+                            userUsageId: u.id,
+                            userUsageRange: sp.userUsageRange || 'all',
+                          },
+                        }}
+                      >
+                        {u.email}
+                      </Link>
+                    </td>
                     <td className="p-2">{u.role}</td>
                     <td className="p-2 text-slate-500">
                       {new Date(u.created_at).toLocaleDateString()}
@@ -1135,7 +1179,195 @@ export function AdminConsole({
           onClose={() => setSelected(null)}
         />
       )}
+      {section === 'users' && usageSelectedUser && (
+        <UserUsageModal
+          sp={sp}
+          user={usageSelectedUser}
+          resources={usageUserResources}
+        />
+      )}
     </>
+  );
+}
+
+function UserUsageModal({
+  sp,
+  user,
+  resources,
+}: {
+  sp: Record<string, string | undefined>;
+  user: ResourceMembership;
+  resources: any[];
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const closeQuery = {
+    ...sp,
+    section: 'users',
+    userUsageId: undefined,
+    userUsageRange: undefined,
+  };
+  const close = () => {
+    const query = new URLSearchParams();
+    Object.entries(closeQuery).forEach(([key, value]) => {
+      if (value) query.set(key, value);
+    });
+    const suffix = query.toString();
+    router.replace(suffix ? `${pathname}?${suffix}` : pathname);
+  };
+  const totalActiveSeconds = resources.reduce(
+    (total, resource) => total + Number(resource.total_active_seconds || 0),
+    0,
+  );
+  const totalSessions = resources.reduce(
+    (total, resource) => total + Number(resource.session_count || 0),
+    0,
+  );
+  const lastViewedAt = resources.reduce<string | null>(
+    (latest, resource) =>
+      !latest || (resource.last_used_at && resource.last_used_at > latest)
+        ? resource.last_used_at
+        : latest,
+    null,
+  );
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="user-usage-modal-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white p-4 shadow-sm">
+          <div>
+            <h3
+              id="user-usage-modal-title"
+              className="text-lg font-semibold text-[color:var(--dp-navy)]"
+            >
+              Resource analytics for{' '}
+              {user.username ? `@${user.username}` : user.email}
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {[user.full_name, user.email].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <CloseButton label="Close user resource analytics" onClick={close} />
+        </header>
+        <div className="max-h-[calc(90vh-8rem)] overflow-y-auto p-4">
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['today', 'Today'],
+              ['7d', '7 days'],
+              ['30d', '30 days'],
+              ['all', 'All time'],
+            ].map(([range, label]) => (
+              <Link
+                key={range}
+                className={`${secondaryBtn} ${(sp.userUsageRange || 'all') === range ? 'border-[color:var(--dp-blue)] text-[color:var(--dp-blue)]' : ''}`}
+                href={{
+                  query: {
+                    ...sp,
+                    section: 'users',
+                    userUsageId: user.id,
+                    userUsageRange: range,
+                  },
+                }}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+          <dl className="mt-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-4">
+            <div>
+              <dt className="text-slate-500">Files viewed</dt>
+              <dd className="font-semibold">{resources.length}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Total active time</dt>
+              <dd className="font-semibold">
+                {fmtSeconds(totalActiveSeconds)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Sessions</dt>
+              <dd className="font-semibold">{totalSessions}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Last viewed</dt>
+              <dd className="font-semibold">
+                {lastViewedAt ? new Date(lastViewedAt).toLocaleString() : '—'}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
+            {resources.length ? (
+              <table className="min-w-full text-sm">
+                <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="p-2">Resource</th>
+                    <th className="p-2">Subject/path</th>
+                    <th className="p-2">Active time</th>
+                    <th className="p-2">Sessions</th>
+                    <th className="p-2">Last viewed</th>
+                    <th className="p-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resources.map((resource) => (
+                    <tr
+                      key={resource.file_id}
+                      className="border-t border-slate-100"
+                    >
+                      <td className="p-2 font-medium">
+                        {resource.resource_name}
+                      </td>
+                      <td className="p-2 text-slate-600">
+                        {resource.resource_path || '—'}
+                      </td>
+                      <td className="whitespace-nowrap p-2">
+                        {fmtSeconds(Number(resource.total_active_seconds))}
+                      </td>
+                      <td className="p-2">{resource.session_count}</td>
+                      <td className="whitespace-nowrap p-2">
+                        {resource.last_used_at
+                          ? new Date(resource.last_used_at).toLocaleString()
+                          : '—'}
+                      </td>
+                      <td className="p-2">
+                        <Link
+                          className="font-medium text-[color:var(--dp-blue)]"
+                          href={`/resource/${resource.file_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open preview
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                No resource views recorded for this user in this range.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -60,6 +60,7 @@ export default async function Admin({
   let usageResource: any = null;
   let usageUsers: any[] = [];
   let usageUserResources: any[] = [];
+  let usageSelectedUser: any = null;
   let diagnostics: any[] = [];
   let userCount = 0;
   let activityCount = 0;
@@ -161,7 +162,9 @@ export default async function Admin({
     const membershipRows = rawMembershipRows || [];
     userCount = count || 0;
     const profileNames = new Map<string, string>();
+    const profileUsernames = new Map<string, string>();
     const authNames = new Map<string, string>();
+    const authUsernames = new Map<string, string>();
     const latestActivity = new Map<string, string>();
     if (membershipRows.length) {
       const userIds = membershipRows.map((u: any) => u.id);
@@ -172,7 +175,7 @@ export default async function Admin({
       ] = await Promise.all([
         sb
           .from('dp_resource_profiles')
-          .select('id,full_name')
+          .select('id,username,full_name')
           .in('id', userIds),
         sb.auth.admin.listUsers({ page: 1, perPage: 1000 }),
         sb
@@ -183,14 +186,18 @@ export default async function Admin({
           .limit(500),
       ]);
       (profiles || []).forEach((p: any) => {
+        const username = String(p.username || '').trim();
         const name = String(p.full_name || '').trim();
+        if (username) profileUsernames.set(p.id, username);
         if (name) profileNames.set(p.id, name);
       });
       (authUsers?.users || []).forEach((u: any) => {
         const metadata = u.user_metadata || {};
+        const username = String(metadata.username || '').trim();
         const name = String(
           metadata.full_name || metadata.name || metadata.display_name || '',
         ).trim();
+        if (username) authUsernames.set(u.id, username);
         if (name) authNames.set(u.id, name);
       });
       (recentUserLogs || []).forEach((l: any) => {
@@ -200,6 +207,7 @@ export default async function Admin({
     }
     memberships = membershipRows.map((u: any) => ({
       ...u,
+      username: profileUsernames.get(u.id) || authUsernames.get(u.id) || null,
       full_name: profileNames.get(u.id) || authNames.get(u.id) || null,
       latest_activity_at: latestActivity.get(u.id) || null,
     }));
@@ -244,6 +252,20 @@ export default async function Admin({
       }),
     );
     domainPolicies = Object.fromEntries(policyEntries);
+    if (sp.userUsageId) {
+      usageSelectedUser = memberships.find(
+        (user: any) => user.id === sp.userUsageId,
+      );
+      if (usageSelectedUser) {
+        const userSb = await createClient();
+        const resources = await userSb.rpc('dp_admin_resource_usage_for_user', {
+          p_user_id: sp.userUsageId,
+          p_range: sp.userUsageRange || 'all',
+        });
+        if (resources.error) throw new Error('Forbidden');
+        usageUserResources = resources.data || [];
+      }
+    }
     devTiming('admin.section_query', {
       section,
       dataset: 'users',
@@ -352,6 +374,7 @@ export default async function Admin({
           usageResource={usageResource as any}
           usageUsers={usageUsers as any}
           usageUserResources={usageUserResources as any}
+          usageSelectedUser={usageSelectedUser as any}
           diagnostics={diagnostics as any}
           counts={{
             report: reportCount,

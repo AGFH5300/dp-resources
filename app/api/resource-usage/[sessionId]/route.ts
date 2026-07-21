@@ -2,8 +2,28 @@ import { sameOriginOrForbidden } from '@/lib/request-security';
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
-async function endSession(sessionId: string, userId: string) {
+function boundedDelta(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(60, Math.floor(parsed)));
+}
+
+async function recordHeartbeat(sessionId: string, userId: string, body: any) {
   const sb = createSupabaseAdminClient();
+  const { error } = await sb.rpc('dp_resource_usage_heartbeat_admin_safe', {
+    p_session_id: sessionId,
+    p_user_id: userId,
+    p_page_visible: Boolean(body?.pageVisible),
+    p_was_active: Boolean(body?.wasActive ?? body?.pageVisible),
+    p_delta_seconds: boundedDelta(body?.deltaSeconds),
+  });
+
+  return { sb, error };
+}
+
+async function endSession(sessionId: string, userId: string, body: any) {
+  const { sb, error } = await recordHeartbeat(sessionId, userId, body);
+  if (error) return Response.json({ ok: false }, { status: 503 });
   await sb
     .from('dp_resource_usage_sessions')
     .update({
@@ -26,38 +46,8 @@ export async function PATCH(
   const { user } = await requireMember();
   const { sessionId } = await params;
   const body = await req.json().catch(() => null);
-  const pageVisible = Boolean(body?.pageVisible);
-  const sb = createSupabaseAdminClient();
-
-  const { data: session } = await sb
-    .from('dp_resource_usage_sessions')
-    .select('last_heartbeat_at, ended_at, active_seconds, heartbeat_count')
-    .eq('id', sessionId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!session || session.ended_at) return Response.json({ ok: true });
-
-  const last = session.last_heartbeat_at
-    ? new Date(session.last_heartbeat_at).getTime()
-    : Date.now();
-  const now = Date.now();
-  const deltaSeconds =
-    pageVisible && last > now - 5 * 60_000
-      ? Math.min(60, Math.max(0, Math.floor((now - last) / 1000)))
-      : 0;
-
-  await sb
-    .from('dp_resource_usage_sessions')
-    .update({
-      active_seconds: Number(session.active_seconds || 0) + deltaSeconds,
-      heartbeat_count: Number(session.heartbeat_count || 0) + 1,
-      last_heartbeat_at: new Date().toISOString(),
-      page_visible: pageVisible,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', sessionId)
-    .eq('user_id', user.id);
+  const { error } = await recordHeartbeat(sessionId, user.id, body);
+  if (error) return Response.json({ ok: false }, { status: 503 });
 
   return Response.json({ ok: true });
 }
@@ -69,7 +59,8 @@ export async function DELETE(
   const forbidden = sameOriginOrForbidden(req);
   if (forbidden) return forbidden;
   const { user } = await requireMember();
-  return endSession((await params).sessionId, user.id);
+  const body = await req.json().catch(() => null);
+  return endSession((await params).sessionId, user.id, body);
 }
 export async function POST(
   req: Request,
@@ -78,5 +69,14 @@ export async function POST(
   const forbidden = sameOriginOrForbidden(req);
   if (forbidden) return forbidden;
   const { user } = await requireMember();
-  return endSession((await params).sessionId, user.id);
+  const body = await req.json().catch(() => null);
+  const sessionId = (await params).sessionId;
+
+  if (body?.end === false) {
+    const { error } = await recordHeartbeat(sessionId, user.id, body);
+    if (error) return Response.json({ ok: false }, { status: 503 });
+    return Response.json({ ok: true });
+  }
+
+  return endSession(sessionId, user.id, body);
 }
