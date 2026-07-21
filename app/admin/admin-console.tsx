@@ -7,6 +7,11 @@ import { AppSelect as AdminSelect } from '@/components/ui/app-select';
 import { CloseButton } from '@/components/ui/close-button';
 import { EmailSearchInput } from '@/components/ui/email-search-input';
 import { formatMimeType } from '@/lib/file-type-labels';
+import {
+  markNotificationCategory,
+  NotificationBadge,
+  useNotificationFeed,
+} from '@/components/notification-center';
 import type {
   ActivityLog,
   ResourceMembership,
@@ -827,6 +832,7 @@ export function AdminConsole({
   currentAdminId: string;
 }) {
   const section = sp.section || 'index';
+  const notificationFeed = useNotificationFeed(true);
   const [selected, setSelected] = useState<{
     kind: 'report' | 'ticket';
     item: any;
@@ -835,14 +841,31 @@ export function AdminConsole({
     () => memberships.filter((m) => m.role === 'admin'),
     [memberships],
   );
-  const tabs = [
-    ['index', 'Library index'],
-    ['reports', 'Resource reports'],
-    ['tickets', 'Support tickets'],
-    ['users', 'Users'],
-    ['activity', 'Activity'],
-    ['analytics', 'Usage analytics'],
-    ['diagnostics', 'Diagnostics'],
+  useEffect(() => {
+    if (section === 'reports') void markNotificationCategory('admin_reports');
+    if (section === 'tickets') void markNotificationCategory('admin_tickets');
+  }, [section]);
+  useEffect(() => {
+    const selectedId =
+      section === 'reports'
+        ? sp.reportId
+        : section === 'tickets'
+          ? sp.ticketId
+          : null;
+    if (!selectedId) return;
+    const rows = section === 'reports' ? reports : tickets;
+    const item = rows.find((row) => row.id === selectedId);
+    if (item)
+      setSelected({ kind: section === 'reports' ? 'report' : 'ticket', item });
+  }, [reports, section, sp.reportId, sp.ticketId, tickets]);
+  const tabs: Array<[string, string, number]> = [
+    ['index', 'Library index', 0],
+    ['reports', 'Resource reports', notificationFeed.summary.adminReports],
+    ['tickets', 'Support tickets', notificationFeed.summary.adminTickets],
+    ['users', 'Users', 0],
+    ['activity', 'Activity', 0],
+    ['analytics', 'Usage analytics', 0],
+    ['diagnostics', 'Diagnostics', 0],
   ];
   const activityLabel = (a: string) =>
     ({
@@ -856,13 +879,14 @@ export function AdminConsole({
         className="mt-4 flex flex-wrap gap-2 border-b border-slate-200 text-sm"
         aria-label="Admin sections"
       >
-        {tabs.map(([id, label]) => (
+        {tabs.map(([id, label, unread]) => (
           <Link
             key={id}
             href={sectionHref(sp, id)}
-            className={`rounded-t-md px-3 py-2 ${section === id ? 'bg-slate-100 font-semibold text-[color:var(--dp-navy)]' : 'text-slate-600 hover:bg-slate-50'}`}
+            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 ${section === id ? 'bg-slate-100 font-semibold text-[color:var(--dp-navy)]' : 'text-slate-600 hover:bg-slate-50'}`}
           >
             {label}
+            <NotificationBadge count={unread} />
           </Link>
         ))}
       </nav>

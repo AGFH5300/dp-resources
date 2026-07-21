@@ -5,6 +5,14 @@ describe('password reset flow', () => {
   const loginPage = readFileSync('app/auth/login/page.tsx', 'utf8');
   const forgotPage = readFileSync('app/auth/forgot-password/page.tsx', 'utf8');
   const updatePage = readFileSync('app/auth/update-password/page.tsx', 'utf8');
+  const inboxShortcuts = readFileSync(
+    'components/inbox-shortcuts.tsx',
+    'utf8',
+  );
+  const strengthMeter = readFileSync(
+    'components/password-strength-meter.tsx',
+    'utf8',
+  );
   const callbackRoute = readFileSync('app/auth/callback/route.ts', 'utf8');
 
   it('links the login form to password recovery', () => {
@@ -22,6 +30,22 @@ describe('password reset flow', () => {
     expect(updatePage).toContain('supabase.auth.getUser()');
     expect(updatePage).toContain('supabase.auth.updateUser({ password })');
     expect(updatePage).toContain("signOut({ scope: 'global' })");
+  });
+
+  it('restores the full strength meter and matching feedback on password recovery', () => {
+    expect(updatePage).toContain('PasswordStrengthMeter');
+    expect(updatePage).toContain('Passwords match.');
+    expect(strengthMeter).toContain('Password strength');
+    expect(strengthMeter).toContain('Godly');
+    expect(strengthMeter).toContain('Excellent strength and character variety.');
+  });
+
+  it('shows spam guidance and all three inbox actions after requesting a reset', () => {
+    expect(forgotPage).toContain('InboxShortcuts');
+    expect(forgotPage).toContain('spam or junk folder');
+    expect(inboxShortcuts).toContain('Open Gmail');
+    expect(inboxShortcuts).toContain('Open Outlook');
+    expect(inboxShortcuts).toContain('Open email app');
   });
 
   it('uses the trusted public origin for production callbacks', () => {

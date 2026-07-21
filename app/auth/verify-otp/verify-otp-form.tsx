@@ -4,39 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
+import { InboxShortcuts } from '@/components/inbox-shortcuts';
 import { Spinner } from '@/components/ui/spinner';
 import { createClient } from '@/lib/supabase/client';
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
 const OTP_LENGTH = 6;
 const EMPTY_OTP = ' '.repeat(OTP_LENGTH);
-
-function EmailIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-6 shrink-0"
-      fill="none"
-    >
-      <path d="M4.75 6.75h14.5v10.5H4.75V6.75Z" className="fill-white" />
-      <path
-        d="m5 7 7 5.4L19 7"
-        stroke="#00152a"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4.75 6.75h14.5v10.5H4.75V6.75Z"
-        stroke="#00152a"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export function VerifyOtpForm({
   email,
@@ -216,73 +190,14 @@ export function VerifyOtpForm({
         .
       </p>
 
-      <div className="mt-5 rounded-2xl border border-[#e4dbc9] bg-[#fffaf1] p-4 sm:p-5">
-        <p className="text-sm leading-6 text-[#43474d]">
-          Open your inbox below. If you do not see the OTP, check your spam or
-          junk folder.
-        </p>
-        <div className="mt-4 grid gap-3">
-          <a
-            href="https://mail.google.com/mail/u/0/#inbox"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
-            aria-label="Open Gmail inbox"
-          >
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
-              <img
-                src="/brand/gmail-icon.svg"
-                alt=""
-                className="size-7 object-contain"
-              />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Open Gmail</span>
-              <span className="block text-xs text-[#6b7280]">
-                Check your Gmail inbox
-              </span>
-            </span>
-          </a>
-          <a
-            href="https://outlook.live.com/mail/0/inbox"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
-            aria-label="Open Outlook inbox"
-          >
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
-              <img
-                src="/brand/outlook-icon.svg"
-                alt=""
-                className="size-7 object-contain"
-              />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Open Outlook</span>
-              <span className="block text-xs text-[#6b7280]">
-                Check your Outlook inbox
-              </span>
-            </span>
-          </a>
-          <a
-            href="mailto:"
-            className="flex w-full items-center gap-3 rounded-xl border border-[#e1d7c7] bg-white p-3 text-left text-[#00152a] shadow-sm transition-colors hover:border-[#00152a]/30 hover:bg-[#fffdf8]"
-            aria-label="Open default email app"
-          >
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-[#e1d7c7]">
-              <EmailIcon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">
-                Open email app
-              </span>
-              <span className="block text-xs text-[#6b7280]">
-                Use your default email app
-              </span>
-            </span>
-          </a>
-        </div>
-      </div>
+      <InboxShortcuts
+        message={
+          <>
+            Open your inbox below. If you do not see the OTP, check your spam or
+            junk folder.
+          </>
+        }
+      />
 
       <form onSubmit={handleVerify} className="mt-8 space-y-6" noValidate>
         <div>

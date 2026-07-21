@@ -2,13 +2,16 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, CircleUserRound, LogOut, UserStar } from 'lucide-react';
+import { NotificationBadge } from './notification-center';
 
 export function AccountMenu({
   email,
   admin,
+  adminUnread = 0,
 }: {
   email?: string | null;
   admin?: boolean;
+  adminUnread?: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -64,6 +67,9 @@ export function AccountMenu({
             >
               <UserStar className="size-4" />
               Admin
+              <span className="ml-auto">
+                <NotificationBadge count={adminUnread} />
+              </span>
             </Link>
           )}
           <form action="/api/auth/signout" method="post">

@@ -140,11 +140,27 @@ export default async function Admin({
       queue('dp_resource_reports', 'report', reportPage),
       loadAdmins(),
     ]);
+    if (sp.reportId && !reports.some((item) => item.id === sp.reportId)) {
+      const { data } = await sb
+        .from('dp_resource_reports')
+        .select('*')
+        .eq('id', sp.reportId)
+        .maybeSingle();
+      if (data) reports = [data, ...reports];
+    }
   } else if (section === 'tickets') {
     [{ data: tickets, count: ticketCount }, memberships] = await Promise.all([
       queue('dp_support_tickets', 'ticket', ticketPage),
       loadAdmins(),
     ]);
+    if (sp.ticketId && !tickets.some((item) => item.id === sp.ticketId)) {
+      const { data } = await sb
+        .from('dp_support_tickets')
+        .select('*')
+        .eq('id', sp.ticketId)
+        .maybeSingle();
+      if (data) tickets = [data, ...tickets];
+    }
   } else if (section === 'users') {
     const t = nowMs();
     let usersQ = sb

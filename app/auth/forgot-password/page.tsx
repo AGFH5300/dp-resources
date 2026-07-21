@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
+import { InboxShortcuts } from '@/components/inbox-shortcuts';
 import { createClient } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
@@ -66,8 +67,16 @@ export default function ForgotPasswordPage() {
           </h1>
           <p className="mt-4 font-body leading-relaxed text-[#43474d]">
             If an account exists for <strong>{email.trim()}</strong>, we sent a
-            password reset link. Check your spam folder too.
+            password reset link.
           </p>
+          <InboxShortcuts
+            message={
+              <>
+                Open your inbox below. If you do not see the reset email, check
+                your spam or junk folder. It may take a minute to arrive.
+              </>
+            }
+          />
           <button
             type="button"
             className="mt-6 text-sm font-semibold text-[#00152a] hover:underline"

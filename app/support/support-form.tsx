@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CloseButton } from '@/components/ui/close-button';
+import { markNotificationCategory } from '@/components/notification-center';
 import { toast } from 'sonner';
 import { AppSelect } from '@/components/ui/app-select';
 
@@ -50,8 +51,10 @@ function preview(t: UserTicket) {
 }
 export function SupportForm({
   initialTickets = [],
+  initialTicketId,
 }: {
   initialTickets?: UserTicket[];
+  initialTicketId?: string;
 }) {
   const [requestState, setRequestState] = useState<RequestState>('idle');
   const [error, setError] = useState('');
@@ -64,6 +67,14 @@ export function SupportForm({
   );
   const [detail, setDetail] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  useEffect(() => {
+    void markNotificationCategory('user_tickets');
+  }, []);
+  useEffect(() => {
+    if (!initialTicketId) return;
+    const ticket = initialTickets.find((item) => item.id === initialTicketId);
+    if (ticket) void openTicket(ticket);
+  }, [initialTicketId]);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setRequestState('submitting');
