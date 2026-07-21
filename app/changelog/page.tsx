@@ -59,8 +59,8 @@ export default async function ChangelogPage() {
             Changelog
           </h1>
           <p className="mt-5 text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-            A plain-language record of the features, improvements, and fixes
-            released to DP Resources.
+            A listed record of all the features, improvements, and fixes
+            released to the website.
           </p>
         </section>
 
