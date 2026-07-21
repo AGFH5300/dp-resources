@@ -4,6 +4,7 @@ import { CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
+import { PasswordStrengthMeter } from '@/components/password-strength-meter';
 import { createClient } from '@/lib/supabase/client';
 
 export default function UpdatePasswordPage() {
@@ -123,6 +124,7 @@ export default function UpdatePasswordPage() {
               onToggle={() => setShowPassword((previous) => !previous)}
               disabled={loading}
             />
+            <PasswordStrengthMeter password={password} />
             <PasswordField
               id="confirm-new-password"
               label="Confirm new password"
@@ -137,6 +139,9 @@ export default function UpdatePasswordPage() {
 
             {confirmPassword && !passwordsMatch && (
               <p className="text-sm text-red-700">Passwords do not match.</p>
+            )}
+            {confirmPassword.length >= 3 && passwordsMatch && (
+              <p className="text-sm text-[#0c7a43]">Passwords match.</p>
             )}
             {error && <p className="text-sm text-red-700">{error}</p>}
 

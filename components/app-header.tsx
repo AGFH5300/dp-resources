@@ -10,6 +10,11 @@ import { BrandWordmark } from './brand-wordmark';
 import { SuspensionWatcher } from './suspension-watcher';
 import { ThemeToggle } from './theme-toggle';
 import { BrandMark } from './brand-mark';
+import {
+  NotificationBadge,
+  NotificationCenter,
+  useNotificationFeed,
+} from './notification-center';
 
 export function AppHeader({
   admin = false,
@@ -22,6 +27,11 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const [shortcutModifier, setShortcutModifier] = useState('Ctrl');
+  const notificationFeed = useNotificationFeed(Boolean(userId));
+  const adminUnread = admin
+    ? notificationFeed.summary.adminTickets +
+      notificationFeed.summary.adminReports
+    : 0;
 
   useEffect(() => {
     const isAppleDevice =
@@ -31,12 +41,18 @@ export function AppHeader({
     setShortcutModifier(isAppleDevice ? '⌘' : 'Ctrl');
   }, []);
 
-  const links = [
-    ['/library', 'Library'],
-    ['/recent', 'Recent'],
-    ['/saved', 'Saved'],
-    ['/support', 'Support'],
-    ...(admin ? [['/admin', 'Admin']] : []),
+  const links: Array<[string, string, number]> = [
+    ['/library', 'Library', 0],
+    ['/recent', 'Recent', 0],
+    ['/saved', 'Saved', 0],
+    ['/support', 'Support', notificationFeed.summary.userTickets],
+    ...(admin
+      ? ([['/admin', 'Admin', adminUnread]] as Array<[
+          string,
+          string,
+          number,
+        ]>)
+      : []),
   ];
 
   const mobile = [
@@ -70,7 +86,7 @@ export function AppHeader({
             aria-label="Primary navigation"
             className="hidden items-stretch gap-1 self-stretch md:flex"
           >
-            {links.map(([href, label]) => {
+            {links.map(([href, label, unread]) => {
               const active =
                 pathname === href ||
                 (href !== '/library' && pathname.startsWith(href));
@@ -80,9 +96,10 @@ export function AppHeader({
                   key={href}
                   href={href}
                   aria-current={active ? 'page' : undefined}
-                  className="flex items-center px-2 text-sm font-medium text-slate-600 hover:text-[color:var(--dp-navy)]"
+                  className="flex items-center gap-1.5 px-2 text-sm font-medium text-slate-600 hover:text-[color:var(--dp-navy)]"
                 >
                   {label}
+                  <NotificationBadge count={unread} />
                 </Link>
               );
             })}
@@ -114,7 +131,19 @@ export function AppHeader({
           </button>
 
           <ThemeToggle />
-          <AccountMenu admin={admin} email={email} />
+          {userId && (
+            <NotificationCenter
+              notifications={notificationFeed.notifications}
+              summary={notificationFeed.summary}
+              loading={notificationFeed.loading}
+              onRefresh={notificationFeed.refresh}
+            />
+          )}
+          <AccountMenu
+            admin={admin}
+            adminUnread={adminUnread}
+            email={email}
+          />
         </div>
       </header>
 
@@ -134,7 +163,17 @@ export function AppHeader({
               aria-current={active ? 'page' : undefined}
               className="flex flex-col items-center gap-1 py-2 text-[11px] text-slate-600"
             >
-              <Icon className="size-4" />
+              <span className="relative">
+                <Icon className="size-4" />
+                {href === '/support' &&
+                  notificationFeed.summary.userTickets > 0 && (
+                    <span className="absolute -right-4 -top-3">
+                      <NotificationBadge
+                        count={notificationFeed.summary.userTickets}
+                      />
+                    </span>
+                  )}
+              </span>
               {label}
             </Link>
           );

@@ -19,6 +19,7 @@ const verifyOtpForm = readFileSync(
   'app/auth/verify-otp/verify-otp-form.tsx',
   'utf8',
 );
+const inboxShortcuts = readFileSync('components/inbox-shortcuts.tsx', 'utf8');
 const schema = readFileSync('supabase/schema.sql', 'utf8');
 
 describe('auth redirects and public entry points', () => {
@@ -109,19 +110,22 @@ describe('OTP request and verification flow', () => {
   it('shows clean inbox shortcuts and spam guidance on the OTP screen using local assets', () => {
     expect(existsSync('public/brand/gmail-icon.svg')).toBe(true);
     expect(existsSync('public/brand/outlook-icon.svg')).toBe(true);
-    expect(verifyOtpForm).toContain('https://mail.google.com/mail/u/0/#inbox');
-    expect(verifyOtpForm).toContain('https://outlook.live.com/mail/0/inbox');
-    expect(verifyOtpForm).toContain('mailto:');
-    expect(verifyOtpForm).toContain('/brand/gmail-icon.svg');
-    expect(verifyOtpForm).toContain('/brand/outlook-icon.svg');
-    expect(verifyOtpForm).toContain('Open Gmail');
-    expect(verifyOtpForm).toContain('Open Outlook');
-    expect(verifyOtpForm).toContain('Open email app');
+    expect(verifyOtpForm).toContain('InboxShortcuts');
     expect(verifyOtpForm).toContain('check your spam or junk folder');
-    expect(verifyOtpForm).not.toContain('gmail_2020q4_48dp.png');
-    expect(verifyOtpForm).not.toContain('outlook_48x1.svg');
-    expect(verifyOtpForm).not.toContain('res-1.cdn.office.net');
-    expect(verifyOtpForm).not.toContain('gstatic.com');
+    expect(inboxShortcuts).toContain(
+      'https://mail.google.com/mail/u/0/#inbox',
+    );
+    expect(inboxShortcuts).toContain('https://outlook.live.com/mail/0/inbox');
+    expect(inboxShortcuts).toContain('mailto:');
+    expect(inboxShortcuts).toContain('/brand/gmail-icon.svg');
+    expect(inboxShortcuts).toContain('/brand/outlook-icon.svg');
+    expect(inboxShortcuts).toContain('Open Gmail');
+    expect(inboxShortcuts).toContain('Open Outlook');
+    expect(inboxShortcuts).toContain('Open email app');
+    expect(inboxShortcuts).not.toContain('gmail_2020q4_48dp.png');
+    expect(inboxShortcuts).not.toContain('outlook_48x1.svg');
+    expect(inboxShortcuts).not.toContain('res-1.cdn.office.net');
+    expect(inboxShortcuts).not.toContain('gstatic.com');
   });
 });
 

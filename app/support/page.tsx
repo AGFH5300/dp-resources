@@ -2,8 +2,13 @@ import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { SupportForm } from './support-form';
-export default async function Support() {
+export default async function Support({
+  searchParams,
+}: {
+  searchParams: Promise<{ ticket?: string }>;
+}) {
   const { user, membership } = await requireMember();
+  const { ticket: selectedTicketId } = await searchParams;
   const sb = createSupabaseAdminClient();
   const { data = [] } = await sb
     .from('dp_support_tickets')
@@ -28,7 +33,10 @@ export default async function Support() {
             tickets.
           </p>
         </header>
-        <SupportForm initialTickets={data as any} />
+        <SupportForm
+          initialTickets={data as any}
+          initialTicketId={selectedTicketId}
+        />
       </main>
     </>
   );

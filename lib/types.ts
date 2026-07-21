@@ -92,3 +92,30 @@ export type SupportTicket = {
   created_at: string;
   updated_at: string;
 };
+
+export type NotificationKind =
+  | 'support_ticket_created'
+  | 'resource_report_created'
+  | 'ticket_reply'
+  | 'ticket_status';
+
+export type AppNotification = {
+  id: string;
+  recipient_id: string;
+  audience: 'user' | 'admin';
+  kind: NotificationKind;
+  title: string;
+  message: string;
+  href: string;
+  support_ticket_id: string | null;
+  resource_report_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type NotificationSummary = {
+  unread: number;
+  adminTickets: number;
+  adminReports: number;
+  userTickets: number;
+};
