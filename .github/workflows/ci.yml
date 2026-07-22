@@ -182,7 +182,7 @@ jobs:
           --mode assets
           --storage-provider r2
           --storage-bucket "$R2_PDF_PREVIEW_BUCKET"
-          --workers 4
+          --workers 10
           --resume
           --confirm-production
           --report "$IMPORT_REPORT"
