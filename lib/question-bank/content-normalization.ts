@@ -23,6 +23,8 @@ export function questionPreview(value: string) {
     .replace(/!\[[^\]]*\]\(question:[^)]+\)/gi, ' Diagram. ')
     .replace(/:{1,3}[a-z]+(?:\[[^\]]*\])?/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
+    .replace(/\|?\s*:?-{2,}:?\s*(?=\||$)/g, ' ')
+    .replace(/\s*\|\s*/g, ' · ')
     .replace(/\\hspace/gi, ' ')
     .replace(/[*_$\\{}\[\]]/g, '')
     .replace(/\s+/g, ' ')
