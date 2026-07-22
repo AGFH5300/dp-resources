@@ -29,6 +29,7 @@ type GitHubCommit = {
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-22': [
     'Rebuilt the Question Bank as an interactive practice workspace with selectable answers, immediate feedback, and in-page explanations.',
+    'Improved Question Bank formatting, dark-mode answer interactions, instant answer checking, and private solution-video links.',
     'Added guided review for written responses, including self-assessment and a revisit option.',
     'Improved topic and subtopic filtering with custom menus, clearer dark-mode selection, and question search across every subject.',
   ],
