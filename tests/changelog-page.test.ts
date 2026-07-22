@@ -60,6 +60,10 @@ describe('public changelog page', () => {
     ]) {
       expect(summaries).not.toContain(internalTerm);
     }
+    expect(summaries).toContain("'2026-07-22'");
+    expect(summaries).toContain(
+      'Rebuilt the Question Bank as an interactive practice workspace',
+    );
     expect(summaries).toContain("'2026-07-21'");
     expect(summaries).toContain('Added password recovery with secure reset emails');
     expect(summaries).toContain(
