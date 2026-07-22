@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 
 import { deterministicUuid } from './archive.mjs';
 import {
-  headPrivateR2Object,
+  getPrivateR2Object,
   putPrivateR2Object,
 } from '../r2-s3.mjs';
 
@@ -221,18 +222,23 @@ async function uploadR2(asset, configuration) {
     body,
     contentType: asset.content_type,
     cacheControl: 'private, max-age=31536000, immutable',
+    signal: AbortSignal.timeout(30_000),
   });
-  const metadata = await headPrivateR2Object({
+  const stored = await getPrivateR2Object({
     bucket: configuration.bucket,
     key: asset.storage_key,
+    signal: AbortSignal.timeout(30_000),
   });
-  if (!metadata.ok)
-    throw new Error(`R2 verification returned status ${metadata.status}`);
-  const length = Number(metadata.headers.get('content-length'));
-  if (Number.isFinite(length) && length !== asset.byte_size)
+  if (!stored.ok)
+    throw new Error(`R2 verification returned status ${stored.status}`);
+  const verifiedBytes = Buffer.from(await stored.arrayBuffer());
+  if (verifiedBytes.byteLength !== asset.byte_size)
     throw new Error(
-      `R2 verification size mismatch: expected ${asset.byte_size}, received ${length}`,
+      `R2 verification size mismatch: expected ${asset.byte_size}, received ${verifiedBytes.byteLength}`,
     );
+  const verifiedHash = createHash('sha256').update(verifiedBytes).digest('hex');
+  if (verifiedHash !== asset.content_hash)
+    throw new Error('R2 verification SHA-256 mismatch.');
 }
 
 async function uploadSupabase(client, asset, configuration) {
@@ -261,15 +267,24 @@ async function uploadSupabase(client, asset, configuration) {
 }
 
 async function verifiedAssetIds(client, ids) {
+  const targetIds = new Set(ids);
   const verified = new Set();
-  for (const group of chunks(ids, 400)) {
-    const { data, error } = await client
-      .from('dp_qb_assets')
-      .select('id,verification_status')
-      .in('id', group);
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await retry(
+      () =>
+        client
+          .from('dp_qb_assets')
+          .select('id,verification_status')
+          .order('id')
+          .range(offset, offset + pageSize - 1),
+      4,
+    );
     if (error) throw new Error(`Unable to read asset resume state: ${error.message}`);
     for (const row of data || [])
-      if (row.verification_status === 'verified') verified.add(row.id);
+      if (targetIds.has(row.id) && row.verification_status === 'verified')
+        verified.add(row.id);
+    if (!data || data.length < pageSize) break;
   }
   return verified;
 }
@@ -303,19 +318,21 @@ export async function uploadAssets(normalized, options = {}) {
             ? uploadR2(asset, configuration)
             : uploadSupabase(client, asset, configuration),
         );
-        const { error } = await client
-          .from('dp_qb_assets')
-          .update({
-            storage_provider: configuration.provider,
-            storage_bucket: configuration.bucket,
-            upload_status: 'uploaded',
-            verification_status: 'verified',
-            uploaded_at: new Date().toISOString(),
-            verified_at: new Date().toISOString(),
-            last_error: null,
-          })
-          .eq('id', asset.id);
-        if (error) throw error;
+        await retry(async () => {
+          const { error } = await client
+            .from('dp_qb_assets')
+            .update({
+              storage_provider: configuration.provider,
+              storage_bucket: configuration.bucket,
+              upload_status: 'uploaded',
+              verification_status: 'verified',
+              uploaded_at: new Date().toISOString(),
+              verified_at: new Date().toISOString(),
+              last_error: null,
+            })
+            .eq('id', asset.id);
+          if (error) throw error;
+        }, 4);
         uploaded += 1;
       } catch (error) {
         const message = String(error.message || error).slice(0, 1000);

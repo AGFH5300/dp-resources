@@ -906,6 +906,8 @@ export async function normalizeArchive(root, options = {}) {
   }
 
   const actualCounts = {
+    subjects: subjects.size,
+    courses: courses.size,
     datasets: datasets.size,
     questionOccurrences,
     questionCores: questions.size,
