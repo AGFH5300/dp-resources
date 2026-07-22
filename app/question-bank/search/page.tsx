@@ -53,7 +53,7 @@ export default async function QuestionBankSearch({
           {(results as any[]).map((row) => (
             <Link
               key={row.variant_id}
-              href={`/question-bank/${row.subject_slug}/${row.course_slug}/questions/${row.variant_id}?from=${encodeURIComponent(`/question-bank/search?q=${encodeURIComponent(query)}&page=${page}`)}`}
+              href={`/question-bank/${row.subject_slug}/${row.course_slug}?question=${row.variant_id}`}
               className="dp-qb-question-row"
             >
               <div className="flex flex-wrap items-center gap-2">

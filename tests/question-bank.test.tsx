@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { QuestionContent } from '@/components/question-bank/question-content';
+import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import { parseQuestionFilters } from '@/lib/question-bank/queries';
 import {
   canonicalizeSourcePath,
@@ -301,6 +302,35 @@ describe('controlled question renderer', () => {
   });
 });
 
+describe('interactive question experience', () => {
+  it('extracts contiguous answer choices and the correct answer without duplicating them in the prompt', () => {
+    const parsed = parseInteractiveQuestion(
+      String.raw`Which expression is equivalent to $x^2$?
+
+| A | $x + x$ |
+| B | $x \times x$ |
+| C | $2x$ |
+| D | $x / 2$ |`,
+      ':answer[**B**]\nMultiplication gives the square; the alternatives do not.',
+    );
+    expect(parsed.prompt).toContain('Which expression');
+    expect(parsed.prompt).not.toContain('| A |');
+    expect(parsed.choices.map((choice) => choice.id)).toEqual(['A', 'B', 'C', 'D']);
+    expect(parsed.choices[1].source).toBe('$x \\times x$');
+    expect(parsed.correctChoiceId).toBe('B');
+  });
+
+  it('keeps free-response questions intact for reveal-and-self-assess mode', () => {
+    const parsed = parseInteractiveQuestion(
+      'Explain why the reaction rate increases with temperature.',
+      ':answer[More successful collisions.]',
+    );
+    expect(parsed.prompt).toContain('Explain why');
+    expect(parsed.choices).toEqual([]);
+    expect(parsed.correctChoiceId).toBeNull();
+  });
+});
+
 describe('question filters and production security expectations', () => {
   const migration = readFileSync(
     'supabase/migrations/20260721172634_question_bank.sql',
@@ -321,6 +351,8 @@ describe('question filters and production security expectations', () => {
         calculator: 'false',
         status: 'completed',
         saved: 'true',
+        subtopic: '44444444-4444-4444-8444-444444444444',
+        section: '__any__',
       }),
     ).toMatchObject({
       page: 1,
@@ -328,7 +360,37 @@ describe('question filters and production security expectations', () => {
       calculator: false,
       status: 'completed',
       saved: true,
+      subtopicId: null,
+      section: null,
     });
+  });
+
+  it('uses dependent custom filters, universal search, and an in-page practice workspace', () => {
+    const coursePage = readFileSync(
+      'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
+      'utf8',
+    );
+    const filters = readFileSync(
+      'components/question-bank/question-bank-filters.tsx',
+      'utf8',
+    );
+    const workspace = readFileSync(
+      'components/question-bank/course-practice-workspace.tsx',
+      'utf8',
+    );
+    const legacyPage = readFileSync(
+      'app/question-bank/[subjectSlug]/[courseSlug]/questions/[variantId]/page.tsx',
+      'utf8',
+    );
+    expect(coursePage).toContain('Search everything');
+    expect(coursePage).toContain('CoursePracticeWorkspace');
+    expect(filters).toContain('AppSelect');
+    expect(filters).toContain('disabled={!selectedTopic}');
+    expect(filters).not.toContain('<select');
+    expect(workspace).toContain('role="radiogroup"');
+    expect(workspace).toContain('Check answer');
+    expect(workspace).toContain('Why the answer works—and why the alternatives do not');
+    expect(legacyPage).toContain('redirect(');
   });
 
   it('enables RLS everywhere and isolates progress and saved rows by auth.uid()', () => {

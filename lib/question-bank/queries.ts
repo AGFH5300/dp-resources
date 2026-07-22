@@ -25,6 +25,7 @@ export function parseQuestionFilters(
   searchParams: Record<string, string | undefined>,
 ): QuestionFilters {
   const page = Number(searchParams.page || 1);
+  const topicId = uuid(searchParams.topic);
   const difficulty = ['easy', 'medium', 'hard'].includes(
     searchParams.difficulty || '',
   )
@@ -37,11 +38,12 @@ export function parseQuestionFilters(
     : null;
   return {
     q: String(searchParams.q || '').trim().slice(0, 160),
-    topicId: uuid(searchParams.topic),
-    subtopicId: uuid(searchParams.subtopic),
+    topicId,
+    subtopicId: topicId ? uuid(searchParams.subtopic) : null,
     difficulty,
     paperId: uuid(searchParams.paper),
-    section: searchParams.section
+    section:
+      searchParams.section && searchParams.section !== '__any__'
       ? String(searchParams.section).trim().slice(0, 40)
       : null,
     calculator: bool(searchParams.calculator),
