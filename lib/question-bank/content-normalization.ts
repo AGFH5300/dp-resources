@@ -1,5 +1,5 @@
 const ATTRIBUTION_LINE = /revision\s+village.*created\s+with\s+chemix/i;
-const STYLE_FRAGMENT = /(?:\\?\]?\s*)?\{?\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}?/gi;
+const STYLE_ATTRIBUTE = /\{\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}/gi;
 
 export function normalizeQuestionSource(value: string) {
   return String(value || '')
@@ -8,7 +8,8 @@ export function normalizeQuestionSource(value: string) {
     .split('\n')
     .filter((line) => !ATTRIBUTION_LINE.test(line))
     .join('\n')
-    .replace(STYLE_FRAGMENT, '')
+    .replace(STYLE_ATTRIBUTE, '')
+    .replace(/^\s*]\s*$/gm, '')
     .replace(/\\hspace\s*(?:\{\s*[^}]*\}|[\d.]+(?:em|ex|px|pt|cm|mm|in)?)/gi, ' ')
     .replace(/\bhspace\s*\{?\s*[\d.]+(?:em|ex|px|pt|cm|mm|in)?\}?/gi, ' ')
     .replace(/(^|[^\\])\\(?=\s)/g, '$1')
