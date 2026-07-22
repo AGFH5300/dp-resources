@@ -47,6 +47,7 @@ jobs:
       ARCHIVE_PATH: /tmp/processed-20260721-222121.zip
       DRY_RUN_REPORT: /tmp/question-bank-dry-run.json
       IMPORT_REPORT: /tmp/question-bank-import.json
+      VERIFY_REPORT: /tmp/question-bank-verify.json
     steps:
       - name: Check out reviewed importer
         uses: actions/checkout@v5
@@ -174,29 +175,36 @@ jobs:
             }
           }
           NODE
-      - name: Import database rows and private R2 assets
+      - name: Resume private R2 asset upload
         run: >-
           node scripts/import-question-bank.mjs
           --archive "$ARCHIVE_PATH"
-          --mode all
+          --mode assets
           --storage-provider r2
           --storage-bucket "$R2_PDF_PREVIEW_BUCKET"
           --workers 4
-          --batch-size 250
+          --resume
           --confirm-production
           --report "$IMPORT_REPORT"
+      - name: Verify imported database and assets read-only
+        run: >-
+          node scripts/import-question-bank.mjs
+          --archive "$ARCHIVE_PATH"
+          --mode verify
+          --report "$VERIFY_REPORT"
       - name: Verify completed production import
         run: |
           node --input-type=module <<'NODE'
           import { readFile, appendFile } from 'node:fs/promises';
           const report = JSON.parse(await readFile(process.env.IMPORT_REPORT, 'utf8'));
+          const verification = JSON.parse(await readFile(process.env.VERIFY_REPORT, 'utf8'));
           if (report.productionWritePerformed !== true) throw new Error('Importer did not record its production write.');
-          if (report.databaseVerification?.status !== 'passed') throw new Error('Final database verification failed.');
+          if (verification.databaseVerification?.status !== 'passed') throw new Error('Final database verification failed.');
           if (report.assetUpload?.failed !== 0) throw new Error('One or more R2 assets failed verification.');
           if (report.assetUpload?.uploaded + report.assetUpload?.skippedVerified !== 4558) {
             throw new Error('Verified R2 asset total does not equal 4,558.');
           }
-          const counts = report.databaseVerification.counts;
+          const counts = verification.databaseVerification.counts;
           const expected = {
             datasets: 177, questionCores: 5135, variants: 12212,
             storedPlacementRows: 12897, contentDeduplicatedAssets: 4558,
@@ -222,4 +230,4 @@ jobs:
         shell: bash
         run: |
           rm -f /tmp/qb-part-00 /tmp/qb-part-01 /tmp/qb-part-02
-          rm -f "$ARCHIVE_PATH" "$DRY_RUN_REPORT" "$IMPORT_REPORT"
+          rm -f "$ARCHIVE_PATH" "$DRY_RUN_REPORT" "$IMPORT_REPORT" "$VERIFY_REPORT"
