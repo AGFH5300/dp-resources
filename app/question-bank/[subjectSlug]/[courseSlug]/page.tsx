@@ -20,9 +20,13 @@ function pageHref(params: URLSearchParams, page: number) {
   return `?${next.toString()}`;
 }
 
-function selectedQuestion(value: string | undefined, questions: any[]) {
+function selectedQuestion(value: string | undefined) {
   if (!value) return null;
-  return questions.some((question) => question.variant_id === value) ? value : null;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  )
+    ? value
+    : null;
 }
 
 export default async function CourseQuestionBank({
@@ -50,7 +54,7 @@ export default async function CourseQuestionBank({
   const total = Number(data.questions[0]?.total_count || 0);
   const pages = Math.max(1, Math.ceil(total / 24));
   const topics = data.topics as any[];
-  const initialVariantId = selectedQuestion(rawParams.question, data.questions);
+  const initialVariantId = selectedQuestion(rawParams.question);
 
   return (
     <>
@@ -141,7 +145,7 @@ export default async function CourseQuestionBank({
               <div>
                 <h2>Choose a question and practise here</h2>
                 <p>
-                  Select an answer, check it, and learn from the full explanation
+                  Select an answer for instant feedback, then learn from the full explanation
                   without opening another page.
                 </p>
               </div>

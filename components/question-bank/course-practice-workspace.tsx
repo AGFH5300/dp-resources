@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
   CircleAlert,
   ExternalLink,
   FileText,
@@ -32,6 +33,15 @@ import type {
   QuestionListRow,
   QuestionProgressStatus,
 } from '@/lib/question-bank/types';
+
+function difficultyClass(value: string | null) {
+  const difficulty = String(value || '').toLowerCase();
+  return `dp-qb-difficulty dp-qb-difficulty-${
+    difficulty === 'easy' || difficulty === 'medium' || difficulty === 'hard'
+      ? difficulty
+      : 'unrated'
+  }`;
+}
 
 type QuestionDetail = {
   variant: {
@@ -96,6 +106,7 @@ export function CoursePracticeWorkspace({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     initialVariantId,
   );
+  const [questionRows, setQuestionRows] = useState(questions);
   const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -104,7 +115,7 @@ export function CoursePracticeWorkspace({
   const [showExplanation, setShowExplanation] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
 
-  const selectedIndex = questions.findIndex(
+  const selectedIndex = questionRows.findIndex(
     (question) => question.variant_id === selectedVariantId,
   );
   const interactive = useMemo(
@@ -117,6 +128,10 @@ export function CoursePracticeWorkspace({
         : null,
     [detail],
   );
+
+  useEffect(() => {
+    setQuestionRows(questions);
+  }, [questions]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -157,6 +172,40 @@ export function CoursePracticeWorkspace({
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   }
 
+  function applyQuestionState(
+    variantId: string,
+    state: {
+      status?: QuestionProgressStatus;
+      toRevisit?: boolean;
+      saved?: boolean;
+    },
+  ) {
+    setQuestionRows((rows) =>
+      rows.map((row) =>
+        row.variant_id === variantId
+          ? {
+              ...row,
+              progress_status: state.status ?? row.progress_status,
+              to_revisit: state.toRevisit ?? row.to_revisit,
+              is_saved: state.saved ?? row.is_saved,
+            }
+          : row,
+      ),
+    );
+    setDetail((current) =>
+      current && current.variant.id === variantId
+        ? {
+            ...current,
+            progress: {
+              status: state.status ?? current.progress.status,
+              to_revisit: state.toRevisit ?? current.progress.to_revisit,
+            },
+            saved: state.saved ?? current.saved,
+          }
+        : current,
+    );
+  }
+
   function openQuestion(variantId: string) {
     setSelectedVariantId(variantId);
     syncQuestionToUrl(variantId);
@@ -172,24 +221,31 @@ export function CoursePracticeWorkspace({
     setSelectedChoice(choiceId);
     setAnswerChecked(true);
     setShowExplanation(true);
+    const previousStatus = detail.progress.status;
+    applyQuestionState(detail.variant.id, { status: 'completed' });
     try {
       await updateQuestionState(detail, { status: 'completed' });
     } catch {
+      applyQuestionState(detail.variant.id, { status: previousStatus });
       toast.error('Your answer was checked, but progress could not be saved.');
     }
   }
 
   async function selfAssess(gotIt: boolean) {
     if (!detail) return;
+    const previous = {
+      status: detail.progress.status,
+      toRevisit: detail.progress.to_revisit,
+    };
+    const next = gotIt
+      ? { status: 'completed' as const, toRevisit: false }
+      : { status: 'in_progress' as const, toRevisit: true };
+    applyQuestionState(detail.variant.id, next);
     try {
-      await updateQuestionState(
-        detail,
-        gotIt
-          ? { status: 'completed', toRevisit: false }
-          : { status: 'in_progress', toRevisit: true },
-      );
-      toast.success(gotIt ? 'Marked as completed.' : 'Added to your revisit list.');
+      await updateQuestionState(detail, next);
+      toast.success(gotIt ? 'Marked as completed.' : 'Added to your review-later list.');
     } catch {
+      applyQuestionState(detail.variant.id, previous);
       toast.error('Could not save your progress.');
     }
   }
@@ -218,7 +274,7 @@ export function CoursePracticeWorkspace({
           </p>
         </div>
         <div className="mt-3 space-y-3">
-          {questions.map((question, index) => (
+          {questionRows.map((question, index) => (
             <button
               key={question.variant_id}
               type="button"
@@ -226,6 +282,7 @@ export function CoursePracticeWorkspace({
               className={`dp-qb-question-row w-full text-left ${
                 selectedVariantId === question.variant_id ? 'is-selected' : ''
               }`}
+              data-difficulty={question.difficulty_label || 'unrated'}
               aria-current={
                 selectedVariantId === question.variant_id ? 'true' : undefined
               }
@@ -233,24 +290,40 @@ export function CoursePracticeWorkspace({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="dp-qb-question-number">{index + 1}</span>
                 <strong>{question.reference}</strong>
-                <span className="dp-qb-chip capitalize">
+                <span className={difficultyClass(question.difficulty_label)}>
                   {question.difficulty_label || 'Unrated'}
                 </span>
                 {question.paper_reference ? (
-                  <span className="dp-qb-chip">{question.paper_reference}</span>
+                  <span className="dp-qb-chip dp-qb-paper-chip">
+                    {question.paper_reference}
+                  </span>
                 ) : null}
-                <span className="dp-qb-chip">
+                <span className="dp-qb-chip dp-qb-mark-chip">
                   {question.maximum_mark} mark
                   {question.maximum_mark === 1 ? '' : 's'}
                 </span>
-                {question.progress_status === 'completed' ? (
-                  <CheckCircle2 className="ml-auto size-4 text-emerald-600" />
-                ) : null}
+                <span
+                  className={`dp-qb-status-badge ml-auto is-${question.progress_status.replaceAll('_', '-')}`}
+                  aria-label={question.progress_status.replaceAll('_', ' ')}
+                >
+                  {question.progress_status === 'completed' ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : question.progress_status === 'in_progress' ? (
+                    <PlayCircle className="size-4" />
+                  ) : (
+                    <Circle className="size-4" />
+                  )}
+                  {question.progress_status.replaceAll('_', ' ')}
+                </span>
                 {question.to_revisit ? (
-                  <Flag className="size-4 text-amber-600" />
+                  <span className="dp-qb-icon-badge is-revisit" title="Review later">
+                    <Flag className="size-4" />
+                  </span>
                 ) : null}
                 {question.is_saved ? (
-                  <Bookmark className="size-4 text-blue-700" fill="currentColor" />
+                  <span className="dp-qb-icon-badge is-saved" title="Saved">
+                    <Bookmark className="size-4" fill="currentColor" />
+                  </span>
                 ) : null}
               </div>
               <p>
@@ -266,7 +339,7 @@ export function CoursePracticeWorkspace({
               </small>
             </button>
           ))}
-          {!questions.length ? (
+          {!questionRows.length ? (
             <div className="dp-qb-empty">
               No questions match these filters. Try resetting one or more
               filters.
@@ -305,7 +378,7 @@ export function CoursePracticeWorkspace({
                 type="button"
                 onClick={() =>
                   selectedIndex > 0 &&
-                  openQuestion(questions[selectedIndex - 1].variant_id)
+                  openQuestion(questionRows[selectedIndex - 1].variant_id)
                 }
                 disabled={selectedIndex <= 0}
                 aria-label="Previous question"
@@ -316,10 +389,10 @@ export function CoursePracticeWorkspace({
                 type="button"
                 onClick={() =>
                   selectedIndex >= 0 &&
-                  selectedIndex < questions.length - 1 &&
-                  openQuestion(questions[selectedIndex + 1].variant_id)
+                  selectedIndex < questionRows.length - 1 &&
+                  openQuestion(questionRows[selectedIndex + 1].variant_id)
                 }
-                disabled={selectedIndex < 0 || selectedIndex >= questions.length - 1}
+                disabled={selectedIndex < 0 || selectedIndex >= questionRows.length - 1}
                 aria-label="Next question"
               >
                 <ArrowRight className="size-4" />
@@ -327,7 +400,7 @@ export function CoursePracticeWorkspace({
             </div>
             <span>
               {selectedIndex >= 0
-                ? `${selectedIndex + 1} of ${questions.length} on this page`
+                ? `${selectedIndex + 1} of ${questionRows.length} on this page`
                 : 'Practice question'}
             </span>
             <button type="button" onClick={closeQuestion} aria-label="Close question">
@@ -371,7 +444,7 @@ export function CoursePracticeWorkspace({
               </header>
 
               <div className="dp-qb-practice-meta">
-                <span className="dp-qb-chip capitalize">
+                <span className={difficultyClass(detail.variant.difficultyLabel)}>
                   {detail.variant.difficultyLabel || 'Unrated'}
                 </span>
                 {detail.variant.paperReference ? (
@@ -516,6 +589,9 @@ export function CoursePracticeWorkspace({
                   initialStatus={detail.progress.status}
                   initialRevisit={detail.progress.to_revisit}
                   initialSaved={detail.saved}
+                  onStateChange={(state) =>
+                    applyQuestionState(detail.variant.id, state)
+                  }
                 />
               </section>
 
@@ -560,7 +636,7 @@ export function CoursePracticeWorkspace({
                   type="button"
                   onClick={() =>
                     selectedIndex > 0 &&
-                    openQuestion(questions[selectedIndex - 1].variant_id)
+                    openQuestion(questionRows[selectedIndex - 1].variant_id)
                   }
                   disabled={selectedIndex <= 0}
                 >
@@ -570,11 +646,11 @@ export function CoursePracticeWorkspace({
                   type="button"
                   onClick={() =>
                     selectedIndex >= 0 &&
-                    selectedIndex < questions.length - 1 &&
-                    openQuestion(questions[selectedIndex + 1].variant_id)
+                    selectedIndex < questionRows.length - 1 &&
+                    openQuestion(questionRows[selectedIndex + 1].variant_id)
                   }
                   disabled={
-                    selectedIndex < 0 || selectedIndex >= questions.length - 1
+                    selectedIndex < 0 || selectedIndex >= questionRows.length - 1
                   }
                 >
                   Next question <ArrowRight className="size-4" />
