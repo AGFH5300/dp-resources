@@ -221,10 +221,12 @@ async function uploadR2(asset, configuration) {
     body,
     contentType: asset.content_type,
     cacheControl: 'private, max-age=31536000, immutable',
+    signal: AbortSignal.timeout(30_000),
   });
   const metadata = await headPrivateR2Object({
     bucket: configuration.bucket,
     key: asset.storage_key,
+    signal: AbortSignal.timeout(30_000),
   });
   if (!metadata.ok)
     throw new Error(`R2 verification returned status ${metadata.status}`);
