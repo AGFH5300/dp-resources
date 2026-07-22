@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { QuestionContent } from '@/components/question-bank/question-content';
 import { QuestionStateControls } from '@/components/question-bank/question-state-controls';
 import { SolutionVideo } from '@/components/question-bank/solution-video';
+import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import type {
   QuestionAsset,
@@ -58,15 +59,6 @@ type QuestionDetail = {
   };
   saved: boolean;
 };
-
-function preview(value: string) {
-  return String(value || '')
-    .replace(/!\[[^\]]*\]\(question:[^)]+\)/g, '[image]')
-    .replace(/:{1,3}[a-z]+(?:\[[^\]]*\])?/gi, ' ')
-    .replace(/[*_$\\{}]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 async function updateQuestionState(
   detail: QuestionDetail,
@@ -175,8 +167,9 @@ export function CoursePracticeWorkspace({
     syncQuestionToUrl(null);
   }
 
-  async function checkAnswer() {
-    if (!detail || !selectedChoice) return;
+  async function checkAnswer(choiceId: string) {
+    if (!detail || answerChecked) return;
+    setSelectedChoice(choiceId);
     setAnswerChecked(true);
     setShowExplanation(true);
     try {
@@ -261,7 +254,7 @@ export function CoursePracticeWorkspace({
                 ) : null}
               </div>
               <p>
-                {preview(question.content_preview) ||
+                {questionPreview(question.content_preview) ||
                   'No question text in the source.'}
               </p>
               <small>
@@ -424,7 +417,7 @@ export function CoursePracticeWorkspace({
                           role="radio"
                           aria-checked={isSelected}
                           disabled={answerChecked}
-                          onClick={() => setSelectedChoice(choice.id)}
+                          onClick={() => void checkAnswer(choice.id)}
                           className={`${isSelected ? 'is-selected' : ''} ${
                             isCorrect ? 'is-correct' : ''
                           } ${isIncorrect ? 'is-incorrect' : ''}`.trim()}
@@ -447,16 +440,7 @@ export function CoursePracticeWorkspace({
                   </div>
                 )}
 
-                {interactive.choices.length ? (
-                  <button
-                    type="button"
-                    className="dp-qb-check-answer"
-                    disabled={!selectedChoice || answerChecked}
-                    onClick={checkAnswer}
-                  >
-                    {answerChecked ? 'Answer checked' : 'Check answer'}
-                  </button>
-                ) : (
+                {!interactive.choices.length ? (
                   <button
                     type="button"
                     className="dp-qb-check-answer"
@@ -465,7 +449,7 @@ export function CoursePracticeWorkspace({
                   >
                     {showExplanation ? 'Explanation revealed' : 'Reveal explanation'}
                   </button>
-                )}
+                ) : null}
               </section>
 
               {showExplanation ? (
