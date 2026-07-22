@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { Search, Sparkles } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
@@ -67,16 +67,15 @@ export default async function CourseQuestionBank({
         <nav className="dp-qb-breadcrumb" aria-label="Breadcrumb">
           <Link href="/question-bank">Question Bank</Link>
           <span aria-hidden>/</span>
-          <span>{data.subject.name}</span>
+          <Link href={`/question-bank#subject-${route.subjectSlug}`}>
+            {data.subject.name}
+          </Link>
           <span aria-hidden>/</span>
-          <span>{data.course.name}</span>
+          <span aria-current="page">{data.course.name}</span>
         </nav>
 
         <section className="dp-qb-course-hero">
           <div>
-            <p className="dp-qb-eyebrow">
-              <Sparkles className="size-4" /> Practice workspace
-            </p>
             <h1>{data.course.name}</h1>
             <p>
               {data.course.syllabus_label} ·{' '}

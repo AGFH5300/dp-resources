@@ -28,6 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-22': [
+    'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
     'Added colourful Question Bank difficulty and progress indicators, instant status feedback, readable image surfaces, and repaired search results.',
     'Rebuilt the Question Bank as an interactive practice workspace with selectable answers, immediate feedback, and in-page explanations.',
     'Improved Question Bank formatting, dark-mode answer interactions, instant answer checking, and private solution-video links.',
