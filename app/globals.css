@@ -1673,3 +1673,238 @@ html[data-theme='dark'] [data-theme-preserve-light] [class~='bg-white'] {
     transition-timing-function: ease;
   }
 }
+
+
+/* Question Bank visual status system */
+.dp-qb-question-row {
+  position: relative;
+  overflow: hidden;
+}
+.dp-qb-question-row[data-difficulty] {
+  border-left-width: 4px;
+}
+.dp-qb-question-row[data-difficulty='easy'] { border-left-color: #10b981; }
+.dp-qb-question-row[data-difficulty='medium'] { border-left-color: #f59e0b; }
+.dp-qb-question-row[data-difficulty='hard'] { border-left-color: #f43f5e; }
+.dp-qb-question-row[data-difficulty='unrated'] { border-left-color: #94a3b8; }
+.dp-qb-question-number {
+  background: linear-gradient(135deg, #dbeafe, #ede9fe);
+  color: #4338ca;
+}
+.dp-qb-difficulty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.18rem 0.52rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+.dp-qb-difficulty-easy {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+  color: #047857;
+}
+.dp-qb-difficulty-medium {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #a16207;
+}
+.dp-qb-difficulty-hard {
+  border-color: #fda4af;
+  background: #ffe4e6;
+  color: #be123c;
+}
+.dp-qb-difficulty-unrated {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #64748b;
+}
+.dp-qb-paper-chip {
+  border-color: #a5f3fc;
+  background: #ecfeff;
+  color: #0e7490;
+}
+.dp-qb-mark-chip {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+.dp-qb-status-badge,
+.dp-qb-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.18rem 0.48rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.dp-qb-icon-badge {
+  padding: 0.3rem;
+}
+.dp-qb-status-badge.is-not-started {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+}
+.dp-qb-status-badge.is-in-progress {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.dp-qb-status-badge.is-completed {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+  color: #047857;
+}
+.dp-qb-icon-badge.is-revisit {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #a16207;
+}
+.dp-qb-icon-badge.is-saved {
+  border-color: #c4b5fd;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.dp-qb-state-button {
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.dp-qb-state-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.dp-qb-state-button.dp-qb-state-not-started.is-active {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+  color: #475569;
+}
+.dp-qb-state-button.dp-qb-state-in-progress.is-active {
+  border-color: #60a5fa;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.dp-qb-state-button.dp-qb-state-completed.is-active {
+  border-color: #34d399;
+  background: #d1fae5;
+  color: #047857;
+}
+.dp-qb-state-button.dp-qb-state-revisit.is-active {
+  border-color: #fbbf24;
+  background: #fef3c7;
+  color: #92400e;
+}
+.dp-qb-state-button.dp-qb-state-saved.is-active {
+  border-color: #a78bfa;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.dp-qb-search-box:focus-within,
+.dp-qb-universal-search:focus-within {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.12);
+}
+.dp-qb-figure {
+  overflow: hidden;
+  border: 1px solid #dbe2ea;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: clamp(0.65rem, 2vw, 1rem);
+  box-shadow: 0 3px 14px rgb(15 23 42 / 0.06);
+}
+.dp-qb-figure img,
+.dp-qb-associated-images img {
+  background: #fff;
+  padding: 0.25rem;
+}
+html[data-theme='dark'] .dp-qb-question-row[data-difficulty='easy'] { border-left-color: #34d399; }
+html[data-theme='dark'] .dp-qb-question-row[data-difficulty='medium'] { border-left-color: #fbbf24; }
+html[data-theme='dark'] .dp-qb-question-row[data-difficulty='hard'] { border-left-color: #fb7185; }
+html[data-theme='dark'] .dp-qb-question-row[data-difficulty='unrated'] { border-left-color: #64748b; }
+html[data-theme='dark'] .dp-qb-question-number {
+  background: linear-gradient(135deg, #1e3a5f, #312e81);
+  color: #dbeafe;
+}
+html[data-theme='dark'] .dp-qb-difficulty-easy {
+  border-color: #047857;
+  background: #12382f;
+  color: #a7f3d0;
+}
+html[data-theme='dark'] .dp-qb-difficulty-medium {
+  border-color: #a16207;
+  background: #3b2d12;
+  color: #fde68a;
+}
+html[data-theme='dark'] .dp-qb-difficulty-hard {
+  border-color: #be123c;
+  background: #431d27;
+  color: #fecdd3;
+}
+html[data-theme='dark'] .dp-qb-difficulty-unrated {
+  border-color: #475569;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+html[data-theme='dark'] .dp-qb-paper-chip {
+  border-color: #155e75;
+  background: #12313d;
+  color: #a5f3fc;
+}
+html[data-theme='dark'] .dp-qb-mark-chip {
+  border-color: #6d28d9;
+  background: #2e2350;
+  color: #ddd6fe;
+}
+html[data-theme='dark'] .dp-qb-status-badge.is-not-started {
+  border-color: #475569;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+html[data-theme='dark'] .dp-qb-status-badge.is-in-progress {
+  border-color: #2563eb;
+  background: #172f55;
+  color: #bfdbfe;
+}
+html[data-theme='dark'] .dp-qb-status-badge.is-completed {
+  border-color: #047857;
+  background: #12382f;
+  color: #a7f3d0;
+}
+html[data-theme='dark'] .dp-qb-icon-badge.is-revisit {
+  border-color: #a16207;
+  background: #3b2d12;
+  color: #fde68a;
+}
+html[data-theme='dark'] .dp-qb-icon-badge.is-saved {
+  border-color: #6d28d9;
+  background: #2e2350;
+  color: #ddd6fe;
+}
+html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-not-started.is-active {
+  border-color: #64748b;
+  background: #263449;
+  color: #e2e8f0;
+}
+html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-in-progress.is-active {
+  border-color: #3b82f6;
+  background: #172f55;
+  color: #bfdbfe;
+}
+html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-completed.is-active {
+  border-color: #10b981;
+  background: #12382f;
+  color: #a7f3d0;
+}
+html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-revisit.is-active {
+  border-color: #d97706;
+  background: #3b2d12;
+  color: #fde68a;
+}
+html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-saved.is-active {
+  border-color: #8b5cf6;
+  background: #2e2350;
+  color: #ddd6fe;
+}
