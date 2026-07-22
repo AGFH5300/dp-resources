@@ -415,6 +415,7 @@ describe('question filters and production security expectations', () => {
   });
 
   it('uses dependent custom filters, universal search, and an in-page practice workspace', () => {
+    const landingPage = readFileSync('app/question-bank/page.tsx', 'utf8');
     const coursePage = readFileSync(
       'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
       'utf8',
@@ -441,6 +442,15 @@ describe('question filters and production security expectations', () => {
     );
     expect(coursePage).toContain('Search everything');
     expect(coursePage).toContain('CoursePracticeWorkspace');
+    expect(landingPage).not.toContain('IB Diploma Programme');
+    expect(landingPage).not.toContain('Sparkles');
+    expect(landingPage).toContain('id={`subject-${subject.slug}`}');
+    expect(coursePage).not.toContain('Practice workspace');
+    expect(coursePage).not.toContain('Sparkles');
+    expect(coursePage).toContain(
+      'href={`/question-bank#subject-${route.subjectSlug}`}',
+    );
+    expect(coursePage).toContain('aria-current="page"');
     expect(filters).toContain('AppSelect');
     expect(filters).toContain('disabled={!selectedTopic}');
     expect(filters).not.toContain('<select');

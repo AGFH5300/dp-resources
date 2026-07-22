@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowRight, Bookmark, BookOpenCheck, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Bookmark, BookOpenCheck, Search } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
@@ -20,9 +20,6 @@ export default async function QuestionBankLanding() {
       <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 lg:px-8">
         <section className="dp-qb-hero">
           <div>
-            <p className="dp-qb-eyebrow">
-              <Sparkles className="size-4" /> IB Diploma Programme
-            </p>
             <h1>Question Bank</h1>
             <p>
               Choose a course, practise by topic, reveal markschemes, and keep
@@ -56,7 +53,11 @@ export default async function QuestionBankLanding() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {data.subjects.map((subject: any) => (
-                <article key={subject.id} className="dp-qb-subject-card">
+                <article
+                  key={subject.id}
+                  id={`subject-${subject.slug}`}
+                  className="dp-qb-subject-card scroll-mt-24"
+                >
                   <div className="flex items-center gap-3">
                     <span className="dp-qb-subject-icon">
                       <BookOpenCheck className="size-5" />
