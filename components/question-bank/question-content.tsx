@@ -2,6 +2,7 @@ import React, { type ReactNode } from 'react';
 import katex from 'katex';
 import 'katex/contrib/mhchem';
 
+import { normalizeQuestionSource } from '@/lib/question-bank/content-normalization';
 import type { QuestionAsset } from '@/lib/question-bank/types';
 
 type RendererProps = {
@@ -178,10 +179,7 @@ function blocks(source: string, assets: QuestionAsset[]) {
       .filter((asset) => asset.sourceFileId)
       .map((asset) => [asset.sourceFileId!.toLowerCase(), asset]),
   );
-  const lines = String(source || '')
-    .replaceAll('\r\n', '\n')
-    .replaceAll('\r', '\n')
-    .split('\n');
+  const lines = normalizeQuestionSource(source).split('\n');
   const output: ReactNode[] = [];
   let index = 0;
   let block = 0;
@@ -347,7 +345,8 @@ export function QuestionContent({
   assets = [],
   kind = 'question',
 }: RendererProps) {
-  if (!source.trim())
+  const normalizedSource = normalizeQuestionSource(source);
+  if (!normalizedSource)
     return (
       <p className="dp-qb-empty-content" role="status">
         This source occurrence contains no {kind === 'question' ? 'question' : 'markscheme'} text.
@@ -355,7 +354,7 @@ export function QuestionContent({
     );
   return (
     <div className={`dp-qb-content dp-qb-content-${kind}`}>
-      {blocks(source, assets)}
+      {blocks(normalizedSource, assets)}
     </div>
   );
 }

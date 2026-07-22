@@ -7,6 +7,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { QuestionContent } from '@/components/question-bank/question-content';
+import { SolutionVideo } from '@/components/question-bank/solution-video';
+import {
+  normalizeQuestionSource,
+  questionPreview,
+} from '@/lib/question-bank/content-normalization';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import { parseQuestionFilters } from '@/lib/question-bank/queries';
 import {
@@ -300,6 +305,46 @@ describe('controlled question renderer', () => {
     expect(output).not.toContain('<img src="x"');
     expect(output).toContain('&lt;script&gt;');
   });
+
+  it('removes imported layout debris without damaging protected images', () => {
+    const source = String.raw`What does X represent? \hspace{1em}
+
+![diagram](question:99999999-9999-4999-8999-999999999999)
+\[© Revision Village 2022. Created with Chemix (https<no link>://chemix.org)\]
+]{style="font-size:14px; line-height:1"}`;
+    expect(normalizeQuestionSource(source)).toContain('What does X represent?');
+    expect(normalizeQuestionSource(source)).toContain('![diagram](question:');
+    expect(normalizeQuestionSource(source)).not.toMatch(/hspace|Revision Village|style=/i);
+    expect(questionPreview(source)).toBe('What does X represent? Diagram.');
+  });
+
+  it('removes an orphan slash before explanation text', () => {
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        kind="markscheme"
+        source={String.raw`:answer[**A**]
+
+Explanation: \ Photolysis splits water.`}
+      />,
+    );
+    expect(output).toContain('Explanation: Photolysis');
+    expect(output).not.toContain('Explanation: \\');
+    expect(normalizeQuestionSource(String.raw`$$a \\ b$$`)).toBe(
+      String.raw`$$a \\ b$$`,
+    );
+  });
+
+  it('opens private Vimeo solutions externally instead of embedding a broken player', () => {
+    const output = renderToStaticMarkup(
+      <SolutionVideo
+        url="https://player.vimeo.com/video/12345?h=abc"
+        title="BIO065 solution"
+      />,
+    );
+    expect(output).toContain('https://vimeo.com/12345/abc');
+    expect(output).toContain('privacy settings');
+    expect(output).not.toContain('<iframe');
+  });
 });
 
 describe('interactive question experience', () => {
@@ -388,8 +433,10 @@ describe('question filters and production security expectations', () => {
     expect(filters).toContain('disabled={!selectedTopic}');
     expect(filters).not.toContain('<select');
     expect(workspace).toContain('role="radiogroup"');
-    expect(workspace).toContain('Check answer');
+    expect(workspace).toContain('onClick={() => void checkAnswer(choice.id)}');
+    expect(workspace).not.toContain("{answerChecked ? 'Answer checked' : 'Check answer'}");
     expect(workspace).toContain('Why the answer works—and why the alternatives do not');
+    expect(workspace).toContain('questionPreview(question.content_preview)');
     expect(legacyPage).toContain('redirect(');
   });
 
