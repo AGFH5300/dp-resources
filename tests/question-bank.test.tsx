@@ -316,6 +316,10 @@ describe('controlled question renderer', () => {
     expect(normalizeQuestionSource(source)).toContain('![diagram](question:');
     expect(normalizeQuestionSource(source)).not.toMatch(/hspace|Revision Village|style=/i);
     expect(questionPreview(source)).toBe('What does X represent? Diagram.');
+    expect(
+      normalizeQuestionSource(':marks[2]{style="font-size:14px"}'),
+    ).toBe(':marks[2]');
+    expect(questionPreview('| A | Photosynthesis |')).not.toContain('|');
   });
 
   it('removes an orphan slash before explanation text', () => {
@@ -427,6 +431,14 @@ describe('question filters and production security expectations', () => {
       'app/question-bank/[subjectSlug]/[courseSlug]/questions/[variantId]/page.tsx',
       'utf8',
     );
+    const searchPage = readFileSync(
+      'app/question-bank/search/page.tsx',
+      'utf8',
+    );
+    const stateControls = readFileSync(
+      'components/question-bank/question-state-controls.tsx',
+      'utf8',
+    );
     expect(coursePage).toContain('Search everything');
     expect(coursePage).toContain('CoursePracticeWorkspace');
     expect(filters).toContain('AppSelect');
@@ -437,6 +449,14 @@ describe('question filters and production security expectations', () => {
     expect(workspace).not.toContain("{answerChecked ? 'Answer checked' : 'Check answer'}");
     expect(workspace).toContain('Why the answer works—and why the alternatives do not');
     expect(workspace).toContain('questionPreview(question.content_preview)');
+    expect(workspace).toContain('applyQuestionState(detail.variant.id');
+    expect(workspace).toContain('onStateChange={(state) =>');
+    expect(coursePage).toContain('selectedQuestion(rawParams.question)');
+    expect(searchPage).toContain('questionPreview(row.content_preview)');
+    expect(searchPage).toContain('?question=${row.variant_id}');
+    expect(stateControls).toContain("toast.success(");
+    expect(stateControls).toContain('Added to your review-later list.');
+    expect(stateControls).toContain('onStateChange?.({');
     expect(legacyPage).toContain('redirect(');
   });
 
