@@ -104,7 +104,7 @@ export default async function QuestionBankLanding() {
                   data.recent.map((row: any) => (
                     <Link
                       key={row.id}
-                      href={`/question-bank/${row.course.subject.slug}/${row.course.slug}/questions/${row.id}`}
+                      href={`/question-bank/${row.course.subject.slug}/${row.course.slug}?question=${row.id}`}
                       className="dp-qb-recent-link"
                     >
                       <strong>{row.question.reference}</strong>
