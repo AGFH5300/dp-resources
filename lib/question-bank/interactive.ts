@@ -1,3 +1,5 @@
+import { normalizeQuestionSource } from '@/lib/question-bank/content-normalization';
+
 export type InteractiveChoice = {
   id: string;
   label: string;
@@ -50,10 +52,9 @@ export function parseInteractiveQuestion(
   content: string,
   markScheme: string,
 ): InteractiveQuestion {
-  const lines = String(content || '')
-    .replaceAll('\r\n', '\n')
-    .replaceAll('\r', '\n')
-    .split('\n');
+  const normalizedContent = normalizeQuestionSource(content);
+  const normalizedMarkScheme = normalizeQuestionSource(markScheme);
+  const lines = normalizedContent.split('\n');
   let best: { start: number; end: number; choices: InteractiveChoice[] } | null =
     null;
 
@@ -79,10 +80,10 @@ export function parseInteractiveQuestion(
       best = { start, end, choices };
   }
 
-  const answer = correctChoice(String(markScheme || ''));
+  const answer = correctChoice(normalizedMarkScheme);
   if (!best)
     return {
-      prompt: String(content || '').trim(),
+      prompt: normalizedContent,
       choices: [],
       correctChoiceId: null,
     };
