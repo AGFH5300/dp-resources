@@ -118,7 +118,7 @@ export function QuestionStateControls({
         type="button"
         disabled={pending}
         onClick={() => changeStatus('not_started')}
-        className={`dp-qb-state-button ${status === 'not_started' ? 'is-active' : ''}`}
+        className={`dp-qb-state-button dp-qb-state-not-started ${status === 'not_started' ? 'is-active' : ''}`}
       >
         <Circle className="size-4" /> Not started
       </button>
@@ -126,7 +126,7 @@ export function QuestionStateControls({
         type="button"
         disabled={pending}
         onClick={() => changeStatus('in_progress')}
-        className={`dp-qb-state-button ${status === 'in_progress' ? 'is-active' : ''}`}
+        className={`dp-qb-state-button dp-qb-state-in-progress ${status === 'in_progress' ? 'is-active' : ''}`}
       >
         <PlayCircle className="size-4" /> In progress
       </button>
@@ -134,7 +134,7 @@ export function QuestionStateControls({
         type="button"
         disabled={pending}
         onClick={() => changeStatus('completed')}
-        className={`dp-qb-state-button ${status === 'completed' ? 'is-active' : ''}`}
+        className={`dp-qb-state-button dp-qb-state-completed ${status === 'completed' ? 'is-active' : ''}`}
       >
         <CheckCircle2 className="size-4" /> Completed
       </button>
@@ -142,7 +142,7 @@ export function QuestionStateControls({
         type="button"
         disabled={pending}
         onClick={toggleRevisit}
-        className={`dp-qb-state-button ${revisit ? 'is-active is-revisit' : ''}`}
+        className={`dp-qb-state-button dp-qb-state-revisit ${revisit ? 'is-active is-revisit' : ''}`}
       >
         <Flag className="size-4" /> Review later
       </button>
@@ -150,7 +150,7 @@ export function QuestionStateControls({
         type="button"
         disabled={pending}
         onClick={toggleSaved}
-        className={`dp-qb-state-button ${saved ? 'is-active' : ''}`}
+        className={`dp-qb-state-button dp-qb-state-saved ${saved ? 'is-active' : ''}`}
       >
         <Bookmark className="size-4" fill={saved ? 'currentColor' : 'none'} />
         {saved ? 'Saved' : 'Save'}
