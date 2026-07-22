@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 
 import { deterministicUuid } from './archive.mjs';
 import {
-  headPrivateR2Object,
+  getPrivateR2Object,
   putPrivateR2Object,
 } from '../r2-s3.mjs';
 
@@ -223,18 +224,21 @@ async function uploadR2(asset, configuration) {
     cacheControl: 'private, max-age=31536000, immutable',
     signal: AbortSignal.timeout(30_000),
   });
-  const metadata = await headPrivateR2Object({
+  const stored = await getPrivateR2Object({
     bucket: configuration.bucket,
     key: asset.storage_key,
     signal: AbortSignal.timeout(30_000),
   });
-  if (!metadata.ok)
-    throw new Error(`R2 verification returned status ${metadata.status}`);
-  const length = Number(metadata.headers.get('content-length'));
-  if (Number.isFinite(length) && length !== asset.byte_size)
+  if (!stored.ok)
+    throw new Error(`R2 verification returned status ${stored.status}`);
+  const verifiedBytes = Buffer.from(await stored.arrayBuffer());
+  if (verifiedBytes.byteLength !== asset.byte_size)
     throw new Error(
-      `R2 verification size mismatch: expected ${asset.byte_size}, received ${length}`,
+      `R2 verification size mismatch: expected ${asset.byte_size}, received ${verifiedBytes.byteLength}`,
     );
+  const verifiedHash = createHash('sha256').update(verifiedBytes).digest('hex');
+  if (verifiedHash !== asset.content_hash)
+    throw new Error('R2 verification SHA-256 mismatch.');
 }
 
 async function uploadSupabase(client, asset, configuration) {
