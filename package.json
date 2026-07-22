@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:hot": "concurrently -s last -n \"NEXT,WARM\" -c \"cyan,magenta\" \"next dev -p 5000\" \"node scripts/warmup-dev.mjs\"",
-    "build": "next build",
+    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "pdf-previews:worker": "node scripts/pdf-preview-worker.mjs",
     "pdf-previews:queue": "node scripts/queue-pdf-previews.mjs",
