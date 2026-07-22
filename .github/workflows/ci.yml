@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 360
     concurrency:
       group: question-bank-production-import
-      cancel-in-progress: false
+      cancel-in-progress: true
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -106,6 +106,39 @@ jobs:
           cat /tmp/qb-part-00 /tmp/qb-part-01 /tmp/qb-part-02 > "$ARCHIVE_PATH"
           printf '%s  %s\n' "$EXPECTED_ZIP_SHA256" "$ARCHIVE_PATH" | sha256sum --check --strict
           unzip -tq "$ARCHIVE_PATH"
+      - name: Verify private R2 request path with timeout
+        run: |
+          node --input-type=module <<'NODE'
+          import { randomUUID } from 'node:crypto';
+          import { deletePrivateR2Object, getPrivateR2Object, putPrivateR2Object } from './scripts/r2-s3.mjs';
+          const key = `question-bank/preflight/${randomUUID()}.txt`;
+          const signal = () => AbortSignal.timeout(30000);
+          let uploaded = false;
+          try {
+            await putPrivateR2Object({
+              bucket: process.env.R2_PDF_PREVIEW_BUCKET,
+              key,
+              body: Buffer.from('dp-question-bank-preflight'),
+              contentType: 'text/plain',
+              signal: signal(),
+            });
+            uploaded = true;
+            const response = await getPrivateR2Object({
+              bucket: process.env.R2_PDF_PREVIEW_BUCKET,
+              key,
+              signal: signal(),
+            });
+            if (!response.ok || (await response.text()) !== 'dp-question-bank-preflight') {
+              throw new Error('R2 preflight read verification failed.');
+            }
+          } finally {
+            if (uploaded) await deletePrivateR2Object({
+              bucket: process.env.R2_PDF_PREVIEW_BUCKET,
+              key,
+              signal: signal(),
+            });
+          }
+          NODE
       - name: Audit and normalize without production writes
         run: >-
           node scripts/import-question-bank.mjs
