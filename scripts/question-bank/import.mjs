@@ -263,15 +263,24 @@ async function uploadSupabase(client, asset, configuration) {
 }
 
 async function verifiedAssetIds(client, ids) {
+  const targetIds = new Set(ids);
   const verified = new Set();
-  for (const group of chunks(ids, 400)) {
-    const { data, error } = await client
-      .from('dp_qb_assets')
-      .select('id,verification_status')
-      .in('id', group);
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await retry(
+      () =>
+        client
+          .from('dp_qb_assets')
+          .select('id,verification_status')
+          .order('id')
+          .range(offset, offset + pageSize - 1),
+      4,
+    );
     if (error) throw new Error(`Unable to read asset resume state: ${error.message}`);
     for (const row of data || [])
-      if (row.verification_status === 'verified') verified.add(row.id);
+      if (targetIds.has(row.id) && row.verification_status === 'verified')
+        verified.add(row.id);
+    if (!data || data.length < pageSize) break;
   }
   return verified;
 }
@@ -305,19 +314,21 @@ export async function uploadAssets(normalized, options = {}) {
             ? uploadR2(asset, configuration)
             : uploadSupabase(client, asset, configuration),
         );
-        const { error } = await client
-          .from('dp_qb_assets')
-          .update({
-            storage_provider: configuration.provider,
-            storage_bucket: configuration.bucket,
-            upload_status: 'uploaded',
-            verification_status: 'verified',
-            uploaded_at: new Date().toISOString(),
-            verified_at: new Date().toISOString(),
-            last_error: null,
-          })
-          .eq('id', asset.id);
-        if (error) throw error;
+        await retry(async () => {
+          const { error } = await client
+            .from('dp_qb_assets')
+            .update({
+              storage_provider: configuration.provider,
+              storage_bucket: configuration.bucket,
+              upload_status: 'uploaded',
+              verification_status: 'verified',
+              uploaded_at: new Date().toISOString(),
+              verified_at: new Date().toISOString(),
+              last_error: null,
+            })
+            .eq('id', asset.id);
+          if (error) throw error;
+        }, 4);
         uploaded += 1;
       } catch (error) {
         const message = String(error.message || error).slice(0, 1000);
