@@ -236,7 +236,7 @@ export async function getQuestionDetail(variantId: string, userId: string) {
   const { data: variant, error } = await client
     .from('dp_qb_question_variants')
     .select(
-      'id,question_id,source_index,difficulty_value,difficulty_label,section_raw,calculator_allowed,question:dp_qb_questions!question_id(id,reference,content,mark_scheme,maximum_mark),course:dp_qb_courses!course_id(id,slug,name,syllabus_label,subject:dp_qb_subjects!subject_id(slug,name)),topic:dp_qb_topics!topic_id(id,name),paper:dp_qb_papers!paper_id(id,reference,calculator_allowed,formula_booklet_source_url),placements:dp_qb_question_subtopics(subtopic:dp_qb_subtopics!subtopic_id(id,name,slug))',
+      'id,question_id,source_index,difficulty_value,difficulty_label,section_raw,calculator_allowed,question:dp_qb_questions!question_id(id,reference,content,mark_scheme,examiner_report,maximum_mark),course:dp_qb_courses!course_id(id,slug,name,syllabus_label,subject:dp_qb_subjects!subject_id(slug,name)),topic:dp_qb_topics!topic_id(id,name),paper:dp_qb_papers!paper_id(id,reference,calculator_allowed,formula_booklet_source_url),placements:dp_qb_question_subtopics(subtopic:dp_qb_subtopics!subtopic_id(id,name,slug))',
     )
     .eq('id', variantId)
     .maybeSingle();

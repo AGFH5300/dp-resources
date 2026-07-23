@@ -41,7 +41,7 @@ export type QuestionListRow = {
 export type QuestionAsset = {
   id: string;
   sourceFileId: string | null;
-  role: 'question' | 'markscheme' | 'content_reference';
+  role: 'question' | 'markscheme' | 'examiner_report' | 'content_reference';
   sortOrder: number;
   altText: string;
 };

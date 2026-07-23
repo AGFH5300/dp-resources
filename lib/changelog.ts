@@ -27,6 +27,10 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-23': [
+    'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
+    'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
+  ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
     'Added colourful Question Bank difficulty and progress indicators, instant status feedback, readable image surfaces, and repaired search results.',

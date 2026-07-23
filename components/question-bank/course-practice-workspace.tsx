@@ -59,6 +59,7 @@ type QuestionDetail = {
     reference: string;
     content: string;
     markScheme: string;
+    examinerReport: string;
     maximumMark: number;
   };
   assets: QuestionAsset[];
@@ -256,6 +257,9 @@ export function CoursePracticeWorkspace({
   const markschemeAssets = (detail?.assets || []).filter(
     (asset) => asset.role === 'markscheme',
   );
+  const examinerReportAssets = (detail?.assets || []).filter(
+    (asset) => asset.role === 'examiner_report',
+  );
   const correct =
     answerChecked &&
     interactive?.correctChoiceId &&
@@ -438,8 +442,11 @@ export function CoursePracticeWorkspace({
                   </p>
                 </div>
                 <span className="dp-qb-score-pill">
-                  {detail.question.maximumMark} mark
-                  {detail.question.maximumMark === 1 ? '' : 's'}
+                  {detail.question.maximumMark > 0
+                    ? `${detail.question.maximumMark} mark${
+                        detail.question.maximumMark === 1 ? '' : 's'
+                      }`
+                    : 'Marks not listed'}
                 </span>
               </header>
 
@@ -575,6 +582,21 @@ export function CoursePracticeWorkspace({
                     </div>
                   ) : null}
                 </section>
+              ) : null}
+
+              {detail.question.examinerReport ? (
+                <details className="dp-qb-practice-extra">
+                  <summary>
+                    <FileText className="size-5" /> Read the examiner report
+                  </summary>
+                  <div className="mt-4">
+                    <QuestionContent
+                      source={detail.question.examinerReport}
+                      assets={examinerReportAssets}
+                      kind="markscheme"
+                    />
+                  </div>
+                </details>
               ) : null}
 
               <section className="dp-qb-practice-progress">

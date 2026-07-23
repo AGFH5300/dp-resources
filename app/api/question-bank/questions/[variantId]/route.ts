@@ -65,6 +65,7 @@ export async function GET(
       reference: question.reference,
       content: question.content,
       markScheme: question.mark_scheme,
+      examinerReport: question.examiner_report,
       maximumMark: question.maximum_mark,
     },
     assets,
