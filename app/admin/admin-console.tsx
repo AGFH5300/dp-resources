@@ -346,6 +346,11 @@ function CaseInspector({
 }) {
   const router = useRouter();
   const isReport = kind === 'report';
+  const report = isReport ? (item as ResourceReport) : null;
+  const reportedQuestionHref =
+    report?.resource_path?.startsWith('/question-bank/')
+      ? report.resource_path
+      : null;
   const [draft, setDraft] = useState<any>({
     status: item.status,
     assigned_to: (item as any).assigned_to || '',
@@ -487,14 +492,20 @@ function CaseInspector({
             </div>
           </section>
         )}
-        {isReport && (item as ResourceReport).drive_file_id && (
+        {isReport && (report?.drive_file_id || reportedQuestionHref) && (
           <div className="mt-4">
             <Link
               target="_blank"
-              href={`/resource/${(item as ResourceReport).drive_file_id}`}
+              href={
+                report?.drive_file_id
+                  ? `/resource/${report.drive_file_id}`
+                  : reportedQuestionHref!
+              }
               className={secondaryBtn}
             >
-              Open resource in new tab
+              {report?.drive_file_id
+                ? 'Open resource in new tab'
+                : 'Open reported question'}
             </Link>
           </div>
         )}

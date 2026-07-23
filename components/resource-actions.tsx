@@ -19,6 +19,9 @@ type ResourceContext = {
   isFolder?: boolean;
   mimeType?: string;
 };
+type ReportContext = Omit<ResourceContext, 'driveFileId'> & {
+  driveFileId?: string;
+};
 function appUrl(id: string, isFolder?: boolean) {
   return `${window.location.origin}${isFolder ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`}`;
 }
@@ -133,14 +136,26 @@ export function ReportResourceDialog({
   resource,
   className = actionClass,
   onBegin,
+  categories = [
+    'Broken file',
+    'Incorrect resource',
+    'Outdated content',
+    'Duplicate',
+    'Other',
+  ],
+  title = 'Report resource issue',
+  triggerLabel = 'Report issue',
 }: {
-  resource: ResourceContext;
+  resource: ReportContext;
   className?: string;
   onBegin?: () => void;
+  categories?: readonly string[];
+  title?: string;
+  triggerLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [category, setCategory] = useState('Broken file');
+  const [category, setCategory] = useState(categories[0] || 'Other');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -169,7 +184,7 @@ export function ReportResourceDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          driveFileId: resource.driveFileId,
+          driveFileId: resource.driveFileId || null,
           resourceName: resource.resourceName,
           resourcePath: resource.resourcePath || '',
           category,
@@ -202,7 +217,7 @@ export function ReportResourceDialog({
         }}
         className={className}
       >
-        <Flag className="size-4" /> Report issue
+        <Flag className="size-4" /> {triggerLabel}
       </button>
       {open && (
         <div
@@ -233,7 +248,7 @@ export function ReportResourceDialog({
                   id="report-title"
                   className="text-lg font-semibold text-[color:var(--dp-navy)]"
                 >
-                  Report resource issue
+                  {title}
                 </h2>
                 <p
                   id="report-resource-summary"
@@ -265,13 +280,7 @@ export function ReportResourceDialog({
                   <AppSelect
                     value={category}
                     onValueChange={setCategory}
-                    options={[
-                      'Broken file',
-                      'Incorrect resource',
-                      'Outdated content',
-                      'Duplicate',
-                      'Other',
-                    ].map((c) => ({ value: c, label: c }))}
+                    options={categories.map((c) => ({ value: c, label: c }))}
                   />
                 </label>
                 <label className="mt-3 block text-sm font-medium">

@@ -12,6 +12,7 @@ import {
   normalizeQuestionSource,
   questionPreview,
 } from '@/lib/question-bank/content-normalization';
+import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import { parseQuestionFilters } from '@/lib/question-bank/queries';
 import {
@@ -430,6 +431,77 @@ describe('question filters and production security expectations', () => {
       subtopicId: null,
       section: null,
     });
+    expect(
+      parseQuestionFilters({ mine: 'saved_revisit' }),
+    ).toMatchObject({ saved: true, revisit: true });
+  });
+
+  it('applies compact live filters and keeps searchable menus below their triggers', () => {
+    const filters = readFileSync(
+      'components/question-bank/question-bank-filters.tsx',
+      'utf8',
+    );
+    const select = readFileSync('components/ui/app-select.tsx', 'utf8');
+    const queries = readFileSync('lib/question-bank/queries.ts', 'utf8');
+    const migration = readFileSync(
+      'supabase/migrations/20260723131559_question_bank_filter_options.sql',
+      'utf8',
+    );
+    expect(filters).toContain("router.replace(href, { scroll: false })");
+    expect(filters).toContain('More filters');
+    expect(filters).toContain('My questions');
+    expect(filters).toContain('View Uncategorized');
+    expect(filters).not.toContain('Apply filters');
+    expect(select).toContain('searchable?: boolean');
+    expect(select).toContain('side="bottom"');
+    expect(select).toContain('avoidCollisions={false}');
+    expect(select).toContain('dp-select-viewport');
+    expect(queries).toContain("client.rpc('dp_qb_course_filter_options'");
+    expect(migration).toContain('private.dp_qb_has_access()');
+    expect(migration).toContain('from anon');
+  });
+
+  it('routes formula booklets through native DP Resources files', () => {
+    expect(nativeFormulaBookletUrl('physics', 'hl-2025')).toBe(
+      '/resource/1WxDMiuD6WpwVvamNPelQDn9Ufffwz8SM',
+    );
+    expect(
+      nativeFormulaBookletUrl(
+        'mathematics',
+        'analysis-and-approaches-sl',
+      ),
+    ).toBe('/resource/1A0F8SCPR8whap1OIdkodE5ZHndySbHFJ');
+    expect(
+      nativeFormulaBookletUrl(
+        'mathematics',
+        'applications-and-interpretation-hl',
+      ),
+    ).toBe('/resource/1sjYffCiItZVxkzL7eqCjQjjavmAUNWja');
+    expect(nativeFormulaBookletUrl('biology', 'hl')).toBeNull();
+  });
+
+  it('lets users report question-specific faults and gives admins a safe deep link', () => {
+    const workspace = readFileSync(
+      'components/question-bank/course-practice-workspace.tsx',
+      'utf8',
+    );
+    const reportDialog = readFileSync(
+      'components/resource-actions.tsx',
+      'utf8',
+    );
+    const adminConsole = readFileSync(
+      'app/admin/admin-console.tsx',
+      'utf8',
+    );
+    expect(workspace).toContain('Broken image or diagram');
+    expect(workspace).toContain('Broken solution video');
+    expect(workspace).toContain('Wrong answer or markscheme');
+    expect(workspace).toContain('Report this question');
+    expect(reportDialog).toContain('resource.driveFileId || null');
+    expect(adminConsole).toContain(
+      "report?.resource_path?.startsWith('/question-bank/')",
+    );
+    expect(adminConsole).toContain('Open reported question');
   });
 
   it('uses dependent custom filters, universal search, and an in-page practice workspace', () => {

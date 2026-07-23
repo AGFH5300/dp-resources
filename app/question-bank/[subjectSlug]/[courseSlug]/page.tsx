@@ -137,6 +137,7 @@ export default async function CourseQuestionBank({
               topics={topics}
               papers={data.papers as any[]}
               filters={filters}
+              filterOptions={data.filterOptions}
               resetHref={basePath}
             />
 
@@ -163,6 +164,7 @@ export default async function CourseQuestionBank({
                 filters.page < pages ? pageHref(query, filters.page + 1) : null
               }
               initialVariantId={initialVariantId}
+              coursePath={basePath}
             />
           </section>
         </div>
