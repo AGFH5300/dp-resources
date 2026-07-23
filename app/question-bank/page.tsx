@@ -7,7 +7,10 @@ import { Nav } from '@/components/nav';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { requireMember } from '@/lib/auth';
-import { isOldCourse } from '@/lib/question-bank/presentation';
+import {
+  isOldCourse,
+  oldCourseFinalAssessmentYear,
+} from '@/lib/question-bank/presentation';
 import { getQuestionBankLanding } from '@/lib/question-bank/queries';
 
 export default async function QuestionBankLanding() {
@@ -66,27 +69,36 @@ export default async function QuestionBankLanding() {
                     <h3>{subject.name}</h3>
                   </div>
                   <div className="mt-4 space-y-2">
-                    {subject.courses.map((course: any) => (
-                      <Link
-                        key={course.id}
-                        href={`/question-bank/${subject.slug}/${course.slug}`}
-                        className="dp-qb-course-link"
-                      >
-                        <span>
-                          <strong>{course.name}</strong>
-                          <small>
-                            {course.questions.toLocaleString()} questions
-                            {isOldCourse(course, subject.courses) ? (
-                              <>
-                                {' '}
-                                · <OldCourseBadge />
-                              </>
-                            ) : null}
-                          </small>
-                        </span>
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    ))}
+                    {subject.courses.map((course: any) => {
+                      const oldCourse = isOldCourse(course, subject.courses);
+                      return (
+                        <Link
+                          key={course.id}
+                          href={`/question-bank/${subject.slug}/${course.slug}`}
+                          className="dp-qb-course-link"
+                        >
+                          <span>
+                            <strong>{course.name}</strong>
+                            <small>
+                              {course.questions.toLocaleString()} questions
+                              {oldCourse ? (
+                                <>
+                                  {' '}
+                                  ·{' '}
+                                  <OldCourseBadge
+                                    finalAssessmentYear={oldCourseFinalAssessmentYear(
+                                      course,
+                                      subject.courses,
+                                    )}
+                                  />
+                                </>
+                              ) : null}
+                            </small>
+                          </span>
+                          <ArrowRight className="size-4" />
+                        </Link>
+                      );
+                    })}
                   </div>
                 </article>
               ))}

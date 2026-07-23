@@ -6,7 +6,19 @@ type CourseVersion = {
 };
 
 function isPreviousVersionLabel(value: string | null | undefined) {
-  return /legacy|old|previous/i.test(String(value || ''));
+  return /legacy|old|previous|last assessment|final assessment/i.test(
+    String(value || ''),
+  );
+}
+
+function assessmentYear(
+  value: string | null | undefined,
+  label: 'first' | 'last' | 'final',
+) {
+  const match = String(value || '').match(
+    new RegExp(`${label}\\s+assessment\\s+(\\d{4})`, 'i'),
+  );
+  return match ? Number(match[1]) : null;
 }
 
 export function isOldCourse(
@@ -14,6 +26,12 @@ export function isOldCourse(
   siblingCourses: CourseVersion[],
 ) {
   if (!isPreviousVersionLabel(course.syllabus_label)) return false;
+  if (
+    assessmentYear(course.syllabus_label, 'last') ||
+    assessmentYear(course.syllabus_label, 'final')
+  ) {
+    return true;
+  }
   return siblingCourses.some(
     (candidate) =>
       candidate.id !== course.id &&
@@ -21,6 +39,29 @@ export function isOldCourse(
       candidate.level === course.level &&
       !isPreviousVersionLabel(candidate.syllabus_label),
   );
+}
+
+export function oldCourseFinalAssessmentYear(
+  course: CourseVersion,
+  siblingCourses: CourseVersion[],
+) {
+  const explicitYear =
+    assessmentYear(course.syllabus_label, 'last') ||
+    assessmentYear(course.syllabus_label, 'final');
+  if (explicitYear) return explicitYear;
+
+  const currentVersion = siblingCourses.find(
+    (candidate) =>
+      candidate.id !== course.id &&
+      candidate.name === course.name &&
+      candidate.level === course.level &&
+      !isPreviousVersionLabel(candidate.syllabus_label),
+  );
+  const firstAssessmentYear = assessmentYear(
+    currentVersion?.syllabus_label,
+    'first',
+  );
+  return firstAssessmentYear ? firstAssessmentYear - 1 : null;
 }
 
 export function taxonomyLabel(
