@@ -32,6 +32,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
     'Made Question Bank filters compact and instant, added searchable topic menus and question reporting, and linked formula booklets to the native Library.',
     'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
+    'Improved the ESS subject icon, added final-assessment years to old-course labels, and connected native Biology, Business Management, and Chemistry reference booklets to Question Bank practice.',
   ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
@@ -99,158 +100,66 @@ const historicalSummaries: Record<string, string[]> = {
     'Made Library navigation and resource indexing faster and more dependable.',
   ],
   '2026-07-05': [
-    'Restored reliable Word document previews and improved Google Sheets and filter controls.',
-  ],
-  '2026-07-04': [
-    'Improved notifications, featured resources, and support and report follow-ups.',
-  ],
-  '2026-07-02': [
-    'Introduced the current DP Resources header, account menu, Library workspace, contextual actions, and details panels.',
-    'Improved resource actions, the support centre, global search, filters, and the overall visual design.',
-    'Added featured resources, higher-quality document previews, and more reliable notifications.',
-    'Improved spreadsheet and Word document previews across desktop and mobile.',
-  ],
-  '2026-07-01': [
-    'Created DP Resources as a dedicated study-resource library.',
-    'Added the complete sign-up, verification, login, and password setup experience.',
-    'Removed the approval wait so verified users can enter the Library immediately.',
-    'Launched global search, previews, saved resources, recent activity, reporting, and support.',
+    'Added structured subject folders, formula and data booklets, specimen papers, guides, grade boundaries, and combined past-paper packs.',
   ],
 };
 
-function sentenceFromTitle(title: string) {
-  const cleaned = title
-    .replace(/\s+/g, ' ')
-    .replace(/[.!?]+$/, '')
+function commitSummary(message: unknown) {
+  return String(message || '')
+    .split('\n')[0]
+    .replace(/^Merge pull request #\d+ from [^ ]+\s*/i, '')
     .trim();
-  if (!cleaned) return 'Updated DP Resources.';
-  return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}.`;
 }
 
-function isUserFacingTitle(title: string) {
-  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2)/i.test(
-    title,
+function meaningfulCommit(commit: GitHubCommit) {
+  return (commit.parents?.length || 0) <= 1;
+}
+
+function displayDate(value: unknown) {
+  const date = new Date(String(value || ''));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function fallbackEntries() {
+  return Object.entries(historicalSummaries).flatMap(([date, summaries]) =>
+    summaries.map((summary, index) => ({
+      id: `fallback-${date}-${index}`,
+      summary,
+      date,
+    })),
   );
-}
-
-function parseMergeCommit(value: GitHubCommit): ChangelogEntry | null {
-  if (!Array.isArray(value.parents) || value.parents.length < 2) return null;
-  if (typeof value.sha !== 'string') return null;
-
-  const message = value.commit?.message;
-  if (typeof message !== 'string') return null;
-
-  const lines = message
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (!/^Merge pull request #(\d+) from\s+/i.test(lines[0] || '')) return null;
-
-  const title = lines.slice(1).join(' ').trim();
-  if (!isUserFacingTitle(title)) return null;
-
-  const rawDate = value.commit?.committer?.date || value.commit?.author?.date;
-  if (typeof rawDate !== 'string' || Number.isNaN(Date.parse(rawDate)))
-    return null;
-
-  return {
-    id: value.sha,
-    summary: sentenceFromTitle(title),
-    date: new Date(rawDate).toISOString(),
-  };
-}
-
-function dateKey(date: string) {
-  return new Date(date).toISOString().slice(0, 10);
-}
-
-function historicalFallbackEntries() {
-  return Object.entries(historicalSummaries)
-    .sort(([left], [right]) => right.localeCompare(left))
-    .flatMap(([date, summaries]) =>
-      summaries.map((summary, index) => ({
-        id: `historical-${date}-${index}`,
-        summary,
-        date: `${date}T12:00:00.000Z`,
-      })),
-    );
-}
-
-function consolidateHistory(entries: ChangelogEntry[]) {
-  const byDate = new Map<string, ChangelogEntry[]>();
-  for (const entry of entries) {
-    const key = dateKey(entry.date);
-    const current = byDate.get(key) || [];
-    current.push(entry);
-    byDate.set(key, current);
-  }
-
-  const dates = new Set([
-    ...byDate.keys(),
-    ...Object.keys(historicalSummaries),
-  ]);
-  return [...dates]
-    .sort((left, right) => right.localeCompare(left))
-    .flatMap((date) => {
-      const summaries = historicalSummaries[date];
-      if (summaries) {
-        return summaries.map((summary, index) => ({
-          id: `historical-${date}-${index}`,
-          summary,
-          date: `${date}T12:00:00.000Z`,
-        }));
-      }
-      return byDate.get(date) || [];
-    });
-}
-
-async function fetchCommitPage(page: number): Promise<GitHubCommit[]> {
-  const response = await fetch(
-    `https://api.github.com/repos/${REPOSITORY}/commits?sha=main&per_page=${COMMITS_PER_PAGE}&page=${page}`,
-    {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'DP-Resources-Changelog',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      next: { revalidate: REVALIDATE_SECONDS },
-    },
-  );
-
-  if (!response.ok)
-    throw new Error(`GitHub commits request failed with ${response.status}`);
-
-  const value: unknown = await response.json();
-  if (!Array.isArray(value))
-    throw new Error('GitHub commits response was invalid');
-  return value as GitHubCommit[];
-}
-
-async function fetchAllMergeCommits() {
-  const commits: GitHubCommit[] = [];
-
-  for (let page = 1; page <= MAX_COMMIT_PAGES; page += 1) {
-    const next = await fetchCommitPage(page);
-    commits.push(...next);
-    if (next.length < COMMITS_PER_PAGE) break;
-  }
-
-  const unique = new Map<string, ChangelogEntry>();
-  for (const commit of commits) {
-    const parsed = parseMergeCommit(commit);
-    if (parsed) unique.set(parsed.id, parsed);
-  }
-
-  return consolidateHistory([...unique.values()]);
 }
 
 export async function getChangelog(): Promise<ChangelogResult> {
+  const entries: ChangelogEntry[] = [];
   try {
-    const entries = await fetchAllMergeCommits();
-    if (!entries.length) throw new Error('No merged updates were returned');
+    for (let page = 1; page <= MAX_COMMIT_PAGES; page += 1) {
+      const response = await fetch(
+        `https://api.github.com/repos/${REPOSITORY}/commits?per_page=${COMMITS_PER_PAGE}&page=${page}`,
+        {
+          headers: {
+            accept: 'application/vnd.github+json',
+            'user-agent': 'dp-resources-changelog',
+          },
+          next: { revalidate: REVALIDATE_SECONDS },
+        },
+      );
+      if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+      const commits = (await response.json()) as GitHubCommit[];
+      for (const commit of commits) {
+        if (!meaningfulCommit(commit)) continue;
+        const summary = commitSummary(commit.commit?.message);
+        const date = displayDate(
+          commit.commit?.committer?.date || commit.commit?.author?.date,
+        );
+        if (!commit.sha || !summary || !date) continue;
+        entries.push({ id: String(commit.sha), summary, date });
+      }
+      if (commits.length < COMMITS_PER_PAGE) break;
+    }
+    if (!entries.length) throw new Error('No changelog commits were returned.');
     return { entries, source: 'github' };
-  } catch (error) {
-    console.error('Unable to refresh the public changelog from GitHub.', error);
-    return { entries: historicalFallbackEntries(), source: 'fallback' };
+  } catch {
+    return { entries: fallbackEntries(), source: 'fallback' };
   }
 }
