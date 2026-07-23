@@ -172,33 +172,22 @@ jobs:
             }
           }
           NODE
-      - name: Append database rows and private assets
+      - name: Verify production rows and private assets
         run: >-
           node --max-old-space-size=6144 scripts/import-pestle-question-bank.mjs
           --capture "$CAPTURE_PATH"
-          --mode all
-          --storage-provider r2
-          --storage-bucket "$R2_PDF_PREVIEW_BUCKET"
-          --workers 10
-          --batch-size 250
-          --confirm-production
+          --mode verify
           --report "$IMPORT_REPORT"
       - name: Verify completed PESTLE import
         run: |
           node --input-type=module <<'NODE'
           import { appendFile, readFile } from 'node:fs/promises';
           const report = JSON.parse(await readFile(process.env.IMPORT_REPORT, 'utf8'));
-          if (report.productionWritePerformed !== true) {
-            throw new Error('Importer did not record its production write.');
+          if (report.productionWritePerformed !== false) {
+            throw new Error('Production verification unexpectedly performed a write.');
           }
           if (report.databaseVerification?.status !== 'passed') {
             throw new Error('Scoped production verification failed.');
-          }
-          if (report.assetUpload?.failed !== 0) {
-            throw new Error('One or more PESTLE assets failed verification.');
-          }
-          if (report.assetUpload?.uploaded + report.assetUpload?.skippedVerified !== 6427) {
-            throw new Error('Verified PESTLE asset total does not equal 6,427.');
           }
           await appendFile(process.env.GITHUB_STEP_SUMMARY, [
             '## Production PESTLE question-bank import',

@@ -422,9 +422,10 @@ async function existingKeysByIn(
   filterValues,
   select,
   keyForRow,
+  groupSize = 200,
 ) {
   const found = new Set();
-  for (const group of chunks([...new Set(filterValues)], 200)) {
+  for (const group of chunks([...new Set(filterValues)], groupSize)) {
     if (!group.length) continue;
     const { data, error } = await client.from(table).select(select).in(filterField, group);
     if (error) throw new Error(`${table} scoped verification failed: ${error.message}`);
@@ -487,6 +488,7 @@ export async function verifyImportRows(normalized, options = {}) {
       filterField: 'variant_id',
       select: 'variant_id,asset_id,role',
       key: (row) => `${row.variant_id}:${row.asset_id}:${row.role}`,
+      groupSize: 25,
     },
   ];
   for (const check of compositeChecks) {
@@ -498,6 +500,7 @@ export async function verifyImportRows(normalized, options = {}) {
       normalized.rows[check.rowKey].map((row) => row[check.filterField]),
       check.select,
       check.key,
+      check.groupSize,
     );
     results[check.table] = {
       expected: expected.size,
