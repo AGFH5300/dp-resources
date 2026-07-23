@@ -32,6 +32,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
     'Made Question Bank filters compact and instant, added searchable topic menus and question reporting, and linked formula booklets to the native Library.',
     'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
+    'Improved the Environmental Systems icon, added final assessment years to old-course labels, and connected the Business formula booklet directly to Question Bank questions.',
   ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
