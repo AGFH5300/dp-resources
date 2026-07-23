@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { QuestionContent } from '@/components/question-bank/question-content';
 import { QuestionStateControls } from '@/components/question-bank/question-state-controls';
 import { SolutionVideo } from '@/components/question-bank/solution-video';
+import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import type {
@@ -95,6 +96,7 @@ export function CoursePracticeWorkspace({
   previousHref,
   nextHref,
   initialVariantId,
+  coursePath,
 }: {
   questions: QuestionListRow[];
   total: number;
@@ -103,6 +105,7 @@ export function CoursePracticeWorkspace({
   previousHref: string | null;
   nextHref: string | null;
   initialVariantId: string | null;
+  coursePath: string;
 }) {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     initialVariantId,
@@ -133,6 +136,10 @@ export function CoursePracticeWorkspace({
   useEffect(() => {
     setQuestionRows(questions);
   }, [questions]);
+
+  useEffect(() => {
+    setSelectedVariantId(initialVariantId);
+  }, [initialVariantId]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -640,18 +647,38 @@ export function CoursePracticeWorkspace({
                 </details>
               ) : null}
 
-              {detail.variant.formulaBookletUrl ? (
-                <a
-                  href={detail.variant.formulaBookletUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  referrerPolicy="no-referrer"
-                  className="dp-qb-formula-link"
-                >
-                  Formula booklet (external source)
-                  <ExternalLink className="size-4" />
-                </a>
-              ) : null}
+              <div className="dp-qb-reference-actions">
+                {detail.variant.formulaBookletUrl ? (
+                  <a
+                    href={detail.variant.formulaBookletUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="dp-qb-formula-link"
+                  >
+                    Formula booklet (DP Resources)
+                    <ExternalLink className="size-4" />
+                  </a>
+                ) : null}
+                <ReportResourceDialog
+                  resource={{
+                    resourceName: `Question ${detail.question.reference}`,
+                    resourcePath: `${coursePath}?question=${detail.variant.id}`,
+                    mimeType: 'application/x-dp-question',
+                  }}
+                  categories={[
+                    'Broken image or diagram',
+                    'Broken solution video',
+                    'Wrong answer or markscheme',
+                    'Question text or layout problem',
+                    'Wrong topic or metadata',
+                    'Duplicate question',
+                    'Other',
+                  ]}
+                  title="Report a question issue"
+                  triggerLabel="Report this question"
+                  className="dp-qb-report-button"
+                />
+              </div>
 
               <div className="dp-qb-practice-bottom-nav">
                 <button

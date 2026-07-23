@@ -25,6 +25,7 @@ export function parseQuestionFilters(
   searchParams: Record<string, string | undefined>,
 ): QuestionFilters {
   const page = Number(searchParams.page || 1);
+  const mine = searchParams.mine || '';
   const topicId = uuid(searchParams.topic);
   const difficulty = ['easy', 'medium', 'hard'].includes(
     searchParams.difficulty || '',
@@ -48,8 +49,14 @@ export function parseQuestionFilters(
       : null,
     calculator: bool(searchParams.calculator),
     status,
-    saved: bool(searchParams.saved),
-    revisit: bool(searchParams.revisit),
+    saved:
+      mine === 'saved' || mine === 'saved_revisit'
+        ? true
+        : bool(searchParams.saved),
+    revisit:
+      mine === 'revisit' || mine === 'saved_revisit'
+        ? true
+        : bool(searchParams.revisit),
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
   };
 }
@@ -160,7 +167,13 @@ export async function getCourseQuestionBank(
   requireData(course, courseError, 'Course');
   if (!course) notFound();
 
-  const [topicsResult, papersResult, datasetsResult, questionsResult] =
+  const [
+    topicsResult,
+    papersResult,
+    datasetsResult,
+    filterOptionsResult,
+    questionsResult,
+  ] =
     await Promise.all([
       client
         .from('dp_qb_topics')
@@ -179,6 +192,9 @@ export async function getCourseQuestionBank(
         .from('dp_qb_datasets')
         .select('expected_question_count')
         .eq('course_id', course.id),
+      client.rpc('dp_qb_course_filter_options', {
+        p_course_id: course.id,
+      }),
       client.rpc('dp_qb_list_questions', {
         p_course_id: course.id,
         p_query: filters.q || null,
@@ -196,6 +212,20 @@ export async function getCourseQuestionBank(
       }),
     ]);
 
+  const filterOptions = (
+    requireData(
+      filterOptionsResult.data,
+      filterOptionsResult.error,
+      'Course filter options',
+    ) || []
+  )[0] as
+    | {
+        difficulties: string[];
+        sections: string[];
+        calculator_values: boolean[];
+      }
+    | undefined;
+
   return {
     subject,
     course,
@@ -210,6 +240,11 @@ export async function getCourseQuestionBank(
       (total: number, row: any) => total + Number(row.expected_question_count || 0),
       0,
     ),
+    filterOptions: {
+      difficulties: filterOptions?.difficulties || [],
+      sections: filterOptions?.sections || [],
+      calculatorValues: filterOptions?.calculator_values || [],
+    },
     questions: (requireData(
       questionsResult.data,
       questionsResult.error,

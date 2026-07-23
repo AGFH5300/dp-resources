@@ -1,4 +1,5 @@
 import { requireMember } from '@/lib/auth';
+import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { getQuestionDetail } from '@/lib/question-bank/queries';
 import type { QuestionAsset } from '@/lib/question-bank/types';
 
@@ -11,16 +12,6 @@ function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
   return response;
-}
-
-function safeExternalHttpsUrl(value: unknown) {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }
 
 export async function GET(
@@ -56,8 +47,9 @@ export async function GET(
         .map((placement: any) => placement.subtopic?.name)
         .filter(Boolean),
       paperReference: variant.paper?.reference || null,
-      formulaBookletUrl: safeExternalHttpsUrl(
-        variant.paper?.formula_booklet_source_url,
+      formulaBookletUrl: nativeFormulaBookletUrl(
+        variant.course?.subject?.slug,
+        variant.course?.slug,
       ),
     },
     question: {
