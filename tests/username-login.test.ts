@@ -29,10 +29,11 @@ describe('username or email login', () => {
 });
 
 describe('username account display', () => {
-  it('loads the signed-in profile username and passes it through the header', () => {
-    expect(nav).toContain("from('dp_resource_profiles')");
-    expect(nav).toContain(".select('username')");
-    expect(nav).toContain('username={username}');
+  it('loads the signed-in profile username through the client-safe header', () => {
+    expect(nav).toContain('<AppHeader admin={admin} userId={userId} />');
+    expect(nav).not.toContain('createSupabaseServerClient');
+    expect(appHeader).toContain("from('dp_resource_profiles')");
+    expect(appHeader).toContain(".select('username')");
     expect(appHeader).toContain('username={username}');
   });
 
