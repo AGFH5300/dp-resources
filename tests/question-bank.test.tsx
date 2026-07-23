@@ -23,6 +23,11 @@ import {
 // The production importer is intentionally plain ESM so it runs without a build step.
 // @ts-expect-error Direct integration coverage for that plain-ESM importer.
 } from '../scripts/question-bank/archive.mjs';
+import {
+  htmlToQuestionSource,
+  taxonomyName,
+// @ts-expect-error Direct integration coverage for the plain-ESM PESTLE adapter.
+} from '../scripts/question-bank/pestle.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -274,6 +279,19 @@ describe('question-bank archive normalization', () => {
 });
 
 describe('controlled question renderer', () => {
+  it('normalizes PESTLE HTML, MathML, and wrapped images into controlled source', () => {
+    const source = htmlToQuestionSource(
+      '<p>Calculate <math><msup><mi>x</mi><mn>2</mn></msup></math>.</p><p><sup><img alt="Graph" src="data:image/png;base64,abc"></sup></p>',
+      [{ sourceFileId: '99999999-9999-4999-8999-999999999999' }],
+    );
+    expect(source).toContain('$x^{2}$');
+    expect(source).toContain(
+      '![Graph](question:99999999-9999-4999-8999-999999999999)',
+    );
+    expect(source).not.toMatch(/DPQBPROTECTEDTOKEN|<(?:img|math)\b/i);
+    expect(taxonomyName('topic-5-calculus')).toBe('Topic 5: Calculus');
+  });
+
   it('renders directives, KaTeX aligned math, mhchem, and protected images', () => {
     const output = renderToStaticMarkup(
       <QuestionContent
@@ -487,6 +505,25 @@ describe('question filters and production security expectations', () => {
     expect(assetRoute).toContain(".eq('verification_status', 'verified')");
     expect(assetRoute).toContain('getPrivateR2Object');
     expect(assetRoute).toContain("default-src 'none'; sandbox");
+  });
+
+  it('preserves examiner reports without broadening question-bank access', () => {
+    const migration = readFileSync(
+      'supabase/migrations/20260723140000_question_bank_examiner_reports.sql',
+      'utf8',
+    );
+    const questionRoute = readFileSync(
+      'app/api/question-bank/questions/[variantId]/route.ts',
+      'utf8',
+    );
+    const workspace = readFileSync(
+      'components/question-bank/course-practice-workspace.tsx',
+      'utf8',
+    );
+    expect(migration).toContain('examiner_report text not null');
+    expect(migration).toContain("'examiner_report'");
+    expect(questionRoute).toContain('examinerReport: question.examiner_report');
+    expect(workspace).toContain('Read the examiner report');
   });
 
   it('adds the question bank to desktop and six-item mobile navigation', () => {

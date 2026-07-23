@@ -2,15 +2,33 @@
 
 ## Rollout status
 
-This change is additive and review-first. The migration and importer are included
-in the feature branch, but the production migration, database import, and asset
-upload have **not** been run. A production operator must review the pull request,
-confirm a current database backup or point-in-time recovery window, create the
-private object bucket, apply the migration, and then run the staged commands
-below.
+The question bank uses additive, review-first migrations and importers. The
+original authorized archive is live in production. Additional sources must pass
+their own exact checksums, dry-run counts, append-only import, private-asset
+verification, and scoped post-import verification before they are accepted.
 
 The source archive itself, decrypted datasets, generated NDJSON, reports, and
 question images are ignored by Git and must never be committed.
+
+## Audited PESTLE extension
+
+The PESTLE adapter imports the audited 2026-07-23 capture without replacing the
+existing question bank. It preserves the source hierarchy as:
+
+`Subject → Course/level → Topic → Subtopic → Question variant`
+
+The source contains 10,721 rows. The adapter resolves 237 exact legacy/2025
+overlaps in favour of the newer taxonomy, imports 10,482 question cores, and
+quarantines only Physics questions `17M.2.HL.TZ2.4` and
+`17M.2.HL.TZ2.6` because three expired `blob:` images cannot be verified.
+Missing topics and subtopics are retained under `Uncategorized`; missing marks
+remain zero in storage and are labelled “Marks not listed” in the interface.
+
+PESTLE Math AA and Math AI retain distinct source identities even though both
+appear under the site’s Mathematics subject. Questions that legitimately belong
+to multiple topics or levels receive deterministic variants, while their core
+question, markscheme, examiner report, and content-hash-deduplicated assets
+remain shared.
 
 ## Verified source model
 
@@ -140,6 +158,41 @@ Read-only verification of an existing import:
 ```bash
 npm run question-bank:import -- --archive /secure/path/processed-20260721-222121.zip --mode verify
 ```
+
+Run the PESTLE adapter against an extracted, checksum-authorized capture:
+
+```bash
+npm run question-bank:pestle -- --capture /secure/path/PESTLE-index --mode dry-run
+npm run question-bank:pestle -- --capture /secure/path/PESTLE-index --mode all --storage-provider r2 --workers 10 --batch-size 250 --confirm-production
+npm run question-bank:pestle -- --capture /secure/path/PESTLE-index --mode verify
+```
+
+The checked-in `pestle-authorized.json` pins the aggregate SHA-256 of all 18 raw
+banks, all 6,435 captured asset files, and the three generated audit indexes.
+The production workflow first validates every captured file, then refuses every
+write unless the ordered 6,456-entry manifest matches that reviewed digest.
+
+### PESTLE dry-run result
+
+Archive fingerprint:
+`dc73a9e9d00d0b230e9e8e36ee8904ebccae61774614601eff38d5d738d8ae1a`
+
+| Measure | Verified |
+| --- | ---: |
+| Raw rows / exact overlaps | 10,721 / 237 |
+| Importable / quarantined question cores | 10,482 / 2 |
+| Subjects / courses | 14 / 34 |
+| Topics / subtopics | 425 / 3,010 |
+| Course/topic variants | 13,291 |
+| Stored subtopic placements | 17,555 |
+| Examiner reports in source | 3,548 |
+| Captured image occurrences | 7,492 |
+| Referenced content-deduplicated assets | 6,427 |
+| Variant-to-asset associations | 11,023 |
+
+The verification status is `passed`. The two retained warnings are the explicit
+Physics quarantines above; no other renderer, checksum, count, or asset-reference
+failure is accepted.
 
 Resume an interrupted asset upload. Verified object rows are skipped, and
 pending/failed rows are retried:

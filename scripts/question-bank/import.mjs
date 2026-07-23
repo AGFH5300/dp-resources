@@ -70,13 +70,24 @@ function databaseRow(row, batchId, table) {
   return output;
 }
 
-async function upsertRows(client, table, rows, conflict, batchSize, batchId) {
+async function upsertRows(
+  client,
+  table,
+  rows,
+  conflict,
+  batchSize,
+  batchId,
+  preserveExisting,
+) {
   let processed = 0;
   for (const group of chunks(rows, batchSize)) {
     const payload = group.map((row) => databaseRow(row, batchId, table));
     const { error } = await client
       .from(table)
-      .upsert(payload, { onConflict: conflict });
+      .upsert(payload, {
+        onConflict: conflict,
+        ignoreDuplicates: preserveExisting,
+      });
     if (error) throw new Error(`${table} upsert failed: ${error.message}`);
     processed += group.length;
   }
@@ -142,6 +153,7 @@ export async function importDatabase(normalized, options = {}) {
         conflict,
         batchSize,
         batchId,
+        options.preserveExisting === true,
       );
     }
     operationCounts.dp_qb_import_findings = await storeFindings(
@@ -400,5 +412,124 @@ export async function verifyDatabase(normalized, options = {}) {
     counts,
     mismatches,
     failedOrPendingAssets: failedAssets || 0,
+  };
+}
+
+async function existingKeysByIn(
+  client,
+  table,
+  filterField,
+  filterValues,
+  select,
+  keyForRow,
+) {
+  const found = new Set();
+  for (const group of chunks([...new Set(filterValues)], 200)) {
+    if (!group.length) continue;
+    const { data, error } = await client.from(table).select(select).in(filterField, group);
+    if (error) throw new Error(`${table} scoped verification failed: ${error.message}`);
+    for (const row of data || []) found.add(keyForRow(row));
+  }
+  return found;
+}
+
+export async function verifyImportRows(normalized, options = {}) {
+  const client = options.client || createImportClient();
+  const checks = [
+    ['dp_qb_subjects', 'subjects', 'id', 'id'],
+    ['dp_qb_courses', 'courses', 'id', 'id'],
+    ['dp_qb_datasets', 'datasets', 'id', 'id'],
+    ['dp_qb_topics', 'topics', 'id', 'id'],
+    ['dp_qb_subtopics', 'subtopics', 'id', 'id'],
+    ['dp_qb_papers', 'papers', 'id', 'id'],
+    ['dp_qb_questions', 'questions', 'id', 'id'],
+    ['dp_qb_question_variants', 'variants', 'id', 'id'],
+    ['dp_qb_asset_sources', 'assetSources', 'id', 'id'],
+    ['dp_qb_question_search', 'searchDocuments', 'variant_id', 'variant_id'],
+  ];
+  const results = {};
+
+  for (const [table, rowKey, filterField, select] of checks) {
+    const expected = new Set(normalized.rows[rowKey].map((row) => row[filterField]));
+    const found = await existingKeysByIn(
+      client,
+      table,
+      filterField,
+      expected,
+      select,
+      (row) => row[filterField],
+    );
+    results[table] = {
+      expected: expected.size,
+      found: found.size,
+      missing: [...expected].filter((key) => !found.has(key)).slice(0, 20),
+    };
+  }
+
+  const compositeChecks = [
+    {
+      table: 'dp_qb_course_papers',
+      rowKey: 'coursePapers',
+      filterField: 'course_id',
+      select: 'course_id,paper_id',
+      key: (row) => `${row.course_id}:${row.paper_id}`,
+    },
+    {
+      table: 'dp_qb_question_subtopics',
+      rowKey: 'placements',
+      filterField: 'variant_id',
+      select: 'variant_id,subtopic_id',
+      key: (row) => `${row.variant_id}:${row.subtopic_id}`,
+    },
+    {
+      table: 'dp_qb_variant_assets',
+      rowKey: 'variantAssets',
+      filterField: 'variant_id',
+      select: 'variant_id,asset_id,role',
+      key: (row) => `${row.variant_id}:${row.asset_id}:${row.role}`,
+    },
+  ];
+  for (const check of compositeChecks) {
+    const expected = new Set(normalized.rows[check.rowKey].map(check.key));
+    const found = await existingKeysByIn(
+      client,
+      check.table,
+      check.filterField,
+      normalized.rows[check.rowKey].map((row) => row[check.filterField]),
+      check.select,
+      check.key,
+    );
+    results[check.table] = {
+      expected: expected.size,
+      found: [...found].filter((key) => expected.has(key)).length,
+      missing: [...expected].filter((key) => !found.has(key)).slice(0, 20),
+    };
+  }
+
+  const expectedAssets = new Set(normalized.rows.assets.map((row) => row.id));
+  const verifiedAssets = await existingKeysByIn(
+    client,
+    'dp_qb_assets',
+    'id',
+    expectedAssets,
+    'id,verification_status',
+    (row) => (row.verification_status === 'verified' ? row.id : ''),
+  );
+  verifiedAssets.delete('');
+  results.dp_qb_assets = {
+    expected: expectedAssets.size,
+    found: verifiedAssets.size,
+    missing: [...expectedAssets]
+      .filter((key) => !verifiedAssets.has(key))
+      .slice(0, 20),
+  };
+
+  const failed = Object.entries(results)
+    .filter(([, value]) => value.expected !== value.found)
+    .map(([table, value]) => ({ table, ...value }));
+  return {
+    status: failed.length ? 'failed' : 'passed',
+    checks: results,
+    failures: failed,
   };
 }

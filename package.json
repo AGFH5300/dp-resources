@@ -12,6 +12,7 @@
     "question-bank:import": "node scripts/import-question-bank.mjs",
     "question-bank:audit": "node scripts/import-question-bank.mjs --mode audit",
     "question-bank:dry-run": "node scripts/import-question-bank.mjs --mode dry-run",
+    "question-bank:pestle": "node scripts/import-pestle-question-bank.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -29,7 +30,9 @@
     "jszip": "^3.10.1",
     "katex": "^0.16.22",
     "lucide-react": "^1.22.0",
-    "next": "^15.4.0",
+    "mathml-to-latex": "1.8.0",
+    "next": "^15.5.21",
+    "node-html-markdown": "2.0.0",
     "pdfjs-dist": "^6.1.200",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -55,6 +58,7 @@
   },
   "overrides": {
     "brace-expansion@^2.0.0": "2.1.2",
-    "postcss": "8.5.16"
+    "postcss": "8.5.16",
+    "sharp": "0.35.3"
   }
 }
