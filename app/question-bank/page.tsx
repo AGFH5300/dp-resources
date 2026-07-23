@@ -7,7 +7,10 @@ import { Nav } from '@/components/nav';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { requireMember } from '@/lib/auth';
-import { isOldCourse } from '@/lib/question-bank/presentation';
+import {
+  isOldCourse,
+  oldCourseFinalAssessmentYear,
+} from '@/lib/question-bank/presentation';
 import { getQuestionBankLanding } from '@/lib/question-bank/queries';
 
 export default async function QuestionBankLanding() {
@@ -79,7 +82,13 @@ export default async function QuestionBankLanding() {
                             {isOldCourse(course, subject.courses) ? (
                               <>
                                 {' '}
-                                · <OldCourseBadge />
+                                ·{' '}
+                                <OldCourseBadge
+                                  finalAssessmentYear={oldCourseFinalAssessmentYear(
+                                    course,
+                                    subject.courses,
+                                  )}
+                                />
                               </>
                             ) : null}
                           </small>
