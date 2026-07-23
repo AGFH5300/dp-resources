@@ -25,11 +25,11 @@ import {
 
 export function AppHeader({
   admin = false,
-  email,
+  username,
   userId,
 }: {
   admin?: boolean;
-  email?: string | null;
+  username?: string | null;
   userId?: string | null;
 }) {
   const pathname = usePathname();
@@ -151,7 +151,7 @@ export function AppHeader({
           <AccountMenu
             admin={admin}
             adminUnread={adminUnread}
-            email={email}
+            username={username}
           />
         </div>
       </header>
