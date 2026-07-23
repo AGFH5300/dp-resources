@@ -11,10 +11,10 @@ import {
   DraftingCompass,
   FlaskConical,
   Landmark,
-  Leaf,
   Map,
   Network,
   Sigma,
+  Sprout,
 } from 'lucide-react';
 
 const SUBJECT_ICONS: Record<string, LucideIcon> = {
@@ -25,7 +25,7 @@ const SUBJECT_ICONS: Record<string, LucideIcon> = {
   'design-technology': DraftingCompass,
   'digital-society': Network,
   economics: ChartNoAxesCombined,
-  ess: Leaf,
+  ess: Sprout,
   geography: Map,
   history: Landmark,
   mathematics: Sigma,
