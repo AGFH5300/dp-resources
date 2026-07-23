@@ -1,14 +1,28 @@
 'use server';
+
 import { redirect } from 'next/navigation';
+import { resolveLoginEmail } from '@/lib/login-identifier';
 import { createSupabaseServerClient } from '@/lib/supabase';
+
+const GENERIC_LOGIN_ERROR = 'Invalid username/email or password.';
+
 export async function login(formData: FormData) {
   const supabase = await createSupabaseServerClient();
-  const email = String(formData.get('email'));
+  const identifier = String(
+    formData.get('identifier') ?? formData.get('email') ?? '',
+  );
   const password = String(formData.get('password'));
+  const email = await resolveLoginEmail(identifier);
+
+  if (!email) {
+    redirect('/auth?error=' + encodeURIComponent(GENERIC_LOGIN_ERROR));
+  }
+
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) redirect('/auth?error=' + encodeURIComponent(error.message));
+  if (error) redirect('/auth?error=' + encodeURIComponent(GENERIC_LOGIN_ERROR));
   redirect('/library');
 }
+
 export async function signup(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const email = String(formData.get('email'));
