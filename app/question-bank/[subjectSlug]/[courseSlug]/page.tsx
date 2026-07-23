@@ -8,7 +8,10 @@ import { CoursePracticeWorkspace } from '@/components/question-bank/course-pract
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { QuestionBankFilters } from '@/components/question-bank/question-bank-filters';
 import { requireMember } from '@/lib/auth';
-import { isOldCourse } from '@/lib/question-bank/presentation';
+import {
+  isOldCourse,
+  oldCourseFinalAssessmentYear,
+} from '@/lib/question-bank/presentation';
 import {
   getCourseQuestionBank,
   parseQuestionFilters,
@@ -58,6 +61,9 @@ export default async function CourseQuestionBank({
   const topics = data.topics as any[];
   const initialVariantId = selectedQuestion(rawParams.question);
   const oldCourse = isOldCourse(data.course, data.siblingCourses);
+  const finalAssessmentYear = oldCourse
+    ? oldCourseFinalAssessmentYear(data.course, data.siblingCourses)
+    : null;
 
   return (
     <>
@@ -83,7 +89,11 @@ export default async function CourseQuestionBank({
             <p>
               {oldCourse ? (
                 <>
-                  <OldCourseBadge interactive /> ·{' '}
+                  <OldCourseBadge
+                    interactive
+                    finalAssessmentYear={finalAssessmentYear}
+                  />{' '}
+                  ·{' '}
                 </>
               ) : null}
               {data.sourceQuestionCount.toLocaleString()} source occurrences ·{' '}
