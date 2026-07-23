@@ -26,6 +26,12 @@ export function isOldCourse(
   siblingCourses: CourseVersion[],
 ) {
   if (!isPreviousVersionLabel(course.syllabus_label)) return false;
+  if (
+    assessmentYear(course.syllabus_label, 'last') ||
+    assessmentYear(course.syllabus_label, 'final')
+  ) {
+    return true;
+  }
   return siblingCourses.some(
     (candidate) =>
       candidate.id !== course.id &&
