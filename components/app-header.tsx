@@ -12,6 +12,7 @@ import {
   Star,
 } from 'lucide-react';
 
+import { createClient } from '@/lib/supabase/client';
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
 import { SuspensionWatcher } from './suspension-watcher';
@@ -25,15 +26,16 @@ import {
 
 export function AppHeader({
   admin = false,
-  email,
+  username: initialUsername = null,
   userId,
 }: {
   admin?: boolean;
-  email?: string | null;
+  username?: string | null;
   userId?: string | null;
 }) {
   const pathname = usePathname();
   const [shortcutModifier, setShortcutModifier] = useState('Ctrl');
+  const [username, setUsername] = useState(initialUsername?.trim() || null);
   const notificationFeed = useNotificationFeed(Boolean(userId));
   const adminUnread = admin
     ? notificationFeed.summary.adminTickets +
@@ -47,6 +49,35 @@ export function AppHeader({
 
     setShortcutModifier(isAppleDevice ? '⌘' : 'Ctrl');
   }, []);
+
+  useEffect(() => {
+    setUsername(initialUsername?.trim() || null);
+    if (!userId) return;
+
+    let cancelled = false;
+    const supabase = createClient();
+
+    void supabase
+      .from('dp_resource_profiles')
+      .select('username')
+      .eq('id', userId)
+      .maybeSingle<{ username: string }>()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('[app-header] username lookup failed', {
+            code: error.code,
+            message: error.message,
+          });
+          return;
+        }
+        setUsername(data?.username?.trim() || null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialUsername, userId]);
 
   const links: Array<[string, string, number]> = [
     ['/library', 'Library', 0],
@@ -151,7 +182,7 @@ export function AppHeader({
           <AccountMenu
             admin={admin}
             adminUnread={adminUnread}
-            email={email}
+            username={username}
           />
         </div>
       </header>

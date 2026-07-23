@@ -33,6 +33,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Made Question Bank filters compact and instant, added searchable topic menus and question reporting, and linked formula booklets to the native Library.',
     'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
     'Improved the ESS subject icon, added final-assessment years to old-course labels, and connected native Biology, Business Management, and Chemistry reference booklets to Question Bank practice.',
+    'Added username-or-email login and changed the account navbar to display each user’s username instead of their email address.',
   ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',

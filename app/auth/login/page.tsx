@@ -11,22 +11,19 @@ import {
   SUSPENDED_USER_ID_STORAGE_KEY,
   SUSPENSION_REASON_STORAGE_KEY,
 } from '@/components/suspension-storage';
-import { isSuspendedAuthError } from '@/lib/suspension-auth';
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
 const DEFAULT_NEXT_PATH = '/library';
 const SUSPENDED_MESSAGE =
   'This account has been suspended. Contact the site administrator if you believe this is a mistake.';
 
-type SuspendedLoginResponse = {
+type LoginResponse = {
+  ok?: boolean;
+  message?: string;
   suspended?: boolean;
   userId?: string | null;
   suspensionReason?: string | null;
 };
-
-function friendlyLoginError(message: string) {
-  return isSuspendedAuthError(message) ? SUSPENDED_MESSAGE : message;
-}
 
 function readNextPath() {
   if (typeof window === 'undefined') return DEFAULT_NEXT_PATH;
@@ -36,7 +33,7 @@ function readNextPath() {
   );
 }
 
-function storeSuspensionDetails(details: SuspendedLoginResponse) {
+function storeSuspensionDetails(details: LoginResponse) {
   if (details.suspensionReason) {
     window.sessionStorage.setItem(
       SUSPENSION_REASON_STORAGE_KEY,
@@ -57,7 +54,7 @@ function storeSuspensionDetails(details: SuspendedLoginResponse) {
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,46 +77,41 @@ export default function LoginPage() {
       .catch(() => undefined);
   }, []);
 
-  async function openSuspendedAccountPage() {
-    const response = await fetch('/api/auth/suspended-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password }),
-    });
-    const details = (await response
-      .json()
-      .catch(() => null)) as SuspendedLoginResponse | null;
-
-    if (!response.ok || details?.suspended !== true) return false;
-
-    storeSuspensionDetails(details);
-    router.replace('/account-suspended');
-    return true;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
+
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      if (isSuspendedAuthError(error)) {
-        try {
-          if (await openSuspendedAccountPage()) return;
-        } catch {
-          // Fall back to the privacy-safe suspended message below.
-        }
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
+      });
+      const result = (await response
+        .json()
+        .catch(() => null)) as LoginResponse | null;
+
+      if (result?.suspended) {
+        storeSuspensionDetails(result);
+        router.replace('/account-suspended');
+        return;
       }
-      setError(friendlyLoginError(error.message));
+
+      if (!response.ok || result?.ok !== true) {
+        setError(result?.message || 'Unable to log in. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      router.replace(nextPath);
+      router.refresh();
+    } catch {
+      setError('Unable to log in. Please try again.');
       setLoading(false);
-      return;
     }
-    router.push(nextPath);
   }
 
   return (
@@ -137,17 +129,19 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         <div>
           <label
-            htmlFor="login-email"
+            htmlFor="login-identifier"
             className="font-label text-xs uppercase tracking-[.05em] text-[#43474d]"
           >
-            Email
+            Username / email
           </label>
           <input
-            id="login-email"
+            id="login-identifier"
             className="tsm-input"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            autoComplete="username"
+            spellCheck={false}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             required
             disabled={loading}
           />
@@ -172,6 +166,7 @@ export default function LoginPage() {
               id="login-password"
               className="tsm-input pr-10"
               type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -196,7 +191,7 @@ export default function LoginPage() {
         <button
           type="submit"
           className="dp-auth-primary flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm bg-[#00152a] py-4 text-white transition-colors hover:bg-[#08284a] focus:outline-none focus:ring-2 focus:ring-[#00152a]/30 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={loading || !email || !password}
+          disabled={loading || !identifier || !password}
         >
           {loading ? (
             <>

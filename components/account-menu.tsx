@@ -5,16 +5,18 @@ import { ChevronDown, CircleUserRound, LogOut, UserStar } from 'lucide-react';
 import { NotificationBadge } from './notification-center';
 
 export function AccountMenu({
-  email,
+  username,
   admin,
   adminUnread = 0,
 }: {
-  email?: string | null;
+  username?: string | null;
   admin?: boolean;
   adminUnread?: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const accountLabel = username?.trim() || 'Account';
+
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node))
@@ -30,6 +32,7 @@ export function AccountMenu({
       document.removeEventListener('keydown', k);
     };
   }, []);
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -38,10 +41,11 @@ export function AccountMenu({
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"
+        title={accountLabel}
       >
         <CircleUserRound className="size-5 text-slate-600" />
         <span className="hidden max-w-44 truncate lg:inline">
-          {email || 'Account'}
+          {accountLabel}
         </span>
         <ChevronDown className="size-4 text-slate-500" />
       </button>
@@ -52,10 +56,10 @@ export function AccountMenu({
         >
           <div className="border-b border-slate-100 px-3 py-2">
             <p className="text-xs uppercase tracking-wide text-slate-500">
-              Signed in
+              Signed in as
             </p>
             <p className="truncate text-sm font-medium text-[color:var(--dp-navy)]">
-              {email}
+              {accountLabel}
             </p>
           </div>
           {admin && (
