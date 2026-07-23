@@ -12,8 +12,10 @@ question images are ignored by Git and must never be committed.
 
 ## Audited PESTLE extension
 
-The PESTLE adapter imports the audited 2026-07-23 capture without replacing the
-existing question bank. It preserves the source hierarchy as:
+The audited 2026-07-23 PESTLE capture is imported in production without
+replacing the existing question bank. Its source manifest, normalized counts,
+database graph, and private assets passed scoped post-import verification. The
+adapter preserves the source hierarchy as:
 
 `Subject → Course/level → Topic → Subtopic → Question variant`
 
