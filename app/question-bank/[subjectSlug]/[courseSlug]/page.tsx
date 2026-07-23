@@ -5,8 +5,10 @@ import { Search } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
+import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { QuestionBankFilters } from '@/components/question-bank/question-bank-filters';
 import { requireMember } from '@/lib/auth';
+import { isOldCourse } from '@/lib/question-bank/presentation';
 import {
   getCourseQuestionBank,
   parseQuestionFilters,
@@ -55,6 +57,7 @@ export default async function CourseQuestionBank({
   const pages = Math.max(1, Math.ceil(total / 24));
   const topics = data.topics as any[];
   const initialVariantId = selectedQuestion(rawParams.question);
+  const oldCourse = isOldCourse(data.course, data.siblingCourses);
 
   return (
     <>
@@ -78,7 +81,11 @@ export default async function CourseQuestionBank({
           <div>
             <h1>{data.course.name}</h1>
             <p>
-              {data.course.syllabus_label} ·{' '}
+              {oldCourse ? (
+                <>
+                  <OldCourseBadge interactive /> ·{' '}
+                </>
+              ) : null}
               {data.sourceQuestionCount.toLocaleString()} source occurrences ·{' '}
               {data.topics.length} topics
             </p>

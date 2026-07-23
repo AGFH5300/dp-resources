@@ -30,16 +30,9 @@ export async function PATCH(request: Request) {
     typeof body.status === 'string' && STATUSES.has(body.status)
       ? body.status
       : null;
-  const requestedRevisit =
-    typeof body.toRevisit === 'boolean' ? body.toRevisit : null;
   const requestedSaved = typeof body.saved === 'boolean' ? body.saved : null;
   const viewed = body.viewed === true;
-  if (
-    !requestedStatus &&
-    requestedRevisit === null &&
-    requestedSaved === null &&
-    !viewed
-  )
+  if (!requestedStatus && requestedSaved === null && !viewed)
     return noStore({ error: 'No state change requested.' }, { status: 400 });
 
   const client = await createClient();
@@ -73,10 +66,10 @@ export async function PATCH(request: Request) {
       return noStore({ error: 'Unable to update saved question.' }, { status: 500 });
   }
 
-  if (requestedStatus || requestedRevisit !== null || viewed) {
+  if (requestedStatus || viewed) {
     const { data: existing, error: readError } = await client
       .from('dp_qb_user_progress')
-      .select('status,to_revisit,first_viewed_at,completed_at')
+      .select('status,first_viewed_at,completed_at')
       .eq('user_id', user.id)
       .eq('question_id', questionId)
       .maybeSingle();
@@ -94,7 +87,6 @@ export async function PATCH(request: Request) {
         question_id: questionId,
         last_variant_id: variantId,
         status,
-        to_revisit: requestedRevisit ?? existing?.to_revisit ?? false,
         first_viewed_at: existing?.first_viewed_at || (viewed ? now : null),
         last_viewed_at: viewed ? now : undefined,
         completed_at:

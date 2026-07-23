@@ -14,6 +14,11 @@ import {
 } from '@/lib/question-bank/content-normalization';
 import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
+import {
+  isOldCourse,
+  marksLabel,
+  taxonomyLabel,
+} from '@/lib/question-bank/presentation';
 import { parseQuestionFilters } from '@/lib/question-bank/queries';
 import {
   canonicalizeSourcePath,
@@ -357,6 +362,25 @@ Explanation: \ Photolysis splits water.`}
     );
   });
 
+  it('cleans imported IB markscheme notation without losing the maths', () => {
+    const source = String.raw`*Allow method via v = u + at.*
+
+$s =≪ \frac{\left(15 sin 50\right)^{2}}{2 \times 9.81} =≫ 6.7 \ll m \gg$
+*Allow *\\[2 max\\]* for use of 15 cos 50.*
+
+Use 15 m s^(−1).`;
+    const normalized = normalizeQuestionSource(source);
+    const output = renderToStaticMarkup(
+      <QuestionContent kind="markscheme" source={source} />,
+    );
+    expect(normalized).toContain('[2 max]');
+    expect(normalized).toContain('s⁻¹');
+    expect(normalized).not.toMatch(/[«»≪≫]|\\+\[/);
+    expect(output).toContain('<em>');
+    expect(output).toContain('katex');
+    expect(output).not.toMatch(/\*Allow|\\\\\[|≪|≫|\\ll|\\gg/);
+  });
+
   it('opens private Vimeo solutions externally instead of embedding a broken player', () => {
     const output = renderToStaticMarkup(
       <SolutionVideo
@@ -431,9 +455,12 @@ describe('question filters and production security expectations', () => {
       subtopicId: null,
       section: null,
     });
-    expect(
-      parseQuestionFilters({ mine: 'saved_revisit' }),
-    ).toMatchObject({ saved: true, revisit: true });
+    const legacyReviewUrl = parseQuestionFilters({ mine: 'saved_revisit' });
+    expect(legacyReviewUrl).toMatchObject({ saved: true });
+    expect(legacyReviewUrl).not.toHaveProperty('revisit');
+    expect(parseQuestionFilters({ revisit: 'true' })).toMatchObject({
+      saved: true,
+    });
   });
 
   it('applies compact live filters and keeps searchable menus below their triggers', () => {
@@ -449,8 +476,9 @@ describe('question filters and production security expectations', () => {
     );
     expect(filters).toContain("router.replace(href, { scroll: false })");
     expect(filters).toContain('More filters');
-    expect(filters).toContain('My questions');
+    expect(filters).toContain('<span>Saved</span>');
     expect(filters).toContain('View Uncategorized');
+    expect(filters).not.toContain('Review later');
     expect(filters).not.toContain('Apply filters');
     expect(select).toContain('searchable?: boolean');
     expect(select).toContain('side="bottom"');
@@ -555,9 +583,74 @@ describe('question filters and production security expectations', () => {
     expect(searchPage).toContain('questionPreview(row.content_preview)');
     expect(searchPage).toContain('?question=${row.variant_id}');
     expect(stateControls).toContain("toast.success(");
-    expect(stateControls).toContain('Added to your review-later list.');
+    expect(stateControls).not.toContain('Review later');
+    expect(stateControls).not.toContain('toRevisit');
     expect(stateControls).toContain('onStateChange?.({');
     expect(legacyPage).toContain('redirect(');
+  });
+
+  it('preserves old review flags as saved questions before retiring them', () => {
+    const migration = readFileSync(
+      'supabase/migrations/20260723155235_consolidate_question_review_flags.sql',
+      'utf8',
+    );
+    expect(migration).toContain(
+      'insert into public.dp_qb_user_saved_questions',
+    );
+    expect(migration).toContain('where progress.to_revisit');
+    expect(migration).toContain('on conflict (user_id, question_id) do update');
+    expect(migration).toContain('set\n  to_revisit = false');
+  });
+
+  it('shows only genuinely superseded courses as old and cleans repeated metadata', () => {
+    const oldBiology = {
+      id: 'old-biology',
+      name: 'Biology SL',
+      level: 'SL',
+      syllabus_label: 'Legacy syllabus',
+    };
+    const currentBiology = {
+      id: 'current-biology',
+      name: 'Biology SL',
+      level: 'SL',
+      syllabus_label: 'First assessment 2025',
+    };
+    const ongoingMaths = {
+      id: 'maths-aa',
+      name: 'Analysis and Approaches SL',
+      level: 'SL',
+      syllabus_label: 'Legacy syllabus',
+    };
+    expect(isOldCourse(oldBiology, [oldBiology, currentBiology])).toBe(true);
+    expect(isOldCourse(currentBiology, [oldBiology, currentBiology])).toBe(
+      false,
+    );
+    expect(isOldCourse(ongoingMaths, [ongoingMaths])).toBe(false);
+    expect(
+      taxonomyLabel('Uncategorized', ['Uncategorized', 'Uncategorized']),
+    ).toBe('Uncategorized');
+    expect(marksLabel(0)).toBe('Marks not listed');
+    expect(marksLabel(1)).toBe('1 mark');
+  });
+
+  it('uses subject-specific icons and an accessible old-course explanation', () => {
+    const landing = readFileSync('app/question-bank/page.tsx', 'utf8');
+    const icons = readFileSync(
+      'components/question-bank/subject-icon.tsx',
+      'utf8',
+    );
+    const oldCourse = readFileSync(
+      'components/question-bank/old-course-badge.tsx',
+      'utf8',
+    );
+    expect(landing).toContain('<SubjectIcon subjectSlug={subject.slug} />');
+    expect(landing).not.toContain('course.syllabus_label');
+    expect(icons).toContain('biology: Dna');
+    expect(icons).toContain('mathematics: Sigma');
+    expect(icons).toContain('physics: Atom');
+    expect(oldCourse).toContain('Old course');
+    expect(oldCourse).toContain('role="tooltip"');
+    expect(oldCourse).toContain('previous IB course and assessment format');
   });
 
   it('enables RLS everywhere and isolates progress and saved rows by auth.uid()', () => {

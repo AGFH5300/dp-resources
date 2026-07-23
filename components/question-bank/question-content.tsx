@@ -13,7 +13,12 @@ type RendererProps = {
 
 function math(source: string, displayMode: boolean, key: string) {
   try {
-    const html = katex.renderToString(source, {
+    const cleanSource = source
+      .replace(/\\(?:ll|gg)\b/g, ' ')
+      .replace(/[«»≪≫]/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    const html = katex.renderToString(cleanSource, {
       displayMode,
       throwOnError: false,
       strict: 'ignore',
@@ -95,6 +100,23 @@ function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
           </strong>,
         );
         index = closing + 2;
+        continue;
+      }
+    }
+
+    if (source[index] === '*' && source[index + 1] !== '*') {
+      const closing = source.indexOf('*', index + 1);
+      if (closing > index + 1) {
+        flush();
+        output.push(
+          <em key={`${keyPrefix}-emphasis-${key++}`}>
+            {inline(
+              source.slice(index + 1, closing),
+              `${keyPrefix}-emphasis`,
+            )}
+          </em>,
+        );
+        index = closing + 1;
         continue;
       }
     }

@@ -277,6 +277,62 @@ button:disabled:hover {
   background: #dbeafe;
   color: #1d4ed8;
 }
+.dp-qb-subject-icon.is-compact {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 0.55rem;
+}
+.dp-qb-subject-icon[data-subject='biology'] {
+  background: #dcfce7;
+  color: #15803d;
+}
+.dp-qb-subject-icon[data-subject='mathematics'] {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.dp-qb-subject-icon[data-subject='physics'] {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.dp-qb-subject-icon[data-subject='chemistry'] {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.dp-qb-subject-icon[data-subject='business'] {
+  background: #fef3c7;
+  color: #a16207;
+}
+.dp-qb-subject-icon[data-subject='economics'] {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.dp-qb-subject-icon[data-subject='ess'],
+.dp-qb-subject-icon[data-subject='geography'] {
+  background: #ecfccb;
+  color: #4d7c0f;
+}
+.dp-qb-subject-icon[data-subject='computer-science'],
+.dp-qb-subject-icon[data-subject='digital-society'] {
+  background: #cffafe;
+  color: #0e7490;
+}
+.dp-qb-subject-icon[data-subject='design-technology'] {
+  background: #f1f5f9;
+  color: #475569;
+}
+.dp-qb-subject-icon[data-subject='history'] {
+  background: #fef3c7;
+  color: #92400e;
+}
+.dp-qb-subject-icon[data-subject='psychology'] {
+  background: #fce7f3;
+  color: #be185d;
+}
+.dp-qb-subject-icon[data-subject='sports-exercise-and-health-science'] {
+  background: #fee2e2;
+  color: #b91c1c;
+}
 .dp-qb-course-link,
 .dp-qb-side-card {
   display: flex;
@@ -294,8 +350,8 @@ button:disabled:hover {
   border-color: #93c5fd;
   background: #eff6ff;
 }
-.dp-qb-course-link span,
-.dp-qb-side-card span {
+.dp-qb-course-link > span,
+.dp-qb-side-card > span {
   min-width: 0;
   flex: 1;
 }
@@ -315,16 +371,96 @@ button:disabled:hover {
   color: #64748b;
   font-size: 0.72rem;
 }
+.dp-qb-old-course {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  padding: 0.08rem 0.36rem;
+  color: #9a3412;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+.dp-qb-old-course-info {
+  display: inline-grid;
+  place-items: center;
+  cursor: help;
+  outline: none;
+}
+.dp-qb-old-course-info:focus-visible {
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 0.35);
+}
+.dp-qb-old-course-tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.45rem);
+  z-index: 30;
+  width: min(17rem, calc(100vw - 3rem));
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  background: #0f172a;
+  padding: 0.6rem 0.7rem;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.2rem);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.dp-qb-old-course-info:hover .dp-qb-old-course-tooltip,
+.dp-qb-old-course-info:focus .dp-qb-old-course-tooltip,
+.dp-qb-course-link:focus-visible .dp-qb-old-course-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
 .dp-qb-recent-link {
-  display: grid;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   border-bottom: 1px solid #e2e8f0;
-  padding: 0.55rem 0;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.4rem;
   font-size: 0.83rem;
 }
+.dp-qb-recent-link:hover {
+  background: #f8fafc;
+}
 .dp-qb-recent-link:last-child { border-bottom: 0; }
-.dp-qb-recent-link strong { color: var(--dp-navy); }
-.dp-qb-recent-link span,
-.dp-qb-recent-link small { color: #64748b; }
+.dp-qb-recent-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.18rem;
+  color: #64748b;
+}
+.dp-qb-recent-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.dp-qb-recent-heading strong {
+  overflow: hidden;
+  color: var(--dp-navy);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dp-qb-recent-heading small,
+.dp-qb-recent-copy > span:last-child {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .dp-qb-course-sidebar {
   align-self: start;
   max-height: calc(100vh - 7rem);
@@ -705,11 +841,6 @@ button:disabled:hover {
   border-color: #60a5fa;
   background: #dbeafe;
   color: #1d4ed8;
-}
-.dp-qb-state-button.is-revisit {
-  border-color: #fbbf24;
-  background: #fef3c7;
-  color: #92400e;
 }
 .dp-qb-markscheme > summary,
 .dp-qb-associated-images > summary {
@@ -1176,6 +1307,16 @@ html[data-theme='dark'] .dp-qb-filter-more { border-color: #334155; }
 html[data-theme='dark'] .dp-qb-filter-actions > button:hover {
   background: #1e3a5f;
   color: #bfdbfe;
+}
+html[data-theme='dark'] .dp-qb-recent-link:hover {
+  background: #172438;
+}
+html[data-theme='dark'] .dp-qb-recent-heading strong {
+  color: #e6eef8;
+}
+html[data-theme='dark'] .dp-qb-old-course {
+  background: #422006;
+  color: #fed7aa;
 }
 html[data-theme='dark'] .dp-qb-hero h1,
 html[data-theme='dark'] .dp-qb-course-hero h1,
@@ -1899,11 +2040,6 @@ html[data-theme='dark'] [data-theme-preserve-light] [class~='bg-white'] {
   background: #d1fae5;
   color: #047857;
 }
-.dp-qb-icon-badge.is-revisit {
-  border-color: #fcd34d;
-  background: #fef3c7;
-  color: #a16207;
-}
 .dp-qb-icon-badge.is-saved {
   border-color: #c4b5fd;
   background: #ede9fe;
@@ -1929,11 +2065,6 @@ html[data-theme='dark'] [data-theme-preserve-light] [class~='bg-white'] {
   border-color: #34d399;
   background: #d1fae5;
   color: #047857;
-}
-.dp-qb-state-button.dp-qb-state-revisit.is-active {
-  border-color: #fbbf24;
-  background: #fef3c7;
-  color: #92400e;
 }
 .dp-qb-state-button.dp-qb-state-saved.is-active {
   border-color: #a78bfa;
@@ -2011,11 +2142,6 @@ html[data-theme='dark'] .dp-qb-status-badge.is-completed {
   background: #12382f;
   color: #a7f3d0;
 }
-html[data-theme='dark'] .dp-qb-icon-badge.is-revisit {
-  border-color: #a16207;
-  background: #3b2d12;
-  color: #fde68a;
-}
 html[data-theme='dark'] .dp-qb-icon-badge.is-saved {
   border-color: #6d28d9;
   background: #2e2350;
@@ -2035,11 +2161,6 @@ html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-completed.is-active {
   border-color: #10b981;
   background: #12382f;
   color: #a7f3d0;
-}
-html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-revisit.is-active {
-  border-color: #d97706;
-  background: #3b2d12;
-  color: #fde68a;
 }
 html[data-theme='dark'] .dp-qb-state-button.dp-qb-state-saved.is-active {
   border-color: #8b5cf6;

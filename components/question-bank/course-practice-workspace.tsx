@@ -14,7 +14,6 @@ import {
   CircleAlert,
   ExternalLink,
   FileText,
-  Flag,
   Lightbulb,
   Loader2,
   PlayCircle,
@@ -29,6 +28,10 @@ import { SolutionVideo } from '@/components/question-bank/solution-video';
 import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
+import {
+  marksLabel,
+  taxonomyLabel,
+} from '@/lib/question-bank/presentation';
 import type {
   QuestionAsset,
   QuestionListRow,
@@ -67,7 +70,6 @@ type QuestionDetail = {
   videos: Array<{ id: string; name: string | null; url: string }>;
   progress: {
     status: QuestionProgressStatus;
-    to_revisit: boolean;
   };
   saved: boolean;
 };
@@ -184,7 +186,6 @@ export function CoursePracticeWorkspace({
     variantId: string,
     state: {
       status?: QuestionProgressStatus;
-      toRevisit?: boolean;
       saved?: boolean;
     },
   ) {
@@ -194,7 +195,6 @@ export function CoursePracticeWorkspace({
           ? {
               ...row,
               progress_status: state.status ?? row.progress_status,
-              to_revisit: state.toRevisit ?? row.to_revisit,
               is_saved: state.saved ?? row.is_saved,
             }
           : row,
@@ -206,7 +206,6 @@ export function CoursePracticeWorkspace({
             ...current,
             progress: {
               status: state.status ?? current.progress.status,
-              to_revisit: state.toRevisit ?? current.progress.to_revisit,
             },
             saved: state.saved ?? current.saved,
           }
@@ -243,15 +242,14 @@ export function CoursePracticeWorkspace({
     if (!detail) return;
     const previous = {
       status: detail.progress.status,
-      toRevisit: detail.progress.to_revisit,
     };
     const next = gotIt
-      ? { status: 'completed' as const, toRevisit: false }
-      : { status: 'in_progress' as const, toRevisit: true };
+      ? { status: 'completed' as const }
+      : { status: 'in_progress' as const };
     applyQuestionState(detail.variant.id, next);
     try {
       await updateQuestionState(detail, next);
-      toast.success(gotIt ? 'Marked as completed.' : 'Added to your review-later list.');
+      toast.success(gotIt ? 'Marked as completed.' : 'Marked as in progress.');
     } catch {
       applyQuestionState(detail.variant.id, previous);
       toast.error('Could not save your progress.');
@@ -310,8 +308,7 @@ export function CoursePracticeWorkspace({
                   </span>
                 ) : null}
                 <span className="dp-qb-chip dp-qb-mark-chip">
-                  {question.maximum_mark} mark
-                  {question.maximum_mark === 1 ? '' : 's'}
+                  {marksLabel(question.maximum_mark)}
                 </span>
                 <span
                   className={`dp-qb-status-badge ml-auto is-${question.progress_status.replaceAll('_', '-')}`}
@@ -326,11 +323,6 @@ export function CoursePracticeWorkspace({
                   )}
                   {question.progress_status.replaceAll('_', ' ')}
                 </span>
-                {question.to_revisit ? (
-                  <span className="dp-qb-icon-badge is-revisit" title="Review later">
-                    <Flag className="size-4" />
-                  </span>
-                ) : null}
                 {question.is_saved ? (
                   <span className="dp-qb-icon-badge is-saved" title="Saved">
                     <Bookmark className="size-4" fill="currentColor" />
@@ -342,10 +334,10 @@ export function CoursePracticeWorkspace({
                   'No question text in the source.'}
               </p>
               <small>
-                {question.topic_name}
-                {question.subtopic_names.length
-                  ? ` · ${question.subtopic_names.join(', ')}`
-                  : ''}
+                {taxonomyLabel(
+                  question.topic_name,
+                  question.subtopic_names,
+                )}
                 {question.section ? ` · Section ${question.section}` : ''}
               </small>
             </button>
@@ -442,10 +434,10 @@ export function CoursePracticeWorkspace({
                   <p className="dp-qb-eyebrow">Interactive practice</p>
                   <h2>{detail.question.reference}</h2>
                   <p>
-                    {detail.variant.topicName}
-                    {detail.variant.subtopicNames.length
-                      ? ` · ${detail.variant.subtopicNames.join(', ')}`
-                      : ''}
+                    {taxonomyLabel(
+                      detail.variant.topicName,
+                      detail.variant.subtopicNames,
+                    )}
                   </p>
                 </div>
                 <span className="dp-qb-score-pill">
@@ -570,7 +562,11 @@ export function CoursePracticeWorkspace({
                       <p className="dp-qb-eyebrow">Understand the reasoning</p>
                       <h3>Answer explanation</h3>
                     </div>
-                    <span>Why the answer works—and why the alternatives do not</span>
+                    <span>
+                      {interactive.choices.length
+                        ? 'Why the answer works—and why the alternatives do not'
+                        : 'Compare your working with the markscheme'}
+                    </span>
                   </div>
                   <QuestionContent
                     source={detail.question.markScheme}
@@ -584,7 +580,7 @@ export function CoursePracticeWorkspace({
                         <Check className="size-4" /> I got it
                       </button>
                       <button type="button" onClick={() => selfAssess(false)}>
-                        <Flag className="size-4" /> Review again
+                        <Circle className="size-4" /> Needs practice
                       </button>
                     </div>
                   ) : null}
@@ -609,14 +605,13 @@ export function CoursePracticeWorkspace({
               <section className="dp-qb-practice-progress">
                 <div>
                   <h3>Your progress</h3>
-                  <p>Save it, finish it, or add it to your revisit queue.</p>
+                  <p>Mark your progress or save this question.</p>
                 </div>
                 <QuestionStateControls
                   key={detail.variant.id}
                   questionId={detail.question.id}
                   variantId={detail.variant.id}
                   initialStatus={detail.progress.status}
-                  initialRevisit={detail.progress.to_revisit}
                   initialSaved={detail.saved}
                   onStateChange={(state) =>
                     applyQuestionState(detail.variant.id, state)
