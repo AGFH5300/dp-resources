@@ -65,11 +65,13 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
+          set +e
           node --max-old-space-size=6144 scripts/question-bank/capture-pestle.mjs \
             --output "$CAPTURE_PATH" \
             --bank-concurrency 4 \
             --asset-concurrency 12
           status=$?
+          set -e
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
             exit "$status"
           fi
