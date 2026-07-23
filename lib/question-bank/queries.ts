@@ -50,13 +50,11 @@ export function parseQuestionFilters(
     calculator: bool(searchParams.calculator),
     status,
     saved:
-      mine === 'saved' || mine === 'saved_revisit'
+      ['saved', 'revisit', 'saved_revisit'].includes(mine) ||
+      bool(searchParams.saved) === true ||
+      bool(searchParams.revisit) === true
         ? true
-        : bool(searchParams.saved),
-    revisit:
-      mine === 'revisit' || mine === 'saved_revisit'
-        ? true
-        : bool(searchParams.revisit),
+        : null,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
   };
 }
@@ -117,7 +115,7 @@ export async function getQuestionBankLanding(userId: string) {
     const { data, error } = await client
       .from('dp_qb_question_variants')
       .select(
-        'id,question:dp_qb_questions!question_id(reference),course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug)),topic:dp_qb_topics!topic_id(name)',
+        'id,question:dp_qb_questions!question_id(reference),course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug,name)),topic:dp_qb_topics!topic_id(name)',
       )
       .in('id', recentVariantIds);
     requireData(data, error, 'Recent questions');
@@ -166,6 +164,11 @@ export async function getCourseQuestionBank(
     .maybeSingle();
   requireData(course, courseError, 'Course');
   if (!course) notFound();
+  const { data: siblingCourses, error: siblingCoursesError } = await client
+    .from('dp_qb_courses')
+    .select('id,name,level,syllabus_label')
+    .eq('subject_id', subject.id);
+  requireData(siblingCourses, siblingCoursesError, 'Course versions');
 
   const [
     topicsResult,
@@ -206,7 +209,7 @@ export async function getCourseQuestionBank(
         p_calculator: filters.calculator,
         p_status: filters.status,
         p_saved: filters.saved,
-        p_revisit: filters.revisit,
+        p_revisit: null,
         p_page: filters.page,
         p_page_size: 24,
       }),
@@ -229,6 +232,7 @@ export async function getCourseQuestionBank(
   return {
     subject,
     course,
+    siblingCourses: siblingCourses || [],
     topics:
       requireData(topicsResult.data, topicsResult.error, 'Topics') || [],
     papers: (
@@ -296,7 +300,7 @@ export async function getQuestionDetail(variantId: string, userId: string) {
         .order('sort_order'),
       client
         .from('dp_qb_user_progress')
-        .select('status,to_revisit,last_viewed_at')
+        .select('status,last_viewed_at')
         .eq('user_id', userId)
         .eq('question_id', (variant as any).question_id)
         .maybeSingle(),
@@ -317,7 +321,6 @@ export async function getQuestionDetail(variantId: string, userId: string) {
     progress:
       requireData(progressResult.data, progressResult.error, 'Question progress') || {
         status: 'not_started',
-        to_revisit: false,
         last_viewed_at: null,
       },
     saved: Boolean(

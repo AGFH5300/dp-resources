@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
+import { marksLabel, taxonomyLabel } from '@/lib/question-bank/presentation';
 import { searchQuestionBank } from '@/lib/question-bank/queries';
 
 export default async function QuestionBankSearch({
@@ -68,7 +69,7 @@ export default async function QuestionBankSearch({
                   {row.difficulty_label || 'Unrated'}
                 </span>
                 <span className="dp-qb-chip dp-qb-mark-chip">
-                  {row.maximum_mark} mark{row.maximum_mark === 1 ? '' : 's'}
+                  {marksLabel(row.maximum_mark)}
                 </span>
               </div>
               <p>
@@ -76,7 +77,8 @@ export default async function QuestionBankSearch({
                   'No question text in the source.'}
               </p>
               <small>
-                {row.subject_name} · {row.course_name} · {row.topic_name}
+                {row.subject_name} · {row.course_name} ·{' '}
+                {taxonomyLabel(row.topic_name)}
                 {row.paper_reference ? ` · ${row.paper_reference}` : ''}
               </small>
             </Link>

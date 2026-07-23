@@ -1,10 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowRight, Bookmark, BookOpenCheck, Search } from 'lucide-react';
+import { ArrowRight, Bookmark, Search } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
+import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
+import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { requireMember } from '@/lib/auth';
+import { isOldCourse } from '@/lib/question-bank/presentation';
 import { getQuestionBankLanding } from '@/lib/question-bank/queries';
 
 export default async function QuestionBankLanding() {
@@ -47,7 +50,7 @@ export default async function QuestionBankLanding() {
                   Subjects and courses
                 </h2>
                 <p className="text-sm text-slate-600">
-                  SL, HL, and syllabus-specific collections remain separate.
+                  Choose the subject, level, and course version you need.
                 </p>
               </div>
             </div>
@@ -59,9 +62,7 @@ export default async function QuestionBankLanding() {
                   className="dp-qb-subject-card scroll-mt-24"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="dp-qb-subject-icon">
-                      <BookOpenCheck className="size-5" />
-                    </span>
+                    <SubjectIcon subjectSlug={subject.slug} />
                     <h3>{subject.name}</h3>
                   </div>
                   <div className="mt-4 space-y-2">
@@ -74,8 +75,13 @@ export default async function QuestionBankLanding() {
                         <span>
                           <strong>{course.name}</strong>
                           <small>
-                            {course.questions.toLocaleString()} questions ·{' '}
-                            {course.syllabus_label}
+                            {course.questions.toLocaleString()} questions
+                            {isOldCourse(course, subject.courses) ? (
+                              <>
+                                {' '}
+                                · <OldCourseBadge />
+                              </>
+                            ) : null}
                           </small>
                         </span>
                         <ArrowRight className="size-4" />
@@ -108,9 +114,21 @@ export default async function QuestionBankLanding() {
                       href={`/question-bank/${row.course.subject.slug}/${row.course.slug}?question=${row.id}`}
                       className="dp-qb-recent-link"
                     >
-                      <strong>{row.question.reference}</strong>
-                      <span>{row.topic.name}</span>
-                      <small>{row.course.name}</small>
+                      <SubjectIcon
+                        subjectSlug={row.course.subject.slug}
+                        compact
+                      />
+                      <span className="dp-qb-recent-copy">
+                        <span className="dp-qb-recent-heading">
+                          <strong>{row.question.reference}</strong>
+                          <small>{row.course.name}</small>
+                        </span>
+                        <span>
+                          {row.topic.name === 'Uncategorized'
+                            ? 'Topic not assigned'
+                            : row.topic.name}
+                        </span>
+                      </span>
                     </Link>
                   ))
                 ) : (

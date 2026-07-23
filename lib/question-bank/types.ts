@@ -13,7 +13,6 @@ export type QuestionFilters = {
   calculator: boolean | null;
   status: QuestionProgressStatus | null;
   saved: boolean | null;
-  revisit: boolean | null;
   page: number;
 };
 
@@ -33,7 +32,6 @@ export type QuestionListRow = {
   paper_reference: string | null;
   subtopic_names: string[];
   progress_status: QuestionProgressStatus;
-  to_revisit: boolean;
   is_saved: boolean;
   total_count: number;
 };

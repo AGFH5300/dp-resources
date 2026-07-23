@@ -22,13 +22,6 @@ type FilterOptions = {
   calculatorValues: boolean[];
 };
 
-function mineValue(filters: QuestionFilters) {
-  if (filters.saved && filters.revisit) return 'saved_revisit';
-  if (filters.saved) return 'saved';
-  if (filters.revisit) return 'revisit';
-  return ANY;
-}
-
 function label(value: string) {
   return value
     .replaceAll('_', ' ')
@@ -61,8 +54,7 @@ export function QuestionBankFilters({
         filters.section ||
         filters.calculator !== null ||
         filters.status ||
-        filters.saved ||
-        filters.revisit,
+        filters.saved,
     ),
   );
   const selectedTopic = topics.find((topic) => topic.id === topicId);
@@ -80,7 +72,7 @@ export function QuestionBankFilters({
     Boolean(filters.section),
     filters.calculator !== null,
     Boolean(filters.status),
-    Boolean(filters.saved || filters.revisit),
+    Boolean(filters.saved),
   ].filter(Boolean).length;
 
   useEffect(() => {
@@ -120,7 +112,6 @@ export function QuestionBankFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filters.q]);
 
-  const mine = mineValue(filters);
   const difficultyOptions = useMemo(
     () => [
       { value: ANY, label: 'Any difficulty' },
@@ -320,21 +311,19 @@ export function QuestionBankFilters({
           </label>
 
           <label>
-            <span>My questions</span>
+            <span>Saved</span>
             <AppSelect
-              value={mine}
+              value={filters.saved ? 'saved' : ANY}
               onValueChange={(value) => {
                 updateParams({
-                  mine: value === ANY ? null : value,
+                  mine: value === 'saved' ? 'saved' : null,
                   saved: null,
                   revisit: null,
                 });
               }}
               options={[
                 { value: ANY, label: 'All questions' },
-                { value: 'saved', label: 'Saved' },
-                { value: 'revisit', label: 'Review later' },
-                { value: 'saved_revisit', label: 'Saved and review later' },
+                { value: 'saved', label: 'Saved questions' },
               ]}
             />
           </label>

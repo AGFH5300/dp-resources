@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { Bookmark, CheckCircle2, Circle, Flag, Loader2, PlayCircle } from 'lucide-react';
+import { Bookmark, CheckCircle2, Circle, Loader2, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { QuestionProgressStatus } from '@/lib/question-bank/types';
@@ -10,23 +10,19 @@ export function QuestionStateControls({
   questionId,
   variantId,
   initialStatus,
-  initialRevisit,
   initialSaved,
   onStateChange,
 }: {
   questionId: string;
   variantId: string;
   initialStatus: QuestionProgressStatus;
-  initialRevisit: boolean;
   initialSaved: boolean;
   onStateChange?: (state: {
     status: QuestionProgressStatus;
-    toRevisit: boolean;
     saved: boolean;
   }) => void;
 }) {
   const [status, setStatus] = useState(initialStatus);
-  const [revisit, setRevisit] = useState(initialRevisit);
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
 
@@ -42,9 +38,8 @@ export function QuestionStateControls({
 
   useEffect(() => {
     setStatus(initialStatus);
-    setRevisit(initialRevisit);
     setSaved(initialSaved);
-  }, [initialRevisit, initialSaved, initialStatus]);
+  }, [initialSaved, initialStatus]);
 
   useEffect(() => {
     void fetch('/api/question-bank/state', {
@@ -57,7 +52,7 @@ export function QuestionStateControls({
   function changeStatus(next: QuestionProgressStatus) {
     const previous = status;
     setStatus(next);
-    onStateChange?.({ status: next, toRevisit: revisit, saved });
+    onStateChange?.({ status: next, saved });
     startTransition(async () => {
       try {
         await update({ status: next });
@@ -70,28 +65,8 @@ export function QuestionStateControls({
         );
       } catch {
         setStatus(previous);
-        onStateChange?.({ status: previous, toRevisit: revisit, saved });
+        onStateChange?.({ status: previous, saved });
         toast.error('Could not update progress.');
-      }
-    });
-  }
-
-  function toggleRevisit() {
-    const next = !revisit;
-    setRevisit(next);
-    onStateChange?.({ status, toRevisit: next, saved });
-    startTransition(async () => {
-      try {
-        await update({ toRevisit: next });
-        toast.success(
-          next
-            ? 'Added to your review-later list.'
-            : 'Removed from your review-later list.',
-        );
-      } catch {
-        setRevisit(!next);
-        onStateChange?.({ status, toRevisit: !next, saved });
-        toast.error('Could not update review-later status.');
       }
     });
   }
@@ -99,14 +74,14 @@ export function QuestionStateControls({
   function toggleSaved() {
     const next = !saved;
     setSaved(next);
-    onStateChange?.({ status, toRevisit: revisit, saved: next });
+    onStateChange?.({ status, saved: next });
     startTransition(async () => {
       try {
         await update({ saved: next });
         toast.success(next ? 'Question saved.' : 'Question removed from saved.');
       } catch {
         setSaved(!next);
-        onStateChange?.({ status, toRevisit: revisit, saved: !next });
+        onStateChange?.({ status, saved: !next });
         toast.error('Could not update saved questions.');
       }
     });
@@ -137,14 +112,6 @@ export function QuestionStateControls({
         className={`dp-qb-state-button dp-qb-state-completed ${status === 'completed' ? 'is-active' : ''}`}
       >
         <CheckCircle2 className="size-4" /> Completed
-      </button>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={toggleRevisit}
-        className={`dp-qb-state-button dp-qb-state-revisit ${revisit ? 'is-active is-revisit' : ''}`}
-      >
-        <Flag className="size-4" /> Review later
       </button>
       <button
         type="button"

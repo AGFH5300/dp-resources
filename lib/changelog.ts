@@ -31,13 +31,14 @@ const historicalSummaries: Record<string, string[]> = {
     'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
     'Made Question Bank filters compact and instant, added searchable topic menus and question reporting, and linked formula booklets to the native Library.',
+    'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
   ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
     'Added colourful Question Bank difficulty and progress indicators, instant status feedback, readable image surfaces, and repaired search results.',
     'Rebuilt the Question Bank as an interactive practice workspace with selectable answers, immediate feedback, and in-page explanations.',
     'Improved Question Bank formatting, dark-mode answer interactions, instant answer checking, and private solution-video links.',
-    'Added guided review for written responses, including self-assessment and a revisit option.',
+    'Added guided self-assessment and progress tracking for written responses.',
     'Improved topic and subtopic filtering with custom menus, clearer dark-mode selection, and question search across every subject.',
   ],
   '2026-07-21': [
