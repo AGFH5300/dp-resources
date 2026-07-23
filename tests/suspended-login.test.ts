@@ -102,12 +102,14 @@ describe('suspended login details endpoint', () => {
 });
 
 describe('login page suspended-account routing', () => {
-  const source = readFileSync('app/auth/login/page.tsx', 'utf8');
+  const loginPage = readFileSync('app/auth/login/page.tsx', 'utf8');
+  const loginRoute = readFileSync('app/api/auth/login/route.ts', 'utf8');
 
-  it('verifies a banned login, stores its own reason, and opens the dedicated page', () => {
-    expect(source).toContain("fetch('/api/auth/suspended-login'");
-    expect(source).toContain('SUSPENSION_REASON_STORAGE_KEY');
-    expect(source).toContain('SUSPENDED_USER_ID_STORAGE_KEY');
-    expect(source).toContain("router.replace('/account-suspended')");
+  it('stores a verified suspension reason and opens the dedicated page', () => {
+    expect(loginPage).toContain("fetch('/api/auth/login'");
+    expect(loginRoute).toContain('isSuspendedAuthError');
+    expect(loginPage).toContain('SUSPENSION_REASON_STORAGE_KEY');
+    expect(loginPage).toContain('SUSPENDED_USER_ID_STORAGE_KEY');
+    expect(loginPage).toContain("router.replace('/account-suspended')");
   });
 });
