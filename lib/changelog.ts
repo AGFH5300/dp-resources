@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-24': [
+    'Fixed image-based answer choices so diagrams inside Question Bank tables load instead of showing raw asset references.',
+  ],
   '2026-07-23': [
     'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
