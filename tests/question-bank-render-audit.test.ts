@@ -82,7 +82,7 @@ $
   });
 
   it('quarantines incomplete variants and filters them from every user RPC', () => {
-    expect(migration).toContain("render_status = 'quarantined'");
+    expect(migration).toContain("else 'quarantined'");
     expect(migration).toContain('blank_question_content');
     expect(migration).toContain("'missing_' || referenced_images.role || '_image'");
     expect(migration).toContain("variant.render_status = 'ready'");
