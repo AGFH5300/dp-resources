@@ -1,13 +1,20 @@
-import { FlatCompat } from '@eslint/eslintrc';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import nextPlugin from '@next/eslint-plugin-next';
 
-const baseDirectory = dirname(fileURLToPath(import.meta.url));
-const compat = new FlatCompat({ baseDirectory });
+const nextRecommendedWarnings = Object.fromEntries(
+  Object.keys(nextPlugin.configs.recommended.rules).map((ruleName) => [
+    ruleName,
+    'warn',
+  ]),
+);
 
 export default [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
     ignores: ['.next/**', 'node_modules/**'],
+  },
+  {
+    plugins: {
+      '@next/next': nextPlugin,
+    },
+    rules: nextRecommendedWarnings,
   },
 ];
