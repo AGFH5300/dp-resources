@@ -47,7 +47,7 @@ I=\dfrac{\varepsilon}{R}=2.0\ A$
 Explanation continues`);
 
     expect(physics).toContain('- $\\mu_dF_N=m\\dfrac{v-u}{t}$');
-    expect(current).toContain('- $I=\\dfrac{\\varepsilon}{R}=2.0\\ A$');
+    expect(current).toContain('- $I=\\dfrac{\\varepsilon}{R}=2.0 A$');
     expect(physics).not.toMatch(/^\s*[-*]\s+\$\s*$/m);
     expect(current).not.toMatch(/^\s*[-*]\s+\$\s*$/m);
     expect(physics).toContain('\n\nNext line');
