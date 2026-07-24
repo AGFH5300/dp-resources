@@ -3,6 +3,7 @@ const STYLE_ATTRIBUTE = /\{\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}/gi;
 const MAXIMUM_MARK_LINE =
   /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*\\*\s*$/i;
 const STANDALONE_MATH_DELIMITER = /^\s*\$\s*$/;
+const LIST_MATH_OPEN = /^(\s*[-*]\s+)\$\s*$/;
 const SUPERSCRIPT: Record<string, string> = {
   '0': '⁰',
   '1': '¹',
@@ -23,6 +24,50 @@ function readableExponents(value: string) {
   return value.replace(/\^\(([−–-]?\d+)\)/g, (_match, exponent: string) =>
     [...exponent].map((character) => SUPERSCRIPT[character] || character).join(''),
   );
+}
+
+function normalizeSplitListMath(lines: string[]) {
+  const output: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const opening = lines[index].match(LIST_MATH_OPEN);
+    if (!opening) {
+      output.push(lines[index]);
+      continue;
+    }
+
+    const collected: string[] = [];
+    let cursor = index + 1;
+    let repaired = false;
+
+    while (cursor < lines.length) {
+      const candidate = lines[cursor].trim();
+      if (!candidate) {
+        cursor += 1;
+        continue;
+      }
+      if (/^:{1,3}[a-z]/i.test(candidate) || /^[-*]\s+/.test(candidate)) break;
+
+      const closing = candidate.match(/^(.*)\$\s*$/);
+      if (closing) {
+        collected.push(closing[1].trim());
+        const formula = collected.filter(Boolean).join(' ').trim();
+        if (formula) {
+          output.push(`${opening[1]}$${formula}$`);
+          index = cursor;
+          repaired = true;
+        }
+        break;
+      }
+
+      collected.push(candidate);
+      cursor += 1;
+    }
+
+    if (!repaired) output.push(lines[index]);
+  }
+
+  return output;
 }
 
 function normalizeStandaloneMath(lines: string[]) {
@@ -79,7 +124,7 @@ export function normalizeQuestionSource(value: string) {
     );
 
   return readableExponents(
-    normalizeStandaloneMath(lines)
+    normalizeStandaloneMath(normalizeSplitListMath(lines))
       .join('\n')
       .replace(STYLE_ATTRIBUTE, '')
       .replace(/^\s*]\s*$/gm, '')
