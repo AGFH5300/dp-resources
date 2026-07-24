@@ -11,6 +11,8 @@ type RendererProps = {
   kind?: 'question' | 'markscheme';
 };
 
+const QUESTION_IMAGE = /^!\[([^\]]*)\]\(question:([0-9a-f-]{36})\)/i;
+
 function math(source: string, displayMode: boolean, key: string) {
   try {
     const cleanSource = source
@@ -55,7 +57,43 @@ function closingBracket(source: string, opening: number) {
   return -1;
 }
 
-function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
+function inlineQuestionImage(
+  altText: string,
+  sourceFileId: string,
+  assetsByFileId: Map<string, QuestionAsset>,
+  key: string,
+) {
+  const asset = assetsByFileId.get(sourceFileId.toLowerCase());
+  if (!asset) {
+    return (
+      <span key={key} className="dp-qb-image-unavailable" role="status">
+        Referenced image is unavailable in the authorized archive.
+      </span>
+    );
+  }
+
+  return (
+    <span
+      key={key}
+      className="dp-qb-inline-figure inline-flex max-w-full items-center justify-center align-middle"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="max-h-72 max-w-full object-contain"
+        src={`/api/question-bank/assets/${asset.id}`}
+        alt={altText || asset.altText}
+        loading="lazy"
+        decoding="async"
+      />
+    </span>
+  );
+}
+
+function inline(
+  source: string,
+  keyPrefix = 'inline',
+  assetsByFileId = new Map<string, QuestionAsset>(),
+): ReactNode[] {
   const output: ReactNode[] = [];
   let plain = '';
   let index = 0;
@@ -67,6 +105,21 @@ function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
   };
 
   while (index < source.length) {
+    const image = source.slice(index).match(QUESTION_IMAGE);
+    if (image) {
+      flush();
+      output.push(
+        inlineQuestionImage(
+          image[1],
+          image[2],
+          assetsByFileId,
+          `${keyPrefix}-image-${key++}`,
+        ),
+      );
+      index += image[0].length;
+      continue;
+    }
+
     const directive = source.slice(index).match(/^:(marks|answer|span)\[/);
     if (directive) {
       const opening = index + directive[0].length - 1;
@@ -82,7 +135,7 @@ function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
               : 'dp-qb-span';
         output.push(
           <span key={`${keyPrefix}-directive-${key++}`} className={className}>
-            {inline(content, `${keyPrefix}-directive`)}
+            {inline(content, `${keyPrefix}-directive`, assetsByFileId)}
           </span>,
         );
         index = closing + 1;
@@ -96,7 +149,11 @@ function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
         flush();
         output.push(
           <strong key={`${keyPrefix}-strong-${key++}`}>
-            {inline(source.slice(index + 2, closing), `${keyPrefix}-strong`)}
+            {inline(
+              source.slice(index + 2, closing),
+              `${keyPrefix}-strong`,
+              assetsByFileId,
+            )}
           </strong>,
         );
         index = closing + 2;
@@ -113,6 +170,7 @@ function inline(source: string, keyPrefix = 'inline'): ReactNode[] {
             {inline(
               source.slice(index + 1, closing),
               `${keyPrefix}-emphasis`,
+              assetsByFileId,
             )}
           </em>,
         );
@@ -172,8 +230,8 @@ function imageBlock(
   assetsByFileId: Map<string, QuestionAsset>,
   key: string,
 ) {
-  const match = line.match(/^!\[([^\]]*)\]\(question:([0-9a-f-]{36})\)$/i);
-  if (!match) return null;
+  const match = line.match(QUESTION_IMAGE);
+  if (!match || match[0].length !== line.length) return null;
   const asset = assetsByFileId.get(match[2].toLowerCase());
   if (!asset)
     return (
@@ -293,7 +351,9 @@ function blocks(source: string, assets: QuestionAsset[]) {
         wrap(
           <ul className="dp-qb-list">
             {items.map((item, itemIndex) => (
-              <li key={`item-${itemIndex}`}>{inline(item, `item-${itemIndex}`)}</li>
+              <li key={`item-${itemIndex}`}>
+                {inline(item, `item-${itemIndex}`, assetsByFileId)}
+              </li>
             ))}
           </ul>,
           `block-${block++}`,
@@ -323,7 +383,11 @@ function blocks(source: string, assets: QuestionAsset[]) {
                   <tr key={`row-${rowIndex}`}>
                     {row.map((cell, cellIndex) => (
                       <td key={`cell-${cellIndex}`}>
-                        {inline(cell, `cell-${rowIndex}-${cellIndex}`)}
+                        {inline(
+                          cell,
+                          `cell-${rowIndex}-${cellIndex}`,
+                          assetsByFileId,
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -353,7 +417,7 @@ function blocks(source: string, assets: QuestionAsset[]) {
     }
     output.push(
       wrap(
-        <p>{inline(paragraph.join(' '), `paragraph-${block}`)}</p>,
+        <p>{inline(paragraph.join(' '), `paragraph-${block}`, assetsByFileId)}</p>,
         `block-${block++}`,
       ),
     );
