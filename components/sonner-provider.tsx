@@ -44,7 +44,6 @@ export function AppToaster() {
           display: grid !important;
           place-items: center !important;
           transform: none !important;
-          border: 0 !important;
           border-radius: 9999px !important;
           z-index: 2 !important;
         }
