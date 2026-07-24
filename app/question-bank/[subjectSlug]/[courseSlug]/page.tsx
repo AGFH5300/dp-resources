@@ -7,6 +7,10 @@ import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { QuestionBankFilters } from '@/components/question-bank/question-bank-filters';
+import {
+  QuestionResultsPagination,
+  visibleQuestionPages,
+} from '@/components/question-bank/question-results-pagination';
 import { requireMember } from '@/lib/auth';
 import {
   isOldCourse,
@@ -17,12 +21,15 @@ import {
   parseQuestionFilters,
 } from '@/lib/question-bank/queries';
 
+const QUESTION_PAGE_SIZE = 24;
+
 function pageHref(params: URLSearchParams, page: number) {
   const next = new URLSearchParams(params);
   next.delete('question');
   if (page <= 1) next.delete('page');
   else next.set('page', String(page));
-  return `?${next.toString()}`;
+  const query = next.toString();
+  return query ? `?${query}` : '?';
 }
 
 function selectedQuestion(value: string | undefined) {
@@ -57,13 +64,21 @@ export default async function CourseQuestionBank({
   );
   const basePath = `/question-bank/${route.subjectSlug}/${route.courseSlug}`;
   const total = Number(data.questions[0]?.total_count || 0);
-  const pages = Math.max(1, Math.ceil(total / 24));
+  const pages = Math.max(1, Math.ceil(total / QUESTION_PAGE_SIZE));
   const topics = data.topics as any[];
   const initialVariantId = selectedQuestion(rawParams.question);
   const oldCourse = isOldCourse(data.course, data.siblingCourses);
   const finalAssessmentYear = oldCourse
     ? oldCourseFinalAssessmentYear(data.course, data.siblingCourses)
     : null;
+  const previousHref =
+    filters.page > 1 ? pageHref(query, filters.page - 1) : null;
+  const nextHref =
+    filters.page < pages ? pageHref(query, filters.page + 1) : null;
+  const pageLinks = visibleQuestionPages(filters.page, pages).map((page) => ({
+    page,
+    href: pageHref(query, page),
+  }));
 
   return (
     <>
@@ -169,20 +184,26 @@ export default async function CourseQuestionBank({
               <span>{total.toLocaleString()} available</span>
             </div>
 
-            <CoursePracticeWorkspace
-              questions={data.questions}
+            <QuestionResultsPagination
               total={total}
               currentPage={filters.page}
               pages={pages}
-              previousHref={
-                filters.page > 1 ? pageHref(query, filters.page - 1) : null
-              }
-              nextHref={
-                filters.page < pages ? pageHref(query, filters.page + 1) : null
-              }
-              initialVariantId={initialVariantId}
-              coursePath={basePath}
-            />
+              pageSize={QUESTION_PAGE_SIZE}
+              previousHref={previousHref}
+              nextHref={nextHref}
+              pageLinks={pageLinks}
+            >
+              <CoursePracticeWorkspace
+                questions={data.questions}
+                total={total}
+                currentPage={filters.page}
+                pages={pages}
+                previousHref={previousHref}
+                nextHref={nextHref}
+                initialVariantId={initialVariantId}
+                coursePath={basePath}
+              />
+            </QuestionResultsPagination>
           </section>
         </div>
       </main>
