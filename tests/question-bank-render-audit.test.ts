@@ -98,10 +98,10 @@ describe('Sonner close-button alignment', () => {
   it('keeps the complete circular hit area inside the toast', () => {
     expect(toaster).toContain('position: relative !important');
     expect(toaster).toContain('padding-inline-end: 4rem !important');
-    expect(toaster).toContain('top: 1rem !important');
-    expect(toaster).toContain('right: 1rem !important');
-    expect(toaster).toContain('inset-block-start: 1rem !important');
-    expect(toaster).toContain('inset-inline-end: 1rem !important');
+    expect(toaster).toContain('top: 1.125rem !important');
+    expect(toaster).toContain('right: 1.125rem !important');
+    expect(toaster).toContain('inset-block-start: 1.125rem !important');
+    expect(toaster).toContain('inset-inline-end: 1.125rem !important');
     expect(toaster).toContain('transform: none !important');
     expect(toaster).toContain('place-items: center !important');
     expect(toaster).not.toContain('translate(40%, -40%)');
