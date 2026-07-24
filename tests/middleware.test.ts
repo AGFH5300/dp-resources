@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   getSupabaseAuthCookiePrefix,
+  hasSupabaseAuthCookie,
   isRecoverableSupabaseAuthError,
+  isSupabaseAuthCookieName,
   shouldBypassSupabaseMiddleware,
 } from '../middleware';
+
+const SUPABASE_URL = 'https://vwreomwieplqqdrmjcuc.supabase.co';
+const AUTH_COOKIE_PREFIX = 'sb-vwreomwieplqqdrmjcuc-auth-token';
 
 describe('middleware auth route bypasses', () => {
   it('excludes public auth routes and auth APIs from Supabase getUser middleware handling', () => {
@@ -32,14 +37,40 @@ describe('middleware auth route bypasses', () => {
 });
 
 describe('middleware stale session recovery', () => {
-  it('derives the exact Supabase auth cookie prefix from the project URL', () => {
-    expect(
-      getSupabaseAuthCookiePrefix('https://vwreomwieplqqdrmjcuc.supabase.co'),
-    ).toBe('sb-vwreomwieplqqdrmjcuc-auth-token');
+  it('derives and recognizes the exact Supabase auth cookie names', () => {
+    expect(getSupabaseAuthCookiePrefix(SUPABASE_URL)).toBe(AUTH_COOKIE_PREFIX);
     expect(getSupabaseAuthCookiePrefix('not-a-url')).toBeNull();
+
+    expect(isSupabaseAuthCookieName(AUTH_COOKIE_PREFIX, SUPABASE_URL)).toBe(true);
+    expect(
+      isSupabaseAuthCookieName(`${AUTH_COOKIE_PREFIX}.0`, SUPABASE_URL),
+    ).toBe(true);
+    expect(
+      isSupabaseAuthCookieName(
+        `${AUTH_COOKIE_PREFIX}-code-verifier`,
+        SUPABASE_URL,
+      ),
+    ).toBe(true);
+    expect(isSupabaseAuthCookieName('unrelated-cookie', SUPABASE_URL)).toBe(
+      false,
+    );
   });
 
-  it('recognizes stale and revoked refresh-token failures without swallowing unrelated errors', () => {
+  it('does not attempt session validation for signed-out requests', () => {
+    expect(hasSupabaseAuthCookie([], SUPABASE_URL)).toBe(false);
+    expect(hasSupabaseAuthCookie(['theme'], SUPABASE_URL)).toBe(false);
+    expect(
+      hasSupabaseAuthCookie([`${AUTH_COOKIE_PREFIX}.0`], SUPABASE_URL),
+    ).toBe(true);
+  });
+
+  it('recognizes missing, stale, and revoked sessions without swallowing unrelated errors', () => {
+    expect(
+      isRecoverableSupabaseAuthError({ name: 'AuthSessionMissingError' }),
+    ).toBe(true);
+    expect(
+      isRecoverableSupabaseAuthError({ message: 'Auth session missing!' }),
+    ).toBe(true);
     expect(
       isRecoverableSupabaseAuthError({ code: 'refresh_token_not_found' }),
     ).toBe(true);
