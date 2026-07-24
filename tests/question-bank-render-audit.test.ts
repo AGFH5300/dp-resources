@@ -106,5 +106,6 @@ describe('Sonner close-button alignment', () => {
     expect(toaster).toContain('place-items: center !important');
     expect(toaster).not.toContain('translate(40%, -40%)');
     expect(toaster).not.toContain('overflow: visible !important');
+    expect(toaster).not.toContain('border: 0 !important');
   });
 });
