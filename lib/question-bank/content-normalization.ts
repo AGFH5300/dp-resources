@@ -1,7 +1,7 @@
 const ATTRIBUTION_LINE = /revision\s+village.*created\s+with\s+chemix/i;
 const STYLE_ATTRIBUTE = /\{\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}/gi;
 const MAXIMUM_MARK_LINE =
-  /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*$/i;
+  /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*\\*\s*$/i;
 const STANDALONE_MATH_DELIMITER = /^\s*\$\s*$/;
 const SUPERSCRIPT: Record<string, string> = {
   '0': '⁰',
