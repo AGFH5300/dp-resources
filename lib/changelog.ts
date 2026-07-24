@@ -27,6 +27,10 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-24': [
+    'Restored the complete admin navigation on the Question Bank operations page and made every Question Bank total understandable with plain-language explanations and help buttons.',
+    'Audited native formula and data booklet coverage so incorrect syllabus links are hidden and remaining booklet gaps are shown clearly to administrators.',
+  ],
   '2026-07-23': [
     'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
