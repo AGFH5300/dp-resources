@@ -38,20 +38,46 @@ export function getSupabaseAuthCookiePrefix(supabaseUrl: string) {
   }
 }
 
+export function isSupabaseAuthCookieName(
+  cookieName: string,
+  supabaseUrl: string,
+) {
+  const authCookiePrefix = getSupabaseAuthCookiePrefix(supabaseUrl);
+
+  return authCookiePrefix
+    ? cookieName === authCookiePrefix ||
+        cookieName.startsWith(`${authCookiePrefix}.`) ||
+        cookieName.startsWith(`${authCookiePrefix}-`)
+    : cookieName.startsWith('sb-') && cookieName.includes('-auth-token');
+}
+
+export function hasSupabaseAuthCookie(
+  cookieNames: string[],
+  supabaseUrl: string,
+) {
+  return cookieNames.some((name) =>
+    isSupabaseAuthCookieName(name, supabaseUrl),
+  );
+}
+
 export function isRecoverableSupabaseAuthError(error: unknown) {
   if (!error || typeof error !== 'object') return false;
 
   const candidate = error as {
+    name?: unknown;
     code?: unknown;
     message?: unknown;
   };
+  const name = typeof candidate.name === 'string' ? candidate.name : '';
   const code = typeof candidate.code === 'string' ? candidate.code : '';
   const message =
     typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
 
   return (
+    name === 'AuthSessionMissingError' ||
     code === 'refresh_token_not_found' ||
     code === 'refresh_token_already_used' ||
+    message.includes('auth session missing') ||
     message.includes('invalid refresh token') ||
     message.includes('refresh token not found') ||
     message.includes('refresh token already used')
@@ -59,17 +85,10 @@ export function isRecoverableSupabaseAuthError(error: unknown) {
 }
 
 function clearSupabaseAuthCookies(request: NextRequest, supabaseUrl: string) {
-  const authCookiePrefix = getSupabaseAuthCookiePrefix(supabaseUrl);
   const authCookieNames = request.cookies
     .getAll()
     .map(({ name }) => name)
-    .filter((name) =>
-      authCookiePrefix
-        ? name === authCookiePrefix ||
-          name.startsWith(`${authCookiePrefix}.`) ||
-          name.startsWith(`${authCookiePrefix}-`)
-        : name.startsWith('sb-') && name.includes('-auth-token'),
-    );
+    .filter((name) => isSupabaseAuthCookieName(name, supabaseUrl));
 
   authCookieNames.forEach((name) => request.cookies.delete(name));
 
@@ -93,6 +112,13 @@ export async function middleware(request: NextRequest) {
 
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next();
+  }
+
+  const requestCookieNames = request.cookies.getAll().map(({ name }) => name);
+  if (!hasSupabaseAuthCookie(requestCookieNames, supabaseUrl)) {
+    const signedOutResponse = NextResponse.next({ request });
+    signedOutResponse.headers.set('Cache-Control', 'private, no-store');
+    return signedOutResponse;
   }
 
   let response = NextResponse.next({ request });
