@@ -95,13 +95,15 @@ $
 });
 
 describe('Sonner close-button alignment', () => {
-  it('anchors the circular close button across the toast top-right corner', () => {
+  it('keeps the complete circular hit area inside the toast', () => {
     expect(toaster).toContain('position: relative !important');
-    expect(toaster).toContain('overflow: visible !important');
-    expect(toaster).toContain('top: 0 !important');
-    expect(toaster).toContain('right: 0 !important');
-    expect(toaster).toContain('transform: translate(40%, -40%) !important');
+    expect(toaster).toContain('top: 1rem !important');
+    expect(toaster).toContain('right: 1rem !important');
+    expect(toaster).toContain('inset-block-start: 1rem !important');
+    expect(toaster).toContain('inset-inline-end: 1rem !important');
+    expect(toaster).toContain('transform: none !important');
     expect(toaster).toContain('place-items: center !important');
-    expect(toaster).not.toContain('padding-inline-end: 3.5rem !important');
+    expect(toaster).not.toContain('translate(40%, -40%)');
+    expect(toaster).not.toContain('overflow: visible !important');
   });
 });
