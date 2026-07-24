@@ -34,6 +34,25 @@ $
     expect(orphan).toContain('- B. $y$');
   });
 
+  it('joins list-item maths split after an opening dollar marker', () => {
+    const physics = normalizeQuestionSource(String.raw`::indent
+- $
+\mu_dF_N=m\dfrac{v-u}{t}$
+
+Next line`);
+    const current = normalizeQuestionSource(String.raw`::indent
+- $
+I=\dfrac{\varepsilon}{R}=2.0\ A$
+
+Explanation continues`);
+
+    expect(physics).toContain('- $\\mu_dF_N=m\\dfrac{v-u}{t}$');
+    expect(current).toContain('- $I=\\dfrac{\\varepsilon}{R}=2.0\\ A$');
+    expect(physics).not.toMatch(/^\s*[-*]\s+\$\s*$/m);
+    expect(current).not.toMatch(/^\s*[-*]\s+\$\s*$/m);
+    expect(physics).toContain('\n\nNext line');
+  });
+
   it('extracts all choices across harmless source debris', () => {
     const parsed = parseInteractiveQuestion(
       String.raw`What is the result?
