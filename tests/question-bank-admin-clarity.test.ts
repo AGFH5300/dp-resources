@@ -31,7 +31,9 @@ describe('Question Bank admin clarity', () => {
     expect(adminPage).toContain('Topic links');
     expect(adminPage).toContain('Imported source files');
     expect(adminPage).toContain('Question images');
-    expect(adminPage).toContain('Those larger totals do not mean there are extra questions.');
+    expect(adminPage).toContain(
+      'larger totals do not mean there are extra questions.',
+    );
     expect(adminPage).toContain('InfoTip');
   });
 
@@ -45,9 +47,11 @@ describe('Question Bank admin clarity', () => {
     expect(nativeFormulaBookletUrl('chemistry', 'sl-2025')).toBe(
       '/resource/1C7tYritD2g7zVHXt1376HFuQstwaaZJZ',
     );
-    expect(nativeBookletCoverage.some((item) => item.status === 'missing')).toBe(
-      true,
+    expect(
+      nativeBookletCoverage.some((item) => item.status === 'missing'),
+    ).toBe(true);
+    expect(adminPage).toContain(
+      'Every booklet button currently shown to users opens an internal DP',
     );
-    expect(adminPage).toContain('Every booklet button currently shown to users opens an internal DP');
   });
 });
