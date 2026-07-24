@@ -34,6 +34,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
     'Improved the ESS subject icon, added final-assessment years to old-course labels, and connected native Biology, Business Management, and Chemistry reference booklets to Question Bank practice.',
     'Added username-or-email login and changed the account navbar to display each user’s username instead of their email address.',
+    'Improved sign-in reliability by recovering automatically when a browser still holds an expired or revoked session.',
   ],
   '2026-07-22': [
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
