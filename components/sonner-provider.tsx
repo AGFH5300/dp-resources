@@ -26,6 +26,7 @@ export function AppToaster() {
       <style jsx global>{`
         [data-sonner-toast].dp-sonner-toast {
           position: relative !important;
+          padding-inline-end: 4rem !important;
         }
 
         [data-sonner-toast].dp-sonner-toast .dp-sonner-close {
