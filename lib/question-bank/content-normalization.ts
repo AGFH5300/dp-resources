@@ -1,5 +1,6 @@
 const ATTRIBUTION_LINE = /revision\s+village.*created\s+with\s+chemix/i;
 const STYLE_ATTRIBUTE = /\{\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}/gi;
+const MAXIMUM_MARK_LINE = /^\s*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*$/i;
 const SUPERSCRIPT: Record<string, string> = {
   '0': '⁰',
   '1': '¹',
@@ -28,7 +29,10 @@ export function normalizeQuestionSource(value: string) {
       .replaceAll('\r\n', '\n')
       .replaceAll('\r', '\n')
       .split('\n')
-      .filter((line) => !ATTRIBUTION_LINE.test(line))
+      .filter(
+        (line) =>
+          !ATTRIBUTION_LINE.test(line) && !MAXIMUM_MARK_LINE.test(line),
+      )
       .join('\n')
       .replace(STYLE_ATTRIBUTE, '')
       .replace(/^\s*]\s*$/gm, '')

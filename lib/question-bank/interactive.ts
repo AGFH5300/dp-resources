@@ -35,6 +35,17 @@ function parseChoiceLine(line: string) {
   } satisfies InteractiveChoice;
 }
 
+function isChoiceSeparator(line: string) {
+  const value = line.trim();
+  return (
+    !value ||
+    /^\|?\s*:?-{2,}/.test(value) ||
+    /^:{2,3}(?:indent|center|tableoptions)?\s*$/i.test(value) ||
+    /^\${1,2}\s*$/.test(value) ||
+    /^\\+\s*$/.test(value)
+  );
+}
+
 function correctChoice(markScheme: string) {
   const candidates = [
     /:answer\[\s*(?:\*\*)?([A-H])(?:\*\*)?(?:\s|\]|$)/i,
@@ -65,8 +76,7 @@ export function parseInteractiveQuestion(
     let end = start + 1;
     let expected = 1;
     while (end < lines.length) {
-      const trimmed = lines[end].trim();
-      if (!trimmed || /^\|?\s*:?-{2,}/.test(trimmed)) {
+      if (isChoiceSeparator(lines[end])) {
         end += 1;
         continue;
       }
