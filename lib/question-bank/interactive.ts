@@ -14,12 +14,29 @@ export type InteractiveQuestion = {
 
 const CHOICE_LABELS = 'ABCDEFGH';
 
+function balanceInlineMath(value: string) {
+  const unescapedDollarCount = [...value].reduce((count, character, index) => {
+    if (character !== '$') return count;
+    let backslashes = 0;
+    for (let cursor = index - 1; cursor >= 0 && value[cursor] === '\\'; cursor -= 1)
+      backslashes += 1;
+    return backslashes % 2 === 0 ? count + 1 : count;
+  }, 0);
+
+  if (unescapedDollarCount % 2 === 0) return value;
+  if (value.trimStart().startsWith('$')) return `${value}$`;
+  if (value.trimEnd().endsWith('$')) return `$${value}`;
+  return value;
+}
+
 function cleanChoiceSource(value: string) {
-  return value
-    .trim()
-    .replace(/^\|\s*/, '')
-    .replace(/\s*\|$/, '')
-    .trim();
+  return balanceInlineMath(
+    value
+      .trim()
+      .replace(/^\|\s*/, '')
+      .replace(/\s*\|$/, '')
+      .trim(),
+  );
 }
 
 function parseChoiceLine(line: string) {
@@ -59,6 +76,18 @@ function correctChoice(markScheme: string) {
   return null;
 }
 
+function fallbackChoices(answer: string | null) {
+  if (!answer) return [];
+  const answerIndex = CHOICE_LABELS.indexOf(answer);
+  if (answerIndex < 0) return [];
+  const optionCount = Math.max(4, answerIndex + 1);
+  return [...CHOICE_LABELS.slice(0, optionCount)].map((id) => ({
+    id,
+    label: id,
+    source: `Option ${id}`,
+  }));
+}
+
 export function parseInteractiveQuestion(
   content: string,
   markScheme: string,
@@ -91,6 +120,24 @@ export function parseInteractiveQuestion(
   }
 
   const answer = correctChoice(normalizedMarkScheme);
+  const fallback = fallbackChoices(answer);
+  const incompleteChoiceSet =
+    Boolean(answer) &&
+    (!best ||
+      best.choices.length < fallback.length ||
+      !best.choices.some((choice) => choice.id === answer) ||
+      best.choices.some((choice) => choice.source.includes('(question:')));
+
+  // Table-based and image-based MCQs do not always serialize as one clean line
+  // per choice. Keep their original controlled rendering intact and provide a
+  // dependable A–D selector rather than showing a partial or uncheckable quiz.
+  if (incompleteChoiceSet)
+    return {
+      prompt: normalizedContent,
+      choices: fallback,
+      correctChoiceId: answer,
+    };
+
   if (!best)
     return {
       prompt: normalizedContent,
