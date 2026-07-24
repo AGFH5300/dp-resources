@@ -31,11 +31,11 @@ export function AppToaster() {
 
         [data-sonner-toast].dp-sonner-toast .dp-sonner-close {
           position: absolute !important;
-          inset-block-start: 1rem !important;
+          inset-block-start: 1.125rem !important;
           inset-inline-start: auto !important;
-          inset-inline-end: 1rem !important;
-          top: 1rem !important;
-          right: 1rem !important;
+          inset-inline-end: 1.125rem !important;
+          top: 1.125rem !important;
+          right: 1.125rem !important;
           left: auto !important;
           width: 2rem !important;
           height: 2rem !important;
