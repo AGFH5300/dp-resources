@@ -48,7 +48,6 @@ $
 - D. $4$`,
       ':answer[**B**]',
     );
-
     expect(parsed.choices.map((choice) => choice.id)).toEqual([
       'A',
       'B',
@@ -96,10 +95,13 @@ $
 });
 
 describe('Sonner close-button alignment', () => {
-  it('centres the close button inside the toast rather than on its border', () => {
-    expect(toaster).toContain('inset-block-start: 50% !important');
-    expect(toaster).toContain('transform: translateY(-50%) !important');
-    expect(toaster).toContain('inset-inline-end: 0.75rem !important');
+  it('anchors the circular close button across the toast top-right corner', () => {
+    expect(toaster).toContain('position: relative !important');
+    expect(toaster).toContain('overflow: visible !important');
+    expect(toaster).toContain('top: 0 !important');
+    expect(toaster).toContain('right: 0 !important');
+    expect(toaster).toContain('transform: translate(40%, -40%) !important');
     expect(toaster).toContain('place-items: center !important');
+    expect(toaster).not.toContain('padding-inline-end: 3.5rem !important');
   });
 });
