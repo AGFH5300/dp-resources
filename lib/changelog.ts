@@ -30,7 +30,7 @@ const historicalSummaries: Record<string, string[]> = {
   '2026-07-24': [
     'Fixed image-based answer choices so diagrams inside Question Bank tables load instead of showing raw asset references.',
     'Made Question Bank operations easier to understand with clear totals, help buttons, consistent navigation, and course-correct formula and data booklet links.',
-    'Audited every Question Bank variant, corrected malformed marks and source formatting, hid incomplete questions until their missing material is available, and centred notification close buttons properly.',
+    'Audited every Question Bank variant, corrected malformed marks and source formatting, hid incomplete questions until their missing material is available, and placed notification close buttons fully inside their toasts.',
   ],
   '2026-07-23': [
     'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
