@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-25': [
+    'Improved Question Bank practice with locally remembered answers, reset controls, red reporting actions, cleaner report summaries, and corrected notification close-button styling.',
+  ],
   '2026-07-24': [
     'Fixed image-based answer choices so diagrams inside Question Bank tables load instead of showing raw asset references.',
     'Made Question Bank operations easier to understand with clear totals, help buttons, consistent navigation, and course-correct formula and data booklet links.',
