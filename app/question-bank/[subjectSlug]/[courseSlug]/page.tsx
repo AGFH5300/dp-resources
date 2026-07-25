@@ -23,6 +23,72 @@ import {
 
 const QUESTION_PAGE_SIZE = 24;
 
+type TopicRecord = {
+  id: string;
+  name: string;
+  subtopics?: Array<{ id: string; name: string }>;
+  [key: string]: unknown;
+};
+
+type TopicGroup = {
+  key: string;
+  displayName: string;
+  primary: TopicRecord;
+  topics: TopicRecord[];
+};
+
+function cleanTopicLabel(value: unknown) {
+  const name = String(value || '').trim();
+  const cleaned = name
+    .replace(/^[A-Z](?:[.)\]:-])?\s+(?=[A-Za-z])/, '')
+    .trim();
+  return cleaned || name;
+}
+
+function groupTopicsForSidebar(topics: TopicRecord[]) {
+  const groups = new Map<string, TopicGroup>();
+  for (const topic of topics) {
+    const displayName = cleanTopicLabel(topic.name);
+    const key = displayName.toLocaleLowerCase();
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        key,
+        displayName,
+        primary: topic,
+        topics: [topic],
+      });
+      continue;
+    }
+    existing.topics.push(topic);
+    const existingSubtopics = existing.primary.subtopics?.length || 0;
+    const candidateSubtopics = topic.subtopics?.length || 0;
+    if (candidateSubtopics > existingSubtopics) existing.primary = topic;
+  }
+  return Array.from(groups.values());
+}
+
+function groupedSubtopics(group: TopicGroup, selectedTopicId: string | null) {
+  const selected = group.topics.find((topic) => topic.id === selectedTopicId);
+  const orderedTopics = selected
+    ? [selected, ...group.topics.filter((topic) => topic.id !== selected.id)]
+    : group.topics;
+  const seen = new Set<string>();
+  const rows: Array<{
+    topicId: string;
+    subtopic: { id: string; name: string };
+  }> = [];
+  for (const topic of orderedTopics) {
+    for (const subtopic of topic.subtopics || []) {
+      const key = String(subtopic.name || subtopic.id).trim().toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ topicId: topic.id, subtopic });
+    }
+  }
+  return rows;
+}
+
 function pageHref(params: URLSearchParams, page: number) {
   const next = new URLSearchParams(params);
   next.delete('question');
@@ -65,7 +131,8 @@ export default async function CourseQuestionBank({
   const basePath = `/question-bank/${route.subjectSlug}/${route.courseSlug}`;
   const total = Number(data.questions[0]?.total_count || 0);
   const pages = Math.max(1, Math.ceil(total / QUESTION_PAGE_SIZE));
-  const topics = data.topics as any[];
+  const topics = data.topics as TopicRecord[];
+  const sidebarTopicGroups = groupTopicsForSidebar(topics);
   const initialVariantId = selectedQuestion(rawParams.question);
   const oldCourse = isOldCourse(data.course, data.siblingCourses);
   const finalAssessmentYear = oldCourse
@@ -112,7 +179,7 @@ export default async function CourseQuestionBank({
                 </>
               ) : null}
               {data.sourceQuestionCount.toLocaleString()} source occurrences ·{' '}
-              {data.topics.length} topics
+              {sidebarTopicGroups.length} topics
             </p>
           </div>
           <form action="/question-bank/search" className="dp-qb-universal-search">
@@ -137,31 +204,40 @@ export default async function CourseQuestionBank({
             <Link href={basePath} className={!filters.topicId ? 'is-active' : ''}>
               All questions
             </Link>
-            {topics.map((topic) => (
-              <div key={topic.id} className="mt-3">
-                <Link
-                  href={`?topic=${topic.id}`}
-                  className={filters.topicId === topic.id ? 'is-active' : ''}
-                >
-                  {topic.name}
-                </Link>
-                {filters.topicId === topic.id ? (
-                  <div className="dp-qb-sidebar-subtopics">
-                    {(topic.subtopics || []).map((subtopic: any) => (
-                      <Link
-                        key={subtopic.id}
-                        href={`?topic=${topic.id}&subtopic=${subtopic.id}`}
-                        className={
-                          filters.subtopicId === subtopic.id ? 'is-active' : ''
-                        }
-                      >
-                        {subtopic.name}
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ))}
+            {sidebarTopicGroups.map((group) => {
+              const activeTopic = group.topics.find(
+                (topic) => topic.id === filters.topicId,
+              );
+              const isActive = Boolean(activeTopic);
+              const subtopics = isActive
+                ? groupedSubtopics(group, filters.topicId)
+                : [];
+              return (
+                <div key={group.key} className="mt-3">
+                  <Link
+                    href={`?topic=${activeTopic?.id || group.primary.id}`}
+                    className={isActive ? 'is-active' : ''}
+                  >
+                    {group.displayName}
+                  </Link>
+                  {isActive ? (
+                    <div className="dp-qb-sidebar-subtopics">
+                      {subtopics.map(({ topicId, subtopic }) => (
+                        <Link
+                          key={`${topicId}-${subtopic.id}`}
+                          href={`?topic=${topicId}&subtopic=${subtopic.id}`}
+                          className={
+                            filters.subtopicId === subtopic.id ? 'is-active' : ''
+                          }
+                        >
+                          {subtopic.name}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </aside>
 
           <section className="min-w-0">
