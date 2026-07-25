@@ -1,17 +1,20 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   getSupabaseAuthCookiePrefix,
   hasSupabaseAuthCookie,
   isRecoverableSupabaseAuthError,
   isSupabaseAuthCookieName,
+  isTransientSupabaseAuthError,
   shouldBypassSupabaseMiddleware,
 } from '../middleware';
 
+const middlewareSource = readFileSync('middleware.ts', 'utf8');
 const SUPABASE_URL = 'https://vwreomwieplqqdrmjcuc.supabase.co';
 const AUTH_COOKIE_PREFIX = 'sb-vwreomwieplqqdrmjcuc-auth-token';
 
 describe('middleware auth route bypasses', () => {
-  it('excludes public auth routes and auth APIs from Supabase getUser middleware handling', () => {
+  it('excludes public auth routes and auth APIs from Supabase claims middleware handling', () => {
     const bypassedRoutes = [
       '/',
       '/auth',
@@ -64,7 +67,7 @@ describe('middleware stale session recovery', () => {
     ).toBe(true);
   });
 
-  it('recognizes missing, stale, and revoked sessions without swallowing unrelated errors', () => {
+  it('recognizes missing sessions without clearing a concurrent refresh winner', () => {
     expect(
       isRecoverableSupabaseAuthError({ name: 'AuthSessionMissingError' }),
     ).toBe(true);
@@ -81,9 +84,22 @@ describe('middleware stale session recovery', () => {
     ).toBe(true);
     expect(
       isRecoverableSupabaseAuthError({ code: 'refresh_token_already_used' }),
+    ).toBe(false);
+    expect(
+      isTransientSupabaseAuthError({ code: 'refresh_token_already_used' }),
+    ).toBe(true);
+    expect(
+      isTransientSupabaseAuthError({
+        message: 'Refresh Token Already Used',
+      }),
     ).toBe(true);
     expect(isRecoverableSupabaseAuthError(new Error('Network unavailable'))).toBe(
       false,
     );
+  });
+
+  it('uses claims validation instead of parallel user lookups', () => {
+    expect(middlewareSource).toContain('supabase.auth.getClaims()');
+    expect(middlewareSource).not.toContain('supabase.auth.getUser()');
   });
 });
