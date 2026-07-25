@@ -82,29 +82,34 @@ describe('browser-local Question Bank attempts', () => {
 });
 
 describe('question reporting', () => {
-  it('keeps only the moved toolbar action without restyling the shared modal', () => {
-    expect(workspace).toContain('dp-qb-toolbar-report-button');
-    expect(workspace).toContain('triggerLabel="Report"');
+  it('keeps the original shared modal appearance and behaviour', () => {
     expect(reportDialog).toContain('className={className}');
     expect(reportDialog).toContain("resource.resourcePath || 'Library'");
     expect(reportDialog).toContain('bg-[color:var(--dp-navy)]');
     expect(reportDialog).not.toContain('dp-report-submit-button');
     expect(reportDialog).not.toContain("html[data-theme='dark'] .dp-report-button");
-  });
-
-  it('uses the original inline modal and keeps dropdown options above it', () => {
     expect(reportDialog).not.toContain("import { createPortal } from 'react-dom';");
     expect(reportDialog).not.toContain('createPortal(');
     expect(reportDialog).toContain('{open && (');
+  });
+
+  it('keeps dropdown options above the unchanged modal', () => {
     expect(reportDialog).toContain('z-[60]');
     expect(appSelect).toContain('z-[110]');
   });
 
-  it('shows only the relocated toolbar report button', () => {
+  it('visually moves only the original lower report trigger into the toolbar', () => {
+    expect(workspace).toContain('dp-qb-toolbar-report-button');
+    expect(workspace).toContain('dp-qb-report-button');
+    expect(reportDialog).toContain(
+      '.dp-qb-practice-toolbar .dp-qb-toolbar-report-button',
+    );
+    expect(reportDialog).toContain('display: none !important');
     expect(reportDialog).toContain(
       '.dp-qb-reference-actions .dp-qb-report-button',
     );
-    expect(reportDialog).toContain('display: none !important');
+    expect(reportDialog).toContain('position: absolute !important');
+    expect(reportDialog).toContain("content: 'Report'");
   });
 });
 
