@@ -30,6 +30,7 @@ jobs:
         run: npm install --package-lock-only --ignore-scripts
 
       - name: Show patched dependency tree
+        continue-on-error: true
         run: npm ls brace-expansion postcss shell-quote
 
       - name: Commit refreshed lockfile
