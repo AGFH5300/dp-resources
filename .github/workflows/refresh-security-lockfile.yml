@@ -1,0 +1,49 @@
+name: Refresh security lockfile
+
+on:
+  push:
+    branches:
+      - fix/dependency-security-alerts
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: ${{ !contains(github.event.head_commit.message, '[skip lock-refresh]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out security branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/dependency-security-alerts
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Regenerate package lock from patched overrides
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Verify complete dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Show patched dependency tree
+        run: npm ls brace-expansion postcss shell-quote
+
+      - name: Commit refreshed lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json was already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: refresh secure dependency lockfile [skip lock-refresh]"
+          git push origin HEAD:fix/dependency-security-alerts
