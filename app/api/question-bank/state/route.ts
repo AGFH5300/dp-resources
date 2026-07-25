@@ -101,3 +101,30 @@ export async function PATCH(request: Request) {
 
   return noStore({ ok: true });
 }
+
+export async function DELETE(request: Request) {
+  const forbidden = sameOriginOrForbidden(request);
+  if (forbidden) return forbidden;
+  const { user } = await requireMember();
+  const body = await request.json().catch(() => null);
+  if (!isPlainObject(body) || body.scope !== 'all_progress') {
+    return noStore(
+      { error: 'Invalid Question Bank reset request.' },
+      { status: 400 },
+    );
+  }
+
+  const client = await createClient();
+  const { error } = await client
+    .from('dp_qb_user_progress')
+    .delete()
+    .eq('user_id', user.id);
+  if (error) {
+    return noStore(
+      { error: 'Unable to reset Question Bank progress.' },
+      { status: 500 },
+    );
+  }
+
+  return noStore({ ok: true });
+}
