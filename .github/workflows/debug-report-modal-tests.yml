@@ -1,0 +1,34 @@
+name: Debug report modal tests
+
+on:
+  push:
+    branches:
+      - fix/restore-question-report-modal
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: ${{ !contains(github.event.head_commit.message, '[skip debug]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/restore-question-report-modal
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Capture test output
+        shell: bash
+        run: npm test -- --reporter=verbose > .report-modal-test-output.txt 2>&1 || true
+      - name: Commit output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .report-modal-test-output.txt
+          git commit -m "chore: capture report modal test output [skip debug]"
+          git push origin HEAD:fix/restore-question-report-modal
