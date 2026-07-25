@@ -21,9 +21,21 @@ type ResourceContext = {
 };
 type ReportContext = Omit<ResourceContext, 'driveFileId'> & {
   driveFileId?: string;
+  displayPath?: string;
 };
 function appUrl(id: string, isFolder?: boolean) {
   return `${window.location.origin}${isFolder ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`}`;
+}
+function reportDisplayPath(resource: ReportContext) {
+  const value = resource.displayPath || resource.resourcePath || '';
+  if (!value) return 'Library';
+  try {
+    if (/^https?:\/\//i.test(value)) {
+      const url = new URL(value);
+      return url.pathname || 'Library';
+    }
+  } catch {}
+  return value.split(/[?#]/, 1)[0] || 'Library';
 }
 async function copyText(text: string) {
   try {
@@ -215,7 +227,7 @@ export function ReportResourceDialog({
           setSent(false);
           setError('');
         }}
-        className={className}
+        className={`${className} dp-report-button`}
       >
         <Flag className="size-4" /> {triggerLabel}
       </button>
@@ -257,7 +269,7 @@ export function ReportResourceDialog({
                   {resource.resourceName}
                 </p>
                 <p className="truncate text-xs text-[color:var(--dp-ink)]/60">
-                  {resource.resourcePath || 'Library'}
+                  {reportDisplayPath(resource)}
                 </p>
               </div>
             </div>
@@ -306,7 +318,7 @@ export function ReportResourceDialog({
                   </button>
                   <button
                     disabled={busy}
-                    className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                    className="dp-report-submit-button rounded-md border px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
                   >
                     {busy ? 'Submitting…' : 'Submit report'}
                   </button>
@@ -316,6 +328,55 @@ export function ReportResourceDialog({
           </form>
         </div>
       )}
+      <style jsx global>{`
+        .dp-report-button {
+          border-color: #fca5a5 !important;
+          background: #fef2f2 !important;
+          color: #b91c1c !important;
+        }
+        .dp-report-button:hover,
+        .dp-report-button:focus-visible {
+          border-color: #ef4444 !important;
+          background: #fee2e2 !important;
+          color: #991b1b !important;
+        }
+        .dp-report-submit-button {
+          border-color: #b91c1c !important;
+          background: #b91c1c !important;
+        }
+        .dp-report-submit-button:hover:not(:disabled) {
+          border-color: #991b1b !important;
+          background: #991b1b !important;
+        }
+        .dp-qb-practice-toolbar .dp-qb-toolbar-report-button {
+          display: inline-flex !important;
+          width: auto !important;
+          height: 2rem !important;
+          align-items: center !important;
+          gap: 0.35rem !important;
+          padding: 0 0.6rem !important;
+          white-space: nowrap !important;
+        }
+        html[data-theme='dark'] .dp-report-button {
+          border-color: #b91c1c !important;
+          background: #3f171d !important;
+          color: #fecaca !important;
+        }
+        html[data-theme='dark'] .dp-report-button:hover,
+        html[data-theme='dark'] .dp-report-button:focus-visible {
+          border-color: #ef4444 !important;
+          background: #552027 !important;
+          color: #fff1f2 !important;
+        }
+        html[data-theme='dark'] .dp-report-submit-button {
+          border-color: #ef4444 !important;
+          background: #b91c1c !important;
+        }
+        html[data-theme='dark'] .dp-report-submit-button:hover:not(:disabled) {
+          border-color: #f87171 !important;
+          background: #991b1b !important;
+        }
+      `}</style>
     </>
   );
 }
