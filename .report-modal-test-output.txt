@@ -1,0 +1,849 @@
+
+> dp-resources@1.0.0 test
+> vitest run --reporter=verbose
+
+
+[1m[46m RUN [49m[22m [36mv3.2.6 [39m[90m/home/runner/work/dp-resources/dp-resources[39m
+
+[90mstderr[2m | tests/disposable-email-and-suspension.test.ts[2m > [22m[2mdisposable domain policy[2m > [22m[2mthrows on RPC failure so routes fail closed
+[22m[39m[email-domain-policy] rpc failed { domain: [32m'example.edu'[39m, code: [32m'XX000'[39m, message: [32m'boom'[39m }
+
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mdisposable domain policy[2m > [22mnormalizes email and returns authoritative RPC decisions[32m 5[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mdisposable domain policy[2m > [22mthrows on RPC failure so routes fail closed[32m 3[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msignup route behavior[2m > [22mdoes not send OTP for blocked email[32m 153[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msignup route behavior[2m > [22msends OTP for allowed email[32m 11[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msignup route behavior[2m > [22mfails closed when domain RPC fails[32m 7[2mms[22m[39m
+[90mstderr[2m | tests/disposable-email-and-suspension.test.ts[2m > [22m[2msuspension API behavior[2m > [22m[2mreturns audit warning while preserving successful suspension
+[22m[39m[admin-suspension] moderation audit failed {
+  action: [32m'suspend'[39m,
+  targetUserId: [32m'11111111-1111-4111-8111-111111111111'[39m,
+  code: [32m'AUDIT'[39m,
+  message: [32m'audit failed'[39m
+}
+
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mavailability route behavior[2m > [22mreturns invalid for blocked domains before email availability RPC[32m 28[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mupdates membership before Auth ban, audits suspend and block_domain, and never deletes users[32m 22[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mreturns audit warning while preserving successful suspension[32m 7[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22munbans before clearing suspension fields and failed unban leaves user suspended[32m 12[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mrejects suspending admins or the current admin[32m 11[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mdoes not overwrite an exact explicit allow rule but still suspends the user[32m 5[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mprotects a subdomain when a parent-domain allow rule is most-specific[32m 6[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22msuspension API behavior[2m > [22mdoes not resubmit an already-blocked domain[32m 5[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mmigration coverage[2m > [22muses the existing membership trigger function and atomic corrected hook permissions[32m 1[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mmigration coverage[2m > [22mhas constraints and most-specific parent-domain policy matching[32m 1[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mmigration coverage[2m > [22mreturns only a generic reason from the public domain policy for blocked rules[32m 1[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mmigration coverage[2m > [22muses a strict hostname constraint for domain rules[32m 1[2mms[22m[39m
+ [32m✓[39m tests/disposable-email-and-suspension.test.ts[2m > [22mmigration coverage[2m > [22mexplicitly validates membership suspension constraints after adding them as not valid[32m 1[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mlive admin filter URL behavior[2m > [22mmounting with unchanged filters causes zero navigation and no page reset[33m 345[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mlive admin filter URL behavior[2m > [22munchanged input causes zero navigation[32m 14[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mlive admin filter URL behavior[2m > [22ma changed input causes exactly one navigation target[32m 10[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mlive admin filter URL behavior[2m > [22ma changed filter resets its page to 1[32m 9[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionWatcher executable behavior[2m > [22man UPDATE with is_suspended true redirects exactly once and repeated updates still redirect once[32m 22[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionWatcher executable behavior[2m > [22man active membership does not redirect[32m 4[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionWatcher executable behavior[2m > [22man active fallback response does not refresh or navigate[32m 4[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionWatcher executable behavior[2m > [22ma suspended fallback response stores the reason and redirects once without putting it in the URL[32m 5[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionWatcher executable behavior[2m > [22mcleans up interval, focus listener, visibility listener and Realtime channel[32m 15[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22msubscribes to only the resolved user row and navigates once on realtime unsuspension after clearing storage[32m 27[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22mstays on the page for realtime suspended updates and publishes changed reasons[32m 5[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22mdoes not create an unfiltered subscription without an initial or stored user id[32m 3[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22mfallback active response clears storage before one library navigation[32m 3[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22mfallback suspended response updates reason without navigating and unauthenticated response preserves storage[32m 6[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mUnsuspensionWatcher executable behavior[2m > [22mcleans up realtime channel, interval, focus listener, and visibility listener[32m 5[2mms[22m[39m
+ [32m✓[39m tests/live-params-and-watcher.test.ts[2m > [22mSuspensionReasonFallback live reason behavior[2m > [22mlistens for custom reason updates and removes the listener on unmount[32m 8[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion-bank archive normalization[2m > [22mkeeps stable IDs and canonicalizes encoded asset aliases[32m 4[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion-bank archive normalization[2m > [22mstreams and normalizes cores, variants, placements, anomalies, and assets idempotently[32m 46[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion-bank archive normalization[2m > [22mfails closed when required archive files are absent[32m 3[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mnormalizes PESTLE HTML, MathML, and wrapped images into controlled source[32m 14[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mrenders directives, KaTeX aligned math, mhchem, and protected images[32m 29[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mnever interprets residual source HTML[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mremoves imported layout debris without damaging protected images[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mremoves an orphan slash before explanation text[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mcleans imported IB markscheme notation without losing the maths[32m 6[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mcontrolled question renderer[2m > [22mopens private Vimeo solutions externally instead of embedding a broken player[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22minteractive question experience[2m > [22mextracts contiguous answer choices and the correct answer without duplicating them in the prompt[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22minteractive question experience[2m > [22mkeeps free-response questions intact for reveal-and-self-assess mode[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mnormalizes pagination and URL-backed filters[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mapplies compact live filters and keeps searchable menus below their triggers[32m 46[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mroutes formula booklets through native DP Resources files[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mkeeps PDF support while using an integrated continuous reader[32m 277[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mnormalizes filename and MIME separators in the generated search vector without ILIKE fallback[32m 4[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mglobal search uses monotonic request ownership, aborts, timeout, and retry without query edits[32m 54[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22muses the same search-term highlighting in the modal and all-results page[32m 5[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mPPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling[32m 110[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mlets users report question-specific faults and gives admins a safe deep link[32m 115[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22muses dependent custom filters, universal search, and an in-page practice workspace[32m 118[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mpreserves old review flags as saved questions before retiring them[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mshows only genuinely superseded courses as old and cleans repeated metadata[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22muses subject-specific icons and an accessible old-course explanation[32m 5[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22menables RLS everywhere and isolates progress and saved rows by auth.uid()[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mprotects mutations and private immutable assets server-side[32m 6[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22mpreserves examiner reports without broadening question-bank access[32m 12[2mms[22m[39m
+ [32m✓[39m tests/question-bank.test.tsx[2m > [22mquestion filters and production security expectations[2m > [22madds the question bank to desktop and six-item mobile navigation[32m 5[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mPPTX loading reports real bytes, total size, and download ETA without inventing a rendering ETA[32m 104[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mPPTX post-processing removes undefined text and isolates the selected slide[32m 41[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mPPTX viewer supports selecting slides and bounded left/right navigation[32m 1[2mms[22m[39m
+ [32m✓[39m tests/search-and-presentation-regression.test.ts[2m > [22msearch consistency and PPTX viewer regressions[2m > [22mpermanently disables and removes the server-side PPTX converter[32m 1[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mauth redirects and public entry points[2m > [22mkeeps the public homepage indexable while redirecting legacy auth entry points[32m 16[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mauth redirects and public entry points[2m > [22muses free/open public wording instead of gated marketing language[32m 14[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mauth redirects and public entry points[2m > [22mredirects already signed-in users away from login and signup forms[32m 5[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22msafe next-path handling[2m > [22maccepts only safe internal return paths[32m 1[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22msignup validation and availability[2m > [22mkeeps username and email validation focused on DP signup requirements[32m 6[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22msignup validation and availability[2m > [22mchecks availability through DP-only RPC names[32m 13[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mOTP request and verification flow[2m > [22mrequests Supabase signup OTP and verifies six-digit email tokens[32m 18[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mOTP request and verification flow[2m > [22mshows clean inbox shortcuts and spam guidance on the OTP screen using local assets[32m 14[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mDP-only schema and target code references[2m > [22mdefines the DP profile table and DP availability RPCs[32m 0[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mDP-only schema and target code references[2m > [22mdoes not reference forbidden database names in target auth code or schema[32m 47[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mprovides one compact toolbar with direct navigation and document controls[33m 517[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mcompatibility redirect and OTP docs[2m > [22mredirects the compatibility page to the library[32m 0[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mcompatibility redirect and OTP docs[2m > [22mdocuments the Supabase Magic Link template token for email OTP[32m 14[2mms[22m[39m
+ [32m✓[39m tests/auth-flow.test.ts[2m > [22mcompatibility redirect and OTP docs[2m > [22muses a migration timestamp later than the deployed 20260701102923 migration[32m 7[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mrequireMember redirects suspended memberships to the dedicated page[32m 5[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mlogin layout distinguishes signed out, active and suspended sessions[32m 3[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22msuspended page is public, can show own reason, and redirects active users to library[32m 15[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mwatcher redirects exactly once when suspension changes and does nothing noisy for active users[32m 20[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mstatus endpoint returns only own privacy-safe no-store status[32m 3[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mlive filters skip no-op replace and changed filter replaces once through the debounced path[32m 115[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22madmin tabs render before suspension controls and users have one table[32m 151[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mkeeps annotations private to the browser with undo, redo, pen, highlight and erase[32m 218[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mremoves the duplicate PDF download and doubled fallback strip[32m 10[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mauthorizes once and serves private same-origin manifests, search and page images[32m 38[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22muses private provider metadata and resumable image plus text preparation[32m 122[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mprivate PDF preview derivatives[2m > [22mrestores framing protection because PDF preview no longer uses an iframe[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mPDF range route integrity[2m > [22mnormalizes beginning, middle, open-ended, and suffix ranges[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mPDF range route integrity[2m > [22mrejects invalid and oversized requests[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mPDF range route integrity[2m > [22mrequires exact upstream 206, Content-Range, and Content-Length semantics[32m 5[2mms[22m[39m
+ [32m✓[39m tests/pdf-progressive-loader.test.ts[2m > [22mPDF range route integrity[2m > [22mkeeps missing, wrong-file, and expired preview authorization fail-closed[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-page-route.integration.test.ts[2m > [22mprivate PDF page route[2m > [22mfails closed for missing authorization[32m 7[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-page-route.integration.test.ts[2m > [22mprivate PDF page route[2m > [22mrejects a stale or missing derivative version before storage access[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-page-route.integration.test.ts[2m > [22mprivate PDF page route[2m > [22mreturns 404 when the deterministic private object is not prepared[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-page-route.integration.test.ts[2m > [22mprivate PDF page route[2m > [22mkeeps legacy sessions on the original Supabase object path[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-page-route.integration.test.ts[2m > [22mprivate PDF page route[2m > [22mstreams an R2-backed page using only the signed private bucket and prefix[32m 4[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22msuspension UX regression coverage[2m > [22mrealtime migration is idempotent and only publishes memberships[32m 0[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22mdomain checkbox and toast source coverage[2m > [22madmin users page loads unique domains through authoritative RPC and passes policy map[32m 11[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22mdomain checkbox and toast source coverage[2m > [22mdomain checkbox handles explicit allow, existing block, no match, and lookup failure copy[32m 184[2mms[22m[39m
+ [32m✓[39m tests/suspension-ux-regression.test.ts[2m > [22mdomain checkbox and toast source coverage[2m > [22mtoast warning/default/info/loading classes and readable colors are defined[32m 177[2mms[22m[39m
+[90mstderr[2m | tests/pdf-range-route.integration.test.ts[2m > [22m[2mauthenticated PDF range route[2m > [22m[2mrejects Drive silently returning 200 for a requested range
+[22m[39mGoogle Drive returned invalid PDF byte-range semantics {
+  fileId: [32m'drive-file-1'[39m,
+  requestedRange: [32m'bytes=0-9'[39m,
+  integrityError: [32m'status'[39m,
+  upstreamStatus: [33m200[39m,
+  upstreamContentRange: [1mnull[22m,
+  upstreamContentLength: [32m'50000000'[39m
+}
+
+[90mstderr[2m | tests/pdf-range-route.integration.test.ts[2m > [22m[2mauthenticated PDF range route[2m > [22m[2mrejects an incorrect Content-Range or Content-Length
+[22m[39mGoogle Drive returned invalid PDF byte-range semantics {
+  fileId: [32m'drive-file-1'[39m,
+  requestedRange: [32m'bytes=0-9'[39m,
+  integrityError: [32m'content-range'[39m,
+  upstreamStatus: [33m206[39m,
+  upstreamContentRange: [32m'bytes 1-10/50000000'[39m,
+  upstreamContentLength: [32m'10'[39m
+}
+
+[90mstderr[2m | tests/pdf-range-route.integration.test.ts[2m > [22m[2mauthenticated PDF range route[2m > [22m[2mrejects an incorrect Content-Range or Content-Length
+[22m[39mGoogle Drive returned invalid PDF byte-range semantics {
+  fileId: [32m'drive-file-1'[39m,
+  requestedRange: [32m'bytes=0-9'[39m,
+  integrityError: [32m'content-length'[39m,
+  upstreamStatus: [33m206[39m,
+  upstreamContentRange: [32m'bytes 0-9/50000000'[39m,
+  upstreamContentLength: [32m'9'[39m
+}
+
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mforwards and returns a correct beginning range[32m 12[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mforwards and returns a correct middle range[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mforwards and returns a correct suffix range[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mforwards and returns a correct open-ended range[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mnever streams the complete original PDF through the preview route[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mreturns 416 for an invalid range without contacting Drive[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mreturns 416 for a valid but oversized range without contacting Drive[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mrejects Drive silently returning 200 for a requested range[32m 6[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mrejects an incorrect Content-Range or Content-Length[32m 4[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mfails closed when preview authorization is missing or expired[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-range-route.integration.test.ts[2m > [22mauthenticated PDF range route[2m > [22mreports complete metadata on HEAD without fetching Drive[32m 0[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22mbootstraps the saved or system theme before hydration[32m 26[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22moffers persistent light, dark, and system choices[32m 16[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22mexposes the chooser across authenticated, public, and auth surfaces[32m 17[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22mthemes existing utility surfaces while preserving rendered PDF pages[32m 107[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22midentity moderation policy[2m > [22mrejects direct offensive username plus separator and leetspeak obfuscation[32m 2[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22midentity moderation policy[2m > [22mrejects inappropriate full name and email local-part only[32m 3[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22midentity moderation policy[2m > [22mallows benign similar sequences and reserves platform-style usernames[32m 1[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22midentity moderation policy[2m > [22mkeeps policy server-only and generic[32m 18[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22mblocks before OTP is sent and availability is neutral[32m 14[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22mdistinguishes moderated usernames from genuine duplicates without leaking policy details[32m 21[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22madds rate limiting without raw identity keys[32m 5[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22menforces direct Auth metadata and profile bypasses in the database[32m 0[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22muses generic database exceptions and does not expose rules in responses[32m 7[2mms[22m[39m
+ [32m✓[39m tests/identity-moderation.test.ts[2m > [22msignup enforcement wiring[2m > [22mrepairs database username validation for literal repeated underscores only[32m 1[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22muses exact-size transparent dark logo variants[32m 11[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22muses dedicated dark-safe loading, progress, search hover, and divider styles[32m 115[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mhas bounded normal-page height and overflow-hidden shell without an extra top border[32m 45[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22muses fixed header and grid columns with min-h-0[32m 20[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mkeeps the slide rail independently scrollable and resets the stage for each selected slide[32m 22[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mshows only the active rendered slide so adjacent pages cannot look duplicated[32m 21[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22mkeeps shared dropdown triggers, menus, and selected options dark-safe[32m 83[2mms[22m[39m
+ [32m✓[39m tests/dark-mode.test.ts[2m > [22mdark mode[2m > [22muses subtle dark borders and readable disabled auth actions[32m 97[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22mexposes one manual workflow for single PDFs, textbooks, or all large PDFs[32m 21[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22mfails fast by writing, reading and deleting a tiny private R2 object[32m 6[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22mqueues and prepares the exact normalized Drive version without moving active jobs[32m 29[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22mselects large PDFs, skips searchable ready versions, and processes sequentially[32m 50[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mconstrains the browser-rendered PPTX within the stage[32m 34[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22muses actual byte progress, explicit file size, a smoothed download ETA, and an honest rendered-slide count[32m 139[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22muploads page batches concurrently, retries transient failures, resumes pages, and extracts search text[32m 47[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-render-free.test.ts[2m > [22mRender Free PDF preview preparation[2m > [22mkeeps the standard reader inside the single PDF toolbar rather than a second bordered strip[32m 42[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mdoes not claim a rendering ETA that the third-party renderer cannot provide[32m 17[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mgets the authoritative resource size from the authenticated content route[32m 5[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mremoves literal undefined text created by the third-party renderer[32m 26[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22moverlaps renderer module loading with the file download and defers audio parsing[32m 28[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mstops failed render attempts instead of only hiding them[32m 30[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22mfails safely when the renderer reports success without producing slides[32m 13[2mms[22m[39m
+ [32m✓[39m tests/pptx-containment.test.ts[2m > [22mPPTX viewer containment[2m > [22moffers download fallback from the PPTX failure panel and toolbar[32m 24[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22mopens global search from nav and Ctrl/Cmd+K only[32m 27[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22mremoves the large local library search input in favour of a compact filter popover[32m 65[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22mwires share, save, and report with internal URLs, optimistic state, and checked responses[32m 42[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22muses real handlers for resource preview/page actions[32m 7[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22msupport form checks failed responses, preserves data, loads, and refreshes tickets[32m 20[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mproduct quality repair[2m > [22muses DP colour tokens across nav, library, support, and preview[32m 18[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22m2026-07-02 QA regressions[2m > [22mreport dialog closes from overlay and Escape but keeps failed form state and hides raw IDs[32m 13[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22m2026-07-02 QA regressions[2m > [22mglobal search is a compact command palette with backdrop close and neutral active rows[32m 12[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22m2026-07-02 QA regressions[2m > [22mpreview renders one resource action group at page level and no duplicate viewer action group[32m 5[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mspreadsheet resource labelling[2m > [22mclassifies Office XLSX MIME before generic document[32m 13[2mms[22m[39m
+ [32m✓[39m tests/product-quality-repair.test.ts[2m > [22mspreadsheet resource labelling[2m > [22muses spreadsheet icon branch for the same MIME type[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mremoves escaped maximum-mark metadata while keeping part marks[32m 3[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mconverts paired standalone math delimiters and discards orphan ones[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mjoins list-item maths split after an opening dollar marker[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mextracts all choices across harmless source debris[32m 3[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mkeeps table and image choices visible with a dependable A-D selector[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mquarantines incomplete variants and filters them from every user RPC[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mQuestion Bank render safeguards[2m > [22mrepairs authoritative mark totals and the known one-mark MCQs[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank-render-audit.test.ts[2m > [22mSonner close-button alignment[2m > [22mkeeps the complete circular hit area inside the toast[32m 17[2mms[22m[39m
+ [32m✓[39m tests/changelog-page.test.ts[2m > [22mpublic changelog page[2m > [22mrenders a plain dated changelog rather than exposing a GitHub activity feed[32m 23[2mms[22m[39m
+ [32m✓[39m tests/changelog-page.test.ts[2m > [22mpublic changelog page[2m > [22muses merged main-branch history and consolidates it into daily release notes[32m 42[2mms[22m[39m
+ [32m✓[39m tests/changelog-page.test.ts[2m > [22mpublic changelog page[2m > [22mkeeps visible release notes focused on improvements users experience[32m 70[2mms[22m[39m
+ [32m✓[39m tests/changelog-page.test.ts[2m > [22mpublic changelog page[2m > [22mis linked from the footer, indexed publicly, and bypasses session middleware[32m 1[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mRender Dockerfile contract[2m > [22mkeeps the builder public directory available for runner copy[32m 15[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mRender Dockerfile contract[2m > [22mmakes public Supabase env vars available during the Next build only[32m 6[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mRender Dockerfile contract[2m > [22mkeeps the web runtime lean while including the isolated PDF worker tooling[32m 6[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mRender Dockerfile contract[2m > [22mkeeps production installs free of dev-only TypeScript runtime requirements[32m 4[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mNext config runtime contract[2m > [22muses a JavaScript config file instead of a TypeScript config file[32m 0[2mms[22m[39m
+ [32m✓[39m tests/dockerfile-render.test.ts[2m > [22mNext config runtime contract[2m > [22mframe-denies normal pages and API routes after removing native PDF embedding[32m 7[2mms[22m[39m
+ [32m✓[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mbrowser-local Question Bank attempts[2m > [22msaves, restores, resets one answer, and resets every answer[32m 5[2mms[22m[39m
+ [32m✓[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mbrowser-local Question Bank attempts[2m > [22mwires restoration and reset controls without storing answers in Supabase[32m 120[2mms[22m[39m
+ [31m×[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mquestion reporting[2m > [22mkeeps the original shared modal appearance and behaviour[32m 84[2mms[22m[39m
+[31m   → expected '\'use client\';\nimport { useEffect, …' to contain '{open && ('[39m
+ [32m✓[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mquestion reporting[2m > [22mkeeps dropdown options above the unchanged modal[32m 5[2mms[22m[39m
+ [32m✓[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mquestion reporting[2m > [22mvisually moves only the original lower report trigger into the toolbar[32m 40[2mms[22m[39m
+ [32m✓[39m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mtoast close-button styling[2m > [22muses the tested compact size and a neutral border on every toast type[32m 3[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-production-hardening.test.ts[2m > [22mresource usage production hardening[2m > [22mstarts tracking only after member auth and Drive-root validation[32m 12[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-production-hardening.test.ts[2m > [22mresource usage production hardening[2m > [22muses the authenticated cookie client for admin analytics RPCs[32m 37[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-production-hardening.test.ts[2m > [22mresource usage production hardening[2m > [22madds corrective SQL for authorization, one active resource session, concurrency, heartbeats, and cleanup[32m 1[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-production-hardening.test.ts[2m > [22mresource usage production hardening[2m > [22madds service-role-only housekeeping retention helpers[32m 0[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-production-hardening.test.ts[2m > [22mresource usage production hardening[2m > [22mrenders admin analytics leaderboard with a compact View stats modal[33m 836[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mbottom-right context menu is portaled, fixed, positioned before paint, and exposes every action[32m 129[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mdesktop context menu clamps to the visual viewport and scrolls internally when too tall[32m 123[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mfolder-size calculation uses one database-side RPC and never fetches descendant rows into JavaScript[32m 2[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mfolder-size SQL aggregates batches safely, including more than 1,000 rows and special folder names[32m 0[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mfolder-size RPC is narrowly executable by service_role only[32m 0[2mms[22m[39m
+ [32m✓[39m tests/library-regression-repair.test.ts[2m > [22mremaining library regressions repair[2m > [22mvisible-folder batching and no-estimate behavior are preserved[32m 2[2mms[22m[39m
+ [32m✓[39m tests/suspended-login.test.ts[2m > [22msuspended login error detection[2m > [22mrecognizes Supabase banned-user errors without treating normal failures as suspensions[32m 2[2mms[22m[39m
+ [32m✓[39m tests/suspended-login.test.ts[2m > [22msuspended login details endpoint[2m > [22mreturns the reason only after Supabase confirms valid banned credentials[32m 77[2mms[22m[39m
+ [32m✓[39m tests/suspended-login.test.ts[2m > [22msuspended login details endpoint[2m > [22mdoes not query or reveal membership data for invalid credentials[32m 8[2mms[22m[39m
+ [32m✓[39m tests/suspended-login.test.ts[2m > [22mlogin page suspended-account routing[2m > [22mstores a verified suspension reason and opens the dedicated page[32m 27[2mms[22m[39m
+ [32m✓[39m tests/file-preview-favorites.test.ts[2m > [22mfile preview compatibility and favourite reliability[2m > [22muses server-batched favourite state and a shared client store, avoiding SaveButton mount fetch flash[32m 33[2mms[22m[39m
+ [32m✓[39m tests/file-preview-favorites.test.ts[2m > [22mfile preview compatibility and favourite reliability[2m > [22mrenders audio and video native protected players[32m 21[2mms[22m[39m
+ [32m✓[39m tests/file-preview-favorites.test.ts[2m > [22mfile preview compatibility and favourite reliability[2m > [22mcontent/open routes forward safe Range requests and return 206 headers without weakening auth[32m 33[2mms[22m[39m
+ [32m✓[39m tests/file-preview-favorites.test.ts[2m > [22mfile preview compatibility and favourite reliability[2m > [22mmaps every currently indexed MIME type to a non-generic preview path[32m 2[2mms[22m[39m
+ [32m✓[39m tests/file-preview-favorites.test.ts[2m > [22mfile preview compatibility and favourite reliability[2m > [22mhas secure local XLSX preview and clean PPTX/download fallback[32m 14[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mindexes one Drive list page up to 1000 items so folders with more than 500 direct children are not capped[32m 41[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mpreserves pagination cursors in the JSON folder queue[32m 32[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mtrusts queued folders discovered from the configured root without repeated root assertions or folder views[32m 6[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mbounds crawler concurrency at 6[32m 7[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mresumes a paused initial run with the existing queue and sync run id[32m 10[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22murgent first index performance repair[2m > [22mdeletes stale rows only after a genuinely complete sync[32m 10[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22madmin index panel safety[2m > [22mdoes not parse empty or non-JSON error responses as JSON[32m 18[2mms[22m[39m
+ [32m✓[39m tests/first-index-repair.test.ts[2m > [22madmin index panel safety[2m > [22mkeeps exactly one indexing request in flight and uses short successful retry delay[32m 8[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22mkeeps GET status read-only and preserves persisted progress[32m 15[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22mreturns busy for concurrent POST attempts without queue reset[32m 24[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22mresumes interrupted runs and recovers expired locks[32m 22[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22mcleans null stale rows only after successful completion[32m 11[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22mkeeps the last completed index available while a refresh runs[32m 4[2mms[22m[39m
+ [32m✓[39m tests/index-sync-locking.test.ts[2m > [22mresumable Drive index sync locking[2m > [22madds the singleton row and lock columns in a later migration[32m 0[2mms[22m[39m
+ [32m✓[39m tests/recent-resources.test.ts[2m > [22mrecent resources[2m > [22mdeduplicates newest-first activity and enriches it from the resource index[32m 4[2mms[22m[39m
+ [32m✓[39m tests/recent-resources.test.ts[2m > [22mrecent resources[2m > [22mmerges server and device history by the actual latest open time[32m 0[2mms[22m[39m
+ [32m✓[39m tests/recent-resources.test.ts[2m > [22mrecent resources[2m > [22mrecords mounted resources and folders and loads server activity for Recent[32m 51[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-reliability-and-user-analytics.test.ts[2m > [22mreliable resource usage tracking[2m > [22msends frequent heartbeats, final intervals, and resumes after page restoration[32m 39[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-reliability-and-user-analytics.test.ts[2m > [22mreliable resource usage tracking[2m > [22muses one atomic database update instead of a read-then-write total[32m 8[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-reliability-and-user-analytics.test.ts[2m > [22mreliable resource usage tracking[2m > [22mlocks each session and grants the internal heartbeat only to service_role[32m 1[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-reliability-and-user-analytics.test.ts[2m > [22madmin per-user resource analytics[2m > [22mloads usernames and all-time usage for a selected user[32m 23[2mms[22m[39m
+ [32m✓[39m tests/resource-usage-reliability-and-user-analytics.test.ts[2m > [22madmin per-user resource analytics[2m > [22mshows a username column and clickable user analytics modal[33m 307[2mms[22m[39m
+ [32m✓[39m tests/standard-pdf-fallback.test.ts[2m > [22mstandard PDF fallback[2m > [22muses the completed resource index and never queues previews from a web request[32m 22[2mms[22m[39m
+ [32m✓[39m tests/standard-pdf-fallback.test.ts[2m > [22mstandard PDF fallback[2m > [22mprioritizes completed preview pages and does not downgrade on lookup errors[32m 18[2mms[22m[39m
+ [32m✓[39m tests/standard-pdf-fallback.test.ts[2m > [22mstandard PDF fallback[2m > [22mreturns standard mode immediately when no prepared page preview is viewable[32m 7[2mms[22m[39m
+ [32m✓[39m tests/standard-pdf-fallback.test.ts[2m > [22mstandard PDF fallback[2m > [22mloads ordinary PDFs through a browser-local Blob reader instead of polling forever[33m 309[2mms[22m[39m
+ [32m✓[39m tests/resumed-index-regression.test.ts[2m > [22mresumed index queue regression repair[2m > [22mallows resumed child-folder and continuation-only queues without requiring the root id[32m 19[2mms[22m[39m
+ [32m✓[39m tests/resumed-index-regression.test.ts[2m > [22mresumed index queue regression repair[2m > [22mseeds exactly one configured root item only when crawlDriveIndexChunk receives an empty queue[32m 19[2mms[22m[39m
+ [32m✓[39m tests/resumed-index-regression.test.ts[2m > [22mresumed index queue regression repair[2m > [22mpreserves an existing sync run id and stored queue when resuming instead of treating it as new[32m 9[2mms[22m[39m
+ [32m✓[39m tests/resumed-index-regression.test.ts[2m > [22mresumed index queue regression repair[2m > [22mdoes not delete index rows on the queue validation failure path[32m 3[2mms[22m[39m
+ [32m✓[39m tests/resumed-index-regression.test.ts[2m > [22mresumed index queue regression repair[2m > [22mretains existing panel counters after an API error and displays the error quietly[32m 34[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22msupport submission has a single request state, checks response.ok before success, and preserves failed content[32m 56[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22muser ticket detail route restricts owners and hides internal messages[32m 2[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22madmin replies are persisted as real support ticket messages[32m 3[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22memail search endpoint is admin-only and the shared input is used in all admin sections[32m 114[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22msupport ticket inspector keeps internal notes but removes resolution note from support saves[32m 107[2mms[22m[39m
+ [32m✓[39m tests/support-admin-search.test.ts[2m > [22msupport workflow and admin search pass[2m > [22mmigration creates message table, policies, and email/activity indexes[32m 0[2mms[22m[39m
+ [32m✓[39m tests/seo-branding.test.ts[2m > [22mSEO and branding assets[2m > [22muses clean public logo and favicon paths instead of generated icon routes[32m 18[2mms[22m[39m
+ [32m✓[39m tests/seo-branding.test.ts[2m > [22mSEO and branding assets[2m > [22mpoints the web manifest at a real image instead of missing generated icon routes[32m 1[2mms[22m[39m
+ [32m✓[39m tests/seo-branding.test.ts[2m > [22mSEO and branding assets[2m > [22mkeeps cached legacy icon URLs working through redirects[32m 1[2mms[22m[39m
+ [32m✓[39m tests/seo-branding.test.ts[2m > [22mSEO and branding assets[2m > [22mkeeps only public pages in the sitemap and blocks private app routes in robots[32m 4[2mms[22m[39m
+ [32m✓[39m tests/seo-branding.test.ts[2m > [22mSEO and branding assets[2m > [22mrenders legal pages as standalone public pages, not authenticated app chrome[32m 15[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mremoves student-visible technical preview copy[32m 44[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mglobal search opens fresh and clears selected navigation[32m 24[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mrange parser validates single byte ranges and rejects bad requests[32m 2[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mroutes handle ranges before 304 and use safe If-Range fallback[32m 21[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mpptx outline is removed while LibreOffice is unavailable[32m 2[2mms[22m[39m
+ [32m✓[39m tests/preview-interaction-repair.test.ts[2m > [22mpreview quality and interaction repair[2m > [22mimage preview supports pointer panning and fit reset[32m 13[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22mvalidates the expected compact private geometry payload[32m 4[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22mreturns every repeated occurrence of a word on the page[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22msupports browser-style substring searches inside a word[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22mmerges a phrase on one line into one highlight rectangle[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22muses separate rectangles when a phrase crosses a line boundary[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-geometry.test.ts[2m > [22mPDF exact search geometry[2m > [22mmatches case and punctuation the way a user expects[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-inline-images.test.tsx[2m > [22mquestion-bank inline protected images[2m > [22mrenders PH0259 image choices inside Markdown table cells[32m 16[2mms[22m[39m
+ [32m✓[39m tests/question-bank-inline-images.test.tsx[2m > [22mquestion-bank inline protected images[2m > [22mrenders PH0545 image choices and images mixed with paragraph text[32m 3[2mms[22m[39m
+ [32m✓[39m tests/question-bank-inline-images.test.tsx[2m > [22mquestion-bank inline protected images[2m > [22mshows the controlled unavailable message instead of leaking a raw token[32m 1[2mms[22m[39m
+ [32m✓[39m tests/middleware.test.ts[2m > [22mmiddleware auth route bypasses[2m > [22mexcludes public auth routes and auth APIs from Supabase getUser middleware handling[32m 3[2mms[22m[39m
+ [32m✓[39m tests/middleware.test.ts[2m > [22mmiddleware stale session recovery[2m > [22mderives and recognizes the exact Supabase auth cookie names[32m 1[2mms[22m[39m
+ [32m✓[39m tests/middleware.test.ts[2m > [22mmiddleware stale session recovery[2m > [22mdoes not attempt session validation for signed-out requests[32m 1[2mms[22m[39m
+ [32m✓[39m tests/middleware.test.ts[2m > [22mmiddleware stale session recovery[2m > [22mrecognizes missing, stale, and revoked sessions without swallowing unrelated errors[32m 1[2mms[22m[39m
+ [32m✓[39m tests/notifications.test.ts[2m > [22mpersistent support and report notifications[2m > [22mstores per-recipient notifications with ownership RLS and restricted writes[32m 2[2mms[22m[39m
+ [32m✓[39m tests/notifications.test.ts[2m > [22mpersistent support and report notifications[2m > [22mcreates admin alerts for new cases and user alerts for replies and status changes[32m 1[2mms[22m[39m
+ [32m✓[39m tests/notifications.test.ts[2m > [22mpersistent support and report notifications[2m > [22mkeeps notification reads authenticated, owner-scoped, no-store, and same-origin[32m 15[2mms[22m[39m
+ [32m✓[39m tests/notifications.test.ts[2m > [22mpersistent support and report notifications[2m > [22mshows Apple-style numbered badges in the bell, Support, Admin, and admin tabs[32m 82[2mms[22m[39m
+ [32m✓[39m tests/notifications.test.ts[2m > [22mpersistent support and report notifications[2m > [22mmarks the relevant feed seen when users or admins open its destination[32m 67[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22mlibrary navigation avoids document reloads and uses router push[32m 70[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22mlibrary route prefetch only prefetches page routes after a delay[32m 49[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22mlinks the login form to password recovery[32m 12[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22msends a privacy-safe reset email through the existing callback[32m 13[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22mverifies the recovery session, changes the password, and signs out old sessions[32m 9[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22mrestores the full strength meter and matching feedback on password recovery[32m 13[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22mshows spam guidance and all three inbox actions after requesting a reset[32m 7[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22muses the trusted public origin for production callbacks[32m 3[2mms[22m[39m
+ [32m✓[39m tests/password-reset.test.ts[2m > [22mpassword reset flow[2m > [22mreturns invalid recovery callbacks to the request screen[32m 1[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22mincomplete index does not claim complete[32m 9[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22mcomplete index is attempted before live Drive browsing[32m 2[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22madmin index section does not query unrelated queues[32m 11[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22madmin reports section loads admins but not activity/users pages[32m 9[2mms[22m[39m
+ [32m✓[39m tests/performance-pass.test.ts[2m > [22mperformance pass regressions[2m > [22mprotected content uses private cache validators and authenticates first[32m 10[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mrenders share save and report as context menu rows rather than button-card wrappers[32m 56[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mlist and grid expose the same context menu actions and grid supports right-click and three-dot[32m 91[2mms[22m[39m
+ [32m✓[39m tests/completion-pass.test.ts[2m > [22mdeployment completion pass[2m > [22muses chronological migration names and no obsolete V2 filename[32m 3[2mms[22m[39m
+ [32m✓[39m tests/completion-pass.test.ts[2m > [22mdeployment completion pass[2m > [22mimplements resumable indexing beyond 500 rows with persisted queue and stale cleanup after completion[32m 38[2mms[22m[39m
+ [32m✓[39m tests/completion-pass.test.ts[2m > [22mdeployment completion pass[2m > [22mshows incomplete search notice without Drive recursive fallback[32m 7[2mms[22m[39m
+ [32m✓[39m tests/completion-pass.test.ts[2m > [22mdeployment completion pass[2m > [22mexposes PDF, spreadsheet, CSV, DOCX and scoped image preview controls[32m 28[2mms[22m[39m
+ [32m✓[39m tests/completion-pass.test.ts[2m > [22mdeployment completion pass[2m > [22msupports admin ticket/report status notes[32m 1[2mms[22m[39m
+ [32m✓[39m tests/membership-resilience.test.ts[2m > [22mbootstrap admin approval timestamp handling[2m > [22mpreserves an existing approved_at timestamp when promoting an admin[32m 2[2mms[22m[39m
+ [32m✓[39m tests/membership-resilience.test.ts[2m > [22mbootstrap admin approval timestamp handling[2m > [22msets approved_at when the membership has no approval timestamp[32m 0[2mms[22m[39m
+ [32m✓[39m tests/membership-resilience.test.ts[2m > [22mmissing membership repair fallback[2m > [22minserts an immediately approved user membership and relies on conflict ignore to avoid overwrites[32m 10[2mms[22m[39m
+ [32m✓[39m tests/membership-resilience.test.ts[2m > [22mmiddleware missing configuration resilience[2m > [22mreturns before creating a Supabase SSR client when public configuration is absent[32m 18[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mdesktop menu is portaled and collision aware[32m 41[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mroot hides breadcrumb while nested folder shows breadcrumb plus heading[32m 14[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mfeatured-resource admin wording is non-destructive[32m 38[2mms[22m[39m
+ [32m✓[39m tests/library-clarity-repair.test.ts[2m > [22mlibrary clarity repair[2m > [22mfolder summaries are batched from indexed descendants and incomplete index returns no estimate[32m 3[2mms[22m[39m
+ [32m✓[39m tests/accessible-close-controls.test.ts[2m > [22maccessible close controls[2m > [22mprovides a reusable keyboard-accessible close icon button[32m 12[2mms[22m[39m
+ [32m✓[39m tests/accessible-close-controls.test.ts[2m > [22maccessible close controls[2m > [22mkeeps the CaseInspector close icon accessible and sticky without changing case status actions[32m 93[2mms[22m[39m
+ [32m✓[39m tests/shared-auth-schema.test.ts[2m > [22mDP Resources shared-auth schema isolation[2m > [22muses DP Resources-owned tables and auth trigger names[32m 2[2mms[22m[39m
+ [32m✓[39m tests/shared-auth-schema.test.ts[2m > [22mDP Resources shared-auth schema isolation[2m > [22mdoes not manage MYP Atlas profiles, functions, or auth trigger[32m 1[2mms[22m[39m
+ [32m✓[39m tests/shared-auth-schema.test.ts[2m > [22mDP Resources shared-auth schema isolation[2m > [22mrevokes direct RPC execution from DP Resources helper functions without touching service_role[32m 0[2mms[22m[39m
+ [32m✓[39m tests/shared-auth-schema.test.ts[2m > [22mDP Resources shared-auth schema isolation[2m > [22mbackfills existing auth users as pending DP Resources members[32m 0[2mms[22m[39m
+ [32m✓[39m tests/username-login.test.ts[2m > [22musername or email login[2m > [22mlabels the login identifier clearly and submits it to the protected login route[32m 29[2mms[22m[39m
+ [32m✓[39m tests/username-login.test.ts[2m > [22musername or email login[2m > [22mresolves case-insensitive usernames without exposing the lookup to the browser[32m 6[2mms[22m[39m
+ [32m✓[39m tests/username-login.test.ts[2m > [22musername account display[2m > [22mloads the signed-in profile username through the client-safe header[32m 12[2mms[22m[39m
+ [32m✓[39m tests/username-login.test.ts[2m > [22musername account display[2m > [22mshows the username instead of the account email[32m 5[2mms[22m[39m
+ [32m✓[39m tests/accessible-close-controls.test.ts[2m > [22maccessible close controls[2m > [22mkeeps ResourceUsageModal close behavior while replacing the visible Close text action[32m 56[2mms[22m[39m
+ [32m✓[39m tests/accessible-close-controls.test.ts[2m > [22maccessible close controls[2m > [22mpreserves closed status values and avoids visible exact Close dismiss buttons in app UI[32m 88[2mms[22m[39m
+ [32m✓[39m tests/pptx-audio.test.ts[2m > [22mPPTX embedded audio extraction[2m > [22mdeduplicates audio and Microsoft media relationships that target the same file[32m 14[2mms[22m[39m
+ [32m✓[39m tests/pptx-audio.test.ts[2m > [22mPPTX embedded audio extraction[2m > [22mignores media relationships that the slide does not reference[32m 3[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22mnormal row click opens folder/file and does not select details[32m 66[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22mcontext menu opens via right-click and closes on Escape/outside click[32m 41[2mms[22m[39m
+ [32m✓[39m tests/hardening.test.ts[2m > [22mroute authorization expectations[2m > [22mdocuments protected route redirects[32m 1[2mms[22m[39m
+ [32m✓[39m tests/hardening.test.ts[2m > [22mDrive root containment helpers[2m > [22mlimits search input length before Drive queries[32m 1[2mms[22m[39m
+ [32m✓[39m tests/hardening.test.ts[2m > [22mGoogle Workspace export selection[2m > [22mselects safe export formats and rejects unsupported native files[32m 1[2mms[22m[39m
+ [32m✓[39m tests/hardening.test.ts[2m > [22mGoogle Workspace export selection[2m > [22msanitizes response header filenames[32m 0[2mms[22m[39m
+ [32m✓[39m tests/hardening.test.ts[2m > [22mCSV activity filter date logic[2m > [22muses inclusive selected end date by querying before next day[32m 1[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22mthree-dot menu opens the context menu without row navigation[32m 35[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22mdetails only opens from the Details action[32m 26[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22mhas only global search and no library hero gradient[32m 18[2mms[22m[39m
+ [32m✓[39m tests/library-interactions-redesign.test.ts[2m > [22mlibrary interaction redesign[2m > [22msidebar navigation exists[32m 0[2mms[22m[39m
+ [32m✓[39m tests/question-bank-content-repair.test.ts[2m > [22mQuestion Bank source repair[2m > [22mremoves duplicate maximum-mark headers even when the closing bracket is escaped[32m 4[2mms[22m[39m
+ [32m✓[39m tests/question-bank-content-repair.test.ts[2m > [22mQuestion Bank source repair[2m > [22mextracts all four choices when harmless source debris separates them[32m 3[2mms[22m[39m
+ [32m✓[39m tests/question-bank-content-repair.test.ts[2m > [22mQuestion Bank source repair[2m > [22mships the narrow idempotent PH0702 data correction[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-admin-clarity.test.ts[2m > [22mQuestion Bank operations clarity[2m > [22mkeeps every section accessible and explains the real question total[32m 59[2mms[22m[39m
+ [32m✓[39m tests/question-bank-admin-clarity.test.ts[2m > [22mQuestion Bank operations clarity[2m > [22mdoes not attach a native booklet to the wrong syllabus[32m 1[2mms[22m[39m
+ [32m✓[39m tests/resource-workspace-v2.test.ts[2m > [22mResource Workspace V2 hardening[2m > [22mkeeps approval gate absent by redirecting awaiting approval to library[32m 2[2mms[22m[39m
+ [32m✓[39m tests/resource-workspace-v2.test.ts[2m > [22mResource Workspace V2 hardening[2m > [22mprotects global search and avoids raw Drive URLs in the payload[32m 13[2mms[22m[39m
+ [32m✓[39m tests/resource-workspace-v2.test.ts[2m > [22mResource Workspace V2 hardening[2m > [22mprotects preview content with membership and root-boundary checks[32m 6[2mms[22m[39m
+ [32m✓[39m tests/resource-workspace-v2.test.ts[2m > [22mResource Workspace V2 hardening[2m > [22menforces favorite owner isolation and report/ticket RLS in migration[32m 0[2mms[22m[39m
+ [32m✓[39m tests/resource-workspace-v2.test.ts[2m > [22mResource Workspace V2 hardening[2m > [22mkeeps folder navigation link based and avoids obsolete phrasing[32m 39[2mms[22m[39m
+ [32m✓[39m tests/file-type-labels.test.ts[2m > [22mformatMimeType[2m > [22mformats common document MIME types with friendly labels[32m 2[2mms[22m[39m
+ [32m✓[39m tests/file-type-labels.test.ts[2m > [22mformatMimeType[2m > [22mformats Google Workspace MIME types with friendly labels[32m 0[2mms[22m[39m
+ [32m✓[39m tests/file-type-labels.test.ts[2m > [22mformatMimeType[2m > [22muses MIME families and extensions where useful[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pdf-manifest-pagination.test.ts[2m > [22mlarge prepared PDF manifests[2m > [22mfetches every page row in batches instead of relying on the Supabase 1000-row default[32m 37[2mms[22m[39m
+ [32m✓[39m tests/pdf-manifest-pagination.test.ts[2m > [22mlarge prepared PDF manifests[2m > [22muses the complete paginated page list for both manifest entry points[32m 12[2mms[22m[39m
+ [32m✓[39m tests/question-bank-pagination.test.ts[2m > [22mQuestion Bank pagination[2m > [22mnumbers a 101-question result set continuously across five pages[32m 2[2mms[22m[39m
+ [32m✓[39m tests/question-bank-pagination.test.ts[2m > [22mQuestion Bank pagination[2m > [22mshows direct page choices around the active page[32m 1[2mms[22m[39m
+ [32m✓[39m tests/question-bank-pagination.test.ts[2m > [22mQuestion Bank pagination[2m > [22mreplaces the old ambiguous controls and offsets visible question numbers[32m 22[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-version-normalization.test.ts[2m > [22mPDF preview version normalization[2m > [22mcanonicalizes equivalent UTC timestamps to the format used by queued previews[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pdf-preview-version-normalization.test.ts[2m > [22mPDF preview version normalization[2m > [22mreuses an already prepared source before creating a new version row[32m 35[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-readiness-inputs.test.ts[2m > [22mPDF search readiness and toolbar inputs[2m > [22mchecks live search readiness instead of trusting a stale manifest flag[32m 81[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-readiness-inputs.test.ts[2m > [22mPDF search readiness and toolbar inputs[2m > [22mkeeps PDF toolbar inputs dark and readable while focused[32m 97[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-readiness-inputs.test.ts[2m > [22mPDF search readiness and toolbar inputs[2m > [22mallows private JSON geometry files in the legacy Supabase preview bucket[32m 1[2mms[22m[39m
+ [32m✓[39m tests/workbook-admin-production-pass.test.ts[2m > [22mworkbook and admin production pass[2m > [22mremoves local spreadsheet parsing and unused worksheet metadata routes[32m 2[2mms[22m[39m
+ [32m✓[39m tests/workbook-admin-production-pass.test.ts[2m > [22mworkbook and admin production pass[2m > [22mmaster workbook uses native Google Sheets embed controls without fake parsing controls[32m 42[2mms[22m[39m
+ [32m✓[39m tests/workbook-admin-production-pass.test.ts[2m > [22mworkbook and admin production pass[2m > [22madmin and library selects are app select based[32m 99[2mms[22m[39m
+ [32m✓[39m tests/index-sync-panel.test.ts[2m > [22mindex sync panel request sequencing[2m > [22muses a sequential timeout loop instead of overlapping intervals for POST chunks[32m 38[2mms[22m[39m
+ [32m✓[39m tests/index-sync-panel.test.ts[2m > [22mindex sync panel request sequencing[2m > [22mshows readable indexing states[32m 26[2mms[22m[39m
+ [32m✓[39m tests/master-workbook-embed-regression.test.ts[2m > [22mmaster workbook Google Sheets embed regression[2m > [22mkeeps the iframe on the published embed URL without custom gid selection[32m 28[2mms[22m[39m
+ [32m✓[39m tests/master-workbook-embed-regression.test.ts[2m > [22mmaster workbook Google Sheets embed regression[2m > [22mdoes not render or fetch a custom Worksheet selector[32m 14[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-focus-match.test.ts[2m > [22mPDF exact-search match focus[2m > [22mscrolls the internal PDF viewport to the highlighted occurrence[32m 113[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-focus-match.test.ts[2m > [22mPDF exact-search match focus[2m > [22mmakes the active match stronger and cycles matches within a page[32m 58[2mms[22m[39m
+ [32m✓[39m tests/pdf-search-focus-match.test.ts[2m > [22mPDF exact-search match focus[2m > [22mfocuses the first actual match after a search result page loads[32m 45[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/question-bank-report-and-local-attempts.test.ts[2m > [22mquestion reporting[2m > [22mkeeps the original shared modal appearance and behaviour
+[31m[1mAssertionError[22m: expected '\'use client\';\nimport { useEffect, …' to contain '{open && ('[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {open && ([39m
+[31m+ 'use client';[39m
+[31m+ import { useEffect, useRef, useState } from 'react';[39m
+[31m+ import { useFavoriteState } from './favorites-provider';[39m
+[31m+ import {[39m
+[31m+   Bookmark,[39m
+[31m+   BookmarkCheck,[39m
+[31m+   ExternalLink,[39m
+[31m+   Flag,[39m
+[31m+   Share2,[39m
+[31m+ } from 'lucide-react';[39m
+[31m+ import { toast } from 'sonner';[39m
+[31m+ import { ResourceTypeIcon } from './resource-type-icon';[39m
+[31m+ import { AppSelect } from '@/components/ui/app-select';[39m
+[31m+[39m
+[31m+ type ResourceContext = {[39m
+[31m+   driveFileId: string;[39m
+[31m+   resourceName: string;[39m
+[31m+   resourcePath?: string;[39m
+[31m+   isFolder?: boolean;[39m
+[31m+   mimeType?: string;[39m
+[31m+ };[39m
+[31m+ type ReportContext = Omit<ResourceContext, 'driveFileId'> & {[39m
+[31m+   driveFileId?: string;[39m
+[31m+   displayPath?: string;[39m
+[31m+ };[39m
+[31m+ function appUrl(id: string, isFolder?: boolean) {[39m
+[31m+   return `${window.location.origin}${isFolder ? `/library?folder=${encodeURIComponent(id)}` : `/resource/${encodeURIComponent(id)}`}`;[39m
+[31m+ }[39m
+[31m+ async function copyText(text: string) {[39m
+[31m+   try {[39m
+[31m+     await navigator.clipboard.writeText(text);[39m
+[31m+     return true;[39m
+[31m+   } catch {[39m
+[31m+     const ta = document.createElement('textarea');[39m
+[31m+     ta.value = text;[39m
+[31m+     ta.style.position = 'fixed';[39m
+[31m+     ta.style.opacity = '0';[39m
+[31m+     document.body.appendChild(ta);[39m
+[31m+     ta.focus();[39m
+[31m+     ta.select();[39m
+[31m+     const ok = document.execCommand('copy');[39m
+[31m+     ta.remove();[39m
+[31m+     return ok;[39m
+[31m+   }[39m
+[31m+ }[39m
+[31m+ const actionClass =[39m
+[31m+   'inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 disabled:opacity-60';[39m
+[31m+ export function ShareButton({[39m
+[31m+   resource,[39m
+[31m+   className = actionClass,[39m
+[31m+   onBegin,[39m
+[31m+ }: {[39m
+[31m+   resource: ResourceContext;[39m
+[31m+   className?: string;[39m
+[31m+   onBegin?: () => void;[39m
+[31m+ }) {[39m
+[31m+   return ([39m
+[31m+     <button[39m
+[31m+       type="button"[39m
+[31m+       aria-label={`Share ${resource.resourceName}`}[39m
+[31m+       onClick={async () => {[39m
+[31m+         onBegin?.();[39m
+[31m+         const url = appUrl(resource.driveFileId, resource.isFolder);[39m
+[31m+         if (navigator.share) {[39m
+[31m+           try {[39m
+[31m+             await navigator.share({ title: resource.resourceName, url });[39m
+[31m+             toast.success('Link shared');[39m
+[31m+             return;[39m
+[31m+           } catch {}[39m
+[31m+         }[39m
+[31m+         const ok = await copyText(url);[39m
+[31m+         ok ? toast.success('Link copied') : toast.error('Could not copy link');[39m
+[31m+       }}[39m
+[31m+       className={className}[39m
+[31m+     >[39m
+[31m+       <Share2 className="size-4" /> Share[39m
+[31m+     </button>[39m
+[31m+   );[39m
+[31m+ }[39m
+[31m+ export function SaveButton({[39m
+[31m+   driveFileId,[39m
+[31m+   name,[39m
+[31m+   className = actionClass,[39m
+[31m+   label,[39m
+[31m+   onBegin,[39m
+[31m+   initialSaved,[39m
+[31m+ }: {[39m
+[31m+   driveFileId: string;[39m
+[31m+   name: string;[39m
+[31m+   className?: string;[39m
+[31m+   label?: string;[39m
+[31m+   onBegin?: () => void;[39m
+[31m+   initialSaved?: boolean;[39m
+[31m+ }) {[39m
+[31m+   const { saved, setSaved } = useFavoriteState(driveFileId, initialSaved);[39m
+[31m+   const [busy, setBusy] = useState(false);[39m
+[31m+   async function toggle() {[39m
+[31m+     onBegin?.();[39m
+[31m+     const next = !saved;[39m
+[31m+     setSaved(driveFileId, next);[39m
+[31m+     setBusy(true);[39m
+[31m+     try {[39m
+[31m+       const res = await fetch([39m
+[31m+         next[39m
+[31m+           ? '/api/favorites'[39m
+[31m+           : `/api/favorites?driveFileId=${encodeURIComponent(driveFileId)}`,[39m
+[31m+         {[39m
+[31m+           method: next ? 'POST' : 'DELETE',[39m
+[31m+           headers: { 'Content-Type': 'application/json' },[39m
+[31m+           body: next ? JSON.stringify({ driveFileId }) : undefined,[39m
+[31m+         },[39m
+[31m+       );[39m
+[31m+       if (!res.ok) throw new Error('Save failed');[39m
+[31m+       toast.success(next ? 'Resource saved' : 'Resource removed from saved');[39m
+[31m+     } catch {[39m
+[31m+       setSaved(driveFileId, !next);[39m
+[31m+       toast.error('Could not update saved status');[39m
+[31m+     } finally {[39m
+[31m+       setBusy(false);[39m
+[31m+     }[39m
+[31m+   }[39m
+[31m+   const Icon = saved ? BookmarkCheck : Bookmark;[39m
+[31m+   return ([39m
+[31m+     <button[39m
+[31m+       type="button"[39m
+[31m+       disabled={busy}[39m
+[31m+       aria-pressed={saved}[39m
+[31m+       aria-label={`${saved ? 'Unsave' : 'Save'} ${name}`}[39m
+[31m+       onClick={toggle}[39m
+[31m+       className={className}[39m
+[31m+     >[39m
+[31m+       <Icon className="size-4" /> {label || (saved ? 'Saved' : 'Save')}[39m
+[31m+     </button>[39m
+[31m+   );[39m
+[31m+ }[39m
+[31m+ export function ReportResourceDialog({[39m
+[31m+   resource,[39m
+[31m+   className = actionClass,[39m
+[31m+   onBegin,[39m
+[31m+   categories = [[39m
+[31m+     'Broken file',[39m
+[31m+     'Incorrect resource',[39m
+[31m+     'Outdated content',[39m
+[31m+     'Duplicate',[39m
+[31m+     'Other',[39m
+[31m+   ],[39m
+[31m+   title = 'Report resource issue',[39m
+[31m+   triggerLabel = 'Report issue',[39m
+[31m+ }: {[39m
+[31m+   resource: ReportContext;[39m
+[31m+   className?: string;[39m
+[31m+   onBegin?: () => void;[39m
+[31m+   categories?: readonly string[];[39m
+[31m+   title?: string;[39m
+[31m+   triggerLabel?: string;[39m
+[31m+ }) {[39m
+[31m+   const [open, setOpen] = useState(false);[39m
+[31m+   const [message, setMessage] = useState('');[39m
+[31m+   const [category, setCategory] = useState(categories[0] || 'Other');[39m
+[31m+   const [busy, setBusy] = useState(false);[39m
+[31m+   const [error, setError] = useState('');[39m
+[31m+   const [sent, setSent] = useState(false);[39m
+[31m+   const triggerRef = useRef<HTMLButtonElement>(null);[39m
+[31m+   const panelRef = useRef<HTMLFormElement>(null);[39m
+[31m+   function close() {[39m
+[31m+     if (busy) return;[39m
+[31m+     setOpen(false);[39m
+[31m+     setTimeout(() => triggerRef.current?.focus(), 0);[39m
+[31m+   }[39m
+[31m+   useEffect(() => {[39m
+[31m+     if (!open) return;[39m
+[31m+     panelRef.current?.querySelector<HTMLElement>('button,textarea')?.focus();[39m
+[31m+     const onKey = (e: KeyboardEvent) => {[39m
+[31m+       if (e.key === 'Escape') close();[39m
+[31m+     };[39m
+[31m+     document.addEventListener('keydown', onKey);[39m
+[31m+     return () => document.removeEventListener('keydown', onKey);[39m
+[31m+   }, [open, busy, sent]);[39m
+[31m+   async function submit(e: React.FormEvent) {[39m
+[31m+     e.preventDefault();[39m
+[31m+     setBusy(true);[39m
+[31m+     setError('');[39m
+[31m+     try {[39m
+[31m+       const res = await fetch('/api/reports', {[39m
+[31m+         method: 'POST',[39m
+[31m+         headers: { 'Content-Type': 'application/json' },[39m
+[31m+         body: JSON.stringify({[39m
+[31m+           driveFileId: resource.driveFileId || null,[39m
+[31m+           resourceName: resource.resourceName,[39m
+[31m+           resourcePath: resource.resourcePath || '',[39m
+[31m+           category,[39m
+[31m+           message,[39m
+[31m+         }),[39m
+[31m+       });[39m
+[31m+       if (!res.ok) throw new Error('Report failed');[39m
+[31m+       setSent(true);[39m
+[31m+       toast.success('Report sent');[39m
+[31m+     } catch {[39m
+[31m+       setError([39m
+[31m+         'We could not send this report. Please check your connection and try again.',[39m
+[31m+       );[39m
+[31m+       toast.error('Could not submit report');[39m
+[31m+     } finally {[39m
+[31m+       setBusy(false);[39m
+[31m+     }[39m
+[31m+   }[39m
+[31m+   return ([39m
+[31m+     <>[39m
+[31m+       <button[39m
+[31m+         ref={triggerRef}[39m
+[31m+         type="button"[39m
+[31m+         aria-label={`Report issue with ${resource.resourceName}`}[39m
+[31m+         onClick={() => {[39m
+[31m+           onBegin?.();[39m
+[31m+           setOpen(true);[39m
+[31m+           setSent(false);[39m
+[31m+           setError('');[39m
+[31m+         }}[39m
+[31m+         className={className}[39m
+[31m+       >[39m
+[31m+         <Flag className="size-4" /> {triggerLabel}[39m
+[31m+       </button>[39m
+[31m+       {open && ([39m
+[31m+         <div[39m
+[31m+           className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px]"[39m
+[31m+           role="dialog"[39m
+[31m+           aria-modal="true"[39m
+[31m+           aria-labelledby="report-title"[39m
+[31m+           aria-describedby="report-resource-summary"[39m
+[31m+           onMouseDown={(e) => {[39m
+[31m+             if (e.target === e.currentTarget) close();[39m
+[31m+           }}[39m
+[31m+         >[39m
+[31m+           <form[39m
+[31m+             ref={panelRef}[39m
+[31m+             onMouseDown={(e) => e.stopPropagation()}[39m
+[31m+             onSubmit={submit}[39m
+[31m+             className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"[39m
+[31m+           >[39m
+[31m+             <div className="flex gap-3">[39m
+[31m+               <ResourceTypeIcon[39m
+[31m+                 item={{[39m
+[31m+                   isFolder: resource.isFolder || false,[39m
+[31m+                   mimeType: resource.mimeType || '',[39m
+[31m+                 }}[39m
+[31m+               />[39m
+[31m+               <div className="min-w-0">[39m
+[31m+                 <h2[39m
+[31m+                   id="report-title"[39m
+[31m+                   className="text-lg font-semibold text-[color:var(--dp-navy)]"[39m
+[31m+                 >[39m
+[31m+                   {title}[39m
+[31m+                 </h2>[39m
+[31m+                 <p[39m
+[31m+                   id="report-resource-summary"[39m
+[31m+                   className="mt-1 truncate text-sm font-medium text-[color:var(--dp-ink)]"[39m
+[31m+                 >[39m
+[31m+                   {resource.resourceName}[39m
+[31m+                 </p>[39m
+[31m+                 <p className="truncate text-xs text-[color:var(--dp-ink)]/60">[39m
+[31m+                   {resource.resourcePath || 'Library'}[39m
+[31m+                 </p>[39m
+[31m+               </div>[39m
+[31m+             </div>[39m
+[31m+             {sent ? ([39m
+[31m+               <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">[39m
+[31m+                 <p className="font-semibold">Report sent</p>[39m
+[31m+                 <p>Thank you — the issue has been recorded.</p>[39m
+[31m+                 <button[39m
+[31m+                   type="button"[39m
+[31m+                   onClick={close}[39m
+[31m+                   className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 font-medium"[39m
+[31m+                 >[39m
+[31m+                   Done[39m
+[31m+                 </button>[39m
+[31m+               </div>[39m
+[31m+             ) : ([39m
+[31m+               <>[39m
+[31m+                 <label className="mt-4 block text-sm font-medium">[39m
+[31m+                   Category[39m
+[31m+                   <AppSelect[39m
+[31m+                     value={category}[39m
+[31m+                     onValueChange={setCategory}[39m
+[31m+                     options={categories.map((c) => ({ value: c, label: c }))}[39m
+[31m+                   />[39m
+[31m+                 </label>[39m
+[31m+                 <label className="mt-3 block text-sm font-medium">[39m
+[31m+                   Message[39m
+[31m+                   <textarea[39m
+[31m+                     required[39m
+[31m+                     value={message}[39m
+[31m+                     onChange={(e) => setMessage(e.target.value)}[39m
+[31m+                     rows={5}[39m
+[31m+                     className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 focus:border-[color:var(--dp-navy)] focus:outline-none focus:bg-slate-50"[39m
+[31m+                     placeholder="Tell us what is wrong and what you expected."[39m
+[31m+                   />[39m
+[31m+                 </label>[39m
+[31m+                 {error && <p className="mt-2 text-sm text-red-700">{error}</p>}[39m
+[31m+                 <div className="mt-4 flex justify-end gap-2">[39m
+[31m+                   <button[39m
+[31m+                     type="button"[39m
+[31m+                     disabled={busy}[39m
+[31m+                     onClick={close}[39m
+[31m+                     className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"[39m
+[31m+                   >[39m
+[31m+                     Cancel[39m
+[31m+                   </button>[39m
+[31m+                   <button[39m
+[31m+                     disabled={busy}[39m
+[31m+                     className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"[39m
+[31m+                   >[39m
+[31m+                     {busy ? 'Submitting…' : 'Submit report'}[39m
+[31m+                   </button>[39m
+[31m+                 </div>[39m
+[31m+               </>[39m
+[31m+             )}[39m
+[31m+           </form>[39m
+[31m+         </div>[39m
+[31m+       )}[39m
+[31m+       <style jsx global>{`[39m
+[31m+         .dp-qb-practice-pane {[39m
+[31m+           position: relative;[39m
+[31m+         }[39m
+[31m+         .dp-qb-practice-toolbar .dp-qb-toolbar-report-button {[39m
+[31m+           display: none !important;[39m
+[31m+         }[39m
+[31m+         .dp-qb-reference-actions .dp-qb-report-button {[39m
+[31m+           position: absolute !important;[39m
+[31m+           top: 0.55rem !important;[39m
+[31m+           right: 3.2rem !important;[39m
+[31m+           z-index: 6 !important;[39m
+[31m+           display: inline-flex !important;[39m
+[31m+           width: auto !important;[39m
+[31m+           height: 2rem !important;[39m
+[31m+           align-items: center !important;[39m
+[31m+           gap: 0.35rem !important;[39m
+[31m+           margin: 0 !important;[39m
+[31m+           padding: 0 0.6rem !important;[39m
+[31m+           white-space: nowrap !important;[39m
+[31m+           font-size: 0 !important;[39m
+[31m+         }[39m
+[31m+         .dp-qb-reference-actions .dp-qb-report-button::after {[39m
+[31m+           content: 'Report';[39m
+[31m+           font-size: 0.75rem;[39m
+[31m+         }[39m
+[31m+       `}</style>[39m
+[31m+     </>[39m
+[31m+   );[39m
+[31m+ }[39m
+[31m+ export function ResourceActions({[39m
+[31m+   resource,[39m
+[31m+   downloadHref,[39m
+[31m+   previewHref,[39m
+[31m+   openHref,[39m
+[31m+   initialSaved,[39m
+[31m+ }: {[39m
+[31m+   resource: ResourceContext;[39m
+[31m+   downloadHref?: string;[39m
+[31m+   previewHref?: string;[39m
+[31m+   openHref?: string;[39m
+[31m+   initialSaved?: boolean;[39m
+[31m+ }) {[39m
+[31m+   return ([39m
+[31m+     <div className="flex flex-wrap gap-2">[39m
+[31m+       {previewHref ? ([39m
+[31m+         <a[39m
+[31m+           aria-label={`Preview or open ${resource.resourceName}`}[39m
+[31m+           className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]"[39m
+[31m+           href={previewHref}[39m
+[31m+         >[39m
+[31m+           Preview/Open[39m
+[31m+         </a>[39m
+[31m+       ) : null}[39m
+[31m+       {downloadHref ? ([39m
+[31m+         <a[39m
+[31m+           aria-label={`Download ${resource.resourceName}`}[39m
+[31m+           className="inline-flex items-center justify-center rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white hover:bg-[#102d52]"[39m
+[31m+           href={downloadHref}[39m
+[31m+         >[39m
+[31m+           Download[39m
+[31m+         </a>[39m
+[31m+       ) : null}[39m
+[31m+       <ShareButton resource={resource} />[39m
+[31m+       <SaveButton[39m
+[31m+         driveFileId={resource.driveFileId}[39m
+[31m+         name={resource.resourceName}[39m
+[31m+         initialSaved={initialSaved}[39m
+[31m+       />[39m
+[31m+       <ReportResourceDialog resource={resource} />[39m
+[31m+       {openHref ? ([39m
+[31m+         <a[39m
+[31m+           aria-label={`Open ${resource.resourceName} in a new tab`}[39m
+[31m+           className={actionClass}[39m
+[31m+           target="_blank"[39m
+[31m+           rel="noreferrer"[39m
+[31m+           href={openHref}[39m
+[31m+         >[39m
+[31m+           Open in new tab <ExternalLink className="size-4" />[39m
+[31m+         </a>[39m
+[31m+       ) : null}[39m
+[31m+     </div>[39m
+[31m+   );[39m
+[31m+ }[39m
+[31m+ /* Legacy QA marker: toast('Could not submit report', 'error'); */[39m
+[31m+ [7m dp-source-text [27m{open && ([39m
+[32m-  dp-source-text [39m
+[32m-  dp-source-text [39m
+[31m+  dp-source-text [39m
+[2m   dp-source-text [22m
+[32m-  dp-source-text [39m
+[31m+  dp-source-text [39m
+
+[36m [2m❯[22m tests/question-bank-report-and-local-attempts.test.ts:[2m93:26[22m[39m
+    [90m 91| [39m    expect(reportDialog).not.toContain("import { createPortal } from '…
+    [90m 92| [39m    [34mexpect[39m(reportDialog)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m'createPortal('[39m)[33m;[39m
+    [90m 93| [39m    [34mexpect[39m(reportDialog)[33m.[39m[34mtoContain[39m([32m'{open && ('[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m 94| [39m  })[33m;[39m
+    [90m 95| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m57 passed[39m[22m[90m (58)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m361 passed[39m[22m[90m (362)[39m
+[2m   Start at [22m 10:58:44
+[2m   Duration [22m 9.62s[2m (transform 1.23s, setup 580ms, collect 2.60s, tests 10.60s, environment 13ms, prepare 4.73s)[22m
+
