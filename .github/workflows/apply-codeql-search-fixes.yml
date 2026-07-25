@@ -24,8 +24,9 @@ jobs:
       - run: node scripts/apply-codeql-search-fixes.mjs
       - name: Commit generated refactor
         run: |
+          git checkout -- .github/workflows/ci.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/api/search/route.ts .github/workflows/ci.yml lib/drive.ts lib/pptx-audio.ts scripts/prepare-pdf-previews-batch.mjs scripts/question-bank/capture-pestle.mjs scripts/question-bank/pestle.mjs
+          git add app/api/search/route.ts lib/drive.ts lib/pptx-audio.ts scripts/prepare-pdf-previews-batch.mjs scripts/question-bank/capture-pestle.mjs scripts/question-bank/pestle.mjs
           git commit -m "Fix CodeQL findings and expand resource search aliases"
           git push origin HEAD:fix/codeql-and-search-aliases
