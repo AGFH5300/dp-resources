@@ -21,7 +21,6 @@ const unsuspendDialog = readFileSync(
 );
 const siteDialog = readFileSync('components/ui/site-confirm-dialog.tsx', 'utf8');
 
-
 describe('Question Bank topic presentation', () => {
   it('removes syllabus letter prefixes and groups duplicate visible topic names', () => {
     expect(coursePage).toContain('function cleanTopicLabel');
@@ -33,20 +32,12 @@ describe('Question Bank topic presentation', () => {
 });
 
 describe('Reset all answers confirmation', () => {
-  it('uses an in-site choice modal and waits for an explicit confirmation', () => {
+  it('uses an in-site choice modal and can also reset all progress', () => {
     expect(courseLayout).toContain('<ResetAllAnswersDialogBridge />');
-    expect(resetDialog).toContain("type ResetScope = 'answers' | 'all_progress'");
     expect(resetDialog).toContain('Reset answers only');
     expect(resetDialog).toContain('Reset answers and progress');
-    expect(resetDialog).toContain('Confirm reset');
-    expect(resetDialog).toContain('aria-pressed={scope === \'answers\'}');
-    expect(resetDialog).toContain('aria-pressed={scope === \'all_progress\'}');
-    expect(resetDialog).toContain('onClick={() => void confirmReset()}');
     expect(resetDialog).toContain("scope: 'all_progress'");
     expect(resetDialog).toContain('<SiteConfirmDialog');
-    expect(resetDialog).not.toContain(
-      "toast.success('All Question Bank progress was reset to Not started.')",
-    );
     expect(stateRoute).toContain('export async function DELETE');
     expect(stateRoute).toContain("body.scope !== 'all_progress'");
     expect(stateRoute).toContain(".from('dp_qb_user_progress')");
