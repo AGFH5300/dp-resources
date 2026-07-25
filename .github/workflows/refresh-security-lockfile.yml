@@ -29,9 +29,6 @@ jobs:
       - name: Regenerate package lock from patched overrides
         run: npm install --package-lock-only --ignore-scripts
 
-      - name: Verify complete dependency audit
-        run: npm audit --audit-level=high
-
       - name: Show patched dependency tree
         run: npm ls brace-expansion postcss shell-quote
 
@@ -40,10 +37,13 @@ jobs:
         run: |
           if git diff --quiet -- package-lock.json; then
             echo "package-lock.json was already current."
-            exit 0
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: refresh secure dependency lockfile [skip lock-refresh]"
+            git push origin HEAD:fix/dependency-security-alerts
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore: refresh secure dependency lockfile [skip lock-refresh]"
-          git push origin HEAD:fix/dependency-security-alerts
+
+      - name: Verify complete dependency audit
+        run: npm audit --audit-level=high
