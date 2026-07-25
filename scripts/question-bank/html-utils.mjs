@@ -173,7 +173,6 @@ export function htmlToPlainText(
 
     if (!tag.closing && IGNORED_ELEMENTS.has(tag.name)) {
       cursor = skipElement(source, tag, tag.name);
-      if (preserveBlockBreaks) output += '\n';
       continue;
     }
 
