@@ -13,6 +13,7 @@ const workspace = readFileSync(
   'utf8',
 );
 const reportDialog = readFileSync('components/resource-actions.tsx', 'utf8');
+const appSelect = readFileSync('components/ui/app-select.tsx', 'utf8');
 const toaster = readFileSync('components/sonner-provider.tsx', 'utf8');
 
 function memoryStorage() {
@@ -81,23 +82,22 @@ describe('browser-local Question Bank attempts', () => {
 });
 
 describe('question reporting', () => {
-  it('keeps the moved toolbar report action without restyling the shared modal', () => {
+  it('keeps only the moved toolbar action without restyling the shared modal', () => {
     expect(workspace).toContain('dp-qb-toolbar-report-button');
     expect(workspace).toContain('triggerLabel="Report"');
     expect(reportDialog).toContain('className={className}');
-    expect(reportDialog).toContain('resource.resourcePath || \'Library\'');
+    expect(reportDialog).toContain("resource.resourcePath || 'Library'");
     expect(reportDialog).toContain('bg-[color:var(--dp-navy)]');
     expect(reportDialog).not.toContain('dp-report-submit-button');
     expect(reportDialog).not.toContain("html[data-theme='dark'] .dp-report-button");
   });
 
-  it('keeps the original modal below the shared dropdown layer', () => {
-    expect(reportDialog).toContain("import { createPortal } from 'react-dom';");
-    expect(reportDialog).toContain('createPortal(');
-    expect(reportDialog).toContain('document.body');
+  it('uses the original inline modal and keeps dropdown options above it', () => {
+    expect(reportDialog).not.toContain("import { createPortal } from 'react-dom';");
+    expect(reportDialog).not.toContain('createPortal(');
+    expect(reportDialog).toContain('{open && (');
     expect(reportDialog).toContain('z-[60]');
-    expect(reportDialog).not.toContain('z-[120]');
-    expect(reportDialog).not.toContain("document.body.style.overflow = 'hidden'");
+    expect(appSelect).toContain('z-[110]');
   });
 
   it('shows only the relocated toolbar report button', () => {
