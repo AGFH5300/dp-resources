@@ -86,9 +86,17 @@ describe('question reporting', () => {
     expect(workspace).toContain('triggerLabel="Report"');
     expect(workspace).toContain('displayPath: coursePath');
     expect(reportDialog).toContain('className={`${className} dp-report-button`}');
-    expect(reportDialog).toContain("value.split(/[?#]/, 1)[0]");
-    expect(reportDialog).toContain('html[data-theme=\'dark\'] .dp-report-button');
+    expect(reportDialog).toContain('value.split(/[?#]/, 1)[0]');
+    expect(reportDialog).toContain("html[data-theme='dark'] .dp-report-button");
     expect(reportDialog).toContain('dp-report-submit-button');
+  });
+
+  it('portals the popup outside the sticky question toolbar', () => {
+    expect(reportDialog).toContain("import { createPortal } from 'react-dom';");
+    expect(reportDialog).toContain('createPortal(');
+    expect(reportDialog).toContain('document.body');
+    expect(reportDialog).toContain('z-[120]');
+    expect(reportDialog).toContain("document.body.style.overflow = 'hidden'");
   });
 });
 
