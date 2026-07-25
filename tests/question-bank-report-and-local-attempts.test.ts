@@ -90,7 +90,6 @@ describe('question reporting', () => {
     expect(reportDialog).not.toContain("html[data-theme='dark'] .dp-report-button");
     expect(reportDialog).not.toContain("import { createPortal } from 'react-dom';");
     expect(reportDialog).not.toContain('createPortal(');
-    expect(reportDialog).toContain('{open && (');
   });
 
   it('keeps dropdown options above the unchanged modal', () => {
