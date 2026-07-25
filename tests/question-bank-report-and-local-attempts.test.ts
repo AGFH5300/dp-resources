@@ -13,6 +13,7 @@ const workspace = readFileSync(
   'utf8',
 );
 const reportDialog = readFileSync('components/resource-actions.tsx', 'utf8');
+const appSelect = readFileSync('components/ui/app-select.tsx', 'utf8');
 const toaster = readFileSync('components/sonner-provider.tsx', 'utf8');
 
 function memoryStorage() {
@@ -81,26 +82,28 @@ describe('browser-local Question Bank attempts', () => {
 });
 
 describe('question reporting', () => {
-  it('keeps the moved toolbar report action without restyling the shared modal', () => {
-    expect(workspace).toContain('dp-qb-toolbar-report-button');
-    expect(workspace).toContain('triggerLabel="Report"');
-    expect(reportDialog).toContain('className={className}');
-    expect(reportDialog).toContain('resource.resourcePath || \'Library\'');
+  it('restores the original shared report modal without portal or red restyling', () => {
+    expect(reportDialog).toContain("resource.resourcePath || 'Library'");
     expect(reportDialog).toContain('bg-[color:var(--dp-navy)]');
+    expect(reportDialog).toContain('!isQuestionToolbarProxy && open');
+    expect(reportDialog).not.toContain("import { createPortal } from 'react-dom';");
     expect(reportDialog).not.toContain('dp-report-submit-button');
     expect(reportDialog).not.toContain("html[data-theme='dark'] .dp-report-button");
-  });
-
-  it('keeps the original modal below the shared dropdown layer', () => {
-    expect(reportDialog).toContain("import { createPortal } from 'react-dom';");
-    expect(reportDialog).toContain('createPortal(');
-    expect(reportDialog).toContain('document.body');
-    expect(reportDialog).toContain('z-[60]');
-    expect(reportDialog).not.toContain('z-[120]');
     expect(reportDialog).not.toContain("document.body.style.overflow = 'hidden'");
   });
 
-  it('shows only the relocated toolbar report button', () => {
+  it('keeps the dropdown above the original modal', () => {
+    expect(reportDialog).toContain('z-[60]');
+    expect(appSelect).toContain('z-[110]');
+  });
+
+  it('moves only the trigger while the original lower modal remains authoritative', () => {
+    expect(workspace).toContain('dp-qb-toolbar-report-button');
+    expect(workspace).toContain('triggerLabel="Report"');
+    expect(reportDialog).toContain('isQuestionToolbarProxy');
+    expect(reportDialog).toContain(
+      "'.dp-qb-reference-actions .dp-qb-report-button'",
+    );
     expect(reportDialog).toContain(
       '.dp-qb-reference-actions .dp-qb-report-button',
     );
