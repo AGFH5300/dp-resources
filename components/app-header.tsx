@@ -117,10 +117,12 @@ export function AppHeader({
             <BrandMark className="size-10" />
           </Link>
 
-          <BrandWordmark
-            href="/library"
-            className="hidden shrink-0 text-base sm:inline-flex sm:text-lg"
-          />
+          <div className="hidden shrink-0 sm:block">
+            <BrandWordmark
+              href="/library"
+              className="text-base sm:text-lg"
+            />
+          </div>
 
           <nav
             aria-label="Primary navigation"
