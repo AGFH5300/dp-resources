@@ -17,6 +17,10 @@ import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function isPdfResource(mimeType: string, name: string) {
+  return mimeType === 'application/pdf' || /\.pdf$/i.test(name);
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ fileId: string }> },
@@ -110,6 +114,46 @@ export async function GET(
     auditOpen();
     return new Response(null, { status: 304, headers });
   }
+
+  // Standard PDFs are loaded as one authenticated response by the fallback reader.
+  // Use the native fetch/Web Stream path here instead of converting a googleapis
+  // Node stream, which can fail after headers are sent on some deployment runtimes.
+  if (!requestedRange && isPdfResource(meta.mimeType, meta.name)) {
+    const streamStart = nowMs();
+    const native = await fetchDriveMediaResponse(
+      fileId,
+      meta.mimeType,
+      meta.name,
+    ).catch((error) => {
+      console.error('Google Drive PDF fetch failed', {
+        fileId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    });
+    if (!native || !native.ok)
+      return new Response('Unable to retrieve this PDF', { status: 502 });
+
+    const streamMs = nowMs() - streamStart;
+    devTiming('resource.content', { authMs, validateMs, streamMs });
+    auditOpen();
+    const nativeHeaders = new Headers(native.headers);
+    nativeHeaders.set('etag', etag);
+    nativeHeaders.set('x-file-size', String(meta.size));
+    nativeHeaders.set(
+      'server-timing',
+      [
+        serverTiming('auth', authMs),
+        serverTiming('validate', validateMs),
+        serverTiming('stream', streamMs),
+      ].join(', '),
+    );
+    return new Response(native.body, {
+      status: native.status,
+      headers: nativeHeaders,
+    });
+  }
+
   const streamStart = nowMs();
   const media = await getDriveStream(
     fileId,
