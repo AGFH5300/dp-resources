@@ -81,22 +81,30 @@ describe('browser-local Question Bank attempts', () => {
 });
 
 describe('question reporting', () => {
-  it('adds a red report action to the question toolbar and hides query identifiers', () => {
+  it('keeps the moved toolbar report action without restyling the shared modal', () => {
     expect(workspace).toContain('dp-qb-toolbar-report-button');
     expect(workspace).toContain('triggerLabel="Report"');
-    expect(workspace).toContain('displayPath: coursePath');
-    expect(reportDialog).toContain('className={`${className} dp-report-button`}');
-    expect(reportDialog).toContain('value.split(/[?#]/, 1)[0]');
-    expect(reportDialog).toContain("html[data-theme='dark'] .dp-report-button");
-    expect(reportDialog).toContain('dp-report-submit-button');
+    expect(reportDialog).toContain('className={className}');
+    expect(reportDialog).toContain('resource.resourcePath || \'Library\'');
+    expect(reportDialog).toContain('bg-[color:var(--dp-navy)]');
+    expect(reportDialog).not.toContain('dp-report-submit-button');
+    expect(reportDialog).not.toContain("html[data-theme='dark'] .dp-report-button");
   });
 
-  it('portals the popup outside the sticky question toolbar', () => {
+  it('keeps the original modal below the shared dropdown layer', () => {
     expect(reportDialog).toContain("import { createPortal } from 'react-dom';");
     expect(reportDialog).toContain('createPortal(');
     expect(reportDialog).toContain('document.body');
-    expect(reportDialog).toContain('z-[120]');
-    expect(reportDialog).toContain("document.body.style.overflow = 'hidden'");
+    expect(reportDialog).toContain('z-[60]');
+    expect(reportDialog).not.toContain('z-[120]');
+    expect(reportDialog).not.toContain("document.body.style.overflow = 'hidden'");
+  });
+
+  it('shows only the relocated toolbar report button', () => {
+    expect(reportDialog).toContain(
+      '.dp-qb-reference-actions .dp-qb-report-button',
+    );
+    expect(reportDialog).toContain('display: none !important');
   });
 });
 
