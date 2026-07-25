@@ -2,6 +2,8 @@ import 'server-only';
 
 import { driveAuth } from './drive';
 
+const DRIVE_HEADER_TIMEOUT_MS = 8_000;
+
 let cachedAuth: ReturnType<typeof driveAuth> | null = null;
 let tokenRefresh: Promise<string> | null = null;
 
@@ -38,14 +40,25 @@ export async function getFastDriveMediaFetch(
   range?: string | null,
 ) {
   const token = await getCachedDriveAccessToken();
-  return fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(range ? { Range: range } : {}),
-      },
-      cache: 'no-store',
-    },
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    DRIVE_HEADER_TIMEOUT_MS,
   );
+
+  try {
+    return await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(range ? { Range: range } : {}),
+        },
+        cache: 'no-store',
+        signal: controller.signal,
+      },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 }
