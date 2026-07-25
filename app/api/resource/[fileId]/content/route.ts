@@ -36,16 +36,16 @@ async function readBufferedPdfFallback(
     return null;
   }
 
-  const media = await getDriveStream(fileId, mimeType).catch((error) => {
+  const fallbackMedia = await getDriveStream(fileId, mimeType).catch((error) => {
     console.error('Google Drive buffered PDF fallback failed to open', {
       fileId,
       message: error instanceof Error ? error.message : String(error),
     });
     return null;
   });
-  if (!media || 'unavailable' in media) return null;
+  if (!fallbackMedia || 'unavailable' in fallbackMedia) return null;
 
-  const reader = media.stream.getReader();
+  const reader = fallbackMedia.stream.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
 
@@ -85,7 +85,8 @@ async function readBufferedPdfFallback(
 
   return {
     bytes,
-    contentType: media.contentType || mimeType || 'application/pdf',
+    contentType:
+      fallbackMedia.contentType || mimeType || 'application/pdf',
   };
 }
 
