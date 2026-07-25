@@ -12,13 +12,37 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const XML_ATTRIBUTE_ENTITIES: Record<string, string> = {
+  amp: '&',
+  quot: '"',
+  apos: "'",
+  lt: '<',
+  gt: '>',
+};
+
 function decodeXmlAttribute(value: string) {
-  return value
-    .replaceAll('&amp;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&apos;', "'")
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>');
+  let output = '';
+  let cursor = 0;
+  while (cursor < value.length) {
+    if (value[cursor] !== '&') {
+      output += value[cursor++];
+      continue;
+    }
+    const semicolon = value.indexOf(';', cursor + 1);
+    if (semicolon < 0 || semicolon - cursor > 8) {
+      output += value[cursor++];
+      continue;
+    }
+    const entity = value.slice(cursor + 1, semicolon).toLowerCase();
+    const decoded = XML_ATTRIBUTE_ENTITIES[entity];
+    if (decoded === undefined) {
+      output += value[cursor++];
+      continue;
+    }
+    output += decoded;
+    cursor = semicolon + 1;
+  }
+  return output;
 }
 
 function readXmlAttribute(tag: string, name: string) {

@@ -189,7 +189,15 @@ function formatMiB(bytes) {
 }
 
 function escapeTable(value) {
-  return String(value).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  let output = '';
+  for (const character of String(value)) {
+    if (character === '\\') output += '\\\\';
+    else if (character === '|') output += '\\|';
+    else if (character === '\r' || character === '\n') {
+      if (!output.endsWith(' ')) output += ' ';
+    } else output += character;
+  }
+  return output;
 }
 
 async function writeSummary(

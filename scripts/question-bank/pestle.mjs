@@ -13,6 +13,7 @@ import { MathMLToLaTeX } from 'mathml-to-latex';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
 import { deterministicUuid } from './archive.mjs';
+import { decodeHtmlEntitiesOnce, htmlToPlainText } from './html-utils.mjs';
 
 export const PESTLE_IMPORTER_VERSION = 'pestle-1.0.0';
 
@@ -422,23 +423,11 @@ const SUPERSCRIPT = {
 };
 
 function decodeBasicEntities(value) {
-  return String(value || '')
-    .replace(/&#(\d+);/g, (_, number) =>
-      String.fromCodePoint(Number(number)),
-    )
-    .replace(/&#x([0-9a-f]+);/gi, (_, number) =>
-      String.fromCodePoint(Number.parseInt(number, 16)),
-    )
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'");
+  return decodeHtmlEntitiesOnce(value);
 }
 
 function scriptText(value, map, fallback) {
-  const plain = decodeBasicEntities(value).replace(/<[^>]+>/g, '').trim();
+  const plain = htmlToPlainText(value).trim();
   const converted = [...plain].map((character) => map[character]).join('');
   return converted.length === plain.length ? converted : `${fallback}(${plain})`;
 }
@@ -453,10 +442,7 @@ export function htmlToQuestionSource(html, occurrences) {
     return value;
   };
 
-  let prepared = String(html || '')
-    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
-    .replace(/<img\b[^>]*>/gi, (tag) => {
+  let prepared = String(html || '').replace(/<img\b[^>]*>/gi, (tag) => {
       const occurrence = occurrences[imageIndex++];
       if (!occurrence)
         return `<p>${token('[Referenced image unavailable]')}</p>`;
@@ -472,7 +458,7 @@ export function htmlToQuestionSource(html, occurrences) {
         const display = /\bdisplay\s*=\s*["']block["']/i.test(mathml);
         return token(display ? `$$${latex}$$` : `$${latex}$`);
       } catch {
-        return token(decodeBasicEntities(mathml.replace(/<[^>]+>/g, ' ')));
+        return token(htmlToPlainText(mathml));
       }
     })
     .replace(
@@ -482,7 +468,7 @@ export function htmlToQuestionSource(html, occurrences) {
     .replace(
       /<div\b[^>]*class\s*=\s*["'][^"']*question_part_label[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi,
       (_, label) =>
-        `<p>${token(`**${decodeBasicEntities(label.replace(/<[^>]+>/g, '')).trim()}**`)}</p>`,
+        `<p>${token(`**${htmlToPlainText(label).trim()}**`)}</p>`,
     )
     .replace(/<sub\b[^>]*>([\s\S]*?)<\/sub>/gi, (_, value) =>
       token(scriptText(value, SUBSCRIPT, '_')),
