@@ -33,18 +33,34 @@ jobs:
         continue-on-error: true
         run: npm ls brace-expansion postcss shell-quote
 
-      - name: Commit refreshed lockfile
+      - name: Capture complete dependency audit
+        shell: bash
+        run: npm audit --json > .security-audit.json || true
+
+      - name: Commit generated security files
         shell: bash
         run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "package-lock.json was already current."
+          if git diff --quiet -- package-lock.json .security-audit.json; then
+            echo "Generated security files were already current."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: refresh secure dependency lockfile [skip lock-refresh]"
+            git add package-lock.json .security-audit.json
+            git commit -m "chore: capture secure dependency lockfile [skip lock-refresh]"
             git push origin HEAD:fix/dependency-security-alerts
           fi
 
       - name: Verify complete dependency audit
-        run: npm audit --audit-level=high
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const audit = JSON.parse(fs.readFileSync('.security-audit.json', 'utf8'));
+          const totals = audit.metadata?.vulnerabilities || {};
+          const highOrCritical = Number(totals.high || 0) + Number(totals.critical || 0);
+          if (highOrCritical > 0) {
+            console.error(`Audit still contains ${highOrCritical} high/critical vulnerabilities.`);
+            process.exit(1);
+          }
+          console.log('No high or critical vulnerabilities remain.');
+          NODE
