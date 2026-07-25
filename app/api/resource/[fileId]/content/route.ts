@@ -17,8 +17,76 @@ import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const MAX_BUFFERED_PDF_FALLBACK_BYTES = 32 * 1024 * 1024;
+
 function isPdfResource(mimeType: string, name: string) {
   return mimeType === 'application/pdf' || /\.pdf$/i.test(name);
+}
+
+async function readBufferedPdfFallback(
+  fileId: string,
+  mimeType: string,
+  size: number,
+) {
+  if (
+    !Number.isSafeInteger(size) ||
+    size <= 0 ||
+    size > MAX_BUFFERED_PDF_FALLBACK_BYTES
+  ) {
+    return null;
+  }
+
+  const media = await getDriveStream(fileId, mimeType).catch((error) => {
+    console.error('Google Drive buffered PDF fallback failed to open', {
+      fileId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+  if (!media || 'unavailable' in media) return null;
+
+  const reader = media.stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      const chunk =
+        value instanceof Uint8Array
+          ? value
+          : new Uint8Array(value as ArrayBuffer);
+      total += chunk.byteLength;
+      if (total > MAX_BUFFERED_PDF_FALLBACK_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(chunk);
+    }
+  } catch (error) {
+    console.error('Google Drive buffered PDF fallback failed while reading', {
+      fileId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!total) return null;
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return {
+    bytes,
+    contentType: media.contentType || mimeType || 'application/pdf',
+  };
 }
 
 export async function GET(
@@ -116,8 +184,8 @@ export async function GET(
   }
 
   // Standard PDFs are loaded as one authenticated response by the fallback reader.
-  // Use the native fetch/Web Stream path here instead of converting a googleapis
-  // Node stream, which can fail after headers are sent on some deployment runtimes.
+  // Prefer the native fetch/Web Stream path, then fully buffer only smaller PDFs
+  // through googleapis if the deployment runtime cannot maintain that stream.
   if (!requestedRange && isPdfResource(meta.mimeType, meta.name)) {
     const streamStart = nowMs();
     const native = await fetchDriveMediaResponse(
@@ -131,16 +199,55 @@ export async function GET(
       });
       return null;
     });
-    if (!native || !native.ok)
+
+    if (native?.ok) {
+      const streamMs = nowMs() - streamStart;
+      devTiming('resource.content', { authMs, validateMs, streamMs });
+      auditOpen();
+      const nativeHeaders = new Headers(native.headers);
+      nativeHeaders.set('etag', etag);
+      nativeHeaders.set('x-file-size', String(meta.size));
+      nativeHeaders.set(
+        'server-timing',
+        [
+          serverTiming('auth', authMs),
+          serverTiming('validate', validateMs),
+          serverTiming('stream', streamMs),
+        ].join(', '),
+      );
+      return new Response(native.body, {
+        status: native.status,
+        headers: nativeHeaders,
+      });
+    }
+
+    const upstreamStatus = native?.status ?? null;
+    await native?.body?.cancel().catch(() => undefined);
+    const buffered = await readBufferedPdfFallback(
+      fileId,
+      meta.mimeType,
+      Number(meta.size),
+    );
+    if (!buffered) {
+      console.error('All Google Drive PDF delivery paths failed', {
+        fileId,
+        upstreamStatus,
+        size: meta.size,
+      });
       return new Response('Unable to retrieve this PDF', { status: 502 });
+    }
 
     const streamMs = nowMs() - streamStart;
     devTiming('resource.content', { authMs, validateMs, streamMs });
     auditOpen();
-    const nativeHeaders = new Headers(native.headers);
-    nativeHeaders.set('etag', etag);
-    nativeHeaders.set('x-file-size', String(meta.size));
-    nativeHeaders.set(
+    headers.set('content-type', buffered.contentType);
+    headers.set('content-length', String(buffered.bytes.byteLength));
+    headers.set('accept-ranges', 'bytes');
+    headers.set(
+      'content-disposition',
+      `inline; filename="${safeDownloadName(meta.name)}"`,
+    );
+    headers.set(
       'server-timing',
       [
         serverTiming('auth', authMs),
@@ -148,10 +255,8 @@ export async function GET(
         serverTiming('stream', streamMs),
       ].join(', '),
     );
-    return new Response(native.body, {
-      status: native.status,
-      headers: nativeHeaders,
-    });
+    headers.set('x-pdf-delivery', 'buffered-fallback');
+    return new Response(buffered.bytes, { status: 200, headers });
   }
 
   const streamStart = nowMs();
