@@ -318,17 +318,30 @@ export function ReportResourceDialog({
         </div>
       )}
       <style jsx global>{`
+        .dp-qb-practice-pane {
+          position: relative;
+        }
         .dp-qb-practice-toolbar .dp-qb-toolbar-report-button {
+          display: none !important;
+        }
+        .dp-qb-reference-actions .dp-qb-report-button {
+          position: absolute !important;
+          top: 0.55rem !important;
+          right: 3.2rem !important;
+          z-index: 6 !important;
           display: inline-flex !important;
           width: auto !important;
           height: 2rem !important;
           align-items: center !important;
           gap: 0.35rem !important;
+          margin: 0 !important;
           padding: 0 0.6rem !important;
           white-space: nowrap !important;
+          font-size: 0 !important;
         }
-        .dp-qb-reference-actions .dp-qb-report-button {
-          display: none !important;
+        .dp-qb-reference-actions .dp-qb-report-button::after {
+          content: 'Report';
+          font-size: 0.75rem;
         }
       `}</style>
     </>
