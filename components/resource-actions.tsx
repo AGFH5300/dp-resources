@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useFavoriteState } from './favorites-provider';
 import {
   Bookmark,
@@ -205,107 +204,6 @@ export function ReportResourceDialog({
       setBusy(false);
     }
   }
-  const dialog =
-    open && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="report-title"
-            aria-describedby="report-resource-summary"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) close();
-            }}
-          >
-            <form
-              ref={panelRef}
-              onMouseDown={(e) => e.stopPropagation()}
-              onSubmit={submit}
-              className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"
-            >
-              <div className="flex gap-3">
-                <ResourceTypeIcon
-                  item={{
-                    isFolder: resource.isFolder || false,
-                    mimeType: resource.mimeType || '',
-                  }}
-                />
-                <div className="min-w-0">
-                  <h2
-                    id="report-title"
-                    className="text-lg font-semibold text-[color:var(--dp-navy)]"
-                  >
-                    {title}
-                  </h2>
-                  <p
-                    id="report-resource-summary"
-                    className="mt-1 truncate text-sm font-medium text-[color:var(--dp-ink)]"
-                  >
-                    {resource.resourceName}
-                  </p>
-                  <p className="truncate text-xs text-[color:var(--dp-ink)]/60">
-                    {resource.resourcePath || 'Library'}
-                  </p>
-                </div>
-              </div>
-              {sent ? (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                  <p className="font-semibold">Report sent</p>
-                  <p>Thank you — the issue has been recorded.</p>
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 font-medium"
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <label className="mt-4 block text-sm font-medium">
-                    Category
-                    <AppSelect
-                      value={category}
-                      onValueChange={setCategory}
-                      options={categories.map((c) => ({ value: c, label: c }))}
-                    />
-                  </label>
-                  <label className="mt-3 block text-sm font-medium">
-                    Message
-                    <textarea
-                      required
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      rows={5}
-                      className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 focus:border-[color:var(--dp-navy)] focus:outline-none focus:bg-slate-50"
-                      placeholder="Tell us what is wrong and what you expected."
-                    />
-                  </label>
-                  {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
-                  <div className="mt-4 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={close}
-                      className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      disabled={busy}
-                      className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                    >
-                      {busy ? 'Submitting…' : 'Submit report'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </form>
-          </div>,
-          document.body,
-        )
-      : null;
   return (
     <>
       <button
@@ -322,7 +220,103 @@ export function ReportResourceDialog({
       >
         <Flag className="size-4" /> {triggerLabel}
       </button>
-      {dialog}
+      {open && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-title"
+          aria-describedby="report-resource-summary"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
+          <form
+            ref={panelRef}
+            onMouseDown={(e) => e.stopPropagation()}
+            onSubmit={submit}
+            className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"
+          >
+            <div className="flex gap-3">
+              <ResourceTypeIcon
+                item={{
+                  isFolder: resource.isFolder || false,
+                  mimeType: resource.mimeType || '',
+                }}
+              />
+              <div className="min-w-0">
+                <h2
+                  id="report-title"
+                  className="text-lg font-semibold text-[color:var(--dp-navy)]"
+                >
+                  {title}
+                </h2>
+                <p
+                  id="report-resource-summary"
+                  className="mt-1 truncate text-sm font-medium text-[color:var(--dp-ink)]"
+                >
+                  {resource.resourceName}
+                </p>
+                <p className="truncate text-xs text-[color:var(--dp-ink)]/60">
+                  {resource.resourcePath || 'Library'}
+                </p>
+              </div>
+            </div>
+            {sent ? (
+              <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                <p className="font-semibold">Report sent</p>
+                <p>Thank you — the issue has been recorded.</p>
+                <button
+                  type="button"
+                  onClick={close}
+                  className="mt-3 rounded-md border border-emerald-300 bg-white px-3 py-2 font-medium"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <label className="mt-4 block text-sm font-medium">
+                  Category
+                  <AppSelect
+                    value={category}
+                    onValueChange={setCategory}
+                    options={categories.map((c) => ({ value: c, label: c }))}
+                  />
+                </label>
+                <label className="mt-3 block text-sm font-medium">
+                  Message
+                  <textarea
+                    required
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={5}
+                    className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 focus:border-[color:var(--dp-navy)] focus:outline-none focus:bg-slate-50"
+                    placeholder="Tell us what is wrong and what you expected."
+                  />
+                </label>
+                {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={close}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={busy}
+                    className="rounded-md border border-[color:var(--dp-navy)] bg-[color:var(--dp-navy)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {busy ? 'Submitting…' : 'Submit report'}
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+      )}
       <style jsx global>{`
         .dp-qb-practice-toolbar .dp-qb-toolbar-report-button {
           display: inline-flex !important;
