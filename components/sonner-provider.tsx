@@ -72,6 +72,34 @@ export function AppToaster() {
           width: 0.75rem !important;
           height: 0.75rem !important;
         }
+
+        button[aria-label^='Report issue with '] {
+          border-color: #fca5a5 !important;
+          background: #fff1f2 !important;
+          color: #b91c1c !important;
+        }
+
+        button[aria-label^='Report issue with ']:hover:not(:disabled),
+        button[aria-label^='Report issue with ']:focus-visible {
+          border-color: #ef4444 !important;
+          background: #ffe4e6 !important;
+          color: #991b1b !important;
+        }
+
+        html[data-theme='dark'] button[aria-label^='Report issue with '] {
+          border-color: #7f1d1d !important;
+          background: #351720 !important;
+          color: #fecaca !important;
+        }
+
+        html[data-theme='dark']
+          button[aria-label^='Report issue with ']:hover:not(:disabled),
+        html[data-theme='dark']
+          button[aria-label^='Report issue with ']:focus-visible {
+          border-color: #ef4444 !important;
+          background: #431d27 !important;
+          color: #fee2e2 !important;
+        }
       `}</style>
     </>
   );
