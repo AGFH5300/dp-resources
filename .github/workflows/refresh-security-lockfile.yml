@@ -40,12 +40,12 @@ jobs:
       - name: Commit generated security files
         shell: bash
         run: |
-          if git diff --quiet -- package-lock.json .security-audit.json; then
+          git add package-lock.json .security-audit.json
+          if git diff --cached --quiet; then
             echo "Generated security files were already current."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json .security-audit.json
             git commit -m "chore: capture secure dependency lockfile [skip lock-refresh]"
             git push origin HEAD:fix/dependency-security-alerts
           fi
