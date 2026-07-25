@@ -60,27 +60,42 @@ export function hasSupabaseAuthCookie(
   );
 }
 
-export function isRecoverableSupabaseAuthError(error: unknown) {
-  if (!error || typeof error !== 'object') return false;
+function authErrorParts(error: unknown) {
+  if (!error || typeof error !== 'object')
+    return { name: '', code: '', message: '' };
 
   const candidate = error as {
     name?: unknown;
     code?: unknown;
     message?: unknown;
   };
-  const name = typeof candidate.name === 'string' ? candidate.name : '';
-  const code = typeof candidate.code === 'string' ? candidate.code : '';
-  const message =
-    typeof candidate.message === 'string' ? candidate.message.toLowerCase() : '';
+  return {
+    name: typeof candidate.name === 'string' ? candidate.name : '',
+    code: typeof candidate.code === 'string' ? candidate.code : '',
+    message:
+      typeof candidate.message === 'string'
+        ? candidate.message.toLowerCase()
+        : '',
+  };
+}
+
+export function isTransientSupabaseAuthError(error: unknown) {
+  const { code, message } = authErrorParts(error);
+  return (
+    code === 'refresh_token_already_used' ||
+    message.includes('refresh token already used')
+  );
+}
+
+export function isRecoverableSupabaseAuthError(error: unknown) {
+  const { name, code, message } = authErrorParts(error);
 
   return (
     name === 'AuthSessionMissingError' ||
     code === 'refresh_token_not_found' ||
-    code === 'refresh_token_already_used' ||
     message.includes('auth session missing') ||
     message.includes('invalid refresh token') ||
-    message.includes('refresh token not found') ||
-    message.includes('refresh token already used')
+    message.includes('refresh token not found')
   );
 }
 
@@ -140,18 +155,26 @@ export async function middleware(request: NextRequest) {
   });
 
   try {
-    const { error } = await supabase.auth.getUser();
-    if (error && isRecoverableSupabaseAuthError(error)) {
+    // getClaims validates the access token without making every parallel page request
+    // fetch the same user record and race to rotate a single-use refresh token.
+    const { error } = await supabase.auth.getClaims();
+    if (error && isTransientSupabaseAuthError(error)) {
+      console.warn('Supabase middleware observed a concurrent token refresh', {
+        code: error.code,
+      });
+    } else if (error && isRecoverableSupabaseAuthError(error)) {
       return clearSupabaseAuthCookies(request, supabaseUrl);
-    }
-    if (error) {
+    } else if (error) {
       console.error('Supabase middleware session validation failed', error);
     }
   } catch (error) {
-    if (isRecoverableSupabaseAuthError(error)) {
+    if (isTransientSupabaseAuthError(error)) {
+      console.warn('Supabase middleware observed a concurrent token refresh');
+    } else if (isRecoverableSupabaseAuthError(error)) {
       return clearSupabaseAuthCookies(request, supabaseUrl);
+    } else {
+      console.error('Supabase middleware session validation failed', error);
     }
-    console.error('Supabase middleware session validation failed', error);
   }
 
   response.headers.set('Cache-Control', 'private, no-store');
