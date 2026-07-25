@@ -17,6 +17,8 @@ import {
   Lightbulb,
   Loader2,
   PlayCircle,
+  RotateCcw,
+  Trash2,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -29,6 +31,12 @@ import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
 import {
+  clearAllPracticeAttempts,
+  clearPracticeAttempt,
+  readPracticeAttempt,
+  savePracticeAttempt,
+} from '@/lib/question-bank/practice-attempt-storage';
+import {
   marksLabel,
   taxonomyLabel,
 } from '@/lib/question-bank/presentation';
@@ -37,6 +45,16 @@ import type {
   QuestionListRow,
   QuestionProgressStatus,
 } from '@/lib/question-bank/types';
+
+const QUESTION_REPORT_CATEGORIES = [
+  'Broken image or diagram',
+  'Broken solution video',
+  'Wrong answer or markscheme',
+  'Question text or layout problem',
+  'Wrong topic or metadata',
+  'Duplicate question',
+  'Other',
+] as const;
 
 function difficultyClass(value: string | null) {
   const difficulty = String(value || '').toLowerCase();
@@ -162,6 +180,24 @@ export function CoursePracticeWorkspace({
         return (await response.json()) as QuestionDetail;
       })
       .then((payload) => {
+        const parsed = parseInteractiveQuestion(
+          payload.question.content,
+          payload.question.markScheme,
+        );
+        const savedAttempt = readPracticeAttempt(payload.variant.id);
+        const savedChoice =
+          savedAttempt?.selectedChoice &&
+          parsed.choices.some((choice) => choice.id === savedAttempt.selectedChoice)
+            ? savedAttempt.selectedChoice
+            : null;
+
+        if (savedAttempt?.selectedChoice && !savedChoice) {
+          clearPracticeAttempt(payload.variant.id);
+        }
+
+        setSelectedChoice(savedChoice);
+        setAnswerChecked(Boolean(savedChoice && savedAttempt?.answerChecked));
+        setShowExplanation(Boolean(savedAttempt?.showExplanation));
         setDetail(payload);
         requestAnimationFrame(() => panelRef.current?.focus());
       })
@@ -228,6 +264,11 @@ export function CoursePracticeWorkspace({
     setSelectedChoice(choiceId);
     setAnswerChecked(true);
     setShowExplanation(true);
+    savePracticeAttempt(detail.variant.id, {
+      selectedChoice: choiceId,
+      answerChecked: true,
+      showExplanation: true,
+    });
     const previousStatus = detail.progress.status;
     applyQuestionState(detail.variant.id, { status: 'completed' });
     try {
@@ -236,6 +277,37 @@ export function CoursePracticeWorkspace({
       applyQuestionState(detail.variant.id, { status: previousStatus });
       toast.error('Your answer was checked, but progress could not be saved.');
     }
+  }
+
+  function revealExplanation() {
+    if (!detail) return;
+    setShowExplanation(true);
+    savePracticeAttempt(detail.variant.id, {
+      selectedChoice,
+      answerChecked,
+      showExplanation: true,
+    });
+  }
+
+  function resetCurrentAttempt() {
+    if (!detail) return;
+    clearPracticeAttempt(detail.variant.id);
+    setSelectedChoice(null);
+    setAnswerChecked(false);
+    setShowExplanation(false);
+    toast.success('This answer was reset on this device.');
+  }
+
+  function resetEveryAttempt() {
+    const confirmed = window.confirm(
+      'Reset every locally saved Question Bank answer on this device? Saved questions and progress statuses will not be changed.',
+    );
+    if (!confirmed) return;
+    clearAllPracticeAttempts();
+    setSelectedChoice(null);
+    setAnswerChecked(false);
+    setShowExplanation(false);
+    toast.success('All locally saved answers were reset.');
   }
 
   async function selfAssess(gotIt: boolean) {
@@ -269,6 +341,9 @@ export function CoursePracticeWorkspace({
     answerChecked &&
     interactive?.correctChoiceId &&
     selectedChoice === interactive.correctChoiceId;
+  const hasCurrentAttempt = Boolean(
+    selectedChoice || answerChecked || showExplanation,
+  );
 
   return (
     <div className={selectedVariantId ? 'dp-qb-practice-layout is-open' : ''}>
@@ -406,9 +481,25 @@ export function CoursePracticeWorkspace({
                 ? `${selectedIndex + 1} of ${questionRows.length} on this page`
                 : 'Practice question'}
             </span>
-            <button type="button" onClick={closeQuestion} aria-label="Close question">
-              <X className="size-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {detail ? (
+                <ReportResourceDialog
+                  resource={{
+                    resourceName: `Question ${detail.question.reference}`,
+                    resourcePath: `${coursePath}?question=${detail.variant.id}`,
+                    displayPath: coursePath,
+                    mimeType: 'application/x-dp-question',
+                  }}
+                  categories={QUESTION_REPORT_CATEGORIES}
+                  title="Report a question issue"
+                  triggerLabel="Report"
+                  className="dp-qb-toolbar-report-button"
+                />
+              ) : null}
+              <button type="button" onClick={closeQuestion} aria-label="Close question">
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -523,7 +614,7 @@ export function CoursePracticeWorkspace({
                   <button
                     type="button"
                     className="dp-qb-check-answer"
-                    onClick={() => setShowExplanation(true)}
+                    onClick={revealExplanation}
                     disabled={showExplanation}
                   >
                     {showExplanation ? 'Explanation revealed' : 'Reveal explanation'}
@@ -619,6 +710,38 @@ export function CoursePracticeWorkspace({
                 />
               </section>
 
+              <section className="dp-qb-practice-extra">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[color:var(--dp-navy)]">
+                      Answer saved on this device
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Your selected answer and revealed explanation are remembered in
+                      this browser only. Resetting answers does not change progress or
+                      saved questions.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="dp-qb-state-button"
+                      disabled={!hasCurrentAttempt}
+                      onClick={resetCurrentAttempt}
+                    >
+                      <RotateCcw className="size-4" /> Reset this answer
+                    </button>
+                    <button
+                      type="button"
+                      className="dp-qb-state-button"
+                      onClick={resetEveryAttempt}
+                    >
+                      <Trash2 className="size-4" /> Reset all answers
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               {detail.videos.length ? (
                 <details className="dp-qb-practice-extra">
                   <summary>
@@ -658,17 +781,10 @@ export function CoursePracticeWorkspace({
                   resource={{
                     resourceName: `Question ${detail.question.reference}`,
                     resourcePath: `${coursePath}?question=${detail.variant.id}`,
+                    displayPath: coursePath,
                     mimeType: 'application/x-dp-question',
                   }}
-                  categories={[
-                    'Broken image or diagram',
-                    'Broken solution video',
-                    'Wrong answer or markscheme',
-                    'Question text or layout problem',
-                    'Wrong topic or metadata',
-                    'Duplicate question',
-                    'Other',
-                  ]}
+                  categories={QUESTION_REPORT_CATEGORIES}
                   title="Report a question issue"
                   triggerLabel="Report this question"
                   className="dp-qb-report-button"
