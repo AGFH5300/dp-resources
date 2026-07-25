@@ -38,11 +38,8 @@ export function normalizeServiceAccountPrivateKey(raw = '') {
   }
 
   key = key
-    .replace(/\r\n/g, '\n')
+    .replace(/\r\n?/g, '\n')
     .replace(/\\n/g, '\n')
-    .replace(/\n/g, '\n')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
     .replace(/\\+\n/g, '\n')
     .replace(/\n\\+/g, '\n')
     .replace(/\\+$/g, '')

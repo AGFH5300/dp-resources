@@ -22,6 +22,8 @@ import { Readable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 
+import { decodeHtmlEntitiesOnce, htmlToPlainText, removeHtmlComments } from "./html-utils.mjs";
+
 const VERSION = "1.0.0";
 const APP_URL = "https://pestle.pages.dev/app/";
 const BANK_BASE_URL = "https://pestle-assets.pirateib.sh/";
@@ -222,7 +224,7 @@ export function discoverBanks(html, source) {
   }
   if (mapping.size === 0) throw new Error("fileNameMap was found but contained no JSON banks");
 
-  const uncommented = html.replace(/<!--[\s\S]*?-->/g, "");
+  const uncommented = removeHtmlComments(html);
   const activeIds = [];
   for (const match of uncommented.matchAll(/<button\b[^>]*\bid\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
     if (mapping.has(match[1]) && !activeIds.includes(match[1])) activeIds.push(match[1]);
@@ -338,30 +340,15 @@ export async function* iterateJsonArray(filename) {
 }
 
 function decodeEntities(value) {
-  return value
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'");
+  return decodeHtmlEntitiesOnce(value);
 }
 
 export function normalizeHtml(value) {
-  return decodeEntities(String(value || "")
-    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
-    .replace(/<img\b[^>]*>/gi, " [image] ")
-    .replace(/<br\s*\/?\s*>/gi, "\n")
-    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, " "))
+  return htmlToPlainText(value, {
+    imagePlaceholder: "[image]",
+    preserveBlockBreaks: true,
+  })
     .normalize("NFKC")
-    .replace(/\r/g, "")
-    .replace(/[\t ]+/g, " ")
-    .replace(/ *\n */g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 

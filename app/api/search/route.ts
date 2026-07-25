@@ -1,6 +1,7 @@
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeResourceName } from '@/lib/resource-utils';
+import { expandResourceSearchAliases } from '@/lib/search-aliases';
 export const dynamic = 'force-dynamic';
 
 function indexAvailability(state: any, count: number) {
@@ -44,11 +45,16 @@ export async function GET(req: Request) {
             : undefined,
       },
     );
-  const { data, error } = await sb.rpc('dp_search_resources', {
-    search_query: needle,
-    result_limit: 50,
-  });
-  if (error)
+  const searchVariants = expandResourceSearchAliases(needle);
+  const searches = await Promise.all(
+    searchVariants.map((searchQuery) =>
+      sb.rpc('dp_search_resources', {
+        search_query: searchQuery,
+        result_limit: 50,
+      }),
+    ),
+  );
+  if (searches.every(({ error }) => error))
     return Response.json(
       { folders: [], files: [], indexState: 'ready' },
       {
@@ -60,11 +66,30 @@ export async function GET(req: Request) {
             : undefined,
       },
     );
-  const rows = (data || []).map((r: any) => ({
-    ...r,
-    drive_url: undefined,
-    webViewLink: undefined,
-  }));
+
+  const merged = new Map<string, any>();
+  searches.forEach(({ data }, variantIndex) => {
+    for (const row of data || []) {
+      const adjustedRank = Number(row.rank_score || 0) - variantIndex * 5;
+      const previous = merged.get(row.drive_file_id);
+      if (!previous || adjustedRank > previous.rank_score) {
+        merged.set(row.drive_file_id, { ...row, rank_score: adjustedRank });
+      }
+    }
+  });
+  const rows = [...merged.values()]
+    .sort(
+      (left, right) =>
+        right.rank_score - left.rank_score ||
+        Number(right.is_folder) - Number(left.is_folder) ||
+        String(left.name).localeCompare(String(right.name)),
+    )
+    .slice(0, 50)
+    .map((row) => ({
+      ...row,
+      drive_url: undefined,
+      webViewLink: undefined,
+    }));
   const payload = {
     folders: rows.filter((r: any) => r.is_folder),
     files: rows.filter((r: any) => !r.is_folder),
