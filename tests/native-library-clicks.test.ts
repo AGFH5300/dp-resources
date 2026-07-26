@@ -14,9 +14,11 @@ describe('Library pointer navigation', () => {
   });
 
   it('keeps the DP Resources context menu and three-dot new-tab action', () => {
-    expect(browser.match(/onContextMenu=\{\(e\) => \{/g).length).toBeGreaterThanOrEqual(2);
+    expect(
+      (browser.match(/onContextMenu=\{\(e\) => \{/g) || []).length,
+    ).toBeGreaterThanOrEqual(2);
     expect(browser).toContain('Open in new tab');
-    expect(browser).toContain("navigate(item, path, true)");
+    expect(browser).toContain('navigate(item, path, true)');
   });
 
   it('does not open a resource when middle-clicking row controls', () => {
