@@ -1,0 +1,31 @@
+name: Apply native Library click behavior
+
+on:
+  push:
+    branches: [fix/native-library-clicks]
+    paths:
+      - scripts/apply-native-library-clicks.mjs
+      - .github/workflows/apply-native-library-clicks.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/native-library-clicks
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/apply-native-library-clicks.mjs
+      - name: Commit generated click behavior
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/library/library-browser.tsx tests/native-library-clicks.test.ts
+          git commit -m "Support native new-tab clicks in the Library"
+          git push origin HEAD:fix/native-library-clicks
