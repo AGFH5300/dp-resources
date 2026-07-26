@@ -580,7 +580,19 @@ export function ResourceRow({
       onPointerLeave={() => cancelPrefetch(item)}
       onFocus={() => schedulePrefetch(item)}
       onBlur={() => cancelPrefetch(item)}
-      onClick={() => navigate(item, path)}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey) {
+          event.preventDefault();
+          navigate(item, path, true);
+          return;
+        }
+        navigate(item, path);
+      }}
+      onAuxClick={(event) => {
+        if (event.button !== 1) return;
+        event.preventDefault();
+        navigate(item, path, true);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') navigate(item, path);
         if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
@@ -601,6 +613,7 @@ export function ResourceRow({
           aria-label={`Select ${item.name}`}
           type="checkbox"
           onClick={(e) => e.stopPropagation()}
+          onAuxClick={(e) => e.stopPropagation()}
           className="size-4 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
         />
         <ResourceTypeIcon item={item} />
@@ -633,6 +646,7 @@ export function ResourceRow({
       </span>
       <button
         aria-label={`More actions for ${item.name}`}
+        onAuxClick={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -806,7 +820,19 @@ export function LibraryBrowser({
               onPointerLeave={() => cancelPrefetch(item)}
               onFocus={() => schedulePrefetch(item)}
               onBlur={() => cancelPrefetch(item)}
-              onClick={() => navigate(item, basePath)}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey) {
+                  event.preventDefault();
+                  navigate(item, basePath, true);
+                  return;
+                }
+                navigate(item, basePath);
+              }}
+              onAuxClick={(event) => {
+                if (event.button !== 1) return;
+                event.preventDefault();
+                navigate(item, basePath, true);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') navigate(item, basePath);
                 if (
@@ -829,6 +855,7 @@ export function LibraryBrowser({
             >
               <button
                 aria-label={`More actions for ${item.name}`}
+                onAuxClick={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   const r = (
