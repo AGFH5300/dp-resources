@@ -1,8 +1,17 @@
 export type StoredPracticeAttempt = {
   selectedChoiceIds: string[];
+  /** @deprecated Compatibility mirror for legacy single-answer attempts. */
+  selectedChoice: string | null;
   answerChecked: boolean;
   showExplanation: boolean;
   updatedAt: number;
+};
+
+type PracticeAttemptInput = {
+  selectedChoiceIds?: string[];
+  selectedChoice?: string | null;
+  answerChecked: boolean;
+  showExplanation: boolean;
 };
 
 type StoredPracticeAttempts = Record<string, StoredPracticeAttempt>;
@@ -16,6 +25,10 @@ function normalizeSelectedChoices(value: unknown) {
   return [];
 }
 
+function selectedChoiceMirror(selectedChoiceIds: string[]) {
+  return selectedChoiceIds.length === 1 ? selectedChoiceIds[0] : null;
+}
+
 function normalizeStoredAttempt(value: unknown): StoredPracticeAttempt | null {
   if (!value || typeof value !== 'object') return null;
   const attempt = value as Record<string, unknown>;
@@ -26,13 +39,15 @@ function normalizeStoredAttempt(value: unknown): StoredPracticeAttempt | null {
   )
     return null;
 
-  // selectedChoice is the legacy single-answer field. Reading it keeps existing
-  // local attempts valid while all new writes use selectedChoiceIds.
+  // selectedChoice is the legacy single-answer field. Reading and mirroring it
+  // keeps old browser data and existing integrations valid while all new UI
+  // writes can use selectedChoiceIds for exact-count multi-select questions.
   const selectedChoiceIds = normalizeSelectedChoices(
     attempt.selectedChoiceIds ?? attempt.selectedChoice,
   );
   return {
     selectedChoiceIds,
+    selectedChoice: selectedChoiceMirror(selectedChoiceIds),
     answerChecked: attempt.answerChecked,
     showExplanation: attempt.showExplanation,
     updatedAt: attempt.updatedAt,
@@ -72,10 +87,19 @@ export function readPracticeAttempt(variantId: string) {
 
 export function savePracticeAttempt(
   variantId: string,
-  attempt: Omit<StoredPracticeAttempt, 'updatedAt'>,
+  attempt: PracticeAttemptInput,
 ) {
+  const selectedChoiceIds = normalizeSelectedChoices(
+    attempt.selectedChoiceIds ?? attempt.selectedChoice,
+  );
   const attempts = readAll();
-  attempts[variantId] = { ...attempt, updatedAt: Date.now() };
+  attempts[variantId] = {
+    selectedChoiceIds,
+    selectedChoice: selectedChoiceMirror(selectedChoiceIds),
+    answerChecked: attempt.answerChecked,
+    showExplanation: attempt.showExplanation,
+    updatedAt: Date.now(),
+  };
   writeAll(attempts);
 }
 
