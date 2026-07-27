@@ -1,0 +1,37 @@
+name: Capture remaining admin search failures
+
+on:
+  push:
+    branches: [fix/admin-unified-content-search]
+    paths:
+      - .github/workflows/capture-admin-search-failures.yml
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-unified-content-search
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Capture concise failures
+        run: |
+          set +e
+          npm test -- --reporter=verbose > /tmp/full.txt 2>&1
+          code=$?
+          sed -r 's/\x1B\[[0-9;]*[mK]//g' /tmp/full.txt | grep -E '(^ FAIL |^ × |^ ❯ |AssertionError:|Test Files|Tests  )' > admin-search-failures.txt || true
+          cat admin-search-failures.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin-search-failures.txt
+          git commit -m "Record remaining admin search failures"
+          git push origin HEAD:fix/admin-unified-content-search
+          exit "$code"
