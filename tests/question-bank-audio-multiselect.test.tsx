@@ -67,6 +67,37 @@ describe('Revision Village audio rendering', () => {
     expect(output).not.toContain(audioSourceId);
   });
 
+  it('preserves text on both sides of an inline audio directive', () => {
+    const source = `Before ${listeningSource.match(/:audio\{[^}]+\}/)?.[0]} After`;
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        source={source}
+        assets={[
+          {
+            id: audioAssetId,
+            sourceFileId: audioSourceId,
+            role: 'content_reference',
+            originalRole: 'audio',
+            sortOrder: 0,
+            altText: 'Inline listening audio',
+            contentType: 'audio/mp4',
+            audio: {
+              provider: 'revision-village',
+              sourceAudioId: audioSourceId,
+              transcriptId: null,
+              transcript: '',
+              durationSeconds: 64.021,
+            },
+          },
+        ]}
+      />,
+    );
+
+    expect(output.indexOf('Before')).toBeLessThan(output.indexOf('<audio'));
+    expect(output.indexOf('<audio')).toBeLessThan(output.indexOf('After'));
+    expect(output).not.toContain(audioSourceId);
+  });
+
   it('removes the whole audio directive from list previews', () => {
     const preview = questionPreview(listeningSource);
     expect(preview).toContain('Listening audio.');
@@ -155,6 +186,19 @@ describe('safe interactive answer parsing', () => {
     expect(parsed.selectionMode).toBe('none');
     expect(parsed.choices).toEqual([]);
     expect(parsed.correctChoiceIds).toEqual([]);
+  });
+
+  it('recognises legacy bare-letter markschemes without guessing', () => {
+    const parsed = parseInteractiveQuestion(
+      String.raw`Which option is correct?
+- A. First
+- B. Second
+- C. Third`,
+      String.raw`**B**. The second option is correct.`,
+      1,
+    );
+    expect(parsed.selectionMode).toBe('single');
+    expect(parsed.correctChoiceIds).toEqual(['B']);
   });
 
   it('retains a dependable single-answer interaction when confidence is high', () => {
