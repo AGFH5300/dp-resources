@@ -1,9 +1,0 @@
-file:///home/runner/work/dp-resources/dp-resources/scripts/apply-admin-unified-search.mjs:9
-    throw new Error(`${label}: expected exactly one match in ${path}, found ${count}`);
-          ^
-
-Error: replace user email search with unified search: expected exactly one match in app/admin/admin-console.tsx, found 2
-    at replaceOnce (file:///home/runner/work/dp-resources/dp-resources/scripts/apply-admin-unified-search.mjs:9:11)
-    at async file:///home/runner/work/dp-resources/dp-resources/scripts/apply-admin-unified-search.mjs:171:1
-
-Node.js v24.18.0
