@@ -41,14 +41,6 @@ export function QuestionStateControls({
     setSaved(initialSaved);
   }, [initialSaved, initialStatus]);
 
-  useEffect(() => {
-    void fetch('/api/question-bank/state', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ questionId, variantId, viewed: true }),
-    });
-  }, [questionId, variantId]);
-
   function changeStatus(next: QuestionProgressStatus) {
     const previous = status;
     setStatus(next);

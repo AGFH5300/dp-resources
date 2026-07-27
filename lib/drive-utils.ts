@@ -24,7 +24,16 @@ export function normalizeSearch(value = '') {
 }
 export function safeDownloadName(name: string, extension?: string) {
   const cleaned = name.replace(/[\\/\r\n"]/g, '').trim() || 'download';
-  return extension && !cleaned.toLowerCase().endsWith(`.${extension}`)
-    ? `${cleaned}.${extension}`
-    : cleaned;
+  const ascii =
+    cleaned
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u2010-\u2015\u2212]/g, '-')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[^\x20-\x7e]/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim() || 'download';
+  return extension && !ascii.toLowerCase().endsWith(`.${extension}`)
+    ? `${ascii}.${extension}`
+    : ascii;
 }
