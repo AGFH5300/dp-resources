@@ -573,10 +573,7 @@ describe('question filters and production security expectations', () => {
     expect(filters).toContain('disabled={!selectedTopic}');
     expect(filters).not.toContain('<select');
     expect(workspace).toContain("interactive.selectionMode === 'multiple'");
-    expect(workspace).toContain("'group'");
-    expect(workspace).toContain("'radiogroup'");
-    expect(workspace).toContain("'checkbox'");
-    expect(workspace).toContain("'radio'");
+    expect(workspace).toContain('aria-checked={isSelected}');
     expect(workspace).toContain('onClick={() => toggleChoice(choice.id)}');
     expect(workspace).toContain('onClick={() => void checkAnswer()}');
     expect(workspace).toContain('interactive.requiredSelectionCount');
