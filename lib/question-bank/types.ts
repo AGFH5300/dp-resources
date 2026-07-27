@@ -36,10 +36,30 @@ export type QuestionListRow = {
   total_count: number;
 };
 
+export type QuestionAssetRole =
+  | 'question'
+  | 'markscheme'
+  | 'examiner_report'
+  | 'content_reference'
+  | 'source_image'
+  | 'question_part'
+  | 'audio'
+  | 'formula_booklet';
+
 export type QuestionAsset = {
   id: string;
   sourceFileId: string | null;
   role: 'question' | 'markscheme' | 'examiner_report' | 'content_reference';
+  originalRole?: QuestionAssetRole;
   sortOrder: number;
   altText: string;
+  contentType?: string | null;
+  byteSize?: number | null;
+  audio?: {
+    provider: string;
+    sourceAudioId: string | null;
+    transcriptId: string | null;
+    transcript: string;
+    durationSeconds: number | null;
+  } | null;
 };

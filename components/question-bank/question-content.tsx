@@ -275,7 +275,7 @@ function blocks(source: string, assets: QuestionAsset[]) {
   );
 
   while (index < lines.length) {
-    let line = lines[index].trimEnd();
+    const line = lines[index].trimEnd();
     if (!line.trim()) {
       index += 1;
       continue;
@@ -426,13 +426,89 @@ function blocks(source: string, assets: QuestionAsset[]) {
   return output;
 }
 
+function cleanTranscript(value: string) {
+  return String(value || '')
+    .replace(/^\s*:u\[Transcript\]\s*/i, '')
+    .replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\r\n?/g, '\n')
+    .trim();
+}
+
+function durationLabel(seconds: number | null | undefined) {
+  if (!Number.isFinite(seconds)) return null;
+  const rounded = Math.max(0, Math.round(Number(seconds)));
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return `${minutes}:${String(remainder).padStart(2, '0')}`;
+}
+
+function audioBlocks(assets: QuestionAsset[]) {
+  const audioAssets = assets.filter(
+    (asset) =>
+      asset.originalRole === 'audio' ||
+      String(asset.contentType || '').toLowerCase().startsWith('audio/'),
+  );
+  if (!audioAssets.length) return null;
+
+  return (
+    <section className="mt-5 grid gap-4" aria-label="Listening material">
+      {audioAssets.map((asset, index) => {
+        const transcript = cleanTranscript(asset.audio?.transcript || '');
+        const duration = durationLabel(asset.audio?.durationSeconds);
+        return (
+          <div
+            key={asset.id}
+            className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Listening audio {audioAssets.length > 1 ? index + 1 : ''}
+                </p>
+                <p className="text-sm font-medium text-slate-800">
+                  {asset.altText || 'Question audio'}
+                </p>
+              </div>
+              {duration ? (
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600">
+                  {duration}
+                </span>
+              ) : null}
+            </div>
+            <audio
+              className="w-full"
+              controls
+              preload="metadata"
+              src={`/api/question-bank/assets/${asset.id}`}
+              aria-label={asset.altText || `Listening audio ${index + 1}`}
+            >
+              Your browser does not support audio playback.
+            </audio>
+            {transcript ? (
+              <details className="mt-3 rounded-lg bg-white p-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-700">
+                  Read transcript
+                </summary>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {transcript}
+                </p>
+              </details>
+            ) : null}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function QuestionContent({
   source,
   assets = [],
   kind = 'question',
 }: RendererProps) {
   const normalizedSource = normalizeQuestionSource(source);
-  if (!normalizedSource)
+  const audio = audioBlocks(assets);
+  if (!normalizedSource && !audio)
     return (
       <p className="dp-qb-empty-content" role="status">
         This source occurrence contains no {kind === 'question' ? 'question' : 'markscheme'} text.
@@ -440,7 +516,8 @@ export function QuestionContent({
     );
   return (
     <div className={`dp-qb-content dp-qb-content-${kind}`}>
-      {blocks(normalizedSource, assets)}
+      {normalizedSource ? blocks(normalizedSource, assets) : null}
+      {audio}
     </div>
   );
 }

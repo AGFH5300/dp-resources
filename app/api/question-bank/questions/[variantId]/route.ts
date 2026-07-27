@@ -1,6 +1,7 @@
 import { requireMember } from '@/lib/auth';
 import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { getQuestionDetail } from '@/lib/question-bank/queries';
+import { getExtendedQuestionDetail } from '@/lib/question-bank/revision-village-detail';
 import type { QuestionAsset } from '@/lib/question-bank/types';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
@@ -13,6 +14,23 @@ function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
   return response;
+}
+
+function solutionReferenceUrl(video: any) {
+  const direct = String(video?.vimeo_url || video?.source_url || '').trim();
+  if (direct) {
+    try {
+      const parsed = new URL(direct);
+      if (parsed.protocol === 'https:') return parsed.toString();
+    } catch {}
+  }
+  const provider = String(video?.provider || 'solution').trim() || 'solution';
+  const providerVideoId = String(
+    video?.provider_video_id || video?.vimeo_video_id || video?.id || '',
+  ).trim();
+  return `dp-solution-id://${encodeURIComponent(provider)}/${encodeURIComponent(
+    providerVideoId,
+  )}`;
 }
 
 async function recordQuestionView(
@@ -64,6 +82,10 @@ export async function GET(
   const data = await getQuestionDetail(variantId, user.id);
   const variant = data.variant as any;
   const question = variant.question as any;
+  const assetIds = (data.assets as any[])
+    .map((row) => row.asset?.id)
+    .filter((id): id is string => typeof id === 'string');
+  const extended = await getExtendedQuestionDetail(variantId, assetIds);
   const viewedProgress = await recordQuestionView(
     user.id,
     question.id,
@@ -75,15 +97,68 @@ export async function GET(
     });
     return null;
   });
+
+  const audioByAssetId = new Map(
+    extended.audio.map((row: any) => [row.asset_id, row]),
+  );
   const assets: QuestionAsset[] = (data.assets as any[])
     .filter((row) => row.asset?.verification_status === 'verified')
-    .map((row) => ({
-      id: row.asset.id,
-      sourceFileId: row.source_file_id,
-      role: row.role,
-      sortOrder: row.sort_order,
-      altText: row.alt_text || `${question.reference} image`,
-    }));
+    .map((row) => {
+      const audio = audioByAssetId.get(row.asset.id) as any;
+      return {
+        id: row.asset.id,
+        sourceFileId: row.source_file_id,
+        role: (row.role === 'audio' ? 'content_reference' : row.role) as QuestionAsset['role'],
+        originalRole: row.role,
+        sortOrder: row.sort_order,
+        altText: row.alt_text || `${question.reference} media`,
+        contentType: row.asset.content_type || null,
+        byteSize: Number(row.asset.byte_size || 0) || null,
+        audio: audio
+          ? {
+              provider: String(audio.provider || ''),
+              sourceAudioId: audio.source_audio_id || null,
+              transcriptId: audio.transcript_id || null,
+              transcript: String(audio.transcript || ''),
+              durationSeconds:
+                audio.duration_seconds === null || audio.duration_seconds === undefined
+                  ? null
+                  : Number(audio.duration_seconds),
+            }
+          : null,
+      };
+    });
+
+  const papers = extended.papers
+    .map((row: any) => ({
+      id: row.paper?.id,
+      reference: String(row.paper?.reference || '').trim(),
+      calculatorAllowed: row.paper?.calculator_allowed ?? null,
+      isPrimary: Boolean(row.is_primary),
+      sortOrder: Number(row.sort_order || 0),
+    }))
+    .filter((paper: any) => paper.id && paper.reference);
+  if (!papers.length && variant.paper?.id) {
+    papers.push({
+      id: variant.paper.id,
+      reference: variant.paper.reference,
+      calculatorAllowed: variant.paper.calculator_allowed ?? null,
+      isPrimary: true,
+      sortOrder: 0,
+    });
+  }
+  const paperReference = papers.map((paper: any) => paper.reference).join(' · ');
+  const privateFormulaBooklet = extended.paperAssets.find(
+    (row: any) => row.asset?.verification_status === 'verified',
+  );
+  const formulaBookletUrl = privateFormulaBooklet?.asset?.id
+    ? `/api/question-bank/assets/${privateFormulaBooklet.asset.id}`
+    : nativeFormulaBookletUrl(
+        variant.course?.subject?.slug,
+        variant.course?.slug,
+      );
+
+  const extendedVideos = extended.videos.length ? extended.videos : data.videos;
 
   return noStore({
     variant: {
@@ -95,11 +170,9 @@ export async function GET(
       subtopicNames: (variant.placements || [])
         .map((placement: any) => placement.subtopic?.name)
         .filter(Boolean),
-      paperReference: variant.paper?.reference || null,
-      formulaBookletUrl: nativeFormulaBookletUrl(
-        variant.course?.subject?.slug,
-        variant.course?.slug,
-      ),
+      paperReference: paperReference || null,
+      papers,
+      formulaBookletUrl,
     },
     question: {
       id: question.id,
@@ -110,11 +183,14 @@ export async function GET(
       maximumMark: question.maximum_mark,
     },
     assets,
-    videos: (data.videos as any[]).map((row) => ({
-      id: row.video.id,
-      name: row.part_name,
-      url: row.video.vimeo_url,
-    })),
+    videos: (extendedVideos as any[]).map((row) => {
+      const video = row.video || {};
+      return {
+        id: video.id,
+        name: row.part_name,
+        url: solutionReferenceUrl(video),
+      };
+    }),
     progress: viewedProgress
       ? {
           ...data.progress,
