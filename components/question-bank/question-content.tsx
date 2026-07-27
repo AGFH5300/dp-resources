@@ -18,6 +18,7 @@ const AUDIO_DIRECTIVE_SOURCE =
 type AudioDirectiveMatch = {
   raw: string;
   sourceId: string;
+  index: number;
 };
 
 function audioDirectiveMatches(value: string): AudioDirectiveMatch[] {
@@ -25,11 +26,8 @@ function audioDirectiveMatches(value: string): AudioDirectiveMatch[] {
   return Array.from(value.matchAll(pattern)).map((match) => ({
     raw: match[0],
     sourceId: String(match[2] || match[3] || match[4] || match[1] || '').trim(),
+    index: match.index || 0,
   }));
-}
-
-function stripAudioDirectives(value: string) {
-  return value.replace(new RegExp(AUDIO_DIRECTIVE_SOURCE, 'gi'), ' ').trim();
 }
 
 function math(source: string, displayMode: boolean, key: string) {
@@ -462,15 +460,16 @@ function blocks(source: string, assets: QuestionAsset[]) {
 
     const audioDirectives = audioDirectiveMatches(line);
     if (audioDirectives.length) {
-      const remaining = stripAudioDirectives(line);
-      if (remaining)
-        output.push(
-          wrap(
-            <p>{inline(remaining, `audio-context-${block}`, assetsByFileId)}</p>,
-            `block-${block++}`,
-          ),
-        );
+      let cursor = 0;
       for (const [audioIndex, directive] of audioDirectives.entries()) {
+        const before = line.slice(cursor, directive.index).trim();
+        if (before)
+          output.push(
+            wrap(
+              <p>{inline(before, `audio-before-${block}`, assetsByFileId)}</p>,
+              `block-${block++}`,
+            ),
+          );
         const asset = audioBySourceId.get(directive.sourceId.toLowerCase());
         output.push(
           wrap(
@@ -480,7 +479,16 @@ function blocks(source: string, assets: QuestionAsset[]) {
             `block-${block++}`,
           ),
         );
+        cursor = directive.index + directive.raw.length;
       }
+      const after = line.slice(cursor).trim();
+      if (after)
+        output.push(
+          wrap(
+            <p>{inline(after, `audio-after-${block}`, assetsByFileId)}</p>,
+            `block-${block++}`,
+          ),
+        );
       indentNext = false;
       index += 1;
       continue;
