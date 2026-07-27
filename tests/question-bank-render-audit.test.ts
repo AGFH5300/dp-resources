@@ -89,11 +89,13 @@ $
       ':answer[**C**]',
     );
 
-    expect(parsed.prompt).toContain('question:11111111-1111-4111-8111-111111111111');
-    expect(parsed.prompt).toContain('| C. |');
-    expect(parsed.choices).toEqual([]);
-    expect(parsed.correctChoiceId).toBeNull();
-    expect(parsed.selectionMode).toBe('none');
+    expect(parsed.prompt).not.toContain('question:11111111-1111-4111-8111-111111111111');
+    expect(parsed.choices.map((choice) => choice.id)).toEqual(['A', 'B', 'C', 'D']);
+    expect(parsed.choices[2].source).toContain(
+      'question:33333333-3333-4333-8333-333333333333',
+    );
+    expect(parsed.correctChoiceId).toBe('C');
+    expect(parsed.selectionMode).toBe('single');
   });
 
   it('quarantines incomplete variants and filters them from every user RPC', () => {
