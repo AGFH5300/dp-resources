@@ -422,7 +422,7 @@ export default async function Admin({
       userCount = result.count || 0;
       memberships = await enrichMembershipRows(sb, membershipRows);
     }
-    const uniqueDomains = Array.from(    const uniqueDomains = Array.from(
+    const uniqueDomains = Array.from(
       new Set(
         memberships
           .map((u: any) =>
