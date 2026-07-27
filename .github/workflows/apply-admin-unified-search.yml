@@ -1,0 +1,31 @@
+name: Apply unified admin content search
+
+on:
+  push:
+    branches: [fix/admin-unified-content-search]
+    paths:
+      - scripts/apply-admin-unified-search.mjs
+      - .github/workflows/apply-admin-unified-search.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-unified-content-search
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/apply-admin-unified-search.mjs
+      - name: Commit applied changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/admin/admin-console.tsx app/admin/page.tsx lib/admin-content-search.ts tests/support-admin-search.test.ts tests/admin-unified-content-search.test.ts
+          git commit -m "Add unified content search to admin queues and users"
+          git push origin HEAD:fix/admin-unified-content-search
