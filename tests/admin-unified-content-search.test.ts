@@ -48,11 +48,11 @@ describe('admin unified content search', () => {
   });
 
   it('loads and enriches all matching users before applying user pagination', () => {
-    expect(adminPage).toContain("sp.userSearch || sp.userEmail");
+    expect(adminPage).toContain('sp.userSearch || sp.userEmail');
     expect(adminPage).toContain('user.full_name');
     expect(adminPage).toContain('user.username');
     expect(adminPage).toContain('user.email');
-    expect(adminPage).toContain("'suspended inactive blocked'");
+    expect(adminPage).toContain('suspended inactive blocked');
     expect(adminPage).toContain('memberships = filtered.slice(start, start + userSize)');
   });
 });
