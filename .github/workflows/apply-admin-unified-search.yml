@@ -5,6 +5,7 @@ on:
     branches: [fix/admin-unified-content-search]
     paths:
       - scripts/apply-admin-unified-search.mjs
+      - scripts/run-admin-unified-search-applicator.mjs
       - .github/workflows/apply-admin-unified-search.yml
 
 permissions:
@@ -22,24 +23,17 @@ jobs:
         with:
           node-version: 24
       - name: Apply changes
-        run: |
-          set +e
-          node scripts/apply-admin-unified-search.mjs > /tmp/apply-output.log 2>&1
-          code=$?
-          cat /tmp/apply-output.log
-          if [ "$code" -ne 0 ]; then
-            cp /tmp/apply-output.log apply-admin-unified-search-error.log
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add apply-admin-unified-search-error.log
-            git commit -m "Record unified search applicator failure"
-            git push origin HEAD:fix/admin-unified-content-search
-            exit "$code"
-          fi
-      - name: Commit applied changes
+        run: node scripts/run-admin-unified-search-applicator.mjs
+      - name: Commit diagnostics or applied changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f apply-admin-unified-search-error.log ]; then
+            git add apply-admin-unified-search-error.log
+            git commit -m "Record unified search applicator failure"
+            git push origin HEAD:fix/admin-unified-content-search
+            exit 1
+          fi
           git add app/admin/admin-console.tsx app/admin/page.tsx lib/admin-content-search.ts tests/support-admin-search.test.ts tests/admin-unified-content-search.test.ts
           git commit -m "Add unified content search to admin queues and users"
           git push origin HEAD:fix/admin-unified-content-search
