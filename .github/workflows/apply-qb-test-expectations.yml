@@ -1,0 +1,68 @@
+name: Apply Question Bank test expectations
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-qb-test-expectations.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Update exact expectations
+        shell: python
+        run: |
+          from pathlib import Path
+
+          question_bank = Path('tests/question-bank.test.tsx')
+          text = question_bank.read_text()
+          old = """    expect(workspace).toContain('role=\"radiogroup\"');
+              expect(workspace).toContain('onClick={() => void checkAnswer(choice.id)}');
+              expect(workspace).not.toContain(\"{answerChecked ? 'Answer checked' : 'Check answer'}\");
+              expect(workspace).toContain('Why the answer works—and why the alternatives do not');
+          """
+          new = """    expect(workspace).toContain(\"interactive.selectionMode === 'multiple'\");
+              expect(workspace).toContain(\"? 'group'\");
+              expect(workspace).toContain(\": 'radiogroup'\");
+              expect(workspace).toContain('onClick={() => toggleChoice(choice.id)}');
+              expect(workspace).toContain('onClick={() => void checkAnswer()}');
+              expect(workspace).toContain('interactive.requiredSelectionCount');
+              expect(workspace).toContain('Why the selected answers work—and why the alternatives do not');
+          """
+          if old not in text:
+              raise SystemExit('Question Bank workspace expectation block was not found')
+          question_bank.write_text(text.replace(old, new, 1))
+
+          render_audit = Path('tests/question-bank-render-audit.test.ts')
+          text = render_audit.read_text()
+          old = """    expect(parsed.prompt).toContain('question:11111111-1111-4111-8111-111111111111');
+              expect(parsed.prompt).toContain('| C. |');
+              expect(parsed.choices).toEqual([]);
+              expect(parsed.correctChoiceId).toBeNull();
+              expect(parsed.selectionMode).toBe('none');
+          """
+          new = """    expect(parsed.prompt).not.toContain('question:11111111-1111-4111-8111-111111111111');
+              expect(parsed.choices.map((choice) => choice.id)).toEqual(['A', 'B', 'C', 'D']);
+              expect(parsed.choices[2].source).toContain(
+                'question:33333333-3333-4333-8333-333333333333',
+              );
+              expect(parsed.correctChoiceId).toBe('C');
+              expect(parsed.selectionMode).toBe('single');
+          """
+          if old not in text:
+              raise SystemExit('Image-choice expectation block was not found')
+          render_audit.write_text(text.replace(old, new, 1))
+      - name: Commit updates
+        shell: bash
+        run: |
+          git config user.name 'dp-resources-ci'
+          git config user.email 'actions@users.noreply.github.com'
+          git add tests/question-bank.test.tsx tests/question-bank-render-audit.test.ts
+          git commit -m 'Update Question Bank interaction expectations'
+          git push origin HEAD:${GITHUB_REF_NAME}
