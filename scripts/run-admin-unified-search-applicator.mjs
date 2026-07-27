@@ -12,7 +12,7 @@ process.stderr.write(result.stderr || '');
 
 if (result.status !== 0) {
   await writeFile(
-    'apply-admin-unified-search-error.log',
+    'apply-admin-unified-search-error.txt',
     `${result.stdout || ''}${result.stderr || ''}`,
   );
 }
