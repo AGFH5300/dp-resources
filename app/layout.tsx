@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'DP Resources' }],
   creator: 'DP Resources',
-  publisher: 'DP Resources',
+  publisher: SITE_NAME,
   category: 'education',
   alternates: { canonical: '/' },
   icons: {
@@ -94,6 +94,20 @@ const themeBootstrap = `(() => {
   }
 })();`;
 
+const questionBankAdminContrast = `
+html[data-theme='dark'] .bg-blue-50.text-blue-950 {
+  background-color: rgba(23, 37, 84, 0.72);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #eff6ff;
+}
+html[data-theme='dark'] .bg-blue-50.text-blue-950 .text-blue-700 {
+  color: #bfdbfe;
+}
+html[data-theme='dark'] .bg-blue-50.text-blue-950 .text-blue-900 {
+  color: #dbeafe;
+}
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -103,6 +117,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <style dangerouslySetInnerHTML={{ __html: questionBankAdminContrast }} />
       </head>
       <body>
         <div className="flex min-h-dvh flex-col bg-[#f6f1e8]">
