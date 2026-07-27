@@ -1,0 +1,33 @@
+name: Question Bank diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'components/question-bank/**'
+      - 'lib/question-bank/**'
+      - 'tests/question-bank*.test.*'
+      - '.github/workflows/qb-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - tests/question-bank-audio-multiselect.test.tsx
+          - tests/question-bank-render-audit.test.ts
+          - tests/question-bank-report-and-local-attempts.test.ts
+          - tests/question-bank-content-repair.test.ts
+          - tests/question-bank.test.tsx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run "${{ matrix.test }}" --reporter=verbose
