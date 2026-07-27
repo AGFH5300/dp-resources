@@ -27,11 +27,13 @@ function publicVideoUrl(value: string) {
       return {
         url: `https://vimeo.com/${match[1]}${hash ? `/${hash}` : ''}`,
         label: 'Open on Vimeo',
+        isVimeo: true,
       };
     }
     return {
       url: url.toString(),
       label: `Open on ${url.hostname.replace(/^www\./, '')}`,
+      isVimeo: false,
     };
   } catch {
     return null;
@@ -77,7 +79,11 @@ export function SolutionVideo({
     );
   return (
     <div className="dp-qb-video-link">
-      <p>This video opens on its verified provider page.</p>
+      <p>
+        {source.isVimeo
+          ? 'This video cannot be embedded because of its privacy settings.'
+          : 'This video opens on its verified provider page.'}
+      </p>
       <a href={source.url} target="_blank" rel="noreferrer noopener">
         <ExternalLink className="size-4" /> {source.label}: {title}
       </a>
