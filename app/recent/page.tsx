@@ -1,10 +1,14 @@
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import Link from 'next/link';
+
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
-import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { recentResourcesFromActivity } from '@/lib/recent-resources';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { RecentClient } from './recent-client';
-import Link from 'next/link';
+
 export default async function Recent() {
   const { user, membership } = await requireMember();
   const sb = createSupabaseAdminClient();
@@ -31,15 +35,42 @@ export default async function Recent() {
     (activity || []) as any,
     (indexed || []) as any,
   );
-  const { data: recentQuestions = [] } = await sb
+
+  const { data: progressRows = [], error: progressError } = await sb
     .from('dp_qb_user_progress')
-    .select(
-      'question_id,last_variant_id,status,last_viewed_at,question:dp_qb_questions!question_id(reference),variant:dp_qb_question_variants!last_variant_id(id,course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug)),topic:dp_qb_topics!topic_id(name))',
-    )
+    .select('question_id,last_variant_id,status,last_viewed_at')
     .eq('user_id', user.id)
     .not('last_viewed_at', 'is', null)
+    .not('last_variant_id', 'is', null)
     .order('last_viewed_at', { ascending: false })
     .limit(8);
+  if (progressError)
+    console.error('Unable to load recent Question Bank progress.', progressError);
+
+  const recentVariantIds = (progressRows || [])
+    .map((row: any) => row.last_variant_id)
+    .filter(Boolean);
+  const { data: recentVariants = [], error: variantError } = recentVariantIds.length
+    ? await sb
+        .from('dp_qb_question_variants')
+        .select(
+          'id,question:dp_qb_questions!question_id(reference),course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug)),topic:dp_qb_topics!topic_id(name)',
+        )
+        .in('id', recentVariantIds)
+    : { data: [] as any[], error: null };
+  if (variantError)
+    console.error('Unable to load recent Question Bank metadata.', variantError);
+
+  const variantById = new Map(
+    (recentVariants || []).map((variant: any) => [variant.id, variant]),
+  );
+  const recentQuestions = (progressRows || [])
+    .map((progress: any) => ({
+      progress,
+      variant: variantById.get(progress.last_variant_id),
+    }))
+    .filter((row: any) => row.variant);
+
   return (
     <>
       <Nav
@@ -64,20 +95,18 @@ export default async function Recent() {
             </Link>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {(recentQuestions as any[]).filter((row) => row.variant).length ? (
-              (recentQuestions as any[])
-                .filter((row) => row.variant)
-                .map((row) => (
-                  <Link
-                    key={row.question_id}
-                    href={`/question-bank/${row.variant.course.subject.slug}/${row.variant.course.slug}/questions/${row.last_variant_id}`}
-                    className="dp-qb-recent-link"
-                  >
-                    <strong>{row.question.reference}</strong>
-                    <span>{row.variant.topic.name}</span>
-                    <small>{row.variant.course.name}</small>
-                  </Link>
-                ))
+            {recentQuestions.length ? (
+              recentQuestions.map(({ progress, variant }: any) => (
+                <Link
+                  key={progress.question_id}
+                  href={`/question-bank/${variant.course.subject.slug}/${variant.course.slug}?question=${variant.id}`}
+                  className="dp-qb-recent-link"
+                >
+                  <strong>{variant.question.reference}</strong>
+                  <span>{variant.topic.name}</span>
+                  <small>{variant.course.name}</small>
+                </Link>
+              ))
             ) : (
               <p className="text-sm text-slate-600">No recent questions yet.</p>
             )}
