@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'DP Resources' }],
   creator: 'DP Resources',
-  publisher: SITE_NAME,
+  publisher: 'DP Resources',
   category: 'education',
   alternates: { canonical: '/' },
   icons: {
