@@ -77,7 +77,7 @@ $
     expect(parsed.prompt).not.toContain('- C.');
   });
 
-  it('keeps table and image choices visible with a dependable A-D selector', () => {
+  it('keeps table and image choices visible without inventing a fake selector', () => {
     const parsed = parseInteractiveQuestion(
       String.raw`Choose the correct graph.
 
@@ -90,13 +90,10 @@ $
     );
 
     expect(parsed.prompt).toContain('question:11111111-1111-4111-8111-111111111111');
-    expect(parsed.choices.map((choice) => choice.id)).toEqual([
-      'A',
-      'B',
-      'C',
-      'D',
-    ]);
-    expect(parsed.correctChoiceId).toBe('C');
+    expect(parsed.prompt).toContain('| C. |');
+    expect(parsed.choices).toEqual([]);
+    expect(parsed.correctChoiceId).toBeNull();
+    expect(parsed.selectionMode).toBe('none');
   });
 
   it('quarantines incomplete variants and filters them from every user RPC', () => {
