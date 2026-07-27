@@ -12,6 +12,25 @@ type RendererProps = {
 };
 
 const QUESTION_IMAGE = /^!\[([^\]]*)\]\(question:([0-9a-f-]{36})\)/i;
+const AUDIO_DIRECTIVE_SOURCE =
+  ':audio\\{\\s*#?([0-9a-f-]{36})(?:\\s+aid=(?:"([^"]+)"|\'([^\']+)\'|([^\\s}]+)))?[^}]*\\}';
+
+type AudioDirectiveMatch = {
+  raw: string;
+  sourceId: string;
+};
+
+function audioDirectiveMatches(value: string): AudioDirectiveMatch[] {
+  const pattern = new RegExp(AUDIO_DIRECTIVE_SOURCE, 'gi');
+  return Array.from(value.matchAll(pattern)).map((match) => ({
+    raw: match[0],
+    sourceId: String(match[2] || match[3] || match[4] || match[1] || '').trim(),
+  }));
+}
+
+function stripAudioDirectives(value: string) {
+  return value.replace(new RegExp(AUDIO_DIRECTIVE_SOURCE, 'gi'), ' ').trim();
+}
 
 function math(source: string, displayMode: boolean, key: string) {
   try {
@@ -67,7 +86,7 @@ function inlineQuestionImage(
   if (!asset) {
     return (
       <span key={key} className="dp-qb-image-unavailable" role="status">
-        Referenced image is unavailable in the authorized archive.
+        Referenced image is unavailable in the authorised archive.
       </span>
     );
   }
@@ -85,6 +104,35 @@ function inlineQuestionImage(
         loading="lazy"
         decoding="async"
       />
+    </span>
+  );
+}
+
+function directiveNode(
+  name: string,
+  content: string,
+  key: string,
+  assetsByFileId: Map<string, QuestionAsset>,
+): ReactNode {
+  const children = inline(content, `${key}-content`, assetsByFileId);
+  if (name === 'marks')
+    return (
+      <span key={key} className="dp-qb-marks">
+        {children}
+      </span>
+    );
+  if (name === 'answer')
+    return (
+      <span key={key} className="dp-qb-answer">
+        {children}
+      </span>
+    );
+  if (name === 'u') return <u key={key}>{children}</u>;
+  if (name === 'b') return <strong key={key}>{children}</strong>;
+  if (name === 'sup') return <sup key={key}>{children}</sup>;
+  return (
+    <span key={key} className="dp-qb-span">
+      {children}
     </span>
   );
 }
@@ -120,23 +168,34 @@ function inline(
       continue;
     }
 
-    const directive = source.slice(index).match(/^:(marks|answer|span)\[/);
+    const audio = audioDirectiveMatches(source.slice(index))[0];
+    if (audio && source.slice(index).startsWith(audio.raw)) {
+      // Audio is rendered as a block by blocks(). If an imported directive lands
+      // inside a paragraph, suppress its opaque source identifier rather than
+      // ever exposing it to users.
+      flush();
+      output.push(
+        <span key={`${keyPrefix}-audio-${key++}`} className="sr-only">
+          Listening audio
+        </span>,
+      );
+      index += audio.raw.length;
+      continue;
+    }
+
+    const directive = source.slice(index).match(/^:(marks|answer|span|u|b|sup)\[/i);
     if (directive) {
       const opening = index + directive[0].length - 1;
       const closing = closingBracket(source, opening);
       if (closing > opening) {
         flush();
-        const content = source.slice(opening + 1, closing);
-        const className =
-          directive[1] === 'marks'
-            ? 'dp-qb-marks'
-            : directive[1] === 'answer'
-              ? 'dp-qb-answer'
-              : 'dp-qb-span';
         output.push(
-          <span key={`${keyPrefix}-directive-${key++}`} className={className}>
-            {inline(content, `${keyPrefix}-directive`, assetsByFileId)}
-          </span>,
+          directiveNode(
+            directive[1].toLowerCase(),
+            source.slice(opening + 1, closing),
+            `${keyPrefix}-directive-${key++}`,
+            assetsByFileId,
+          ),
         );
         index = closing + 1;
         continue;
@@ -236,7 +295,7 @@ function imageBlock(
   if (!asset)
     return (
       <p key={key} className="dp-qb-image-unavailable" role="status">
-        Referenced image is unavailable in the authorized archive.
+        Referenced image is unavailable in the authorised archive.
       </p>
     );
   return (
@@ -253,12 +312,103 @@ function imageBlock(
   );
 }
 
+function cleanTranscript(value: string) {
+  return String(value || '')
+    .replace(/^\s*:u\[Transcript\]\s*/i, '')
+    .replace(/^\s*\$\\underline\{\\textrm\{Transcript\}\}\$\s*/i, '')
+    .replace(/^\s*:{1,2}br\s*/i, '')
+    .replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\r\n?/g, '\n')
+    .trim();
+}
+
+function durationLabel(seconds: number | null | undefined) {
+  if (!Number.isFinite(seconds)) return null;
+  const rounded = Math.max(0, Math.round(Number(seconds)));
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return `${minutes}:${String(remainder).padStart(2, '0')}`;
+}
+
+function isAudioAsset(asset: QuestionAsset) {
+  return (
+    asset.originalRole === 'audio' ||
+    String(asset.contentType || '').toLowerCase().startsWith('audio/')
+  );
+}
+
+function audioAssetSourceIds(asset: QuestionAsset) {
+  return [asset.sourceFileId, asset.audio?.sourceAudioId]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => value.toLowerCase());
+}
+
+function audioCard(asset: QuestionAsset, key: string, label?: string) {
+  const transcript = cleanTranscript(asset.audio?.transcript || '');
+  const duration = durationLabel(asset.audio?.durationSeconds);
+  return (
+    <section
+      key={key}
+      className="my-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left"
+      aria-label={label || asset.altText || 'Listening material'}
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Listening material
+          </p>
+          <p className="text-sm font-medium text-slate-800">
+            {label || asset.altText || 'Question audio'}
+          </p>
+        </div>
+        {duration ? (
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600">
+            {duration}
+          </span>
+        ) : null}
+      </div>
+      <audio
+        className="w-full"
+        controls
+        preload="metadata"
+        src={`/api/question-bank/assets/${asset.id}`}
+        aria-label={label || asset.altText || 'Question audio'}
+      >
+        Your browser does not support audio playback.
+      </audio>
+      {transcript ? (
+        <details className="mt-3 rounded-lg bg-white p-3">
+          <summary className="cursor-pointer text-sm font-medium text-slate-700">
+            Read transcript
+          </summary>
+          <div className="mt-3 text-sm leading-6 text-slate-700">
+            {blocks(transcript, [])}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function unavailableAudio(key: string) {
+  return (
+    <p key={key} className="dp-qb-image-unavailable" role="status">
+      Listening audio is temporarily unavailable. Please report this question if the
+      problem continues.
+    </p>
+  );
+}
+
 function blocks(source: string, assets: QuestionAsset[]) {
   const assetsByFileId = new Map(
     assets
       .filter((asset) => asset.sourceFileId)
       .map((asset) => [asset.sourceFileId!.toLowerCase(), asset]),
   );
+  const audioBySourceId = new Map<string, QuestionAsset>();
+  for (const asset of assets.filter(isAudioAsset))
+    for (const sourceId of audioAssetSourceIds(asset)) audioBySourceId.set(sourceId, asset);
+
   const lines = normalizeQuestionSource(source).split('\n');
   const output: ReactNode[] = [];
   let index = 0;
@@ -285,12 +435,13 @@ function blocks(source: string, assets: QuestionAsset[]) {
       index += 1;
       continue;
     }
-    if (/^:::center\s*$/.test(line.trim())) {
-      centered = true;
+    const alignment = line.trim().match(/^:::(center|left)\s*$/i);
+    if (alignment) {
+      centered = alignment[1].toLowerCase() === 'center';
       index += 1;
       continue;
     }
-    if (/^:::tableoptions/.test(line.trim())) {
+    if (/^:::tableoptions/i.test(line.trim())) {
       index += 1;
       continue;
     }
@@ -299,8 +450,38 @@ function blocks(source: string, assets: QuestionAsset[]) {
       index += 1;
       continue;
     }
-    if (line.trim() === ':br') {
+    if (/^:{1,2}br\s*$/i.test(line.trim())) {
       output.push(<div key={`block-${block++}`} className="h-3" aria-hidden />);
+      index += 1;
+      continue;
+    }
+    if (line.trim() === '|||') {
+      index += 1;
+      continue;
+    }
+
+    const audioDirectives = audioDirectiveMatches(line);
+    if (audioDirectives.length) {
+      const remaining = stripAudioDirectives(line);
+      if (remaining)
+        output.push(
+          wrap(
+            <p>{inline(remaining, `audio-context-${block}`, assetsByFileId)}</p>,
+            `block-${block++}`,
+          ),
+        );
+      for (const [audioIndex, directive] of audioDirectives.entries()) {
+        const asset = audioBySourceId.get(directive.sourceId.toLowerCase());
+        output.push(
+          wrap(
+            asset
+              ? audioCard(asset, `audio-${block}-${audioIndex}`)
+              : unavailableAudio(`audio-unavailable-${block}-${audioIndex}`),
+            `block-${block++}`,
+          ),
+        );
+      }
+      indentNext = false;
       index += 1;
       continue;
     }
@@ -371,33 +552,38 @@ function blocks(source: string, assets: QuestionAsset[]) {
           .replace(/^\||\|$/g, '')
           .split('|')
           .map((cell) => cell.trim());
-        if (!cells.every((cell) => /^:?-{2,}:?$/.test(cell))) rows.push(cells);
+        if (
+          cells.some(Boolean) &&
+          !cells.every((cell) => !cell || /^:?-{2,}:?$/.test(cell))
+        )
+          rows.push(cells);
         index += 1;
       }
-      output.push(
-        wrap(
-          <div className="dp-qb-table-wrap">
-            <table>
-              <tbody>
-                {rows.map((row, rowIndex) => (
-                  <tr key={`row-${rowIndex}`}>
-                    {row.map((cell, cellIndex) => (
-                      <td key={`cell-${cellIndex}`}>
-                        {inline(
-                          cell,
-                          `cell-${rowIndex}-${cellIndex}`,
-                          assetsByFileId,
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>,
-          `block-${block++}`,
-        ),
-      );
+      if (rows.length)
+        output.push(
+          wrap(
+            <div className="dp-qb-table-wrap">
+              <table>
+                <tbody>
+                  {rows.map((row, rowIndex) => (
+                    <tr key={`row-${rowIndex}`}>
+                      {row.map((cell, cellIndex) => (
+                        <td key={`cell-${cellIndex}`}>
+                          {inline(
+                            cell,
+                            `cell-${rowIndex}-${cellIndex}`,
+                            assetsByFileId,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>,
+            `block-${block++}`,
+          ),
+        );
       indentNext = false;
       continue;
     }
@@ -410,7 +596,8 @@ function blocks(source: string, assets: QuestionAsset[]) {
       !/^\s*[-*]\s+/.test(lines[index]) &&
       !/^\s*\|/.test(lines[index]) &&
       !/^::/.test(lines[index].trim()) &&
-      lines[index].trim() !== ':br'
+      !/^:{1,2}br\s*$/i.test(lines[index].trim()) &&
+      !audioDirectiveMatches(lines[index]).length
     ) {
       paragraph.push(lines[index].trim());
       index += 1;
@@ -426,78 +613,26 @@ function blocks(source: string, assets: QuestionAsset[]) {
   return output;
 }
 
-function cleanTranscript(value: string) {
-  return String(value || '')
-    .replace(/^\s*:u\[Transcript\]\s*/i, '')
-    .replace(/\\r\\n|\\n|\\r/g, '\n')
-    .replace(/\r\n?/g, '\n')
-    .trim();
-}
-
-function durationLabel(seconds: number | null | undefined) {
-  if (!Number.isFinite(seconds)) return null;
-  const rounded = Math.max(0, Math.round(Number(seconds)));
-  const minutes = Math.floor(rounded / 60);
-  const remainder = rounded % 60;
-  return `${minutes}:${String(remainder).padStart(2, '0')}`;
-}
-
-function audioBlocks(assets: QuestionAsset[]) {
-  const audioAssets = assets.filter(
-    (asset) =>
-      asset.originalRole === 'audio' ||
-      String(asset.contentType || '').toLowerCase().startsWith('audio/'),
+function fallbackAudioBlocks(source: string, assets: QuestionAsset[]) {
+  const referenced = new Set(
+    audioDirectiveMatches(source).map((directive) => directive.sourceId.toLowerCase()),
   );
-  if (!audioAssets.length) return null;
-
+  const fallback = assets.filter(
+    (asset) =>
+      isAudioAsset(asset) &&
+      !audioAssetSourceIds(asset).some((sourceId) => referenced.has(sourceId)),
+  );
+  if (!fallback.length) return null;
   return (
-    <section className="mt-5 grid gap-4" aria-label="Listening material">
-      {audioAssets.map((asset, index) => {
-        const transcript = cleanTranscript(asset.audio?.transcript || '');
-        const duration = durationLabel(asset.audio?.durationSeconds);
-        return (
-          <div
-            key={asset.id}
-            className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-          >
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Listening audio {audioAssets.length > 1 ? index + 1 : ''}
-                </p>
-                <p className="text-sm font-medium text-slate-800">
-                  {asset.altText || 'Question audio'}
-                </p>
-              </div>
-              {duration ? (
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs text-slate-600">
-                  {duration}
-                </span>
-              ) : null}
-            </div>
-            <audio
-              className="w-full"
-              controls
-              preload="metadata"
-              src={`/api/question-bank/assets/${asset.id}`}
-              aria-label={asset.altText || `Listening audio ${index + 1}`}
-            >
-              Your browser does not support audio playback.
-            </audio>
-            {transcript ? (
-              <details className="mt-3 rounded-lg bg-white p-3">
-                <summary className="cursor-pointer text-sm font-medium text-slate-700">
-                  Read transcript
-                </summary>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {transcript}
-                </p>
-              </details>
-            ) : null}
-          </div>
-        );
-      })}
-    </section>
+    <div className="mt-5 grid gap-4" aria-label="Additional listening material">
+      {fallback.map((asset, index) =>
+        audioCard(
+          asset,
+          `fallback-audio-${asset.id}`,
+          fallback.length > 1 ? `Listening audio ${index + 1}` : undefined,
+        ),
+      )}
+    </div>
   );
 }
 
@@ -507,8 +642,8 @@ export function QuestionContent({
   kind = 'question',
 }: RendererProps) {
   const normalizedSource = normalizeQuestionSource(source);
-  const audio = audioBlocks(assets);
-  if (!normalizedSource && !audio)
+  const fallbackAudio = fallbackAudioBlocks(normalizedSource, assets);
+  if (!normalizedSource && !fallbackAudio)
     return (
       <p className="dp-qb-empty-content" role="status">
         This source occurrence contains no {kind === 'question' ? 'question' : 'markscheme'} text.
@@ -517,7 +652,7 @@ export function QuestionContent({
   return (
     <div className={`dp-qb-content dp-qb-content-${kind}`}>
       {normalizedSource ? blocks(normalizedSource, assets) : null}
-      {audio}
+      {fallbackAudio}
     </div>
   );
 }
