@@ -28,8 +28,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -f apply-admin-unified-search-error.log ]; then
-            git add apply-admin-unified-search-error.log
+          if [ -f apply-admin-unified-search-error.txt ]; then
+            git add apply-admin-unified-search-error.txt
             git commit -m "Record unified search applicator failure"
             git push origin HEAD:fix/admin-unified-content-search
             exit 1
