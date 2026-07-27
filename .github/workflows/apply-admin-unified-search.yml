@@ -21,7 +21,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node scripts/apply-admin-unified-search.mjs
+      - name: Apply changes
+        run: |
+          set +e
+          node scripts/apply-admin-unified-search.mjs > /tmp/apply-output.log 2>&1
+          code=$?
+          cat /tmp/apply-output.log
+          if [ "$code" -ne 0 ]; then
+            cp /tmp/apply-output.log apply-admin-unified-search-error.log
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add apply-admin-unified-search-error.log
+            git commit -m "Record unified search applicator failure"
+            git push origin HEAD:fix/admin-unified-content-search
+            exit "$code"
+          fi
       - name: Commit applied changes
         run: |
           git config user.name "github-actions[bot]"
