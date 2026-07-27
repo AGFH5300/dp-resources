@@ -13,6 +13,7 @@
     "question-bank:audit": "node scripts/import-question-bank.mjs --mode audit",
     "question-bank:dry-run": "node scripts/import-question-bank.mjs --mode dry-run",
     "question-bank:pestle": "node scripts/import-pestle-question-bank.mjs",
+    "question-bank:revision-village": "node scripts/import-revision-village-question-bank.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
