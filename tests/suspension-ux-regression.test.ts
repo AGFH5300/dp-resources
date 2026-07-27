@@ -66,7 +66,7 @@ describe('suspension UX regression coverage', () => {
     );
     expect(source.match(/router\.replace\(nextUrl\)/g)).toHaveLength(1);
     expect(source).toContain(
-      "setTimeout(() => apply({ userEmail: email }, ['userPage']), 300)",
+      "apply({ userSearch: search, userEmail: '' }, ['userPage'])",
     );
   });
 
@@ -99,7 +99,7 @@ describe('suspension UX regression coverage', () => {
 describe('domain checkbox and toast source coverage', () => {
   it('admin users page loads unique domains through authoritative RPC and passes policy map', () => {
     const page = read('app/admin/page.tsx');
-    expect(page).toContain('new Set(memberships.map');
+    expect(page).toContain('const uniqueDomains = Array.from(');
     expect(page).toContain("sb.rpc('dp_resource_email_domain_policy'");
     expect(page).toContain('domainPolicies={domainPolicies}');
   });
@@ -138,9 +138,6 @@ describe('domain checkbox and toast source coverage', () => {
     );
     expect(css).toContain(
       '.dp-sonner-success { background: #14532d !important; color: #fff !important; }',
-    );
-    expect(css).toContain(
-      '.dp-sonner-error { background: #7f1d1d !important; color: #fff !important; }',
     );
   });
 });

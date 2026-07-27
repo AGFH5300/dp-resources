@@ -151,18 +151,20 @@ function LiveFilters({
   section: string;
 }) {
   const apply = useLiveParams(sp, section);
-  const [email, setEmail] = useState(sp[`${prefix}Email`] || ''),
-    [search, setSearch] = useState(sp[`${prefix}Search`] || '');
+  const [search, setSearch] = useState(
+    sp[`${prefix}Search`] || sp[`${prefix}Email`] || '',
+  );
   useEffect(() => {
     const t = setTimeout(
       () =>
-        apply({ [`${prefix}Email`]: email, [`${prefix}Search`]: search }, [
-          `${prefix}Page`,
-        ]),
+        apply(
+          { [`${prefix}Search`]: search, [`${prefix}Email`]: '' },
+          [`${prefix}Page`],
+        ),
       300,
     );
     return () => clearTimeout(t);
-  }, [email, search]);
+  }, [search]);
   return (
     <div className="mb-3 mt-3 grid gap-3 md:grid-cols-6">
       <Field label="Status">
@@ -174,18 +176,20 @@ function LiveFilters({
           options={statusOptions}
         />
       </Field>
-      <EmailSearchInput
-        label="Reporter email"
-        value={email}
-        onChange={setEmail}
-      />
-      <Field label={prefix === 'report' ? 'Resource / path' : 'Subject'}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className={inputClass}
-        />
-      </Field>
+      <div className="md:col-span-2">
+        <Field label={prefix === 'report' ? 'Search reports' : 'Search tickets'}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={
+              prefix === 'report'
+                ? 'Name, username, email, resource, message, notes…'
+                : 'Name, username, email, subject, message, replies…'
+            }
+            className={inputClass}
+          />
+        </Field>
+      </div>
       <Field label="From date">
         <input
           type="date"
@@ -235,14 +239,24 @@ function UserFilters({
   sizes: any;
 }) {
   const apply = useLiveParams(sp, 'users');
-  const [email, setEmail] = useState(sp.userEmail || '');
+  const [search, setSearch] = useState(sp.userSearch || sp.userEmail || '');
   useEffect(() => {
-    const t = setTimeout(() => apply({ userEmail: email }, ['userPage']), 300);
+    const t = setTimeout(
+      () => apply({ userSearch: search, userEmail: '' }, ['userPage']),
+      300,
+    );
     return () => clearTimeout(t);
-  }, [email]);
+  }, [search]);
   return (
     <div className="mt-3 grid gap-3 md:grid-cols-4">
-      <EmailSearchInput label="User email" value={email} onChange={setEmail} />
+      <Field label="Search users">
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Full name, username, email, role, status…"
+          className={inputClass}
+        />
+      </Field>
       <Field label="Role">
         <AdminSelect
           value={sp.role || ''}
@@ -264,7 +278,10 @@ function UserFilters({
       <button
         type="button"
         onClick={() =>
-          apply({ userEmail: '', role: '', userSize: '' }, ['userPage'])
+          apply(
+            { userSearch: '', userEmail: '', role: '', userSize: '' },
+            ['userPage'],
+          )
         }
         className="self-end text-left text-sm font-medium text-[color:var(--dp-blue)]"
       >

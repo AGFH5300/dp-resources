@@ -30,14 +30,16 @@ describe('support workflow and admin search pass', () => {
     expect(route).toContain("visibility === 'user'");
     expect(route).toContain("update.status = 'in_review'");
   });
-  it('email search endpoint is admin-only and the shared input is used in all admin sections', () => {
+  it('keeps the email autocomplete admin-only while reports, tickets, and users use unified search', () => {
     expect(read('app/api/admin/users/search/route.ts')).toContain(
       'requireAdmin',
     );
     const admin = read('app/admin/admin-console.tsx');
-    expect(
-      (admin.match(/EmailSearchInput/g) || []).length,
-    ).toBeGreaterThanOrEqual(4);
+    expect((admin.match(/<EmailSearchInput/g) || []).length).toBe(1);
+    expect(admin).toContain('Search reports');
+    expect(admin).toContain('Search tickets');
+    expect(admin).toContain('Search users');
+    expect(admin).not.toContain('label="Reporter email"');
     expect(admin).not.toContain('Filter</button>');
     expect(admin).toContain('router.replace');
     expect(admin).toContain("q.set(k, '1')");

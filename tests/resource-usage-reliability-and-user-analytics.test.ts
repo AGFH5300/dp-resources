@@ -56,8 +56,9 @@ describe('admin per-user resource analytics', () => {
   it('loads usernames and all-time usage for a selected user', () => {
     const page = read('app/admin/page.tsx');
 
-    expect(page).toContain(".select('id,username,full_name')");
-    expect(page).toContain('profileUsernames');
+    expect(page).toContain('loadIdentityMap');
+    expect(page).toContain("'dp_resource_profiles', 'id,username,full_name'");
+    expect(page).toContain('username: identity?.username');
     expect(page).toContain('usageSelectedUser');
     expect(page).toContain("p_range: sp.userUsageRange || 'all'");
     expect(page).toContain("'dp_admin_resource_usage_for_user'");
