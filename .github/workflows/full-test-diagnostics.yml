@@ -1,0 +1,35 @@
+name: Full test diagnostics
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/full-test-diagnostics.yml'
+      - 'components/question-bank/**'
+      - 'lib/question-bank/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  full-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Run complete test suite
+        id: test
+        continue-on-error: true
+        shell: bash
+        run: npm test > full-test.log 2>&1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: full-test-log
+          path: full-test.log
+      - name: Fail when tests failed
+        if: steps.test.outcome == 'failure'
+        run: exit 1
