@@ -94,6 +94,7 @@ function answerGroups(markScheme: string) {
     /\\answer\s*\{\s*\\textrm\s*\{\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\s*\}\s*\}/gi,
     /\\answer\s*\{\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\s*\}/gi,
     /(?:correct\s+answer|answer)\s*(?:is|:)\s*(?:\*\*)?\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\b/gi,
+    /^\s*(?:\*\*)?\s*([A-H])\s*(?:\*\*)?(?:\s|[.)\]:-]|$)/gim,
   ];
 
   for (const pattern of patterns) {
