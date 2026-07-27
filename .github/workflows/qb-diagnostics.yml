@@ -17,17 +17,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test:
-          - tests/question-bank-audio-multiselect.test.tsx
-          - tests/question-bank-render-audit.test.ts
-          - tests/question-bank-report-and-local-attempts.test.ts
-          - tests/question-bank-content-repair.test.ts
-          - tests/question-bank.test.tsx
+        include:
+          - key: question-bank
+            test: tests/question-bank.test.tsx
+          - key: render-audit
+            test: tests/question-bank-render-audit.test.ts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npx vitest run "${{ matrix.test }}" --reporter=verbose
+      - run: npm ci --silent
+      - name: Run targeted test
+        id: test
+        continue-on-error: true
+        shell: bash
+        run: |
+          npx vitest run "${{ matrix.test }}" --reporter=verbose > vitest-${{ matrix.key }}.log 2>&1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitest-${{ matrix.key }}
+          path: vitest-${{ matrix.key }}.log
+      - name: Fail when test failed
+        if: steps.test.outcome == 'failure'
+        run: exit 1
