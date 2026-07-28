@@ -82,9 +82,11 @@ describe('EB0383 production rendering', () => {
         .filter((segment) => segment.type === 'content')
         .every((segment) => segment.source.includes('DP_AUDIO_CONTEXT')),
     ).toBe(true);
+    const finalSegment = parsed.segments.at(-1);
+    expect(finalSegment).toMatchObject({ type: 'content' });
     expect(
-      parsed.segments.at(-1)?.type === 'content' &&
-        parsed.segments.at(-1)?.source.includes('DP_AUDIO_CONTEXT:final'),
+      finalSegment?.type === 'content' &&
+        finalSegment.source.includes('DP_AUDIO_CONTEXT:final'),
     ).toBe(true);
   });
 
