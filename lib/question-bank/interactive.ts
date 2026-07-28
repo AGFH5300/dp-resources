@@ -8,6 +8,8 @@ export type InteractiveChoice = {
 
 export type InteractiveQuestion = {
   prompt: string;
+  promptBeforeChoices: string;
+  promptAfterChoices: string;
   choices: InteractiveChoice[];
   correctChoiceId: string | null;
   correctChoiceIds: string[];
@@ -134,6 +136,8 @@ function contextualMarkCount(context: string) {
 function emptyInteractive(prompt: string): InteractiveQuestion {
   return {
     prompt,
+    promptBeforeChoices: prompt,
+    promptAfterChoices: '',
     choices: [],
     correctChoiceId: null,
     correctChoiceIds: [],
@@ -222,10 +226,19 @@ export function parseInteractiveQuestion(
   // collapsed into a misleading multi-select interaction.
   if (!correctChoiceIds.length) return emptyInteractive(normalizedContent);
 
-  const prompt = [...lines.slice(0, block.start), ...lines.slice(block.end)]
+  const promptBeforeChoices = lines
+    .slice(0, block.start)
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+  const promptAfterChoices = lines
+    .slice(block.end)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const prompt = [promptBeforeChoices, promptAfterChoices]
+    .filter(Boolean)
+    .join('\n\n');
   const selectionMode = correctChoiceIds.length > 1 ? 'multiple' : 'single';
   const interactiveMarkCount =
     contextualMarkCount(block.context) || correctChoiceIds.length;
@@ -236,6 +249,8 @@ export function parseInteractiveQuestion(
 
   return {
     prompt,
+    promptBeforeChoices,
+    promptAfterChoices,
     choices: block.choices,
     correctChoiceId: selectionMode === 'single' ? correctChoiceIds[0] : null,
     correctChoiceIds,
