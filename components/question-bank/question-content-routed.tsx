@@ -21,10 +21,25 @@ function isAudioAsset(asset: QuestionAsset) {
   );
 }
 
+function allAssetSourceIds(asset: QuestionAsset) {
+  return [...new Set([asset.sourceFileId, ...(asset.sourceFileIds || [])].filter(
+    (value): value is string => Boolean(value),
+  ))];
+}
+
 function audioAssetSourceIds(asset: QuestionAsset) {
-  return [asset.sourceFileId, asset.audio?.sourceAudioId]
+  return [...allAssetSourceIds(asset), asset.audio?.sourceAudioId]
     .filter((value): value is string => Boolean(value))
     .map((value) => value.toLowerCase());
+}
+
+function expandImageAliases(assets: QuestionAsset[]) {
+  return assets.flatMap((asset) => {
+    if (isAudioAsset(asset)) return [asset];
+    const sourceIds = allAssetSourceIds(asset);
+    if (!sourceIds.length) return [asset];
+    return sourceIds.map((sourceFileId) => ({ ...asset, sourceFileId }));
+  });
 }
 
 function audioDirectiveSourceIds(source: string) {
@@ -84,7 +99,8 @@ function routedAssets(
  * QuestionContent instances. Private parser markers let this wrapper route
  * each audio asset to exactly one segment without changing the public renderer:
  * direct audio stays at its directive, while unattached fallback audio appears
- * once after every visible question section.
+ * once after every visible question section. Image aliases are expanded only
+ * at render time so every source UUID for a deduplicated asset resolves safely.
  */
 export function QuestionContent({
   source,
@@ -93,7 +109,13 @@ export function QuestionContent({
 }: RendererProps) {
   const marker = source.match(AUDIO_CONTEXT_MARKER);
   if (!marker)
-    return <BaseQuestionContent source={source} assets={assets} kind={kind} />;
+    return (
+      <BaseQuestionContent
+        source={source}
+        assets={expandImageAliases(assets)}
+        kind={kind}
+      />
+    );
 
   const mode = marker[1].toLowerCase() as AudioContextMode;
   const globalSourceIds = decodeMarkerSourceIds(String(marker[2] || ''));
@@ -109,7 +131,7 @@ export function QuestionContent({
   return (
     <BaseQuestionContent
       source={cleanSource}
-      assets={selectedAssets}
+      assets={expandImageAliases(selectedAssets)}
       kind={kind}
     />
   );
