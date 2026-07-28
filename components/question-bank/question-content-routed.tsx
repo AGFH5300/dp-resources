@@ -14,6 +14,18 @@ type AudioContextMode = 'secondary' | 'final';
 const AUDIO_CONTEXT_MARKER =
   /^\[\[DP_AUDIO_CONTEXT:(secondary|final):([\s\S]*?):audio\{\]\]\s*/i;
 
+function normalizeRendererSource(value: string) {
+  return String(value || '')
+    .replace(/:box\[/gi, ':span[')
+    .replace(/:sub\[/gi, ':span[')
+    .replace(/^:tableoptions\{[^}]*\}\s*$/gim, '')
+    .replace(/^:::centre\s*$/gim, ':::center')
+    .replace(/^:::indent\s*$/gim, '::indent')
+    .replace(/^:::(?:answer|box)\s*$/gim, ':::left')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function isAudioAsset(asset: QuestionAsset) {
   return (
     asset.originalRole === 'audio' ||
@@ -22,9 +34,13 @@ function isAudioAsset(asset: QuestionAsset) {
 }
 
 function allAssetSourceIds(asset: QuestionAsset) {
-  return [...new Set([asset.sourceFileId, ...(asset.sourceFileIds || [])].filter(
-    (value): value is string => Boolean(value),
-  ))];
+  return [
+    ...new Set(
+      [asset.sourceFileId, ...(asset.sourceFileIds || [])].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
+  ];
 }
 
 function audioAssetSourceIds(asset: QuestionAsset) {
@@ -49,7 +65,8 @@ function audioDirectiveSourceIds(source: string) {
     const aid = body.match(
       /\baid=(?:"([^"]+)"|'([^']+)'|([^\s}]+))/i,
     );
-    const sourceId = aid?.[1] || aid?.[2] || aid?.[3] || body.match(/#([^\s}]+)/)?.[1];
+    const sourceId =
+      aid?.[1] || aid?.[2] || aid?.[3] || body.match(/#([^\s}]+)/)?.[1];
     if (sourceId) ids.add(sourceId.toLowerCase());
   }
   return ids;
@@ -96,11 +113,9 @@ function routedAssets(
 
 /**
  * The practice workspace renders imported composite questions as several
- * QuestionContent instances. Private parser markers let this wrapper route
- * each audio asset to exactly one segment without changing the public renderer:
- * direct audio stays at its directive, while unattached fallback audio appears
- * once after every visible question section. Image aliases are expanded only
- * at render time so every source UUID for a deduplicated asset resolves safely.
+ * QuestionContent instances. Private parser markers route each audio asset to
+ * exactly one segment. Image aliases are expanded only at render time, while
+ * remaining imported presentation directives are converted to safe equivalents.
  */
 export function QuestionContent({
   source,
@@ -111,7 +126,7 @@ export function QuestionContent({
   if (!marker)
     return (
       <BaseQuestionContent
-        source={source}
+        source={normalizeRendererSource(source)}
         assets={expandImageAliases(assets)}
         kind={kind}
       />
@@ -119,7 +134,9 @@ export function QuestionContent({
 
   const mode = marker[1].toLowerCase() as AudioContextMode;
   const globalSourceIds = decodeMarkerSourceIds(String(marker[2] || ''));
-  const cleanSource = source.replace(AUDIO_CONTEXT_MARKER, '');
+  const cleanSource = normalizeRendererSource(
+    source.replace(AUDIO_CONTEXT_MARKER, ''),
+  );
   const selectedAssets = routedAssets(mode, cleanSource, globalSourceIds, assets);
 
   if (!cleanSource.trim()) {
