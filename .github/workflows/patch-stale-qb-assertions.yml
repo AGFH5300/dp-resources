@@ -1,17 +1,20 @@
 name: Patch stale Question Bank assertions
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/qb-multi-section-interactions
-    paths:
-      - .github/workflows/patch-stale-qb-assertions.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/qb-multi-section-interactions'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
