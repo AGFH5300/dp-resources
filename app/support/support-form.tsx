@@ -79,7 +79,7 @@ export function SupportForm({
 }) {
   const [requestState, setRequestState] = useState<RequestState>('idle');
   const [error, setError] = useState('');
-  const [category, setCategory] = useState(categories[0].value);
+  const [category, setCategory] = useState<string>(categories[0].value);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [tickets, setTickets] = useState<UserTicket[]>(initialTickets);
