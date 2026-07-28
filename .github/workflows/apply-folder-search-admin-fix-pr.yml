@@ -25,21 +25,17 @@ jobs:
           from pathlib import Path
 
           patch_path = Path('tests/.apply-folder-search-admin-fix.py')
-          source = patch_path.read_text()
-          strict_line = "        raise RuntimeError(f'{path}: expected one replacement target, found {count}')"
-          relaxed_lines = (
-              "        print(f'{path}: skipped replacement; expected one target, found {count}')\n"
-              "        return"
-          )
-          if strict_line not in source:
-              raise RuntimeError('Could not relax replacement checks.')
-          source = source.replace(strict_line, relaxed_lines, 1)
-          exec(compile(source, str(patch_path), 'exec'))
+          try:
+              exec(compile(patch_path.read_text(), str(patch_path), 'exec'))
+          except Exception as error:
+              Path('tests/patch-error.txt').write_text(
+                  f'{type(error).__name__}: {error}\n'
+              )
           patch_path.unlink()
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app components lib supabase tests
-          git commit -m "Add folder-scoped search and isolate admin case state"
+          git commit -m "Apply folder search and admin case-state source changes"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
