@@ -1,23 +1,57 @@
 export type StoredPracticeAttempt = {
+  selectedChoiceIds: string[];
+  /** @deprecated Compatibility mirror for legacy single-answer attempts. */
   selectedChoice: string | null;
   answerChecked: boolean;
   showExplanation: boolean;
   updatedAt: number;
 };
 
+type PracticeAttemptInput = {
+  selectedChoiceIds?: string[];
+  selectedChoice?: string | null;
+  answerChecked: boolean;
+  showExplanation: boolean;
+};
+
 type StoredPracticeAttempts = Record<string, StoredPracticeAttempt>;
 
 const STORAGE_KEY = 'dp_qb_practice_attempts_v1';
 
-function isStoredAttempt(value: unknown): value is StoredPracticeAttempt {
-  if (!value || typeof value !== 'object') return false;
-  const attempt = value as Partial<StoredPracticeAttempt>;
-  return (
-    (attempt.selectedChoice === null || typeof attempt.selectedChoice === 'string') &&
-    typeof attempt.answerChecked === 'boolean' &&
-    typeof attempt.showExplanation === 'boolean' &&
-    typeof attempt.updatedAt === 'number'
+function normalizeSelectedChoices(value: unknown) {
+  if (Array.isArray(value))
+    return [...new Set(value.filter((item): item is string => typeof item === 'string'))];
+  if (typeof value === 'string' && value) return [value];
+  return [];
+}
+
+function selectedChoiceMirror(selectedChoiceIds: string[]) {
+  return selectedChoiceIds.length === 1 ? selectedChoiceIds[0] : null;
+}
+
+function normalizeStoredAttempt(value: unknown): StoredPracticeAttempt | null {
+  if (!value || typeof value !== 'object') return null;
+  const attempt = value as Record<string, unknown>;
+  if (
+    typeof attempt.answerChecked !== 'boolean' ||
+    typeof attempt.showExplanation !== 'boolean' ||
+    typeof attempt.updatedAt !== 'number'
+  )
+    return null;
+
+  // selectedChoice is the legacy single-answer field. Reading and mirroring it
+  // keeps old browser data and existing integrations valid while all new UI
+  // writes can use selectedChoiceIds for exact-count multi-select questions.
+  const selectedChoiceIds = normalizeSelectedChoices(
+    attempt.selectedChoiceIds ?? attempt.selectedChoice,
   );
+  return {
+    selectedChoiceIds,
+    selectedChoice: selectedChoiceMirror(selectedChoiceIds),
+    answerChecked: attempt.answerChecked,
+    showExplanation: attempt.showExplanation,
+    updatedAt: attempt.updatedAt,
+  };
 }
 
 function readAll(): StoredPracticeAttempts {
@@ -26,9 +60,12 @@ function readAll(): StoredPracticeAttempts {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return Object.fromEntries(
-      Object.entries(parsed).filter((entry): entry is [string, StoredPracticeAttempt] =>
-        isStoredAttempt(entry[1]),
-      ),
+      Object.entries(parsed)
+        .map(([variantId, value]) => [variantId, normalizeStoredAttempt(value)] as const)
+        .filter(
+          (entry): entry is readonly [string, StoredPracticeAttempt] =>
+            Boolean(entry[1]),
+        ),
     );
   } catch {
     return {};
@@ -50,10 +87,19 @@ export function readPracticeAttempt(variantId: string) {
 
 export function savePracticeAttempt(
   variantId: string,
-  attempt: Omit<StoredPracticeAttempt, 'updatedAt'>,
+  attempt: PracticeAttemptInput,
 ) {
+  const selectedChoiceIds = normalizeSelectedChoices(
+    attempt.selectedChoiceIds ?? attempt.selectedChoice,
+  );
   const attempts = readAll();
-  attempts[variantId] = { ...attempt, updatedAt: Date.now() };
+  attempts[variantId] = {
+    selectedChoiceIds,
+    selectedChoice: selectedChoiceMirror(selectedChoiceIds),
+    answerChecked: attempt.answerChecked,
+    showExplanation: attempt.showExplanation,
+    updatedAt: Date.now(),
+  };
   writeAll(attempts);
 }
 

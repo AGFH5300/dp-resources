@@ -4,6 +4,7 @@ const MAXIMUM_MARK_LINE =
   /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*\\*\s*$/i;
 const STANDALONE_MATH_DELIMITER = /^\s*\$\s*$/;
 const LIST_MATH_OPEN = /^(\s*[-*]\s+)\$\s*$/;
+const AUDIO_DIRECTIVE = /:audio\{[^}]*\}/gi;
 const SUPERSCRIPT: Record<string, string> = {
   '0': '⁰',
   '1': '¹',
@@ -117,6 +118,7 @@ export function normalizeQuestionSource(value: string) {
   const lines = String(value || '')
     .replaceAll('\r\n', '\n')
     .replaceAll('\r', '\n')
+    .replaceAll('\t', ' ')
     .split('\n')
     .filter(
       (line) =>
@@ -148,6 +150,7 @@ export function normalizeQuestionSource(value: string) {
 
 export function questionPreview(value: string) {
   return normalizeQuestionSource(value)
+    .replace(AUDIO_DIRECTIVE, ' Listening audio. ')
     .replace(/!\[[^\]]*\]\(question:[^)]+\)/gi, ' Diagram. ')
     .replace(/:{1,3}[a-z]+(?:\[[^\]]*\])?/gi, ' ')
     .replace(/<[^>]+>/g, ' ')

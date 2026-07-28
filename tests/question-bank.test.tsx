@@ -572,10 +572,12 @@ describe('question filters and production security expectations', () => {
     expect(filters).toContain('AppSelect');
     expect(filters).toContain('disabled={!selectedTopic}');
     expect(filters).not.toContain('<select');
-    expect(workspace).toContain('role="radiogroup"');
-    expect(workspace).toContain('onClick={() => void checkAnswer(choice.id)}');
-    expect(workspace).not.toContain("{answerChecked ? 'Answer checked' : 'Check answer'}");
-    expect(workspace).toContain('Why the answer works—and why the alternatives do not');
+    expect(workspace).toContain("interactive.selectionMode === 'multiple'");
+    expect(workspace).toContain('aria-checked={isSelected}');
+    expect(workspace).toContain('onClick={() => toggleChoice(choice.id)}');
+    expect(workspace).toContain('onClick={() => void checkAnswer()}');
+    expect(workspace).toContain('interactive.requiredSelectionCount');
+    expect(workspace).toContain('Why the selected answers work—and why the alternatives do not');
     expect(workspace).toContain('questionPreview(question.content_preview)');
     expect(workspace).toContain('applyQuestionState(detail.variant.id');
     expect(workspace).toContain('onStateChange={(state) =>');

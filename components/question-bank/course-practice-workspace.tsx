@@ -29,17 +29,17 @@ import { QuestionStateControls } from '@/components/question-bank/question-state
 import { SolutionVideo } from '@/components/question-bank/solution-video';
 import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
-import { parseInteractiveQuestion } from '@/lib/question-bank/interactive';
+import {
+  isCorrectSelection,
+  parseInteractiveQuestion,
+} from '@/lib/question-bank/interactive';
 import {
   clearAllPracticeAttempts,
   clearPracticeAttempt,
   readPracticeAttempt,
   savePracticeAttempt,
 } from '@/lib/question-bank/practice-attempt-storage';
-import {
-  marksLabel,
-  taxonomyLabel,
-} from '@/lib/question-bank/presentation';
+import { marksLabel, taxonomyLabel } from '@/lib/question-bank/presentation';
 import type {
   QuestionAsset,
   QuestionListRow,
@@ -48,6 +48,7 @@ import type {
 
 const QUESTION_REPORT_CATEGORIES = [
   'Broken image or diagram',
+  'Broken audio or transcript',
   'Broken solution video',
   'Wrong answer or markscheme',
   'Question text or layout problem',
@@ -86,9 +87,7 @@ type QuestionDetail = {
   };
   assets: QuestionAsset[];
   videos: Array<{ id: string; name: string | null; url: string }>;
-  progress: {
-    status: QuestionProgressStatus;
-  };
+  progress: { status: QuestionProgressStatus };
   saved: boolean;
 };
 
@@ -106,6 +105,12 @@ async function updateQuestionState(
     }),
   });
   if (!response.ok) throw new Error('Unable to update question state.');
+}
+
+function answerList(ids: string[]) {
+  if (ids.length <= 1) return ids[0] || '';
+  if (ids.length === 2) return `${ids[0]} and ${ids[1]}`;
+  return `${ids.slice(0, -1).join(', ')} and ${ids.at(-1)}`;
 }
 
 export function CoursePracticeWorkspace({
@@ -134,7 +139,7 @@ export function CoursePracticeWorkspace({
   const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [selectedChoiceIds, setSelectedChoiceIds] = useState<string[]>([]);
   const [answerChecked, setAnswerChecked] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
@@ -148,18 +153,14 @@ export function CoursePracticeWorkspace({
         ? parseInteractiveQuestion(
             detail.question.content,
             detail.question.markScheme,
+            detail.question.maximumMark,
           )
         : null,
     [detail],
   );
 
-  useEffect(() => {
-    setQuestionRows(questions);
-  }, [questions]);
-
-  useEffect(() => {
-    setSelectedVariantId(initialVariantId);
-  }, [initialVariantId]);
+  useEffect(() => setQuestionRows(questions), [questions]);
+  useEffect(() => setSelectedVariantId(initialVariantId), [initialVariantId]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -169,7 +170,7 @@ export function CoursePracticeWorkspace({
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    setSelectedChoice(null);
+    setSelectedChoiceIds([]);
     setAnswerChecked(false);
     setShowExplanation(false);
     fetch(`/api/question-bank/questions/${selectedVariantId}`, {
@@ -183,21 +184,24 @@ export function CoursePracticeWorkspace({
         const parsed = parseInteractiveQuestion(
           payload.question.content,
           payload.question.markScheme,
+          payload.question.maximumMark,
         );
         const savedAttempt = readPracticeAttempt(payload.variant.id);
-        const savedChoice =
-          savedAttempt?.selectedChoice &&
-          parsed.choices.some((choice) => choice.id === savedAttempt.selectedChoice)
-            ? savedAttempt.selectedChoice
-            : null;
+        const validIds = new Set(parsed.choices.map((choice) => choice.id));
+        const savedChoices = (savedAttempt?.selectedChoiceIds || []).filter((id) =>
+          validIds.has(id),
+        );
+        const validSavedAttempt =
+          (parsed.selectionMode === 'none'
+            ? savedChoices.length === 0
+            : savedChoices.length <= parsed.requiredSelectionCount) &&
+          (!savedAttempt?.answerChecked ||
+            savedChoices.length === parsed.requiredSelectionCount);
 
-        if (savedAttempt?.selectedChoice && !savedChoice) {
-          clearPracticeAttempt(payload.variant.id);
-        }
-
-        setSelectedChoice(savedChoice);
-        setAnswerChecked(Boolean(savedChoice && savedAttempt?.answerChecked));
-        setShowExplanation(Boolean(savedAttempt?.showExplanation));
+        if (savedAttempt && !validSavedAttempt) clearPracticeAttempt(payload.variant.id);
+        setSelectedChoiceIds(validSavedAttempt ? savedChoices : []);
+        setAnswerChecked(Boolean(validSavedAttempt && savedAttempt?.answerChecked));
+        setShowExplanation(Boolean(validSavedAttempt && savedAttempt?.showExplanation));
         setDetail(payload);
         requestAnimationFrame(() => panelRef.current?.focus());
       })
@@ -220,10 +224,7 @@ export function CoursePracticeWorkspace({
 
   function applyQuestionState(
     variantId: string,
-    state: {
-      status?: QuestionProgressStatus;
-      saved?: boolean;
-    },
+    state: { status?: QuestionProgressStatus; saved?: boolean },
   ) {
     setQuestionRows((rows) =>
       rows.map((row) =>
@@ -259,40 +260,75 @@ export function CoursePracticeWorkspace({
     syncQuestionToUrl(null);
   }
 
-  async function checkAnswer(choiceId: string) {
-    if (!detail || answerChecked) return;
-    setSelectedChoice(choiceId);
+  function persistAttempt(
+    choices: string[],
+    checked = answerChecked,
+    explanation = showExplanation,
+  ) {
+    if (!detail) return;
+    savePracticeAttempt(detail.variant.id, {
+      selectedChoiceIds: choices,
+      answerChecked: checked,
+      showExplanation: explanation,
+    });
+  }
+
+  function toggleChoice(choiceId: string) {
+    if (!detail || !interactive || answerChecked) return;
+    let next: string[];
+    if (interactive.selectionMode === 'single') {
+      next = [choiceId];
+    } else {
+      const selected = selectedChoiceIds.includes(choiceId);
+      if (selected) next = selectedChoiceIds.filter((id) => id !== choiceId);
+      else if (selectedChoiceIds.length < interactive.requiredSelectionCount)
+        next = [...selectedChoiceIds, choiceId];
+      else {
+        toast.info(
+          `Select exactly ${interactive.requiredSelectionCount} answers. Deselect one before choosing another.`,
+        );
+        return;
+      }
+    }
+    setSelectedChoiceIds(next);
+    persistAttempt(next, false, false);
+  }
+
+  async function checkAnswer() {
+    if (!detail || !interactive || answerChecked) return;
+    if (selectedChoiceIds.length !== interactive.requiredSelectionCount) {
+      toast.error(
+        interactive.requiredSelectionCount === 1
+          ? 'Select one answer before checking.'
+          : `Select exactly ${interactive.requiredSelectionCount} answers before checking.`,
+      );
+      return;
+    }
     setAnswerChecked(true);
     setShowExplanation(true);
-    savePracticeAttempt(detail.variant.id, {
-      selectedChoice: choiceId,
-      answerChecked: true,
-      showExplanation: true,
-    });
-    const previousStatus = detail.progress.status;
-    applyQuestionState(detail.variant.id, { status: 'completed' });
-    try {
-      await updateQuestionState(detail, { status: 'completed' });
-    } catch {
-      applyQuestionState(detail.variant.id, { status: previousStatus });
-      toast.error('Your answer was checked, but progress could not be saved.');
+    persistAttempt(selectedChoiceIds, true, true);
+    if (!interactive.isPartialInteraction) {
+      const previousStatus = detail.progress.status;
+      applyQuestionState(detail.variant.id, { status: 'completed' });
+      try {
+        await updateQuestionState(detail, { status: 'completed' });
+      } catch {
+        applyQuestionState(detail.variant.id, { status: previousStatus });
+        toast.error('Your answer was checked, but progress could not be saved.');
+      }
     }
   }
 
   function revealExplanation() {
     if (!detail) return;
     setShowExplanation(true);
-    savePracticeAttempt(detail.variant.id, {
-      selectedChoice,
-      answerChecked,
-      showExplanation: true,
-    });
+    persistAttempt(selectedChoiceIds, answerChecked, true);
   }
 
   function resetCurrentAttempt() {
     if (!detail) return;
     clearPracticeAttempt(detail.variant.id);
-    setSelectedChoice(null);
+    setSelectedChoiceIds([]);
     setAnswerChecked(false);
     setShowExplanation(false);
     toast.success('This answer was reset on this device.');
@@ -304,7 +340,7 @@ export function CoursePracticeWorkspace({
     );
     if (!confirmed) return;
     clearAllPracticeAttempts();
-    setSelectedChoice(null);
+    setSelectedChoiceIds([]);
     setAnswerChecked(false);
     setShowExplanation(false);
     toast.success('All locally saved answers were reset.');
@@ -312,9 +348,7 @@ export function CoursePracticeWorkspace({
 
   async function selfAssess(gotIt: boolean) {
     if (!detail) return;
-    const previous = {
-      status: detail.progress.status,
-    };
+    const previous = { status: detail.progress.status };
     const next = gotIt
       ? { status: 'completed' as const }
       : { status: 'in_progress' as const };
@@ -337,12 +371,13 @@ export function CoursePracticeWorkspace({
   const examinerReportAssets = (detail?.assets || []).filter(
     (asset) => asset.role === 'examiner_report',
   );
-  const correct =
+  const correct = Boolean(
     answerChecked &&
-    interactive?.correctChoiceId &&
-    selectedChoice === interactive.correctChoiceId;
+      interactive &&
+      isCorrectSelection(selectedChoiceIds, interactive.correctChoiceIds),
+  );
   const hasCurrentAttempt = Boolean(
-    selectedChoice || answerChecked || showExplanation,
+    selectedChoiceIds.length || answerChecked || showExplanation,
   );
 
   return (
@@ -409,18 +444,14 @@ export function CoursePracticeWorkspace({
                   'No question text in the source.'}
               </p>
               <small>
-                {taxonomyLabel(
-                  question.topic_name,
-                  question.subtopic_names,
-                )}
+                {taxonomyLabel(question.topic_name, question.subtopic_names)}
                 {question.section ? ` · Section ${question.section}` : ''}
               </small>
             </button>
           ))}
           {!questionRows.length ? (
             <div className="dp-qb-empty">
-              No questions match these filters. Try resetting one or more
-              filters.
+              No questions match these filters. Try resetting one or more filters.
             </div>
           ) : null}
         </div>
@@ -470,7 +501,9 @@ export function CoursePracticeWorkspace({
                   selectedIndex < questionRows.length - 1 &&
                   openQuestion(questionRows[selectedIndex + 1].variant_id)
                 }
-                disabled={selectedIndex < 0 || selectedIndex >= questionRows.length - 1}
+                disabled={
+                  selectedIndex < 0 || selectedIndex >= questionRows.length - 1
+                }
                 aria-label="Next question"
               >
                 <ArrowRight className="size-4" />
@@ -551,9 +584,7 @@ export function CoursePracticeWorkspace({
                   </span>
                 ) : null}
                 {detail.variant.section ? (
-                  <span className="dp-qb-meta">
-                    Section {detail.variant.section}
-                  </span>
+                  <span className="dp-qb-meta">Section {detail.variant.section}</span>
                 ) : null}
                 {typeof detail.variant.calculatorAllowed === 'boolean' ? (
                   <span className="dp-qb-meta">
@@ -572,40 +603,94 @@ export function CoursePracticeWorkspace({
                 />
 
                 {interactive.choices.length ? (
-                  <div className="dp-qb-answer-choices" role="radiogroup">
-                    {interactive.choices.map((choice) => {
-                      const isSelected = selectedChoice === choice.id;
-                      const isCorrect =
-                        answerChecked &&
-                        interactive.correctChoiceId === choice.id;
-                      const isIncorrect =
-                        answerChecked && isSelected && !isCorrect;
-                      return (
-                        <button
-                          key={choice.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          disabled={answerChecked}
-                          onClick={() => void checkAnswer(choice.id)}
-                          className={`${isSelected ? 'is-selected' : ''} ${
-                            isCorrect ? 'is-correct' : ''
-                          } ${isIncorrect ? 'is-incorrect' : ''}`.trim()}
-                        >
-                          <span className="dp-qb-choice-letter">{choice.label}</span>
-                          <QuestionContent source={choice.source} />
-                          {isCorrect ? <Check className="ml-auto size-5" /> : null}
-                          {isIncorrect ? <X className="ml-auto size-5" /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div
+                      className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-blue-800"
+                      role="status"
+                    >
+                      {interactive.selectionMode === 'multiple'
+                        ? `Select exactly ${interactive.requiredSelectionCount} answers. ${selectedChoiceIds.length} selected.${
+                            interactive.isPartialInteraction
+                              ? ' This checks the multiple-choice section only.'
+                              : ''
+                          }`
+                        : `Select one answer, then check it.${
+                            interactive.isPartialInteraction
+                              ? ' This checks the multiple-choice section only.'
+                              : ''
+                          }`}
+                    </div>
+                    <div
+                      className="dp-qb-answer-choices"
+                      role={
+                        interactive.selectionMode === 'multiple'
+                          ? 'group'
+                          : 'radiogroup'
+                      }
+                      aria-label="Answer choices"
+                    >
+                      {interactive.choices.map((choice) => {
+                        const isSelected = selectedChoiceIds.includes(choice.id);
+                        const isCorrect =
+                          answerChecked &&
+                          interactive.correctChoiceIds.includes(choice.id);
+                        const isIncorrect =
+                          answerChecked && isSelected && !isCorrect;
+                        const maxReached =
+                          interactive.selectionMode === 'multiple' &&
+                          selectedChoiceIds.length >=
+                            interactive.requiredSelectionCount &&
+                          !isSelected;
+                        return (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            role={
+                              interactive.selectionMode === 'multiple'
+                                ? 'checkbox'
+                                : 'radio'
+                            }
+                            aria-checked={isSelected}
+                            disabled={answerChecked || maxReached}
+                            onClick={() => toggleChoice(choice.id)}
+                            className={`${isSelected ? 'is-selected' : ''} ${
+                              isCorrect ? 'is-correct' : ''
+                            } ${isIncorrect ? 'is-incorrect' : ''}`.trim()}
+                          >
+                            <span className="dp-qb-choice-letter">{choice.label}</span>
+                            <QuestionContent
+                              source={choice.source}
+                              assets={questionAssets}
+                            />
+                            {isCorrect ? <Check className="ml-auto size-5" /> : null}
+                            {isIncorrect ? <X className="ml-auto size-5" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                      onClick={() => void checkAnswer()}
+                      disabled={
+                        answerChecked ||
+                        selectedChoiceIds.length !==
+                          interactive.requiredSelectionCount
+                      }
+                    >
+                      {answerChecked
+                        ? 'Answer checked'
+                        : interactive.selectionMode === 'multiple'
+                          ? 'Check answers'
+                          : 'Check answer'}
+                    </button>
+                  </>
                 ) : (
                   <div className="dp-qb-think-prompt">
                     <Lightbulb className="size-5" />
                     <p>
-                      Work through your answer first. Reveal the explanation when
-                      you are ready to check your reasoning.
+                      Work through every part first. Reveal the markscheme when you
+                      are ready to check your reasoning.
                     </p>
                   </div>
                 )}
@@ -613,7 +698,7 @@ export function CoursePracticeWorkspace({
                 {!interactive.choices.length ? (
                   <button
                     type="button"
-                    className="dp-qb-check-answer"
+                    className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
                     onClick={revealExplanation}
                     disabled={showExplanation}
                   >
@@ -624,7 +709,8 @@ export function CoursePracticeWorkspace({
 
               {showExplanation ? (
                 <section className="dp-qb-feedback" aria-live="polite">
-                  {interactive.choices.length && interactive.correctChoiceId ? (
+                  {interactive.choices.length &&
+                  interactive.correctChoiceIds.length ? (
                     <div
                       className={`dp-qb-feedback-banner ${
                         correct ? 'is-correct' : 'is-incorrect'
@@ -636,11 +722,16 @@ export function CoursePracticeWorkspace({
                         <CircleAlert className="size-5" />
                       )}
                       <div>
-                        <strong>{correct ? 'Correct — nice work.' : 'Not quite yet.'}</strong>
+                        <strong>
+                          {correct ? 'Correct — nice work.' : 'Not quite yet.'}
+                        </strong>
                         {!correct ? (
                           <p>
-                            The correct answer is {interactive.correctChoiceId}.
-                            Review the reasoning below before moving on.
+                            The correct {interactive.correctChoiceIds.length > 1
+                              ? 'answers are'
+                              : 'answer is'}{' '}
+                            {answerList(interactive.correctChoiceIds)}. Review the
+                            reasoning below before moving on.
                           </p>
                         ) : (
                           <p>Use the explanation to lock in why it is correct.</p>
@@ -655,7 +746,9 @@ export function CoursePracticeWorkspace({
                     </div>
                     <span>
                       {interactive.choices.length
-                        ? 'Why the answer works—and why the alternatives do not'
+                        ? interactive.isPartialInteraction
+                          ? 'Check this section, then compare every remaining response with the markscheme'
+                          : 'Why the selected answers work—and why the alternatives do not'
                         : 'Compare your working with the markscheme'}
                     </span>
                   </div>
@@ -664,7 +757,7 @@ export function CoursePracticeWorkspace({
                     assets={markschemeAssets}
                     kind="markscheme"
                   />
-                  {!interactive.choices.length ? (
+                  {!interactive.choices.length || interactive.isPartialInteraction ? (
                     <div className="dp-qb-self-assess">
                       <span>How did you do?</span>
                       <button type="button" onClick={() => selfAssess(true)}>
@@ -717,9 +810,9 @@ export function CoursePracticeWorkspace({
                       Answer saved on this device
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
-                      Your selected answer and revealed explanation are remembered in
-                      this browser only. Resetting answers does not change progress or
-                      saved questions.
+                      Your selected answers and revealed explanation are remembered
+                      in this browser only. Resetting answers does not change progress
+                      or saved questions.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
