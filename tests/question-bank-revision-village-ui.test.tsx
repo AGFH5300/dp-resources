@@ -42,6 +42,34 @@ describe('Revision Village Question Bank media presentation', () => {
     expect(output).toContain('1:05');
   });
 
+  it('resolves every source UUID for a deduplicated image asset', () => {
+    const primarySourceId = '11111111-1111-4111-8111-111111111111';
+    const aliasSourceId = '22222222-2222-4222-8222-222222222222';
+    const assetId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        source={`![Primary](question:${primarySourceId})\n\n![Alias](question:${aliasSourceId})`}
+        assets={[
+          {
+            id: assetId,
+            sourceFileId: primarySourceId,
+            sourceFileIds: [primarySourceId, aliasSourceId],
+            role: 'question',
+            originalRole: 'question',
+            sortOrder: 0,
+            altText: 'Deduplicated diagram',
+            contentType: 'image/png',
+            byteSize: 1234,
+            audio: null,
+          },
+        ]}
+      />,
+    );
+
+    expect((output.match(new RegExp(`/api/question-bank/assets/${assetId}`, 'g')) || [])).toHaveLength(2);
+    expect(output).not.toContain('Referenced image is unavailable');
+  });
+
   it('shows provider-neutral solution identifiers without treating them as broken URLs', () => {
     const output = renderToStaticMarkup(
       <SolutionVideo
