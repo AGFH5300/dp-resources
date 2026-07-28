@@ -12,6 +12,10 @@ const workspace = readFileSync(
   'components/question-bank/course-practice-workspace.tsx',
   'utf8',
 );
+const productionContent = readFileSync(
+  'components/question-bank/question-content-production.tsx',
+  'utf8',
+);
 const routedContent = readFileSync(
   'components/question-bank/question-content-routed.tsx',
   'utf8',
@@ -105,11 +109,12 @@ describe('EB0383 production rendering', () => {
     expect(output).not.toContain('textquotedblleft');
   });
 
-  it('uses the routed wrapper while preserving independent section state', () => {
+  it('uses the final production wrapper while preserving independent section state', () => {
     expect(tsconfig).toContain(
       '"@/components/question-bank/question-content"',
     );
-    expect(tsconfig).toContain('question-content-routed.tsx');
+    expect(tsconfig).toContain('question-content-production.tsx');
+    expect(productionContent).toContain("from './question-content-routed'");
     expect(routedContent).toContain('AUDIO_CONTEXT_MARKER');
     expect(routedContent).toContain("mode === 'secondary'");
     expect(routedContent).toContain(
