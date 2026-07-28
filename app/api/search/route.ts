@@ -12,7 +12,11 @@ const cache = new Map<string, { t: number; payload: any }>();
 export async function GET(req: Request) {
   await requireMember();
   const start = performance.now();
-  const q = new URL(req.url).searchParams.get('q') || '';
+  const url = new URL(req.url);
+  const q = url.searchParams.get('q') || '';
+  const folderId = (url.searchParams.get('folderId') || '')
+    .trim()
+    .slice(0, 200);
   const needle = normalizeResourceName(q).slice(0, 120);
   const sb = createSupabaseAdminClient();
   const [{ data: state }, { count }] = await Promise.all([
@@ -31,7 +35,7 @@ export async function GET(req: Request) {
     return Response.json({ folders: [], files: [], indexState });
   if (!available)
     return Response.json({ folders: [], files: [], indexState: 'preparing' });
-  const key = needle.toLowerCase();
+  const key = `${folderId || 'library'}:${needle.toLowerCase()}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.t < 15_000)
     return Response.json(
@@ -48,10 +52,16 @@ export async function GET(req: Request) {
   const searchVariants = expandResourceSearchAliases(needle);
   const searches = await Promise.all(
     searchVariants.map((searchQuery) =>
-      sb.rpc('dp_search_resources', {
-        search_query: searchQuery,
-        result_limit: 50,
-      }),
+      folderId
+        ? sb.rpc('dp_search_resources_in_folder', {
+            search_query: searchQuery,
+            folder_drive_file_id: folderId,
+            result_limit: 50,
+          })
+        : sb.rpc('dp_search_resources', {
+            search_query: searchQuery,
+            result_limit: 50,
+          }),
     ),
   );
   if (searches.every(({ error }) => error))

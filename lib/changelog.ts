@@ -27,6 +27,11 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-28': [
+    'Added quick search inside the current Library folder and all of its subfolders.',
+    'Fixed the admin case inspector so replies, messages, and draft changes never carry over when switching between support tickets or resource reports.',
+    'Corrected support notification counts, added General inquiry, improved Content feedback in dark mode, and added a bulk mark-as-read action.',
+  ],
   '2026-07-25': [
     'Improved Question Bank practice with locally remembered answers, reset controls, red reporting actions, cleaner report summaries, and corrected notification close-button styling.',
   ],
