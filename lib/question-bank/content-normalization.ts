@@ -27,6 +27,27 @@ function readableExponents(value: string) {
   );
 }
 
+function normalizeImportedNotation(value: string) {
+  return value
+    .replace(
+      /\$\s*\\answer\s*\{\s*\\textrm\s*\{([^{}]*)\}\s*\}\s*\$/gi,
+      ':answer[$1]',
+    )
+    .replace(/\$\s*\\answer\s*\{([^{}]*)\}\s*\$/gi, ':answer[$1]')
+    .replace(
+      /\\answer\s*\{\s*\\textrm\s*\{([^{}]*)\}\s*\}/gi,
+      ':answer[$1]',
+    )
+    .replace(/\\answer\s*\{([^{}]*)\}/gi, ':answer[$1]')
+    .replace(
+      /\$\s*\\text\s*\{\s*\\textquotedblleft\s*\}\s*\$/gi,
+      '“',
+    )
+    .replace(/\\text\s*\{\s*\\textquotedblleft\s*\}/gi, '“')
+    .replace(/\$\s*(\d+)\s*-\s*(\d+)\.\s*\$/g, '$1–$2.')
+    .replace(/\$\s*(\d+)\.\s*\$/g, '$1.');
+}
+
 function normalizeSplitListMath(lines: string[]) {
   const output: string[] = [];
 
@@ -126,25 +147,27 @@ export function normalizeQuestionSource(value: string) {
     );
 
   return readableExponents(
-    normalizeStandaloneMath(normalizeSplitListMath(lines))
-      .join('\n')
-      .replace(STYLE_ATTRIBUTE, '')
-      .replace(/^\s*]\s*$/gm, '')
-      .replace(
-        /\\hspace\s*(?:\{\s*[^}]*\}|[\d.]+(?:em|ex|px|pt|cm|mm|in)?)/gi,
-        ' ',
-      )
-      .replace(
-        /\bhspace\s*\{?\s*[\d.]+(?:em|ex|px|pt|cm|mm|in)?\}?/gi,
-        ' ',
-      )
-      .replace(/\\+\[([^\]\n]+?)\\+\]/g, '[$1]')
-      .replace(/\\+=/g, '=')
-      .replace(/[«»≪≫]/g, '')
-      .replace(/(^|[^\\])\\(?=\s)/g, '$1')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim(),
+    normalizeImportedNotation(
+      normalizeStandaloneMath(normalizeSplitListMath(lines))
+        .join('\n')
+        .replace(STYLE_ATTRIBUTE, '')
+        .replace(/^\s*]\s*$/gm, '')
+        .replace(
+          /\\hspace\s*(?:\{\s*[^}]*\}|[\d.]+(?:em|ex|px|pt|cm|mm|in)?)/gi,
+          ' ',
+        )
+        .replace(
+          /\bhspace\s*\{?\s*[\d.]+(?:em|ex|px|pt|cm|mm|in)?\}?/gi,
+          ' ',
+        )
+        .replace(/\\+\[([^\]\n]+?)\\+\]/g, '[$1]')
+        .replace(/\\+=/g, '=')
+        .replace(/[«»≪≫]/g, '')
+        .replace(/(^|[^\\])\\(?=\s)/g, '$1')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim(),
+    ),
   );
 }
 
