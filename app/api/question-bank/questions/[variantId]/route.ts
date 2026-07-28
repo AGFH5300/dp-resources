@@ -101,13 +101,28 @@ export async function GET(
   const audioByAssetId = new Map(
     extended.audio.map((row: any) => [row.asset_id, row]),
   );
+  const sourceAliasesByAssetId = new Map<string, Set<string>>();
+  for (const row of extended.assetSources as any[]) {
+    const assetId = String(row.asset_id || '');
+    const sourceFileId = String(row.source_file_id || '');
+    if (!assetId || !sourceFileId) continue;
+    const aliases = sourceAliasesByAssetId.get(assetId) || new Set<string>();
+    aliases.add(sourceFileId);
+    sourceAliasesByAssetId.set(assetId, aliases);
+  }
   const assets: QuestionAsset[] = (data.assets as any[])
     .filter((row) => row.asset?.verification_status === 'verified')
     .map((row) => {
       const audio = audioByAssetId.get(row.asset.id) as any;
+      const sourceFileId = row.source_file_id || null;
+      const sourceFileIds = new Set<string>(
+        sourceAliasesByAssetId.get(row.asset.id) || [],
+      );
+      if (sourceFileId) sourceFileIds.add(sourceFileId);
       return {
         id: row.asset.id,
-        sourceFileId: row.source_file_id,
+        sourceFileId,
+        sourceFileIds: [...sourceFileIds],
         role: (row.role === 'audio' ? 'content_reference' : row.role) as QuestionAsset['role'],
         originalRole: row.role,
         sortOrder: row.sort_order,
