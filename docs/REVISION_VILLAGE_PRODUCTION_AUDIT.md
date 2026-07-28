@@ -81,6 +81,20 @@ The final renderer normalizes all syntax families found in the corpus, including
 - copied `<no link>` URL markers
 - incomplete pipe-table rows inside explicit table blocks
 
+### Evidence retained in the pull request
+
+Regression coverage includes:
+
+- EB0143 composite listening structure
+- EB0382 and EB0383 exact-count multi-select behavior
+- independent grouped browser state
+- conflicting numbered answer references
+- textual and UUID audio identifiers
+- per-segment audio ordering
+- deduplicated source-image aliases
+- all four curated source-image fallbacks
+- copied-link cleanup and incomplete imported table rows
+
 ## Production gate
 
 The pull request must not be merged until all of the following pass against the final squashed head:
