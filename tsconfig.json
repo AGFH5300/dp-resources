@@ -16,7 +16,7 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/components/question-bank/question-content": [
-        "./components/question-bank/question-content-routed.tsx"
+        "./components/question-bank/question-content-production.tsx"
       ],
       "@/lib/question-bank/interactive": [
         "./lib/question-bank/interactive-validated.ts"
