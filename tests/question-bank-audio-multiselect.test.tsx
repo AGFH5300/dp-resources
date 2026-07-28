@@ -270,10 +270,11 @@ describe('safe interactive answer parsing', () => {
           segment.type === 'content' && segment.source.includes('grandmother’s influence'),
       ),
     ).toBeTruthy();
-    expect(parsed.segments.at(-1)).toMatchObject({ type: 'content' });
+    const finalSegment = parsed.segments.at(-1);
+    expect(finalSegment).toMatchObject({ type: 'content' });
     expect(
-      parsed.segments.at(-1)?.type === 'content' &&
-        parsed.segments.at(-1)?.source.includes('DP_AUDIO_CONTEXT:final'),
+      finalSegment?.type === 'content' &&
+        finalSegment.source.includes('DP_AUDIO_CONTEXT:final'),
     ).toBe(true);
     expect(isCorrectSelection(['E', 'B', 'D'], parsed.sections[0].correctChoiceIds)).toBe(
       true,
