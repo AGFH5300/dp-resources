@@ -89,4 +89,36 @@ describe('segment-aware Question Bank audio routing', () => {
     expect(output).toContain(`/api/question-bank/assets/${assets[0].id}`);
     expect(output).toContain(`/api/question-bank/assets/${assets[1].id}`);
   });
+
+  it('accepts and consumes textual audio IDs without leaking or duplicating markers', () => {
+    const textualSourceId = 'audio/source 1';
+    const textualAsset: QuestionAsset = {
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      sourceFileId: null,
+      role: 'content_reference',
+      originalRole: 'audio',
+      sortOrder: 0,
+      altText: 'Textual source audio',
+      contentType: 'audio/mp4',
+      audio: {
+        provider: 'revision-village',
+        sourceAudioId: textualSourceId,
+        transcriptId: null,
+        transcript: '',
+        durationSeconds: 12,
+      },
+    };
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        source={`[[DP_AUDIO_CONTEXT:secondary:${encodeURIComponent(textualSourceId)}:audio{]]\n:audio{#11111111-1111-4111-8111-111111111111 aid="${textualSourceId}"}`}
+        assets={[textualAsset]}
+      />,
+    );
+
+    expect(audioCount(output)).toBe(1);
+    expect(output).toContain(`/api/question-bank/assets/${textualAsset.id}`);
+    expect(output).not.toContain('DP_AUDIO_CONTEXT');
+    expect(output).not.toContain(encodeURIComponent(textualSourceId));
+    expect(output).not.toContain(textualSourceId);
+  });
 });
