@@ -95,6 +95,8 @@ Regression coverage includes:
 - all four curated source-image fallbacks
 - copied-link cleanup and incomplete imported table rows
 
+The fresh review is required to examine the entire final diff, including the API alias handoff, renderer compatibility layers, database audit migration and all regression tests. Earlier reviews of partial commits are not sufficient for the production gate.
+
 ## Production gate
 
 The pull request must not be merged until all of the following pass against the final squashed head:
