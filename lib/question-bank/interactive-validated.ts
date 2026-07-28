@@ -225,7 +225,7 @@ function correctedSection(
   section: InteractiveSection,
   block: ChoiceBlockAudit,
   explicitGroups: AnswerGroupAudit[],
-) {
+): { section: InteractiveSection; invalid: boolean } {
   const candidates = explicitGroups.filter(
     (group) =>
       group.ids.length === section.requiredSelectionCount &&
@@ -243,7 +243,8 @@ function correctedSection(
 
   if (referenceMatches.length === 1) {
     const correctChoiceIds = referenceMatches[0].ids;
-    const selectionMode = correctChoiceIds.length > 1 ? 'multiple' : 'single';
+    const selectionMode: InteractiveSection['selectionMode'] =
+      correctChoiceIds.length > 1 ? 'multiple' : 'single';
     return {
       invalid: false,
       section: {
