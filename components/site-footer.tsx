@@ -19,6 +19,24 @@ export function SiteFooter() {
           <span aria-hidden="true" className="mx-2 text-slate-300">
             ·
           </span>
+          <Link
+            href="/privacy"
+            className="font-medium text-[#0759ff] transition-colors duration-300 hover:text-[#061a34] hover:underline"
+          >
+            Privacy
+          </Link>
+          <span aria-hidden="true" className="mx-2 text-slate-300">
+            ·
+          </span>
+          <Link
+            href="/terms"
+            className="font-medium text-[#0759ff] transition-colors duration-300 hover:text-[#061a34] hover:underline"
+          >
+            Terms
+          </Link>
+          <span aria-hidden="true" className="mx-2 text-slate-300">
+            ·
+          </span>
           Made by{' '}
           <a
             href="https://anshgupta.cc"
