@@ -45,7 +45,12 @@ function normalizeImportedNotation(value: string) {
     )
     .replace(/\\text\s*\{\s*\\textquotedblleft\s*\}/gi, '“')
     .replace(/\$\s*(\d+)\s*-\s*(\d+)\.\s*\$/g, '$1–$2.')
-    .replace(/\$\s*(\d+)\.\s*\$/g, '$1.');
+    .replace(/\$\s*(\d+)\.\s*\$/g, '$1.')
+    // Removing imported layout commands such as `$\\hspace{1em}$` leaves an
+    // empty inline-math pair (`$ $`). It has no semantic content and creates a
+    // blank KaTeX node plus messy copied text, so remove it deliberately.
+    .replace(/\$[\t ]+\$/g, ' ')
+    .replace(/[^\S\n]{2,}/g, ' ');
 }
 
 function normalizeSplitListMath(lines: string[]) {
