@@ -114,6 +114,7 @@ https<no link>://example<no link>.com/source
     expect(output).toContain('2252');
     expect(output).toContain('dp-qb-answer');
     expect(output).not.toContain('1000|2252');
+    expect(output).not.toContain(':-:');
     expect(output).not.toContain('::answer[');
   });
 
