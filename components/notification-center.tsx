@@ -99,6 +99,7 @@ export function NotificationCenter({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,14 +132,20 @@ export function NotificationCenter({
   }
 
   async function markAllRead() {
-    const response = await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ all: true }),
-    });
-    if (response.ok) {
-      await onRefresh();
-      window.dispatchEvent(new Event('dp:notifications-changed'));
+    if (markingAll) return;
+    setMarkingAll(true);
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+      if (response.ok) {
+        await onRefresh();
+        window.dispatchEvent(new Event('dp:notifications-changed'));
+      }
+    } finally {
+      setMarkingAll(false);
     }
   }
 
@@ -170,7 +177,7 @@ export function NotificationCenter({
           aria-label="Notifications"
           className="fixed left-3 right-3 top-[4.5rem] z-50 max-h-[min(70vh,34rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[24rem]"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
             <div>
               <p className="font-semibold text-[color:var(--dp-navy)]">
                 Notifications
@@ -184,10 +191,16 @@ export function NotificationCenter({
             {summary.unread > 0 && (
               <button
                 type="button"
+                disabled={markingAll}
                 onClick={markAllRead}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--dp-blue)] hover:underline"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-[color:var(--dp-blue)] hover:bg-slate-100 disabled:opacity-60"
               >
-                <Check className="size-3.5" /> Mark all read
+                {markingAll ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Check className="size-3.5" />
+                )}
+                {markingAll ? 'Marking…' : 'Mark all as read'}
               </button>
             )}
           </div>
