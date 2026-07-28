@@ -72,13 +72,14 @@ describe('Revision Village Question Bank media presentation', () => {
     expect(output).not.toContain('Referenced image is unavailable');
   });
 
-  it('normalizes source boxes, subscripts and table options without leaking directives', () => {
+  it('normalizes copied source directives and link placeholders', () => {
     const output = renderToStaticMarkup(
       <QuestionContent
         source={String.raw`:::centre
 :tableoptions{col1="hide"}
 :box[Inquiry source]
 H:sub[2]O
+https<no link>://example<no link>.com/source
 :::`}
       />,
     );
@@ -87,10 +88,12 @@ H:sub[2]O
     expect(output).toContain('H');
     expect(output).toContain('2');
     expect(output).toContain('O');
+    expect(output).toContain('https://example.com/source');
     expect(output).not.toContain(':box[');
     expect(output).not.toContain(':sub[');
     expect(output).not.toContain('tableoptions');
     expect(output).not.toContain(':::centre');
+    expect(output).not.toContain('no link');
   });
 
   it('repairs incomplete pipe rows only inside imported table blocks', () => {
