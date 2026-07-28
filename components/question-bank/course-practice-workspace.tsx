@@ -66,6 +66,21 @@ function difficultyClass(value: string | null) {
   }`;
 }
 
+function isAudioAsset(asset: QuestionAsset) {
+  return (
+    asset.originalRole === 'audio' ||
+    String(asset.contentType || '').toLowerCase().startsWith('audio/')
+  );
+}
+
+function sanitizeQuestionAsset(asset: QuestionAsset): QuestionAsset {
+  if (!isAudioAsset(asset)) return asset;
+  return {
+    ...asset,
+    altText: 'Question audio',
+  };
+}
+
 type QuestionDetail = {
   variant: {
     id: string;
@@ -362,9 +377,10 @@ export function CoursePracticeWorkspace({
     }
   }
 
-  const questionAssets = (detail?.assets || []).filter(
-    (asset) => asset.role === 'question' || asset.role === 'content_reference',
-  );
+  const questionAssets = (detail?.assets || [])
+    .filter((asset) => asset.role === 'question' || asset.role === 'content_reference')
+    .map(sanitizeQuestionAsset);
+  const nonAudioQuestionAssets = questionAssets.filter((asset) => !isAudioAsset(asset));
   const markschemeAssets = (detail?.assets || []).filter(
     (asset) => asset.role === 'markscheme',
   );
@@ -598,7 +614,11 @@ export function CoursePracticeWorkspace({
 
               <section className="dp-qb-quiz-card">
                 <QuestionContent
-                  source={interactive.prompt || detail.question.content}
+                  source={
+                    interactive.choices.length
+                      ? interactive.promptBeforeChoices
+                      : interactive.prompt || detail.question.content
+                  }
                   assets={questionAssets}
                 />
 
@@ -660,7 +680,7 @@ export function CoursePracticeWorkspace({
                             <span className="dp-qb-choice-letter">{choice.label}</span>
                             <QuestionContent
                               source={choice.source}
-                              assets={questionAssets}
+                              assets={nonAudioQuestionAssets}
                             />
                             {isCorrect ? <Check className="ml-auto size-5" /> : null}
                             {isIncorrect ? <X className="ml-auto size-5" /> : null}
@@ -684,6 +704,14 @@ export function CoursePracticeWorkspace({
                           ? 'Check answers'
                           : 'Check answer'}
                     </button>
+                    {interactive.promptAfterChoices ? (
+                      <div className="mt-6 border-t border-slate-200 pt-5">
+                        <QuestionContent
+                          source={interactive.promptAfterChoices}
+                          assets={nonAudioQuestionAssets}
+                        />
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <div className="dp-qb-think-prompt">
