@@ -11,6 +11,10 @@ import type { ResourceIndex } from '@/lib/types';
 
 type Result = ResourceIndex;
 type IndexState = 'unknown' | 'ready' | 'empty' | 'preparing' | 'updating';
+type SearchScope = {
+  folderId: string;
+  folderName: string;
+} | null;
 function resultRow(
   r: Result,
   q: string,
@@ -55,6 +59,7 @@ export function GlobalSearch() {
   const pathname = usePathname();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState<SearchScope>(null);
   const [q, setQ] = useState('');
   const [retryNonce, setRetryNonce] = useState(0);
   const [indexState, setIndexState] = useState<IndexState>('unknown');
@@ -82,17 +87,33 @@ export function GlobalSearch() {
   };
   const resetSearch = () => {
     clearState();
+    setScope(null);
     setOpen(false);
   };
   const openSearch = () => {
     clearState();
+    setScope(null);
+    setOpen(true);
+  };
+  const openFolderSearch = (nextScope: Exclude<SearchScope, null>) => {
+    clearState();
+    setScope(nextScope);
     setOpen(true);
   };
   const close = resetSearch;
   useEffect(() => {
-    const f = () => openSearch();
-    window.addEventListener('dp:open-search', f);
-    return () => window.removeEventListener('dp:open-search', f);
+    const openLibrary = () => openSearch();
+    const openFolder = (event: Event) => {
+      const detail = (event as CustomEvent<Exclude<SearchScope, null>>).detail;
+      if (!detail?.folderId || !detail.folderName) return;
+      openFolderSearch(detail);
+    };
+    window.addEventListener('dp:open-search', openLibrary);
+    window.addEventListener('dp:open-folder-search', openFolder);
+    return () => {
+      window.removeEventListener('dp:open-search', openLibrary);
+      window.removeEventListener('dp:open-folder-search', openFolder);
+    };
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -128,7 +149,9 @@ export function GlobalSearch() {
       }, 800);
       const timeoutTimer = setTimeout(() => ac.abort('timeout'), 7000);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+        const params = new URLSearchParams({ q });
+        if (scope?.folderId) params.set('folderId', scope.folderId);
+        const res = await fetch(`/api/search?${params.toString()}`, {
           signal: ac.signal,
         });
         if (!res.ok) throw new Error('Search failed');
@@ -160,7 +183,7 @@ export function GlobalSearch() {
       clearTimeout(timer);
       ac.abort();
     };
-  }, [q, open, retryNonce]);
+  }, [q, open, retryNonce, scope?.folderId]);
   useEffect(() => {
     if (flat[active])
       router.prefetch(
@@ -234,7 +257,9 @@ export function GlobalSearch() {
                 openResult(choose);
               }
             }}
-            placeholder="Search files, folders, and paths"
+            placeholder={
+              scope ? `Search in ${scope.folderName}` : 'Search files, folders, and paths'
+            }
             className="flex-1 text-base"
             style={{
               background: 'transparent',
@@ -257,10 +282,14 @@ export function GlobalSearch() {
           {q.length < 2 ? (
             <div className="px-3 py-4">
               <p className="text-sm font-medium text-[color:var(--dp-navy)]">
-                Search files, folders, and paths
+                {scope
+                  ? `Search in ${scope.folderName}`
+                  : 'Search files, folders, and paths'}
               </p>
               <p className="mt-1 text-xs text-[color:var(--dp-ink)]/60">
-                Type at least two characters.
+                {scope
+                  ? 'Type at least two characters to search this folder and its subfolders.'
+                  : 'Type at least two characters.'}
               </p>
               {indexState === 'preparing' && (
                 <p className="mt-2 text-xs text-[color:var(--dp-ink)]/50">
@@ -270,7 +299,11 @@ export function GlobalSearch() {
             </div>
           ) : loading ? (
             <p className="p-8 text-center text-sm text-[color:var(--dp-ink)]/65">
-              {slow ? 'Still searching…' : 'Searching your library…'}
+              {slow
+                ? 'Still searching…'
+                : scope
+                  ? `Searching ${scope.folderName}…`
+                  : 'Searching your library…'}
             </p>
           ) : error ? (
             <div className="p-8 text-center">
@@ -292,10 +325,14 @@ export function GlobalSearch() {
               ) : (
                 <>
                   <p className="font-medium text-[color:var(--dp-navy)]">
-                    No matching resources
+                    {scope
+                      ? 'No matching resources in this folder'
+                      : 'No matching resources'}
                   </p>
                   <p className="mt-1 text-xs">
-                    Try a subject, topic, paper, year, or filename.
+                    {scope
+                      ? 'Try a unit, topic, year, or filename.'
+                      : 'Try a subject, topic, paper, year, or filename.'}
                   </p>
                 </>
               )}
@@ -336,19 +373,29 @@ export function GlobalSearch() {
                   )}
                 </section>
               ) : null}
-              <Link
-                onClick={resetSearch}
-                href={`/search?q=${encodeURIComponent(q)}`}
-                className="dp-search-view-all block rounded-md border p-2 text-center text-sm font-medium text-[color:var(--dp-navy)] hover:bg-slate-50"
-              >
-                View all results
-              </Link>
+              {scope ? (
+                <button
+                  type="button"
+                  onClick={() => setScope(null)}
+                  className="dp-search-view-all block w-full rounded-md border p-2 text-center text-sm font-medium text-[color:var(--dp-navy)] hover:bg-slate-50"
+                >
+                  Search the whole library instead
+                </button>
+              ) : (
+                <Link
+                  onClick={resetSearch}
+                  href={`/search?q=${encodeURIComponent(q)}`}
+                  className="dp-search-view-all block rounded-md border p-2 text-center text-sm font-medium text-[color:var(--dp-navy)] hover:bg-slate-50"
+                >
+                  View all results
+                </Link>
+              )}
             </>
           )}
         </div>
         {flat.length ? (
           <div className="dp-search-footer border-t px-4 py-2 text-xs text-slate-500">
-            ↑↓ navigate · Enter open · Esc close
+            {scope ? `${scope.folderName} and subfolders · ` : ''}↑↓ navigate · Enter open · Esc close
           </div>
         ) : null}
       </div>

@@ -1226,6 +1226,7 @@ export function AdminConsole({
       )}
       {selected && (
         <CaseInspector
+          key={`${selected.kind}:${selected.item.id}`}
           kind={selected.kind}
           item={selected.item}
           admins={admins}
