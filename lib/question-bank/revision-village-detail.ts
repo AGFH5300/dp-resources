@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createClient } from '@/lib/supabase-server';
 
 function requireRows<T>(
@@ -16,6 +17,10 @@ export async function getExtendedQuestionDetail(
   assetIds: string[],
 ) {
   const client = await createClient();
+  // `dp_qb_asset_sources` is intentionally admin-readable only. The route has
+  // already required an approved member and supplies only asset IDs attached to
+  // the requested variant, so keep this privileged lookup narrowly scoped.
+  const adminClient = createSupabaseAdminClient();
   const [papersResult, videosResult, audioResult, assetSourcesResult] =
     await Promise.all([
       client
@@ -42,7 +47,7 @@ export async function getExtendedQuestionDetail(
             .in('asset_id', assetIds)
         : Promise.resolve({ data: [], error: null }),
       assetIds.length
-        ? client
+        ? adminClient
             .from('dp_qb_asset_sources')
             .select('asset_id,source_file_id')
             .in('asset_id', assetIds)
