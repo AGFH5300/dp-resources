@@ -6,6 +6,20 @@ export type InteractiveChoice = {
   source: string;
 };
 
+export type InteractiveSection = {
+  id: string;
+  choices: InteractiveChoice[];
+  correctChoiceId: string | null;
+  correctChoiceIds: string[];
+  requiredSelectionCount: number;
+  selectionMode: 'single' | 'multiple';
+  interactiveMarkCount: number;
+};
+
+export type InteractiveSegment =
+  | { type: 'content'; source: string }
+  | { type: 'choices'; sectionId: string };
+
 export type InteractiveQuestion = {
   prompt: string;
   promptBeforeChoices: string;
@@ -17,6 +31,8 @@ export type InteractiveQuestion = {
   selectionMode: 'none' | 'single' | 'multiple';
   interactiveMarkCount: number;
   isPartialInteraction: boolean;
+  sections: InteractiveSection[];
+  segments: InteractiveSegment[];
 };
 
 const CHOICE_LABELS = 'ABCDEFGH';
@@ -29,6 +45,22 @@ const NUMBER_WORDS: Record<string, number> = {
   six: 6,
   seven: 7,
   eight: 8,
+};
+const AUDIO_DIRECTIVE_SOURCE_ID =
+  /:audio\{\s*#?([0-9a-f-]{36})(?:\s+aid=(?:"([^"]+)"|'([^']+)'|([^\s}]+)))?[^}]*\}/gi;
+
+type ChoiceBlock = {
+  start: number;
+  end: number;
+  choices: InteractiveChoice[];
+  context: string;
+  reference: string | null;
+};
+
+type AnswerGroup = {
+  index: number;
+  ids: string[];
+  reference: string | null;
 };
 
 function balanceInlineMath(value: string) {
@@ -89,39 +121,78 @@ function normalizeChoiceIds(value: string) {
   return [...new Set(ids)];
 }
 
-function answerGroups(markScheme: string) {
-  const found: Array<{ index: number; ids: string[] }> = [];
-  const patterns = [
+function nearestQuestionReference(value: string) {
+  const matches = Array.from(
+    value.matchAll(/^\s*(\d+)(?:\s*[-–]\s*(\d+))?\.\s*/gm),
+  );
+  const match = matches.at(-1);
+  if (!match) return null;
+  return match[2] ? `${Number(match[1])}-${Number(match[2])}` : String(Number(match[1]));
+}
+
+function referenceBounds(reference: string) {
+  const [start, end = start] = reference.split('-').map(Number);
+  return { start, end };
+}
+
+function referencesOverlap(left: string | null, right: string | null) {
+  if (!left || !right) return false;
+  const a = referenceBounds(left);
+  const b = referenceBounds(right);
+  return a.start <= b.end && b.start <= a.end;
+}
+
+function collectAnswerGroups(
+  markScheme: string,
+  patterns: RegExp[],
+): AnswerGroup[] {
+  const found: AnswerGroup[] = [];
+  for (const pattern of patterns) {
+    for (const match of markScheme.matchAll(pattern)) {
+      const ids = normalizeChoiceIds(match[1]);
+      if (!ids.length) continue;
+      const index = match.index || 0;
+      found.push({
+        index,
+        ids,
+        reference: nearestQuestionReference(markScheme.slice(0, index)),
+      });
+    }
+  }
+  found.sort((left, right) => left.index - right.index);
+  const seen = new Set<string>();
+  return found.filter(({ index, ids }) => {
+    const key = `${index}:${ids.join(',')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function answerGroups(markScheme: string): AnswerGroup[] {
+  const strict = collectAnswerGroups(markScheme, [
     /:answer\[\s*(?:\*\*)?\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\s*(?:\*\*)?\s*\]/gi,
     /\\answer\s*\{\s*\\textrm\s*\{\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\s*\}\s*\}/gi,
     /\\answer\s*\{\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\s*\}/gi,
     /(?:correct\s+answer|answer)\s*(?:is|:)\s*(?:\*\*)?\s*([A-H](?:\s*(?:,|\/|&|\band\b)\s*[A-H])*)\b/gi,
+  ]);
+  if (strict.length) return strict;
+
+  // Bare letters are retained only for legacy markschemes that contain no
+  // explicit answer directive. Mixing explanation labels with strict answers
+  // would otherwise create false answer groups.
+  return collectAnswerGroups(markScheme, [
     /^\s*(?:\*\*)?\s*([A-H])\s*(?:\*\*)?(?:\s|[.)\]:-]|$)/gim,
-  ];
-
-  for (const pattern of patterns) {
-    for (const match of markScheme.matchAll(pattern)) {
-      const ids = normalizeChoiceIds(match[1]);
-      if (ids.length) found.push({ index: match.index || 0, ids });
-    }
-  }
-
-  found.sort((left, right) => left.index - right.index);
-  const seen = new Set<string>();
-  return found
-    .filter(({ index, ids }) => {
-      const key = `${index}:${ids.join(',')}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .map(({ ids }) => ids);
+  ]);
 }
 
 function requestedSelectionCount(context: string) {
-  const match = context.match(
-    /(?:choose|select|find|tick|mark)\s+(?:the\s+)?(one|two|three|four|five|six|seven|eight|[1-8])\b/i,
+  const matches = Array.from(
+    context.matchAll(
+      /(?:choose|select|find|tick|mark)\s+(?:the\s+)?(one|two|three|four|five|six|seven|eight|[1-8])\b/gi,
+    ),
   );
+  const match = matches.at(-1);
   if (!match) return null;
   const token = match[1].toLowerCase();
   return NUMBER_WORDS[token] || Number(token) || null;
@@ -131,6 +202,27 @@ function contextualMarkCount(context: string) {
   const matches = Array.from(context.matchAll(/:marks\[\s*(\d+)\s*\]/gi));
   const last = matches.at(-1);
   return last ? Number(last[1]) : null;
+}
+
+function audioDirectiveSourceIds(source: string) {
+  return [
+    ...new Set(
+      Array.from(source.matchAll(AUDIO_DIRECTIVE_SOURCE_ID))
+        .map((match) => String(match[2] || match[3] || match[4] || match[1] || ''))
+        .filter(Boolean)
+        .map((value) => value.toLowerCase()),
+    ),
+  ];
+}
+
+function audioContextMarker(mode: 'secondary' | 'final', sourceIds: string[]) {
+  // The literal `:audio{` keeps the existing workspace asset handoff intact.
+  // The exact import wrapper removes this private marker before rendering.
+  return `[[DP_AUDIO_CONTEXT:${mode}:${sourceIds.join(',')}:audio{]]`;
+}
+
+function sourcePart(lines: string[]) {
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function emptyInteractive(prompt: string): InteractiveQuestion {
@@ -145,6 +237,8 @@ function emptyInteractive(prompt: string): InteractiveQuestion {
     selectionMode: 'none',
     interactiveMarkCount: 0,
     isPartialInteraction: false,
+    sections: [],
+    segments: prompt ? [{ type: 'content', source: prompt }] : [],
   };
 }
 
@@ -154,20 +248,9 @@ export function isCorrectSelection(selected: string[], correct: string[]) {
   return selected.every((id) => expected.has(id.toUpperCase()));
 }
 
-export function parseInteractiveQuestion(
-  content: string,
-  markScheme: string,
-  maximumMark: number | null = null,
-): InteractiveQuestion {
-  const normalizedContent = normalizeQuestionSource(content);
-  const normalizedMarkScheme = normalizeQuestionSource(markScheme);
-  const lines = normalizedContent.split('\n');
-  const blocks: Array<{
-    start: number;
-    end: number;
-    choices: InteractiveChoice[];
-    context: string;
-  }> = [];
+function findChoiceBlocks(lines: string[]) {
+  const blocks: ChoiceBlock[] = [];
+  let contextStart = 0;
 
   for (let start = 0; start < lines.length; start += 1) {
     const first = parseChoiceLine(lines[start]);
@@ -187,61 +270,160 @@ export function parseInteractiveQuestion(
       end += 1;
     }
     if (choices.length >= 2) {
+      const context = lines.slice(contextStart, start).join('\n');
       blocks.push({
         start,
         end,
         choices,
-        context: lines.slice(Math.max(0, start - 6), start).join(' '),
+        context,
+        reference: nearestQuestionReference(context),
       });
+      contextStart = end;
       start = Math.max(start, end - 1);
     }
   }
+  return blocks;
+}
 
-  // Composite papers commonly contain several independent MCQ blocks. Treating
-  // only one of them as the whole question creates incorrect grading, so those
-  // remain faithful reveal-and-self-assess questions until a grouped parser can
-  // represent every sub-question.
-  if (blocks.length !== 1) return emptyInteractive(normalizedContent);
-
-  const block = blocks[0];
-  const available = new Set(block.choices.map((choice) => choice.id));
-  const groups = answerGroups(normalizedMarkScheme).filter((group) =>
-    group.every((id) => available.has(id)),
+function chooseAnswerGroup(
+  block: ChoiceBlock,
+  candidates: Array<AnswerGroup & { groupIndex: number }>,
+  requestedCount: number | null,
+  singleBlock: boolean,
+) {
+  const countCompatible = candidates.filter((group) =>
+    requestedCount ? group.ids.length === requestedCount : group.ids.length === 1,
   );
-  const requestedCount = requestedSelectionCount(block.context);
-  const multiAnswer = groups.find((group) => group.length > 1);
-  const singleAnswers = groups.filter((group) => group.length === 1);
+  const referenceMatches = countCompatible.filter((group) =>
+    referencesOverlap(block.reference, group.reference),
+  );
+  if (referenceMatches.length === 1) return referenceMatches[0];
+  if (referenceMatches.length > 1) return null;
+  if (countCompatible.length === 1) return countCompatible[0];
 
-  let correctChoiceIds: string[] = [];
-  if (requestedCount && requestedCount > 1) {
-    if (multiAnswer?.length === requestedCount) correctChoiceIds = multiAnswer;
-  } else if (multiAnswer && singleAnswers.length === 0) {
-    correctChoiceIds = multiAnswer;
-  } else if (singleAnswers.length === 1 && !multiAnswer) {
-    correctChoiceIds = singleAnswers[0];
+  if (singleBlock && !requestedCount) {
+    const multiGroups = candidates.filter((group) => group.ids.length > 1);
+    const singleGroups = candidates.filter((group) => group.ids.length === 1);
+    if (multiGroups.length === 1 && singleGroups.length === 0) return multiGroups[0];
+  }
+  return null;
+}
+
+export function parseInteractiveQuestion(
+  content: string,
+  markScheme: string,
+  maximumMark: number | null = null,
+): InteractiveQuestion {
+  const normalizedContent = normalizeQuestionSource(content);
+  const normalizedMarkScheme = normalizeQuestionSource(markScheme);
+  const lines = normalizedContent.split('\n');
+  const blocks = findChoiceBlocks(lines);
+  if (!blocks.length) return emptyInteractive(normalizedContent);
+
+  const groups = answerGroups(normalizedMarkScheme);
+  const sectionsByBlock = new Map<number, InteractiveSection>();
+  let groupCursor = 0;
+
+  for (const [blockIndex, block] of blocks.entries()) {
+    const available = new Set(block.choices.map((choice) => choice.id));
+    const requestedCount = requestedSelectionCount(block.context);
+    const compatible = groups
+      .map((group, index) => ({ ...group, groupIndex: index }))
+      .filter(
+        (group) =>
+          group.groupIndex >= groupCursor &&
+          group.ids.every((id) => available.has(id)),
+      );
+
+    // One option bank with several single-letter answer groups is a matching
+    // exercise, not a radio question. Keep it non-interactive.
+    if (
+      blocks.length === 1 &&
+      !requestedCount &&
+      compatible.filter((group) => group.ids.length === 1).length > 1
+    )
+      continue;
+
+    const selectedGroup = chooseAnswerGroup(
+      block,
+      compatible,
+      requestedCount,
+      blocks.length === 1,
+    );
+    if (!selectedGroup) continue;
+
+    groupCursor = selectedGroup.groupIndex + 1;
+    const correctChoiceIds = selectedGroup.ids;
+    const selectionMode = correctChoiceIds.length > 1 ? 'multiple' : 'single';
+    sectionsByBlock.set(blockIndex, {
+      id: `choice-section-${blockIndex + 1}`,
+      choices: block.choices,
+      correctChoiceId: selectionMode === 'single' ? correctChoiceIds[0] : null,
+      correctChoiceIds,
+      requiredSelectionCount: correctChoiceIds.length,
+      selectionMode,
+      interactiveMarkCount:
+        contextualMarkCount(block.context) || correctChoiceIds.length,
+    });
   }
 
-  // Matching exercises reuse one A-H option bank for several numbered answers.
-  // Multiple separate single-letter answers are therefore intentionally not
-  // collapsed into a misleading multi-select interaction.
-  if (!correctChoiceIds.length) return emptyInteractive(normalizedContent);
+  const sections = [...sectionsByBlock.values()];
+  if (!sections.length) return emptyInteractive(normalizedContent);
 
-  const promptBeforeChoices = lines
-    .slice(0, block.start)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  const promptAfterChoices = lines
-    .slice(block.end)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  const prompt = [promptBeforeChoices, promptAfterChoices]
-    .filter(Boolean)
+  const segments: InteractiveSegment[] = [];
+  let cursor = 0;
+  for (const [blockIndex, block] of blocks.entries()) {
+    const before = sourcePart(lines.slice(cursor, block.start));
+    if (before) segments.push({ type: 'content', source: before });
+    const section = sectionsByBlock.get(blockIndex);
+    if (section) segments.push({ type: 'choices', sectionId: section.id });
+    else {
+      const originalChoices = sourcePart(lines.slice(block.start, block.end));
+      if (originalChoices) segments.push({ type: 'content', source: originalChoices });
+    }
+    cursor = block.end;
+  }
+  const after = sourcePart(lines.slice(cursor));
+  if (after) segments.push({ type: 'content', source: after });
+
+  const contentSegments = segments.filter(
+    (segment): segment is Extract<InteractiveSegment, { type: 'content' }> =>
+      segment.type === 'content',
+  );
+  const firstSectionSegment = segments.findIndex((segment) => segment.type === 'choices');
+  const promptBeforeChoices = contentSegments[0]?.source || '';
+  const promptAfterChoices = segments
+    .slice(firstSectionSegment + 1)
+    .filter(
+      (segment): segment is Extract<InteractiveSegment, { type: 'content' }> =>
+        segment.type === 'content',
+    )
+    .map((segment) => segment.source)
     .join('\n\n');
-  const selectionMode = correctChoiceIds.length > 1 ? 'multiple' : 'single';
-  const interactiveMarkCount =
-    contextualMarkCount(block.context) || correctChoiceIds.length;
+  const prompt = contentSegments.map((segment) => segment.source).join('\n\n');
+
+  const globalAudioSourceIds = audioDirectiveSourceIds(normalizedContent);
+  const routedSegments: InteractiveSegment[] = segments.map((segment) =>
+    segment.type === 'content'
+      ? {
+          ...segment,
+          source: `${audioContextMarker('secondary', globalAudioSourceIds)}\n${segment.source}`,
+        }
+      : segment,
+  );
+  // This private marker-only segment receives all audio assets through the
+  // existing workspace handoff. The wrapper renders only globally unmatched
+  // audio here, after every visible written and choice section.
+  routedSegments.push({
+    type: 'content',
+    source: audioContextMarker('final', globalAudioSourceIds),
+  });
+
+  const first = sections[0];
+  const interactiveMarkCount = sections.reduce(
+    (total, section) => total + section.interactiveMarkCount,
+    0,
+  );
   const isPartialInteraction =
     Number.isFinite(maximumMark) &&
     Number(maximumMark) > 0 &&
@@ -251,12 +433,14 @@ export function parseInteractiveQuestion(
     prompt,
     promptBeforeChoices,
     promptAfterChoices,
-    choices: block.choices,
-    correctChoiceId: selectionMode === 'single' ? correctChoiceIds[0] : null,
-    correctChoiceIds,
-    requiredSelectionCount: correctChoiceIds.length,
-    selectionMode,
+    choices: first.choices,
+    correctChoiceId: first.correctChoiceId,
+    correctChoiceIds: first.correctChoiceIds,
+    requiredSelectionCount: first.requiredSelectionCount,
+    selectionMode: first.selectionMode,
     interactiveMarkCount,
     isPartialInteraction,
+    sections,
+    segments: routedSegments,
   };
 }

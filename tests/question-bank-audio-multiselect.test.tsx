@@ -33,6 +33,52 @@ const listeningMarkScheme = String.raw`1 - 3. *The answers can be written in any
 ::indent
 - $\answer{\textrm{A, C, F}}$ :marks[3]`;
 
+const compositeListeningSource = String.raw`[Maximum mark: 6\]
+
+**You are going to hear a person reflecting on time spent with their grandmother.**
+
+:br
+:::center
+:audio{#36e42810-f6ba-4026-a9bb-3c68ab93926a aid="36e42810-f6ba-4026-a9bb-3c68ab93926a"}
+:::
+:br
+
+**Answer the following questions.**
+
+$1.$ $\hspace{1em}$The speaker identifies several activities done during the day by their grandmother. Give **two** answers. :marks[2]
+
+:br
+
+2 - 4.$\hspace{1em}$**Choose the three true statements.** :marks[3]
+::indent
+- A.$\hspace{1em}$The speaker’s parents worked from home every day.
+- B.$\hspace{1em}$The speaker was regularly with their grandmother when he was younger.
+- C.$\hspace{1em}$The speaker often felt bored when staying with their grandmother.
+- D.$\hspace{1em}$The speaker learned about their family from their grandmother’s stories.
+- E.$\hspace{1em}$The grandmother taught the speaker important life values.
+- F.$\hspace{1em}$The grandmother enjoyed reading and did not like other activities.
+
+:br
+$5.$ $\hspace{1em}$How does the speaker feel about their grandmother’s influence? :marks[1]
+::indent
+- A.$\hspace{1em}$grateful
+- B.$\hspace{1em}$angry
+- C.$\hspace{1em}$regretful`;
+
+const compositeListeningMarkScheme = String.raw`$1$. Any two of the following:
+- $\answer{\textrm{cooking}}$
+- $\answer{\textrm{cleaning}}$
+
+:br
+2 - 4. Answers can be written in any order. $\answer{\textrm{B, D, E}}$ :marks[3]
+- **B**. The speaker spent a lot of time with their grandmother.
+- **D**. The stories taught the speaker about relatives.
+- **E**. The grandmother taught important values.
+
+:br
+$5.$ $\answer{\textrm{A}}$ :marks[1]
+- The speaker is grateful.`;
+
 describe('Revision Village audio rendering', () => {
   it('replaces the imported audio directive in place without exposing identifiers', () => {
     const output = renderToStaticMarkup(
@@ -168,24 +214,72 @@ describe('safe interactive answer parsing', () => {
     expect(parsed.prompt).toContain('- A. can present challenges.');
   });
 
-  it('fails safely for composite questions with several independent MCQ blocks', () => {
+  it('supports independent choice blocks in their original positions', () => {
     const parsed = parseInteractiveQuestion(
-      String.raw`1. What was skateboarding originally called?
-- A. Board surfing
-- B. Sidewalk skating
-- C. Sidewalk surfing
-
-2. How did it become a subculture?
-- A. Through the Olympics
-- B. Through clothing and music
-- C. Through a ban`,
-      String.raw`1. $\answer{\textrm{C}}$
-2. $\answer{\textrm{B}}$`,
+      compositeListeningSource,
+      compositeListeningMarkScheme,
+      6,
     );
 
-    expect(parsed.selectionMode).toBe('none');
-    expect(parsed.choices).toEqual([]);
-    expect(parsed.correctChoiceIds).toEqual([]);
+    expect(parsed.sections).toHaveLength(2);
+    expect(parsed.sections[0]).toMatchObject({
+      id: 'choice-section-1',
+      selectionMode: 'multiple',
+      requiredSelectionCount: 3,
+      correctChoiceIds: ['B', 'D', 'E'],
+      interactiveMarkCount: 3,
+    });
+    expect(parsed.sections[0].choices.map((choice) => choice.id)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+    ]);
+    expect(parsed.sections[1]).toMatchObject({
+      id: 'choice-section-2',
+      selectionMode: 'single',
+      requiredSelectionCount: 1,
+      correctChoiceIds: ['A'],
+      interactiveMarkCount: 1,
+    });
+    expect(parsed.sections[1].choices.map((choice) => choice.id)).toEqual([
+      'A',
+      'B',
+      'C',
+    ]);
+    expect(parsed.interactiveMarkCount).toBe(4);
+    expect(parsed.isPartialInteraction).toBe(true);
+    expect(parsed.segments.map((segment) => segment.type)).toEqual([
+      'content',
+      'choices',
+      'content',
+      'choices',
+      'content',
+    ]);
+    expect(
+      parsed.segments.find(
+        (segment) =>
+          segment.type === 'content' && segment.source.includes('Give **two** answers'),
+      ),
+    ).toBeTruthy();
+    expect(
+      parsed.segments.find(
+        (segment) =>
+          segment.type === 'content' && segment.source.includes('grandmother’s influence'),
+      ),
+    ).toBeTruthy();
+    const finalSegment = parsed.segments.at(-1);
+    expect(finalSegment).toMatchObject({ type: 'content' });
+    expect(
+      finalSegment?.type === 'content' &&
+        finalSegment.source.includes('DP_AUDIO_CONTEXT:final'),
+    ).toBe(true);
+    expect(isCorrectSelection(['E', 'B', 'D'], parsed.sections[0].correctChoiceIds)).toBe(
+      true,
+    );
+    expect(isCorrectSelection(['A'], parsed.sections[1].correctChoiceIds)).toBe(true);
   });
 
   it('recognises legacy bare-letter markschemes without guessing', () => {

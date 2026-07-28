@@ -14,7 +14,15 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/components/question-bank/question-content": [
+        "./components/question-bank/question-content-production.tsx"
+      ],
+      "@/lib/question-bank/interactive": [
+        "./lib/question-bank/interactive-validated.ts"
+      ],
+      "@/*": ["./*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

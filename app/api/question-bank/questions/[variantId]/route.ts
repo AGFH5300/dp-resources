@@ -9,6 +9,12 @@ export const dynamic = 'force-dynamic';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ASSET_RENDER_ROLES: QuestionAsset['role'][] = [
+  'question',
+  'markscheme',
+  'examiner_report',
+  'content_reference',
+];
 
 function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
@@ -101,14 +107,31 @@ export async function GET(
   const audioByAssetId = new Map(
     extended.audio.map((row: any) => [row.asset_id, row]),
   );
+  const sourceAliasesByAssetId = new Map<string, Set<string>>();
+  for (const row of extended.assetSources as any[]) {
+    const assetId = String(row.asset_id || '');
+    const sourceFileId = String(row.source_file_id || '');
+    if (!assetId || !sourceFileId) continue;
+    const aliases = sourceAliasesByAssetId.get(assetId) || new Set<string>();
+    aliases.add(sourceFileId);
+    sourceAliasesByAssetId.set(assetId, aliases);
+  }
   const assets: QuestionAsset[] = (data.assets as any[])
     .filter((row) => row.asset?.verification_status === 'verified')
-    .map((row) => {
+    .flatMap((row) => {
       const audio = audioByAssetId.get(row.asset.id) as any;
-      return {
+      const sourceFileId = row.source_file_id || null;
+      const sourceFileIds = new Set<string>(
+        sourceAliasesByAssetId.get(row.asset.id) || [],
+      );
+      if (sourceFileId) sourceFileIds.add(sourceFileId);
+      const baseAsset = {
         id: row.asset.id,
-        sourceFileId: row.source_file_id,
-        role: (row.role === 'audio' ? 'content_reference' : row.role) as QuestionAsset['role'],
+        sourceFileId,
+        sourceFileIds: [...sourceFileIds],
+        role: (row.role === 'audio'
+          ? 'content_reference'
+          : row.role) as QuestionAsset['role'],
         originalRole: row.role,
         sortOrder: row.sort_order,
         altText: row.alt_text || `${question.reference} media`,
@@ -126,7 +149,12 @@ export async function GET(
                   : Number(audio.duration_seconds),
             }
           : null,
-      };
+      } satisfies QuestionAsset;
+      if (audio || row.role === 'audio') return [baseAsset];
+      // Deduplicated files can be referenced from a different source role than
+      // the occurrence that attached the physical asset. Emit one safe render
+      // alias per supported section so member UI filtering cannot hide it.
+      return ASSET_RENDER_ROLES.map((role) => ({ ...baseAsset, role }));
     });
 
   const papers = extended.papers

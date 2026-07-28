@@ -1,4 +1,7 @@
 export type StoredPracticeAttempt = {
+  selectedChoiceIdsBySection: Record<string, string[]>;
+  checkedSectionIds: string[];
+  hasGroupedState: boolean;
   selectedChoiceIds: string[];
   /** @deprecated Compatibility mirror for legacy single-answer attempts. */
   selectedChoice: string | null;
@@ -8,15 +11,18 @@ export type StoredPracticeAttempt = {
 };
 
 type PracticeAttemptInput = {
+  selectedChoiceIdsBySection?: Record<string, string[]>;
+  checkedSectionIds?: string[];
   selectedChoiceIds?: string[];
   selectedChoice?: string | null;
-  answerChecked: boolean;
+  answerChecked?: boolean;
   showExplanation: boolean;
 };
 
 type StoredPracticeAttempts = Record<string, StoredPracticeAttempt>;
 
 const STORAGE_KEY = 'dp_qb_practice_attempts_v1';
+const FIRST_SECTION_ID = 'choice-section-1';
 
 function normalizeSelectedChoices(value: unknown) {
   if (Array.isArray(value))
@@ -25,30 +31,68 @@ function normalizeSelectedChoices(value: unknown) {
   return [];
 }
 
+function normalizeSectionChoices(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    return {} as Record<string, string[]>;
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([sectionId, choices]) => [sectionId, normalizeSelectedChoices(choices)] as const)
+      .filter(([, choices]) => choices.length > 0),
+  );
+}
+
 function selectedChoiceMirror(selectedChoiceIds: string[]) {
   return selectedChoiceIds.length === 1 ? selectedChoiceIds[0] : null;
+}
+
+function firstSectionChoices(sections: Record<string, string[]>) {
+  return sections[FIRST_SECTION_ID] || [];
+}
+
+function hasOwn(value: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function normalizeStoredAttempt(value: unknown): StoredPracticeAttempt | null {
   if (!value || typeof value !== 'object') return null;
   const attempt = value as Record<string, unknown>;
   if (
-    typeof attempt.answerChecked !== 'boolean' ||
     typeof attempt.showExplanation !== 'boolean' ||
     typeof attempt.updatedAt !== 'number'
   )
     return null;
 
-  // selectedChoice is the legacy single-answer field. Reading and mirroring it
-  // keeps old browser data and existing integrations valid while all new UI
-  // writes can use selectedChoiceIds for exact-count multi-select questions.
-  const selectedChoiceIds = normalizeSelectedChoices(
+  const hasGroupedState =
+    typeof attempt.hasGroupedState === 'boolean'
+      ? attempt.hasGroupedState
+      : hasOwn(attempt, 'selectedChoiceIdsBySection') ||
+        hasOwn(attempt, 'checkedSectionIds');
+  const selectedChoiceIdsBySection = normalizeSectionChoices(
+    attempt.selectedChoiceIdsBySection,
+  );
+  const legacySelectedChoiceIds = normalizeSelectedChoices(
     attempt.selectedChoiceIds ?? attempt.selectedChoice,
   );
+  const selectedChoiceIds = hasGroupedState
+    ? firstSectionChoices(selectedChoiceIdsBySection)
+    : legacySelectedChoiceIds;
+  const checkedSectionIds = normalizeSelectedChoices(attempt.checkedSectionIds);
+  // Grouped attempts restore checked state exclusively from checkedSectionIds.
+  // The compatibility boolean may be true because a later section was checked,
+  // so exposing it to the legacy first-section fallback would lock the wrong block.
+  const answerChecked = hasGroupedState
+    ? false
+    : typeof attempt.answerChecked === 'boolean'
+      ? attempt.answerChecked
+      : false;
+
   return {
+    selectedChoiceIdsBySection,
+    checkedSectionIds,
+    hasGroupedState,
     selectedChoiceIds,
     selectedChoice: selectedChoiceMirror(selectedChoiceIds),
-    answerChecked: attempt.answerChecked,
+    answerChecked,
     showExplanation: attempt.showExplanation,
     updatedAt: attempt.updatedAt,
   };
@@ -89,14 +133,27 @@ export function savePracticeAttempt(
   variantId: string,
   attempt: PracticeAttemptInput,
 ) {
-  const selectedChoiceIds = normalizeSelectedChoices(
+  const hasGroupedState =
+    attempt.selectedChoiceIdsBySection !== undefined ||
+    attempt.checkedSectionIds !== undefined;
+  const selectedChoiceIdsBySection = normalizeSectionChoices(
+    attempt.selectedChoiceIdsBySection,
+  );
+  const legacySelectedChoiceIds = normalizeSelectedChoices(
     attempt.selectedChoiceIds ?? attempt.selectedChoice,
   );
+  const selectedChoiceIds = hasGroupedState
+    ? firstSectionChoices(selectedChoiceIdsBySection)
+    : legacySelectedChoiceIds;
+  const checkedSectionIds = normalizeSelectedChoices(attempt.checkedSectionIds);
   const attempts = readAll();
   attempts[variantId] = {
+    selectedChoiceIdsBySection,
+    checkedSectionIds,
+    hasGroupedState,
     selectedChoiceIds,
     selectedChoice: selectedChoiceMirror(selectedChoiceIds),
-    answerChecked: attempt.answerChecked,
+    answerChecked: attempt.answerChecked ?? checkedSectionIds.length > 0,
     showExplanation: attempt.showExplanation,
     updatedAt: Date.now(),
   };

@@ -3,7 +3,7 @@ function contentSecurityPolicy() {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://upload.wikimedia.org",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co blob:",
     "media-src 'self' blob:",

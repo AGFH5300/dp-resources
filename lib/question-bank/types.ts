@@ -49,6 +49,8 @@ export type QuestionAssetRole =
 export type QuestionAsset = {
   id: string;
   sourceFileId: string | null;
+  /** Every captured source UUID/identifier that resolves to this deduplicated asset. */
+  sourceFileIds?: string[];
   role: 'question' | 'markscheme' | 'examiner_report' | 'content_reference';
   originalRole?: QuestionAssetRole;
   sortOrder: number;

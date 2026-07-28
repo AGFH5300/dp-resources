@@ -12,6 +12,15 @@ const workspace = readFileSync(
   'components/question-bank/course-practice-workspace.tsx',
   'utf8',
 );
+const productionContent = readFileSync(
+  'components/question-bank/question-content-production.tsx',
+  'utf8',
+);
+const routedContent = readFileSync(
+  'components/question-bank/question-content-routed.tsx',
+  'utf8',
+);
+const tsconfig = readFileSync('tsconfig.json', 'utf8');
 
 const content = String.raw`[Maximum mark: 5\]
 
@@ -65,6 +74,24 @@ describe('EB0383 production rendering', () => {
     expect(parsed.promptAfterChoices).toContain('4. What was the intern learning');
     expect(parsed.promptAfterChoices).toContain('5. How does the nurse describe');
     expect(parsed.correctChoiceIds).toEqual(['A', 'C', 'F']);
+    expect(parsed.sections).toHaveLength(1);
+    expect(parsed.segments.map((segment) => segment.type)).toEqual([
+      'content',
+      'choices',
+      'content',
+      'content',
+    ]);
+    expect(
+      parsed.segments
+        .filter((segment) => segment.type === 'content')
+        .every((segment) => segment.source.includes('DP_AUDIO_CONTEXT')),
+    ).toBe(true);
+    const finalSegment = parsed.segments.at(-1);
+    expect(finalSegment).toMatchObject({ type: 'content' });
+    expect(
+      finalSegment?.type === 'content' &&
+        finalSegment.source.includes('DP_AUDIO_CONTEXT:final'),
+    ).toBe(true);
   });
 
   it('cleans imported answer commands, quote commands and simple question numbers', () => {
@@ -82,12 +109,23 @@ describe('EB0383 production rendering', () => {
     expect(output).not.toContain('textquotedblleft');
   });
 
-  it('sanitizes audio metadata and excludes audio from every choice and later prompt', () => {
+  it('uses the final production wrapper while preserving independent section state', () => {
+    expect(tsconfig).toContain(
+      '"@/components/question-bank/question-content"',
+    );
+    expect(tsconfig).toContain('question-content-production.tsx');
+    expect(productionContent).toContain("from './question-content-routed'");
+    expect(routedContent).toContain('AUDIO_CONTEXT_MARKER');
+    expect(routedContent).toContain("mode === 'secondary'");
+    expect(routedContent).toContain(
+      'isLocallyReferenced || !isReferencedAnywhere',
+    );
+    expect(routedContent).toContain('if (!cleanSource.trim())');
     expect(workspace).toContain("altText: 'Question audio'");
-    expect(workspace).toContain('const nonAudioQuestionAssets');
-    expect(workspace).toContain('assets={nonAudioQuestionAssets}');
-    expect(workspace).toContain('interactive.promptBeforeChoices');
-    expect(workspace).toContain('interactive.promptAfterChoices');
-    expect(workspace).not.toContain('source={interactive.prompt || detail.question.content}');
+    expect(workspace).toContain('selectedChoiceIdsBySection');
+    expect(workspace).toContain('checkedSectionIds');
+    expect(workspace).toContain('renderChoiceSection(segment.sectionId)');
+    expect(workspace).toContain('interactive.segments.map');
+    expect(workspace).not.toContain('onClick={() => toggleChoice(choice.id)}');
   });
 });

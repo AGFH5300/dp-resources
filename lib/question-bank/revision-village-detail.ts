@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createClient } from '@/lib/supabase-server';
 
 function requireRows<T>(
@@ -16,31 +17,43 @@ export async function getExtendedQuestionDetail(
   assetIds: string[],
 ) {
   const client = await createClient();
-  const [papersResult, videosResult, audioResult] = await Promise.all([
-    client
-      .from('dp_qb_variant_papers')
-      .select(
-        'is_primary,sort_order,paper:dp_qb_papers!paper_id(id,reference,calculator_allowed)',
-      )
-      .eq('variant_id', variantId)
-      .order('is_primary', { ascending: false })
-      .order('sort_order'),
-    client
-      .from('dp_qb_variant_solution_videos')
-      .select(
-        'part_name,sort_order,video:dp_qb_solution_videos!video_id(id,provider,provider_video_id,source_url,source_metadata,vimeo_url,vimeo_video_id)',
-      )
-      .eq('variant_id', variantId)
-      .order('sort_order'),
-    assetIds.length
-      ? client
-          .from('dp_qb_audio_assets')
-          .select(
-            'asset_id,provider,source_audio_id,transcript_id,transcript,duration_seconds,source_metadata',
-          )
-          .in('asset_id', assetIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  // `dp_qb_asset_sources` is intentionally admin-readable only. The route has
+  // already required an approved member and supplies only asset IDs attached to
+  // the requested variant, so keep this privileged lookup narrowly scoped.
+  const adminClient = createSupabaseAdminClient();
+  const [papersResult, videosResult, audioResult, assetSourcesResult] =
+    await Promise.all([
+      client
+        .from('dp_qb_variant_papers')
+        .select(
+          'is_primary,sort_order,paper:dp_qb_papers!paper_id(id,reference,calculator_allowed)',
+        )
+        .eq('variant_id', variantId)
+        .order('is_primary', { ascending: false })
+        .order('sort_order'),
+      client
+        .from('dp_qb_variant_solution_videos')
+        .select(
+          'part_name,sort_order,video:dp_qb_solution_videos!video_id(id,provider,provider_video_id,source_url,source_metadata,vimeo_url,vimeo_video_id)',
+        )
+        .eq('variant_id', variantId)
+        .order('sort_order'),
+      assetIds.length
+        ? client
+            .from('dp_qb_audio_assets')
+            .select(
+              'asset_id,provider,source_audio_id,transcript_id,transcript,duration_seconds,source_metadata',
+            )
+            .in('asset_id', assetIds)
+        : Promise.resolve({ data: [], error: null }),
+      assetIds.length
+        ? adminClient
+            .from('dp_qb_asset_sources')
+            .select('asset_id,source_file_id')
+            .in('asset_id', assetIds)
+            .not('source_file_id', 'is', null)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
   const paperLinks = requireRows(
     papersResult.data as any[] | null,
@@ -77,6 +90,11 @@ export async function getExtendedQuestionDetail(
       audioResult.data as any[] | null,
       audioResult.error,
       'Audio metadata',
+    ),
+    assetSources: requireRows(
+      assetSourcesResult.data as any[] | null,
+      assetSourcesResult.error,
+      'Asset source aliases',
     ),
   };
 }
