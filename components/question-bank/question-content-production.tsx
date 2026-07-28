@@ -18,6 +18,20 @@ const IMAGE_ROLES: QuestionAsset['role'][] = [
   'content_reference',
 ];
 
+function normalizeTableDividerRow(row: string) {
+  const cells = row
+    .slice(1, -1)
+    .split('|')
+    .map((cell) => cell.trim());
+  if (!cells.length || !cells.every((cell) => /^:?-+:?$/.test(cell))) return row;
+  const normalized = cells.map((cell) => {
+    const leftAligned = cell.startsWith(':');
+    const rightAligned = cell.endsWith(':');
+    return `${leftAligned ? ':' : ''}---${rightAligned ? ':' : ''}`;
+  });
+  return `|${normalized.join('|')}|`;
+}
+
 function normalizeImportedTableRows(value: string) {
   const lines = String(value || '').split('\n');
   const output: string[] = [];
@@ -46,7 +60,7 @@ function normalizeImportedTableRows(value: string) {
       let row = trimmed.replace(/^[-*]\s+(?=\|)/, '').trim();
       if (!row.startsWith('|')) row = `|${row}`;
       if (!row.endsWith('|')) row = `${row}|`;
-      output.push(row);
+      output.push(normalizeTableDividerRow(row));
       sawRow = true;
       continue;
     }
