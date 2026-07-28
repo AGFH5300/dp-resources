@@ -93,6 +93,45 @@ H:sub[2]O
     expect(output).not.toContain(':::centre');
   });
 
+  it('repairs incomplete pipe rows only inside imported table blocks', () => {
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        source={String.raw`::answer[**B**]
+:::tableoptions{}
+|1st IE|2nd IE|
+|:-:|:-:|
+1000|2252
+:::`}
+        kind="markscheme"
+      />,
+    );
+
+    expect(output).toContain('<table>');
+    expect(output).toContain('1000');
+    expect(output).toContain('2252');
+    expect(output).toContain('dp-qb-answer');
+    expect(output).not.toContain('1000|2252');
+    expect(output).not.toContain('::answer[');
+  });
+
+  it('renders curated fallbacks for every genuinely absent archive image', () => {
+    const output = renderToStaticMarkup(
+      <>
+        <QuestionContent source="![Viking map](question:d8591cfe-c657-4825-868b-73faf4717afe)" />
+        <QuestionContent source="![BU 6635](question:d1b6e570-d496-4d18-be0d-334c2eb6f610)" />
+        <QuestionContent source="![EEZ diagram](question:2dc1e4ff-51a6-483d-a2b0-a87717452ccd)" />
+        <QuestionContent source="![EEZ sample](question:25599f25-fda4-4c8b-a984-af11e9f0b9e6)" />
+      </>,
+    );
+
+    expect(output).toContain('upload.wikimedia.org/wikipedia/commons/6/6c/Erikr-eng.png');
+    expect(output).toContain(
+      'upload.wikimedia.org/wikipedia/commons/6/62/Displaced_Persons_and_Refugees_in_Germany_BU6635.jpg',
+    );
+    expect((output.match(/data:image\/svg\+xml/g) || []).length).toBe(2);
+    expect(output).not.toContain('Referenced image is unavailable');
+  });
+
   it('shows provider-neutral solution identifiers without treating them as broken URLs', () => {
     const output = renderToStaticMarkup(
       <SolutionVideo
