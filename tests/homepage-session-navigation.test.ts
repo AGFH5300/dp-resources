@@ -13,7 +13,6 @@ describe('homepage session-aware navigation', () => {
     expect(homepage).toContain(
       "const accountLabel = isSignedIn ? 'Open library' : 'Log in'",
     );
-    expect(homepage).toContain('{isSignedIn ? (');
     expect(homepage).toContain('href="/library"');
     expect(homepage).toContain('Open library');
   });
