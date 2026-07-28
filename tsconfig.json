@@ -18,6 +18,9 @@
       "@/components/question-bank/question-content": [
         "./components/question-bank/question-content-routed.tsx"
       ],
+      "@/lib/question-bank/interactive": [
+        "./lib/question-bank/interactive-validated.ts"
+      ],
       "@/*": ["./*"]
     }
   },
