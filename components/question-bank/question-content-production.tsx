@@ -22,7 +22,8 @@ function normalizeImportedTableRows(value: string) {
     const trimmed = originalLine.trim();
     const tableOptions = trimmed.match(TABLE_OPTIONS);
     if (tableOptions) {
-      output.push(`:::tableoptions${tableOptions[1].match(/\{[^}]*\}/)?.[0] || ''}`);
+      const attributes = tableOptions[1].match(/\{[^}]*\}/)?.[0] || '';
+      output.push(`:::tableoptions${attributes}`);
       inTable = true;
       sawRow = false;
       continue;
@@ -57,6 +58,7 @@ function normalizeImportedTableRows(value: string) {
 
 function normalizeProductionSource(value: string) {
   return normalizeImportedTableRows(value)
+    .replace(/<\s*no\s*link\s*>/gi, '')
     .replace(/::answer\[/gi, ':answer[')
     .replace(/^::tableoptions(?:\{[^}]*\})?\s*$/gim, ':::tableoptions')
     .replace(/\n{3,}/g, '\n\n')
