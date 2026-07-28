@@ -4,6 +4,12 @@ import { BrandWordmark } from '@/components/brand-wordmark';
 import { BrandMark } from '@/components/brand-mark';
 import { publicPageMetadata } from '@/lib/seo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = publicPageMetadata({
   title: 'Free DP Study Resource Library',
@@ -12,7 +18,25 @@ export const metadata: Metadata = publicPageMetadata({
   path: '/',
 });
 
-export default function Home() {
+async function hasSignedInUser() {
+  if (!isSupabaseConfigured()) return false;
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return Boolean(user);
+  } catch {
+    return false;
+  }
+}
+
+export default async function Home() {
+  const isSignedIn = await hasSignedInUser();
+  const accountHref = isSignedIn ? '/library' : '/auth/login';
+  const accountLabel = isSignedIn ? 'Open library' : 'Log in';
+
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
@@ -33,10 +57,10 @@ export default function Home() {
               Terms
             </Link>
             <Link
-              href="/auth/login"
+              href={accountHref}
               className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4"
             >
-              Log in
+              {accountLabel}
             </Link>
           </nav>
         </header>
@@ -55,18 +79,29 @@ export default function Home() {
               and supporting school resources from one clean portal.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/auth/sign-up"
-                className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
-              >
-                Sign up
-              </Link>
-              <Link
-                href="/auth/login"
-                className="whitespace-nowrap rounded-full border border-[#d9ccba] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#10243f] hover:border-[#10243f]"
-              >
-                Log in
-              </Link>
+              {isSignedIn ? (
+                <Link
+                  href="/library"
+                  className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
+                >
+                  Open library
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/sign-up"
+                    className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
+                  >
+                    Sign up
+                  </Link>
+                  <Link
+                    href="/auth/login"
+                    className="whitespace-nowrap rounded-full border border-[#d9ccba] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#10243f] hover:border-[#10243f]"
+                  >
+                    Log in
+                  </Link>
+                </>
+              )}
             </div>
           </section>
 

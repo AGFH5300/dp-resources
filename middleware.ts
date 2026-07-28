@@ -14,6 +14,8 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/auth/callback',
   '/account-suspended',
   '/changelog',
+  '/privacy',
+  '/terms',
 ]);
 
 function getSupabasePublicConfig() {
