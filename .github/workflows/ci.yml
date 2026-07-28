@@ -15,7 +15,7 @@ permissions:
 jobs:
   patch-stale-question-bank-assertions:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/qb-multi-section-interactions'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
