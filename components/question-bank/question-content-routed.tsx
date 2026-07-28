@@ -12,9 +12,7 @@ type RendererProps = {
 type AudioContextMode = 'secondary' | 'final';
 
 const AUDIO_CONTEXT_MARKER =
-  /^\[\[DP_AUDIO_CONTEXT:(secondary|final):([0-9a-f,-]*):audio\{\]\]\s*/i;
-const AUDIO_DIRECTIVE_SOURCE_ID =
-  /:audio\{\s*#?([0-9a-f-]{36})(?:\s+aid=(?:"([^"]+)"|'([^']+)'|([^\s}]+)))?[^}]*\}/gi;
+  /^\[\[DP_AUDIO_CONTEXT:(secondary|final):([\s\S]*?):audio\{\]\]\s*/i;
 
 function isAudioAsset(asset: QuestionAsset) {
   return (
@@ -30,11 +28,32 @@ function audioAssetSourceIds(asset: QuestionAsset) {
 }
 
 function audioDirectiveSourceIds(source: string) {
+  const ids = new Set<string>();
+  for (const match of source.matchAll(/:audio\{([^}]*)\}/gi)) {
+    const body = match[1];
+    const aid = body.match(
+      /\baid=(?:"([^"]+)"|'([^']+)'|([^\s}]+))/i,
+    );
+    const sourceId = aid?.[1] || aid?.[2] || aid?.[3] || body.match(/#([^\s}]+)/)?.[1];
+    if (sourceId) ids.add(sourceId.toLowerCase());
+  }
+  return ids;
+}
+
+function decodeMarkerSourceIds(value: string) {
   return new Set(
-    Array.from(source.matchAll(AUDIO_DIRECTIVE_SOURCE_ID))
-      .map((match) => String(match[2] || match[3] || match[4] || match[1] || ''))
-      .filter(Boolean)
-      .map((value) => value.toLowerCase()),
+    value
+      .split(',')
+      .map((sourceId) => {
+        const trimmed = sourceId.trim();
+        if (!trimmed) return '';
+        try {
+          return decodeURIComponent(trimmed).toLowerCase();
+        } catch {
+          return trimmed.toLowerCase();
+        }
+      })
+      .filter(Boolean),
   );
 }
 
@@ -77,21 +96,14 @@ export function QuestionContent({
     return <BaseQuestionContent source={source} assets={assets} kind={kind} />;
 
   const mode = marker[1].toLowerCase() as AudioContextMode;
-  const globalSourceIds = new Set(
-    String(marker[2] || '')
-      .split(',')
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean),
-  );
+  const globalSourceIds = decodeMarkerSourceIds(String(marker[2] || ''));
   const cleanSource = source.replace(AUDIO_CONTEXT_MARKER, '');
   const selectedAssets = routedAssets(mode, cleanSource, globalSourceIds, assets);
 
   if (!cleanSource.trim()) {
     const fallbackAudio = selectedAssets.filter(isAudioAsset);
     if (!fallbackAudio.length) return null;
-    return (
-      <BaseQuestionContent source="" assets={fallbackAudio} kind={kind} />
-    );
+    return <BaseQuestionContent source="" assets={fallbackAudio} kind={kind} />;
   }
 
   return (
