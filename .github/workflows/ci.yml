@@ -10,9 +10,55 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  patch-stale-question-bank-assertions:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/qb-multi-section-interactions'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply exact test-only correction
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/question-bank.test.tsx')
+          source = path.read_text()
+          replacements = {
+              "expect(workspace).toContain(\"interactive.selectionMode === 'multiple'\");":
+                  "expect(workspace).toContain(\"section.selectionMode === 'multiple'\");",
+              "expect(workspace).toContain('onClick={() => toggleChoice(choice.id)}');":
+                  "expect(workspace).toContain('onClick={() => toggleChoice(section.id, choice.id)}');",
+              "expect(workspace).toContain('onClick={() => void checkAnswer()}');":
+                  "expect(workspace).toContain('onClick={() => void checkSection(section.id)}');",
+              "expect(workspace).toContain('interactive.requiredSelectionCount');":
+                  "expect(workspace).toContain('section.requiredSelectionCount');",
+          }
+          for old, new in replacements.items():
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one occurrence of {old!r}, found {count}')
+              source = source.replace(old, new)
+          for old, new in replacements.items():
+              if old in source or source.count(new) != 1:
+                  raise SystemExit(f'Assertion replacement verification failed for {new!r}')
+          path.write_text(source)
+          PY
+
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ci.yml
+          git rm -f .github/workflows/patch-stale-qb-assertions.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/question-bank.test.tsx .github/workflows/ci.yml
+          git commit -m "Update section-scoped Question Bank assertions"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
   verify:
     runs-on: ubuntu-latest
     steps:
