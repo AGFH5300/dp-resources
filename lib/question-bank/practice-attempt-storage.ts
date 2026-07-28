@@ -63,9 +63,10 @@ function normalizeStoredAttempt(value: unknown): StoredPracticeAttempt | null {
     return null;
 
   const hasGroupedState =
-    attempt.hasGroupedState === true ||
-    hasOwn(attempt, 'selectedChoiceIdsBySection') ||
-    hasOwn(attempt, 'checkedSectionIds');
+    typeof attempt.hasGroupedState === 'boolean'
+      ? attempt.hasGroupedState
+      : hasOwn(attempt, 'selectedChoiceIdsBySection') ||
+        hasOwn(attempt, 'checkedSectionIds');
   const selectedChoiceIdsBySection = normalizeSectionChoices(
     attempt.selectedChoiceIdsBySection,
   );
