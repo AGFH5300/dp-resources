@@ -48,10 +48,10 @@ function LegalHeader() {
             Terms
           </Link>
           <Link
-            href="/auth/login"
+            href="/library"
             className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4"
           >
-            Log in
+            Open library
           </Link>
         </nav>
       </div>
