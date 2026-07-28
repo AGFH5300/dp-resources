@@ -7,7 +7,7 @@ export default defineConfig({
       'server-only': path.resolve(__dirname, 'tests/stubs/server-only.ts'),
       '@/components/question-bank/question-content': path.resolve(
         __dirname,
-        'components/question-bank/question-content-routed.tsx',
+        'components/question-bank/question-content-production.tsx',
       ),
       '@/lib/question-bank/interactive': path.resolve(
         __dirname,
