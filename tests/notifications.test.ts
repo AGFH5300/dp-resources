@@ -7,6 +7,9 @@ describe('persistent support and report notifications', () => {
   const migration = read(
     'supabase/migrations/20260721220000_ticket_notifications.sql',
   );
+  const coalescingMigration = read(
+    'supabase/migrations/20260728133000_coalesce_unread_ticket_notifications.sql',
+  );
   const route = read('app/api/notifications/route.ts');
   const center = read('components/notification-center.tsx');
   const header = read('components/app-header.tsx');
@@ -32,6 +35,25 @@ describe('persistent support and report notifications', () => {
     expect(migration).toContain('revoke all on function private.');
   });
 
+  it('keeps only one active unread notification for each user ticket', () => {
+    expect(coalescingMigration).toContain(
+      'dp_notifications_one_unread_ticket_idx',
+    );
+    expect(coalescingMigration).toContain(
+      'partition by recipient_id, support_ticket_id',
+    );
+    expect(coalescingMigration).toContain(
+      'private.dp_upsert_user_ticket_notification',
+    );
+    expect(coalescingMigration).toContain(
+      'on conflict (recipient_id, support_ticket_id)',
+    );
+    expect(coalescingMigration).toContain('created_at = excluded.created_at');
+    expect(coalescingMigration).toContain(
+      "kind in ('ticket_reply', 'ticket_status')",
+    );
+  });
+
   it('keeps notification reads authenticated, owner-scoped, no-store, and same-origin', () => {
     expect(route).toContain('requireMember');
     expect(route).toContain(".eq('recipient_id', user.id)");
@@ -50,9 +72,25 @@ describe('persistent support and report notifications', () => {
     expect(admin).toContain('notificationFeed.summary.adminTickets');
   });
 
+  it('offers a visible bulk action to mark every notification as read', () => {
+    expect(center).toContain('async function markAllRead()');
+    expect(center).toContain('body: JSON.stringify({ all: true })');
+    expect(center).toContain('Mark all as read');
+    expect(center).toContain('markingAll');
+  });
+
   it('marks the relevant feed seen when users or admins open its destination', () => {
     expect(support).toContain("markNotificationCategory('user_tickets')");
     expect(admin).toContain("markNotificationCategory('admin_reports')");
     expect(admin).toContain("markNotificationCategory('admin_tickets')");
+  });
+
+  it('offers General inquiry and a dark-safe green Content feedback badge', () => {
+    expect(support).toContain("value: 'General inquiry'");
+    expect(support).not.toContain("'Other'");
+    expect(support).toContain(
+      'border border-emerald-200 bg-emerald-50 text-emerald-800',
+    );
+    expect(support).toContain('categories.map((item, index)');
   });
 });
