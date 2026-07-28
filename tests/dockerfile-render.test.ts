@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const dockerfile = () => readFileSync('Dockerfile', 'utf8');
 const nextConfig = () => readFileSync('next.config.mjs', 'utf8');
+const npmConfig = () => readFileSync('.npmrc', 'utf8');
 
 describe('Render Dockerfile contract', () => {
   it('keeps the builder public directory available for runner copy', () => {
@@ -68,6 +69,13 @@ describe('Render Dockerfile contract', () => {
     expect(runnerStage).not.toMatch(
       /npm\s+(?:install|i|add)\s+[^\n]*typescript/i,
     );
+  });
+});
+
+describe('Native npm install contract', () => {
+  it('installs build-time dev dependencies before running the Next.js build', () => {
+    expect(existsSync('.npmrc')).toBe(true);
+    expect(npmConfig()).toMatch(/^include=dev$/m);
   });
 });
 
