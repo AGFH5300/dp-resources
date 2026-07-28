@@ -154,8 +154,10 @@ export function CoursePracticeWorkspace({
   const [detail, setDetail] = useState<QuestionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedChoiceIds, setSelectedChoiceIds] = useState<string[]>([]);
-  const [answerChecked, setAnswerChecked] = useState(false);
+  const [selectedChoiceIdsBySection, setSelectedChoiceIdsBySection] = useState<
+    Record<string, string[]>
+  >({});
+  const [checkedSectionIds, setCheckedSectionIds] = useState<string[]>([]);
   const [showExplanation, setShowExplanation] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
 
@@ -185,8 +187,8 @@ export function CoursePracticeWorkspace({
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    setSelectedChoiceIds([]);
-    setAnswerChecked(false);
+    setSelectedChoiceIdsBySection({});
+    setCheckedSectionIds([]);
     setShowExplanation(false);
     fetch(`/api/question-bank/questions/${selectedVariantId}`, {
       signal: controller.signal,
@@ -202,21 +204,25 @@ export function CoursePracticeWorkspace({
           payload.question.maximumMark,
         );
         const savedAttempt = readPracticeAttempt(payload.variant.id);
-        const validIds = new Set(parsed.choices.map((choice) => choice.id));
-        const savedChoices = (savedAttempt?.selectedChoiceIds || []).filter((id) =>
-          validIds.has(id),
-        );
-        const validSavedAttempt =
-          (parsed.selectionMode === 'none'
-            ? savedChoices.length === 0
-            : savedChoices.length <= parsed.requiredSelectionCount) &&
-          (!savedAttempt?.answerChecked ||
-            savedChoices.length === parsed.requiredSelectionCount);
-
-        if (savedAttempt && !validSavedAttempt) clearPracticeAttempt(payload.variant.id);
-        setSelectedChoiceIds(validSavedAttempt ? savedChoices : []);
-        setAnswerChecked(Boolean(validSavedAttempt && savedAttempt?.answerChecked));
-        setShowExplanation(Boolean(validSavedAttempt && savedAttempt?.showExplanation));
+        const restoredSelections: Record<string, string[]> = {};
+        const restoredChecked: string[] = [];
+        for (const [sectionIndex, section] of parsed.sections.entries()) {
+          const validIds = new Set(section.choices.map((choice) => choice.id));
+          const savedChoices = (
+            savedAttempt?.selectedChoiceIdsBySection?.[section.id] ||
+            (sectionIndex === 0 ? savedAttempt?.selectedChoiceIds || [] : [])
+          ).filter((id) => validIds.has(id));
+          if (savedChoices.length <= section.requiredSelectionCount)
+            restoredSelections[section.id] = savedChoices;
+          const wasChecked =
+            savedAttempt?.checkedSectionIds?.includes(section.id) ||
+            (sectionIndex === 0 && savedAttempt?.answerChecked);
+          if (wasChecked && savedChoices.length === section.requiredSelectionCount)
+            restoredChecked.push(section.id);
+        }
+        setSelectedChoiceIdsBySection(restoredSelections);
+        setCheckedSectionIds(restoredChecked);
+        setShowExplanation(Boolean(savedAttempt?.showExplanation));
         setDetail(payload);
         requestAnimationFrame(() => panelRef.current?.focus());
       })
@@ -276,60 +282,73 @@ export function CoursePracticeWorkspace({
   }
 
   function persistAttempt(
-    choices: string[],
-    checked = answerChecked,
+    selections = selectedChoiceIdsBySection,
+    checked = checkedSectionIds,
     explanation = showExplanation,
   ) {
     if (!detail) return;
+    const firstSectionId = interactive?.sections[0]?.id;
     savePracticeAttempt(detail.variant.id, {
-      selectedChoiceIds: choices,
-      answerChecked: checked,
+      selectedChoiceIdsBySection: selections,
+      checkedSectionIds: checked,
+      selectedChoiceIds: firstSectionId ? selections[firstSectionId] || [] : [],
+      answerChecked: checked.length > 0,
       showExplanation: explanation,
     });
   }
 
-  function toggleChoice(choiceId: string) {
-    if (!detail || !interactive || answerChecked) return;
+  function toggleChoice(sectionId: string, choiceId: string) {
+    if (!detail || !interactive || checkedSectionIds.includes(sectionId)) return;
+    const section = interactive.sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    const current = selectedChoiceIdsBySection[sectionId] || [];
     let next: string[];
-    if (interactive.selectionMode === 'single') {
+    if (section.selectionMode === 'single') {
       next = [choiceId];
     } else {
-      const selected = selectedChoiceIds.includes(choiceId);
-      if (selected) next = selectedChoiceIds.filter((id) => id !== choiceId);
-      else if (selectedChoiceIds.length < interactive.requiredSelectionCount)
-        next = [...selectedChoiceIds, choiceId];
+      const selected = current.includes(choiceId);
+      if (selected) next = current.filter((id) => id !== choiceId);
+      else if (current.length < section.requiredSelectionCount)
+        next = [...current, choiceId];
       else {
         toast.info(
-          `Select exactly ${interactive.requiredSelectionCount} answers. Deselect one before choosing another.`,
+          `Select exactly ${section.requiredSelectionCount} answers. Deselect one before choosing another.`,
         );
         return;
       }
     }
-    setSelectedChoiceIds(next);
-    persistAttempt(next, false, false);
+    const selections = { ...selectedChoiceIdsBySection, [sectionId]: next };
+    setSelectedChoiceIdsBySection(selections);
+    persistAttempt(selections, checkedSectionIds, false);
   }
 
-  async function checkAnswer() {
-    if (!detail || !interactive || answerChecked) return;
-    if (selectedChoiceIds.length !== interactive.requiredSelectionCount) {
+  async function checkSection(sectionId: string) {
+    if (!detail || !interactive || checkedSectionIds.includes(sectionId)) return;
+    const section = interactive.sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    const selected = selectedChoiceIdsBySection[sectionId] || [];
+    if (selected.length !== section.requiredSelectionCount) {
       toast.error(
-        interactive.requiredSelectionCount === 1
+        section.requiredSelectionCount === 1
           ? 'Select one answer before checking.'
-          : `Select exactly ${interactive.requiredSelectionCount} answers before checking.`,
+          : `Select exactly ${section.requiredSelectionCount} answers before checking.`,
       );
       return;
     }
-    setAnswerChecked(true);
-    setShowExplanation(true);
-    persistAttempt(selectedChoiceIds, true, true);
-    if (!interactive.isPartialInteraction) {
+    const checked = [...checkedSectionIds, sectionId];
+    const allChecked = interactive.sections.every((item) => checked.includes(item.id));
+    setCheckedSectionIds(checked);
+    if (allChecked) setShowExplanation(true);
+    persistAttempt(selectedChoiceIdsBySection, checked, allChecked || showExplanation);
+
+    if (allChecked && !interactive.isPartialInteraction) {
       const previousStatus = detail.progress.status;
       applyQuestionState(detail.variant.id, { status: 'completed' });
       try {
         await updateQuestionState(detail, { status: 'completed' });
       } catch {
         applyQuestionState(detail.variant.id, { status: previousStatus });
-        toast.error('Your answer was checked, but progress could not be saved.');
+        toast.error('Your answers were checked, but progress could not be saved.');
       }
     }
   }
@@ -337,14 +356,14 @@ export function CoursePracticeWorkspace({
   function revealExplanation() {
     if (!detail) return;
     setShowExplanation(true);
-    persistAttempt(selectedChoiceIds, answerChecked, true);
+    persistAttempt(selectedChoiceIdsBySection, checkedSectionIds, true);
   }
 
   function resetCurrentAttempt() {
     if (!detail) return;
     clearPracticeAttempt(detail.variant.id);
-    setSelectedChoiceIds([]);
-    setAnswerChecked(false);
+    setSelectedChoiceIdsBySection({});
+    setCheckedSectionIds([]);
     setShowExplanation(false);
     toast.success('This answer was reset on this device.');
   }
@@ -355,8 +374,8 @@ export function CoursePracticeWorkspace({
     );
     if (!confirmed) return;
     clearAllPracticeAttempts();
-    setSelectedChoiceIds([]);
-    setAnswerChecked(false);
+    setSelectedChoiceIdsBySection({});
+    setCheckedSectionIds([]);
     setShowExplanation(false);
     toast.success('All locally saved answers were reset.');
   }
@@ -387,14 +406,125 @@ export function CoursePracticeWorkspace({
   const examinerReportAssets = (detail?.assets || []).filter(
     (asset) => asset.role === 'examiner_report',
   );
-  const correct = Boolean(
-    answerChecked &&
-      interactive &&
-      isCorrectSelection(selectedChoiceIds, interactive.correctChoiceIds),
+  const allInteractiveChecked = Boolean(
+    interactive?.sections.length &&
+      interactive.sections.every((section) => checkedSectionIds.includes(section.id)),
+  );
+  const allInteractiveCorrect = Boolean(
+    allInteractiveChecked &&
+      interactive?.sections.every((section) =>
+        isCorrectSelection(
+          selectedChoiceIdsBySection[section.id] || [],
+          section.correctChoiceIds,
+        ),
+      ),
   );
   const hasCurrentAttempt = Boolean(
-    selectedChoiceIds.length || answerChecked || showExplanation,
+    Object.values(selectedChoiceIdsBySection).some((choices) => choices.length) ||
+      checkedSectionIds.length ||
+      showExplanation,
   );
+
+  function renderChoiceSection(sectionId: string) {
+    if (!interactive) return null;
+    const section = interactive.sections.find((item) => item.id === sectionId);
+    if (!section) return null;
+    const selectedChoiceIds = selectedChoiceIdsBySection[section.id] || [];
+    const answerChecked = checkedSectionIds.includes(section.id);
+    const correct =
+      answerChecked &&
+      isCorrectSelection(selectedChoiceIds, section.correctChoiceIds);
+
+    return (
+      <div key={section.id} className="my-5">
+        <div
+          className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-blue-800"
+          role="status"
+        >
+          {section.selectionMode === 'multiple'
+            ? `Select exactly ${section.requiredSelectionCount} answers. ${selectedChoiceIds.length} selected.`
+            : 'Select one answer, then check it.'}
+        </div>
+        <div
+          className="dp-qb-answer-choices"
+          role={section.selectionMode === 'multiple' ? 'group' : 'radiogroup'}
+          aria-label="Answer choices"
+        >
+          {section.choices.map((choice) => {
+            const isSelected = selectedChoiceIds.includes(choice.id);
+            const isCorrect =
+              answerChecked && section.correctChoiceIds.includes(choice.id);
+            const isIncorrect = answerChecked && isSelected && !isCorrect;
+            const maxReached =
+              section.selectionMode === 'multiple' &&
+              selectedChoiceIds.length >= section.requiredSelectionCount &&
+              !isSelected;
+            return (
+              <button
+                key={choice.id}
+                type="button"
+                role={section.selectionMode === 'multiple' ? 'checkbox' : 'radio'}
+                aria-checked={isSelected}
+                disabled={answerChecked || maxReached}
+                onClick={() => toggleChoice(section.id, choice.id)}
+                className={`${isSelected ? 'is-selected' : ''} ${
+                  isCorrect ? 'is-correct' : ''
+                } ${isIncorrect ? 'is-incorrect' : ''}`.trim()}
+              >
+                <span className="dp-qb-choice-letter">{choice.label}</span>
+                <QuestionContent
+                  source={choice.source}
+                  assets={nonAudioQuestionAssets}
+                />
+                {isCorrect ? <Check className="ml-auto size-5" /> : null}
+                {isIncorrect ? <X className="ml-auto size-5" /> : null}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+          onClick={() => void checkSection(section.id)}
+          disabled={
+            answerChecked ||
+            selectedChoiceIds.length !== section.requiredSelectionCount
+          }
+        >
+          {answerChecked
+            ? 'Answer checked'
+            : section.selectionMode === 'multiple'
+              ? 'Check answers'
+              : 'Check answer'}
+        </button>
+        {answerChecked ? (
+          <div
+            className={`dp-qb-feedback-banner mt-4 ${
+              correct ? 'is-correct' : 'is-incorrect'
+            }`}
+            aria-live="polite"
+          >
+            {correct ? (
+              <CheckCircle2 className="size-5" />
+            ) : (
+              <CircleAlert className="size-5" />
+            )}
+            <div>
+              <strong>{correct ? 'Correct — nice work.' : 'Not quite yet.'}</strong>
+              {!correct ? (
+                <p>
+                  The correct {section.correctChoiceIds.length > 1
+                    ? 'answers are'
+                    : 'answer is'}{' '}
+                  {answerList(section.correctChoiceIds)}.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={selectedVariantId ? 'dp-qb-practice-layout is-open' : ''}>
@@ -613,157 +743,82 @@ export function CoursePracticeWorkspace({
               </div>
 
               <section className="dp-qb-quiz-card">
-                <QuestionContent
-                  source={
-                    interactive.choices.length
-                      ? interactive.promptBeforeChoices
-                      : interactive.prompt || detail.question.content
-                  }
-                  assets={questionAssets}
-                />
-
-                {interactive.choices.length ? (
+                {interactive.sections.length ? (
                   <>
-                    <div
-                      className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-blue-800"
-                      role="status"
-                    >
-                      {interactive.selectionMode === 'multiple'
-                        ? `Select exactly ${interactive.requiredSelectionCount} answers. ${selectedChoiceIds.length} selected.${
-                            interactive.isPartialInteraction
-                              ? ' This checks the multiple-choice section only.'
-                              : ''
-                          }`
-                        : `Select one answer, then check it.${
-                            interactive.isPartialInteraction
-                              ? ' This checks the multiple-choice section only.'
-                              : ''
-                          }`}
-                    </div>
-                    <div
-                      className="dp-qb-answer-choices"
-                      role={
-                        interactive.selectionMode === 'multiple'
-                          ? 'group'
-                          : 'radiogroup'
-                      }
-                      aria-label="Answer choices"
-                    >
-                      {interactive.choices.map((choice) => {
-                        const isSelected = selectedChoiceIds.includes(choice.id);
-                        const isCorrect =
-                          answerChecked &&
-                          interactive.correctChoiceIds.includes(choice.id);
-                        const isIncorrect =
-                          answerChecked && isSelected && !isCorrect;
-                        const maxReached =
-                          interactive.selectionMode === 'multiple' &&
-                          selectedChoiceIds.length >=
-                            interactive.requiredSelectionCount &&
-                          !isSelected;
-                        return (
-                          <button
-                            key={choice.id}
-                            type="button"
-                            role={
-                              interactive.selectionMode === 'multiple'
-                                ? 'checkbox'
-                                : 'radio'
+                    {interactive.segments.map((segment, segmentIndex) =>
+                      segment.type === 'content' ? (
+                        <div
+                          key={`content-${segmentIndex}`}
+                          className={segmentIndex ? 'mt-6' : undefined}
+                        >
+                          <QuestionContent
+                            source={segment.source}
+                            assets={
+                              segmentIndex === 0 || segment.source.includes(':audio{')
+                                ? questionAssets
+                                : nonAudioQuestionAssets
                             }
-                            aria-checked={isSelected}
-                            disabled={answerChecked || maxReached}
-                            onClick={() => toggleChoice(choice.id)}
-                            className={`${isSelected ? 'is-selected' : ''} ${
-                              isCorrect ? 'is-correct' : ''
-                            } ${isIncorrect ? 'is-incorrect' : ''}`.trim()}
-                          >
-                            <span className="dp-qb-choice-letter">{choice.label}</span>
-                            <QuestionContent
-                              source={choice.source}
-                              assets={nonAudioQuestionAssets}
-                            />
-                            {isCorrect ? <Check className="ml-auto size-5" /> : null}
-                            {isIncorrect ? <X className="ml-auto size-5" /> : null}
-                          </button>
-                        );
-                      })}
+                          />
+                        </div>
+                      ) : (
+                        renderChoiceSection(segment.sectionId)
+                      ),
+                    )}
+                    {!showExplanation ? (
+                      <button
+                        type="button"
+                        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--dp-navy)] shadow-sm transition hover:bg-slate-50"
+                        onClick={revealExplanation}
+                      >
+                        Reveal full explanation
+                      </button>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <QuestionContent
+                      source={interactive.prompt || detail.question.content}
+                      assets={questionAssets}
+                    />
+                    <div className="dp-qb-think-prompt">
+                      <Lightbulb className="size-5" />
+                      <p>
+                        Work through every part first. Reveal the markscheme when you
+                        are ready to check your reasoning.
+                      </p>
                     </div>
                     <button
                       type="button"
                       className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-                      onClick={() => void checkAnswer()}
-                      disabled={
-                        answerChecked ||
-                        selectedChoiceIds.length !==
-                          interactive.requiredSelectionCount
-                      }
+                      onClick={revealExplanation}
+                      disabled={showExplanation}
                     >
-                      {answerChecked
-                        ? 'Answer checked'
-                        : interactive.selectionMode === 'multiple'
-                          ? 'Check answers'
-                          : 'Check answer'}
+                      {showExplanation ? 'Explanation revealed' : 'Reveal explanation'}
                     </button>
-                    {interactive.promptAfterChoices ? (
-                      <div className="mt-6 border-t border-slate-200 pt-5">
-                        <QuestionContent
-                          source={interactive.promptAfterChoices}
-                          assets={nonAudioQuestionAssets}
-                        />
-                      </div>
-                    ) : null}
                   </>
-                ) : (
-                  <div className="dp-qb-think-prompt">
-                    <Lightbulb className="size-5" />
-                    <p>
-                      Work through every part first. Reveal the markscheme when you
-                      are ready to check your reasoning.
-                    </p>
-                  </div>
                 )}
-
-                {!interactive.choices.length ? (
-                  <button
-                    type="button"
-                    className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-                    onClick={revealExplanation}
-                    disabled={showExplanation}
-                  >
-                    {showExplanation ? 'Explanation revealed' : 'Reveal explanation'}
-                  </button>
-                ) : null}
               </section>
 
               {showExplanation ? (
                 <section className="dp-qb-feedback" aria-live="polite">
-                  {interactive.choices.length &&
-                  interactive.correctChoiceIds.length ? (
+                  {interactive.sections.length && allInteractiveChecked ? (
                     <div
                       className={`dp-qb-feedback-banner ${
-                        correct ? 'is-correct' : 'is-incorrect'
+                        allInteractiveCorrect ? 'is-correct' : 'is-incorrect'
                       }`}
                     >
-                      {correct ? (
+                      {allInteractiveCorrect ? (
                         <CheckCircle2 className="size-5" />
                       ) : (
                         <CircleAlert className="size-5" />
                       )}
                       <div>
                         <strong>
-                          {correct ? 'Correct — nice work.' : 'Not quite yet.'}
+                          {allInteractiveCorrect
+                            ? 'All choice sections are correct.'
+                            : 'Review the checked choice sections.'}
                         </strong>
-                        {!correct ? (
-                          <p>
-                            The correct {interactive.correctChoiceIds.length > 1
-                              ? 'answers are'
-                              : 'answer is'}{' '}
-                            {answerList(interactive.correctChoiceIds)}. Review the
-                            reasoning below before moving on.
-                          </p>
-                        ) : (
-                          <p>Use the explanation to lock in why it is correct.</p>
-                        )}
+                        <p>Use the complete markscheme for the written parts and reasoning.</p>
                       </div>
                     </div>
                   ) : null}
@@ -773,9 +828,9 @@ export function CoursePracticeWorkspace({
                       <h3>Answer explanation</h3>
                     </div>
                     <span>
-                      {interactive.choices.length
+                      {interactive.sections.length
                         ? interactive.isPartialInteraction
-                          ? 'Check this section, then compare every remaining response with the markscheme'
+                          ? 'Check each choice section, then compare the written responses with the markscheme'
                           : 'Why the selected answers work—and why the alternatives do not'
                         : 'Compare your working with the markscheme'}
                     </span>
@@ -785,7 +840,7 @@ export function CoursePracticeWorkspace({
                     assets={markschemeAssets}
                     kind="markscheme"
                   />
-                  {!interactive.choices.length || interactive.isPartialInteraction ? (
+                  {!interactive.sections.length || interactive.isPartialInteraction ? (
                     <div className="dp-qb-self-assess">
                       <span>How did you do?</span>
                       <button type="button" onClick={() => selfAssess(true)}>
