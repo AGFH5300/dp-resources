@@ -11,6 +11,12 @@ type RendererProps = {
 
 const TABLE_OPTIONS =
   /^\s*(?:[-*]\s+)?(:{1,3}tableoptions(?:\{[^}]*\})?)\s*$/i;
+const IMAGE_ROLES: QuestionAsset['role'][] = [
+  'question',
+  'markscheme',
+  'examiner_report',
+  'content_reference',
+];
 
 function normalizeImportedTableRows(value: string) {
   const lines = String(value || '').split('\n');
@@ -65,6 +71,35 @@ function normalizeProductionSource(value: string) {
     .trim();
 }
 
+function isAudioAsset(asset: QuestionAsset) {
+  return (
+    asset.originalRole === 'audio' ||
+    String(asset.contentType || '').toLowerCase().startsWith('audio/')
+  );
+}
+
+function expandImageRoleAliases(assets: QuestionAsset[]) {
+  return assets.flatMap((asset) => {
+    if (isAudioAsset(asset)) return [asset];
+    const sourceFileIds = [
+      ...new Set(
+        [asset.sourceFileId, ...(asset.sourceFileIds || [])].filter(
+          (sourceFileId): sourceFileId is string => Boolean(sourceFileId),
+        ),
+      ),
+    ];
+    if (!sourceFileIds.length) return [asset];
+    return sourceFileIds.flatMap((sourceFileId) =>
+      IMAGE_ROLES.map((role) => ({
+        ...asset,
+        sourceFileId,
+        sourceFileIds: [sourceFileId],
+        role,
+      })),
+    );
+  });
+}
+
 /**
  * Final source compatibility layer for the complete Revision Village corpus.
  * It deliberately repairs only known imported syntax before delegating to the
@@ -78,7 +113,7 @@ export function QuestionContent({
   return (
     <RoutedQuestionContent
       source={normalizeProductionSource(source)}
-      assets={assets}
+      assets={expandImageRoleAliases(assets)}
       kind={kind}
     />
   );
