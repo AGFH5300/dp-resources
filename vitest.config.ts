@@ -9,6 +9,10 @@ export default defineConfig({
         __dirname,
         'components/question-bank/question-content-routed.tsx',
       ),
+      '@/lib/question-bank/interactive': path.resolve(
+        __dirname,
+        'lib/question-bank/interactive-validated.ts',
+      ),
       '@': path.resolve(__dirname),
     },
   },
