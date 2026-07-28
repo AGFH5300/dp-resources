@@ -19,20 +19,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - name: Run tests
-        run: |
-          set +e
-          npm test > test-output.log 2>&1
-          status=$?
-          cat test-output.log
-          exit $status
-      - name: Upload test failure output
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: test-output.log
-          retention-days: 1
+      - run: npm test
       - run: npm run lint
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
