@@ -85,4 +85,28 @@ Which final answer is correct? :marks[1]
     expect(parsed.sections[1].correctChoiceIds).toEqual(['C']);
     expect(parsed.isPartialInteraction).toBe(true);
   });
+
+  it('fails safe when the only compatible answer belongs to another numbered section', () => {
+    const content = String.raw`1. Which first option is correct? :marks[1]
+- A. First A
+- B. First B
+- C. First C
+
+2. Which second option is correct? :marks[1]
+- A. Second A
+- B. Second B
+- C. Second C`;
+    const parsed = parseInteractiveQuestion(
+      content,
+      String.raw`2. :answer[B] :marks[1]`,
+      2,
+    );
+
+    expect(parsed.selectionMode).toBe('none');
+    expect(parsed.sections).toEqual([]);
+    expect(parsed.prompt).toContain('1. Which first option is correct?');
+    expect(parsed.prompt).toContain('- A. First A');
+    expect(parsed.prompt).toContain('2. Which second option is correct?');
+    expect(parsed.prompt).toContain('- B. Second B');
+  });
 });
