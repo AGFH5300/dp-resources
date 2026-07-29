@@ -1,12 +1,22 @@
-.coursePage :global(.dp-qb-practice-layout.is-open) {
+.coursePage :global(.dp-qb-fullscreen-toggle) {
+  order: 2;
+}
+
+.coursePage
+  :global(.dp-qb-practice-toolbar > div:last-child > button[aria-label='Close question']) {
+  order: 3;
+}
+
+.coursePage :global(.dp-qb-practice-layout.is-fullscreen) {
   display: block;
 }
 
-.coursePage :global(.dp-qb-practice-layout.is-open > section[aria-label='Question results']) {
+.coursePage
+  :global(.dp-qb-practice-layout.is-fullscreen > section[aria-label='Question results']) {
   display: none;
 }
 
-.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-pane) {
+.coursePage :global(.dp-qb-practice-layout.is-fullscreen .dp-qb-practice-pane) {
   position: fixed !important;
   inset: 0 !important;
   z-index: 120 !important;
@@ -19,12 +29,18 @@
   box-shadow: none;
 }
 
-.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-content) {
+.coursePage :global(.dp-qb-practice-layout.is-fullscreen .dp-qb-practice-content) {
   width: min(100%, 1100px);
   margin-inline: auto;
   padding-bottom: 5rem;
 }
 
-.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-toolbar) {
+.coursePage :global(.dp-qb-practice-layout.is-fullscreen .dp-qb-practice-toolbar) {
   padding-inline: max(0.75rem, calc((100vw - 1100px) / 2));
+}
+
+@media (max-width: 1279px) {
+  .coursePage :global(.dp-qb-fullscreen-toggle) {
+    display: none !important;
+  }
 }
