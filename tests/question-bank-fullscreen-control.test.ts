@@ -17,10 +17,10 @@ const fullscreenControl = readFileSync(
 describe('Question Bank practice layout', () => {
   it('keeps the normal selected-question view compact', () => {
     expect(courseStyles).not.toContain(
-      '.dp-qb-practice-layout.is-open .dp-qb-practice-pane',
+      '.coursePage :global(.dp-qb-practice-layout.is-open)',
     );
     expect(courseStyles).not.toContain(
-      ".dp-qb-practice-layout.is-open > section[aria-label='Question results']",
+      ".coursePage :global(.dp-qb-practice-layout.is-open > section[aria-label='Question results'])",
     );
   });
 
@@ -28,12 +28,13 @@ describe('Question Bank practice layout', () => {
     expect(coursePage).toContain('<QuestionPracticeFullscreenControl />');
     expect(fullscreenControl).toContain('Maximize2');
     expect(fullscreenControl).toContain('Minimize2');
-    expect(fullscreenControl).toContain("classList.toggle('is-fullscreen'");
+    expect(fullscreenControl).toContain('FULLSCREEN_ROOT_CLASS');
+    expect(fullscreenControl).toContain('document.documentElement.classList.toggle');
     expect(fullscreenControl).toContain('Exit fullscreen question view');
   });
 
   it('only applies the fullscreen overlay after the user chooses it', () => {
-    expect(courseStyles).toContain('.dp-qb-practice-layout.is-fullscreen');
+    expect(courseStyles).toContain('html.dp-qb-practice-fullscreen');
     expect(courseStyles).toContain('position: fixed !important');
     expect(courseStyles).toContain('height: 100dvh');
     expect(courseStyles).toContain('@media (max-width: 1279px)');
