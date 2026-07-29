@@ -81,6 +81,10 @@ function normalizeProductionSource(value: string) {
     .replace(/<\s*no\s*link\s*>/gi, '')
     .replace(/::answer\[/gi, ':answer[')
     .replace(/^::tableoptions(?:\{[^}]*\})?\s*$/gim, ':::tableoptions')
+    .replace(
+      /\((?:markscheme|examiner_report|content_reference):([0-9a-f-]{36})\)/gi,
+      '(question:$1)',
+    )
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
