@@ -140,43 +140,70 @@ export function ResetAllAnswersDialogBridge() {
         onClose={close}
       >
         <div className="space-y-3">
-          <button
-            type="button"
-            data-autofocus
-            aria-pressed={scope === 'answers'}
-            disabled={busy}
-            onClick={() => setScope('answers')}
-            className={`w-full rounded-lg border bg-[color:var(--dp-page)] px-4 py-3 text-left disabled:opacity-60 ${
-              scope === 'answers'
-                ? 'border-blue-500 ring-2 ring-blue-500/20'
-                : 'border-[color:var(--dp-theme-border)]'
-            }`}
-          >
-            <span className="block font-semibold text-[color:var(--dp-navy)]">
-              Reset answers only
-            </span>
-            <span className="mt-1 block text-sm text-[color:var(--dp-muted-text)]">
-              Clears every answer and revealed explanation saved in this browser.
-              Progress statuses are not changed.
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-pressed={scope === 'all_progress'}
-            disabled={busy}
-            onClick={() => setScope('all_progress')}
-            className={`dp-qb-reset-danger-option w-full rounded-lg border px-4 py-3 text-left disabled:opacity-60 ${
-              scope === 'all_progress' ? 'is-selected' : ''
-            }`}
-          >
-            <span className="block font-semibold">
-              Reset answers and progress
-            </span>
-            <span className="dp-qb-reset-danger-copy mt-1 block text-sm">
-              Also resets every Question Bank status to Not started. Saved
-              questions are not removed.
-            </span>
-          </button>
+          <fieldset disabled={busy} className="space-y-3">
+            <legend className="sr-only">Choose what to reset</legend>
+            <label
+              className={`flex w-full items-start gap-3 rounded-lg border bg-[color:var(--dp-page)] px-4 py-3 text-left ${
+                busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+              } ${
+                scope === 'answers'
+                  ? 'border-blue-500 ring-2 ring-blue-500/20'
+                  : 'border-[color:var(--dp-theme-border)]'
+              }`}
+            >
+              <input
+                data-autofocus
+                type="radio"
+                name="question-bank-reset-scope"
+                value="answers"
+                checked={scope === 'answers'}
+                onChange={() => setScope('answers')}
+                className="mt-1 size-5 shrink-0 accent-blue-600"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-[color:var(--dp-navy)]">
+                    Reset answers only
+                  </span>
+                  {scope === 'answers' ? (
+                    <span className="dp-qb-reset-selected-label">Selected</span>
+                  ) : null}
+                </span>
+                <span className="mt-1 block text-sm text-[color:var(--dp-muted-text)]">
+                  Clears every answer and revealed explanation saved in this
+                  browser. Progress statuses are not changed.
+                </span>
+              </span>
+            </label>
+            <label
+              className={`dp-qb-reset-danger-option flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-left ${
+                busy ? 'is-disabled cursor-not-allowed opacity-60' : 'cursor-pointer'
+              } ${scope === 'all_progress' ? 'is-selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="question-bank-reset-scope"
+                value="all_progress"
+                checked={scope === 'all_progress'}
+                onChange={() => setScope('all_progress')}
+                className="mt-1 size-5 shrink-0 accent-red-600"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">Reset answers and progress</span>
+                  {scope === 'all_progress' ? (
+                    <span className="dp-qb-reset-selected-label is-danger">
+                      Selected
+                    </span>
+                  ) : null}
+                </span>
+                <span className="dp-qb-reset-danger-copy mt-1 block text-sm">
+                  Also resets every Question Bank status to Not started. Saved
+                  questions are not removed.
+                </span>
+              </span>
+            </label>
+          </fieldset>
           {error ? (
             <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -207,12 +234,27 @@ export function ResetAllAnswersDialogBridge() {
         </div>
       </SiteConfirmDialog>
       <style jsx global>{`
+        .dp-qb-reset-selected-label {
+          border: 1px solid #93c5fd;
+          border-radius: 9999px;
+          background: #eff6ff;
+          padding: 0.125rem 0.5rem;
+          color: #1d4ed8;
+          font-size: 0.75rem;
+          font-weight: 700;
+          line-height: 1.25rem;
+        }
+        .dp-qb-reset-selected-label.is-danger {
+          border-color: #fca5a5;
+          background: #fff1f2;
+          color: #b91c1c;
+        }
         .dp-qb-reset-danger-option {
           border-color: #fca5a5;
           background: #fff1f2;
           color: #991b1b;
         }
-        .dp-qb-reset-danger-option:hover:not(:disabled),
+        .dp-qb-reset-danger-option:not(.is-disabled):hover,
         .dp-qb-reset-danger-option.is-selected {
           border-color: #ef4444;
           background: #ffe4e6;
@@ -223,12 +265,23 @@ export function ResetAllAnswersDialogBridge() {
         .dp-qb-reset-danger-copy {
           color: #b91c1c;
         }
+        html[data-theme='dark'] .dp-qb-reset-selected-label {
+          border-color: #1d4ed8;
+          background: #172554;
+          color: #bfdbfe;
+        }
+        html[data-theme='dark'] .dp-qb-reset-selected-label.is-danger {
+          border-color: #991b1b;
+          background: #450a0a;
+          color: #fecaca;
+        }
         html[data-theme='dark'] .dp-qb-reset-danger-option {
           border-color: #7f1d1d;
           background: #351720;
           color: #fecaca;
         }
-        html[data-theme='dark'] .dp-qb-reset-danger-option:hover:not(:disabled),
+        html[data-theme='dark']
+          .dp-qb-reset-danger-option:not(.is-disabled):hover,
         html[data-theme='dark'] .dp-qb-reset-danger-option.is-selected {
           border-color: #ef4444;
           background: #431d27;

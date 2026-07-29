@@ -27,10 +27,19 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-29': [
+    'Made the Question Bank reset dialog clearly show the selected reset option before confirmation.',
+    'Restored instant single-answer checking, clarified correct and incorrect answer feedback, and made listening audio seekable.',
+    'Fixed supporting Question Bank images so verified markscheme, examiner-report, and content-reference diagrams render correctly.',
+  ],
   '2026-07-28': [
     'Added quick search inside the current Library folder and all of its subfolders.',
     'Fixed the admin case inspector so replies, messages, and draft changes never carry over when switching between support tickets or resource reports.',
     'Corrected support notification counts, added General inquiry, improved Content feedback in dark mode, and added a bulk mark-as-read action.',
+    'Added authenticated listening audio and exact-count, order-independent multiple-answer grading to the Question Bank.',
+    'Fixed listening-question audio placement, cleaned imported formatting, and kept later questions and answer choices in the correct order.',
+    'Improved multi-part listening questions so separate multiple-answer and single-answer sections stay interactive and independent.',
+    'Kept signed-in users signed in when visiting Privacy or Terms and added direct Library return actions.',
   ],
   '2026-07-25': [
     'Improved Question Bank practice with locally remembered answers, reset controls, red reporting actions, cleaner report summaries, and corrected notification close-button styling.',
