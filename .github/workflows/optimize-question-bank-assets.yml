@@ -1,0 +1,132 @@
+name: Optimize Question Bank assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Optimization stage to run
+        required: true
+        type: choice
+        options:
+          - dry_run
+          - optimize_canary
+          - optimize_all
+          - cleanup_canary
+          - cleanup_all
+        default: dry_run
+      canary_limit:
+        description: Number of assets for a canary operation
+        required: true
+        type: string
+        default: '100'
+      cleanup_confirmation:
+        description: For cleanup only, type DELETE VERIFIED ORIGINALS
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: question-bank-asset-optimization
+  cancel-in-progress: false
+
+jobs:
+  optimize:
+    name: Optimize Question Bank R2 assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      OPERATION: ${{ inputs.operation }}
+      CANARY_LIMIT: ${{ inputs.canary_limit }}
+      CLEANUP_CONFIRMATION: ${{ inputs.cleanup_confirmation }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate configuration and operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
+          test -n "$R2_ACCESS_KEY_ID"
+          test -n "$R2_SECRET_ACCESS_KEY"
+          [[ "$CANARY_LIMIT" =~ ^[1-9][0-9]*$ ]]
+          if [[ "$OPERATION" == cleanup_* ]]; then
+            test "$CLEANUP_CONFIRMATION" = "DELETE VERIFIED ORIGINALS"
+          fi
+
+      - name: Run selected operation
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$OPERATION" in
+            dry_run)
+              npm run question-bank:optimize-assets -- --mode dry-run
+              ;;
+            optimize_canary)
+              npm run question-bank:optimize-assets -- \
+                --mode optimize \
+                --limit "$CANARY_LIMIT" \
+                --confirm-production
+              ;;
+            optimize_all)
+              npm run question-bank:optimize-assets -- \
+                --mode optimize \
+                --confirm-production
+              ;;
+            cleanup_canary)
+              npm run question-bank:optimize-assets -- \
+                --mode cleanup \
+                --limit "$CANARY_LIMIT" \
+                --confirm-production \
+                --delete-originals
+              ;;
+            cleanup_all)
+              npm run question-bank:optimize-assets -- \
+                --mode cleanup \
+                --confirm-production \
+                --delete-originals
+              ;;
+            *)
+              echo "Unsupported operation: $OPERATION" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Upload optimization report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: question-bank-asset-optimization-${{ github.run_id }}
+          path: .question-bank-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Record safety note
+        if: always()
+        run: |
+          {
+            echo ""
+            echo "Canonical question-bank asset IDs, source hashes and database associations were not changed."
+            echo "Original R2 objects are deleted only by an explicitly confirmed cleanup operation after optimized delivery has been deployed and smoke-tested."
+          } >> "$GITHUB_STEP_SUMMARY"
