@@ -60,6 +60,16 @@ describe('public changelog page', () => {
     ]) {
       expect(summaries).not.toContain(internalTerm);
     }
+    expect(summaries).toContain("'2026-07-29'");
+    expect(summaries).toContain(
+      'Made the Question Bank reset dialog clearly show the selected reset option before confirmation.',
+    );
+    expect(summaries).toContain(
+      'Restored instant single-answer checking, clarified correct and incorrect answer feedback, and made listening audio seekable.',
+    );
+    expect(summaries).toContain(
+      'Improved multi-part listening questions so separate multiple-answer and single-answer sections stay interactive and independent.',
+    );
     expect(summaries).toContain("'2026-07-22'");
     expect(summaries).toContain(
       'Rebuilt the Question Bank as an interactive practice workspace',

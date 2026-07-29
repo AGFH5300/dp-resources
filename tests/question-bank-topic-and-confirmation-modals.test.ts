@@ -36,6 +36,10 @@ describe('Reset all answers confirmation', () => {
     expect(courseLayout).toContain('<ResetAllAnswersDialogBridge />');
     expect(resetDialog).toContain('Reset answers only');
     expect(resetDialog).toContain('Reset answers and progress');
+    expect(resetDialog).toContain('type="radio"');
+    expect(resetDialog).toContain('name="question-bank-reset-scope"');
+    expect(resetDialog).toContain('<legend className="sr-only">Choose what to reset</legend>');
+    expect(resetDialog).toContain('Selected');
     expect(resetDialog).toContain("scope: 'all_progress'");
     expect(resetDialog).toContain('<SiteConfirmDialog');
     expect(stateRoute).toContain('export async function DELETE');
