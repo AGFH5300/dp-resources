@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { BookOpenCheck } from 'lucide-react';
 import { BrandWordmark } from '@/components/brand-wordmark';
 import { BrandMark } from '@/components/brand-mark';
 import { publicPageMetadata } from '@/lib/seo';
@@ -12,9 +13,9 @@ import {
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = publicPageMetadata({
-  title: 'Free DP Study Resource Library',
+  title: 'Free DP Study Library and Question Bank',
   description:
-    'DP Resources provides free account-based access to a curated library of study materials, notes, documents, and school resources.',
+    'DP Resources provides free account-based access to a curated study library and interactive DP Question Bank with explanations and progress tracking.',
   path: '/',
 });
 
@@ -36,6 +37,9 @@ export default async function Home() {
   const isSignedIn = await hasSignedInUser();
   const accountHref = isSignedIn ? '/library' : '/auth/login';
   const accountLabel = isSignedIn ? 'Open library' : 'Log in';
+  const questionBankHref = isSignedIn
+    ? '/question-bank'
+    : '/auth/login?next=%2Fquestion-bank';
 
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
@@ -57,6 +61,14 @@ export default async function Home() {
               Terms
             </Link>
             <Link
+              href={questionBankHref}
+              aria-label="Open question bank"
+              className="shrink-0 whitespace-nowrap rounded-full border border-[#b5832d] bg-[#fffaf1] px-3 py-2 text-[#7a561d] hover:bg-white sm:px-4"
+            >
+              <span className="sm:hidden">Questions</span>
+              <span className="hidden sm:inline">Open question bank</span>
+            </Link>
+            <Link
               href={accountHref}
               className="shrink-0 whitespace-nowrap rounded-full border border-[#10243f] px-3 py-2 text-[#10243f] hover:bg-white sm:px-4"
             >
@@ -68,24 +80,32 @@ export default async function Home() {
         <div className="grid flex-1 items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr]">
           <section>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#b5832d]">
-              Free resource access
+              Free DP study access
             </p>
             <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-[#10243f] sm:text-6xl">
-              A focused study library for DP resources.
+              A focused study library and Question Bank for DP resources.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#4b5563]">
-              DP Resources gives everyone a free, account-based way to access
-              organised study materials, documents, presentations, spreadsheets,
-              and supporting school resources from one clean portal.
+              Find organised notes, documents, presentations and supporting school
+              resources, then practise exam-style questions with explanations,
+              saved progress and topic-based search from the same clean portal.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               {isSignedIn ? (
-                <Link
-                  href="/library"
-                  className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
-                >
-                  Open library
-                </Link>
+                <>
+                  <Link
+                    href="/library"
+                    className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
+                  >
+                    Open library
+                  </Link>
+                  <Link
+                    href="/question-bank"
+                    className="rounded-full border border-[#b5832d] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#7a561d] shadow-sm hover:bg-white"
+                  >
+                    Open question bank
+                  </Link>
+                </>
               ) : (
                 <>
                   <Link
@@ -93,6 +113,12 @@ export default async function Home() {
                     className="rounded-full bg-[#10243f] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#17385f]"
                   >
                     Sign up
+                  </Link>
+                  <Link
+                    href="/auth/login?next=%2Fquestion-bank"
+                    className="rounded-full border border-[#b5832d] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#7a561d] shadow-sm hover:bg-white"
+                  >
+                    Open question bank
                   </Link>
                   <Link
                     href="/auth/login"
@@ -109,25 +135,44 @@ export default async function Home() {
             aria-label="Platform highlights"
             className="rounded-[2rem] border border-[#d9ccba] bg-[#fffaf1] p-6 shadow-sm"
           >
-            <div className="rounded-2xl bg-white p-6 text-[#061a34] shadow-sm">
-              <BrandMark className="h-24 w-24" title="DP Resources logo" />
-              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#b5832d]">
-                Library
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">
-                Organised, searchable, free.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-[#4b5563]">
-                Open resources, preview files, download when needed, save useful
-                material, and report broken or outdated content.
-              </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-6 text-[#061a34] shadow-sm">
+                <BrandMark className="h-16 w-16" title="DP Resources logo" />
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#b5832d]">
+                  Library
+                </p>
+                <h2 className="mt-3 text-xl font-semibold">
+                  Organised and searchable.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[#4b5563]">
+                  Preview files, download when needed, save useful material and report
+                  broken or outdated resources.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#10243f] p-6 text-white shadow-sm">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                  <BookOpenCheck className="h-9 w-9" aria-hidden />
+                </div>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#e4bd77]">
+                  Question Bank
+                </p>
+                <h2 className="mt-3 text-xl font-semibold">
+                  Practise and understand.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-200">
+                  Browse by subject and topic, answer interactively, reveal full
+                  explanations and keep track of your progress.
+                </p>
+              </div>
             </div>
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
-                'PDF previews',
-                'PPTX previews',
-                'Resource search',
-                'Usage-aware support',
+                'PDF and PPTX previews',
+                'Question and topic search',
+                'Instant answer feedback',
+                'Saved progress and support',
               ].map((item) => (
                 <div
                   key={item}
