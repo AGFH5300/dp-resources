@@ -13,4 +13,7 @@ image-manifest.json
 image-urls.json
 decrypted-datasets/
 assets.revisionvillage.com/
+exam-mate-capture-*/
+exam-mate-capture-*.zip
+.exam-mate-profile/
 tsconfig.tsbuildinfo
