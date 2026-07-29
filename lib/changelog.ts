@@ -28,6 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-07-29': [
+    'Improved homepage Question Bank button contrast and restored the compact question practice view with an optional fullscreen mode.',
     'Made the Question Bank reset dialog clearly show the selected reset option before confirmation.',
     'Restored instant single-answer checking, clarified correct and incorrect answer feedback, and made listening audio seekable.',
     'Fixed supporting Question Bank images so verified markscheme, examiner-report, and content-reference diagrams render correctly.',
