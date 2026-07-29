@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 
 const OPEN_LAYOUT_SELECTOR = '.dp-qb-practice-layout.is-open';
 const TOOLBAR_ACTIONS_SELECTOR = '.dp-qb-practice-toolbar > div:last-child';
+const FULLSCREEN_ROOT_CLASS = 'dp-qb-practice-fullscreen';
 
 export function QuestionPracticeFullscreenControl() {
   const [layout, setLayout] = useState<HTMLElement | null>(null);
@@ -18,14 +19,18 @@ export function QuestionPracticeFullscreenControl() {
       const nextToolbar = nextLayout?.querySelector<HTMLElement>(
         TOOLBAR_ACTIONS_SELECTOR,
       );
+      if (!nextLayout) document.documentElement.classList.remove(FULLSCREEN_ROOT_CLASS);
       setLayout(nextLayout);
       setToolbarActions(nextToolbar || null);
-      setFullscreen(Boolean(nextLayout?.classList.contains('is-fullscreen')));
+      setFullscreen(
+        Boolean(nextLayout) &&
+          document.documentElement.classList.contains(FULLSCREEN_ROOT_CLASS),
+      );
     };
 
     sync();
     const observer = new MutationObserver(sync);
-    observer.observe(document.body, {
+    observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class'],
       childList: true,
@@ -41,7 +46,7 @@ export function QuestionPracticeFullscreenControl() {
 
     const exitOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      layout?.classList.remove('is-fullscreen');
+      document.documentElement.classList.remove(FULLSCREEN_ROOT_CLASS);
       setFullscreen(false);
     };
     window.addEventListener('keydown', exitOnEscape);
@@ -50,20 +55,22 @@ export function QuestionPracticeFullscreenControl() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', exitOnEscape);
     };
-  }, [fullscreen, layout]);
+  }, [fullscreen]);
 
   useEffect(
     () => () => {
-      layout?.classList.remove('is-fullscreen');
+      document.documentElement.classList.remove(FULLSCREEN_ROOT_CLASS);
     },
-    [layout],
+    [],
   );
 
   if (!layout || !toolbarActions) return null;
 
   const toggleFullscreen = () => {
-    const next = !layout.classList.contains('is-fullscreen');
-    layout.classList.toggle('is-fullscreen', next);
+    const next = !document.documentElement.classList.contains(
+      FULLSCREEN_ROOT_CLASS,
+    );
+    document.documentElement.classList.toggle(FULLSCREEN_ROOT_CLASS, next);
     setFullscreen(next);
   };
 
