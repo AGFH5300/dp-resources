@@ -48,7 +48,7 @@ describe('Question Bank answer feedback and media seeking', () => {
     expect(assetRoute).toContain('data.size !== byteSize');
     expect(assetRoute).toContain("{ error: 'Asset range unavailable.' }");
     expect(assetRoute).toContain(
-      'data.slice(range.start, range.end + 1, asset.content_type)',
+      'data.slice(range.start, range.end + 1, storedAsset.content_type)',
     );
     expect(r2Client).toContain('range?: string');
     expect(r2Client).toContain('range: input.range');
