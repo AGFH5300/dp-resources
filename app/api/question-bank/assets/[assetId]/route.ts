@@ -86,6 +86,8 @@ export async function GET(
     return Response.json({ error: 'Asset not found.' }, { status: 404 });
 
   const byteSize = Number(asset.byte_size);
+  if (!Number.isSafeInteger(byteSize) || byteSize < 0)
+    return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
   const range = parseByteRange(request.headers.get('range'), byteSize);
   if (range === false) return rangeNotSatisfiable(asset.content_type, byteSize);
   const normalizedRange = range ? `bytes=${range.start}-${range.end}` : undefined;
@@ -107,11 +109,14 @@ export async function GET(
     if (range) {
       expectedContentRange = `bytes ${range.start}-${range.end}/${byteSize}`;
       const upstreamContentRange = stored.headers.get('content-range')?.trim();
-      const upstreamLength = Number(stored.headers.get('content-length'));
+      const upstreamLengthHeader = stored.headers.get('content-length');
+      const upstreamLength =
+        upstreamLengthHeader === null ? null : Number(upstreamLengthHeader);
       if (
         stored.status !== 206 ||
         upstreamContentRange?.toLowerCase() !== expectedContentRange.toLowerCase() ||
-        (Number.isFinite(upstreamLength) && upstreamLength !== responseLength)
+        (upstreamLength !== null &&
+          (!Number.isSafeInteger(upstreamLength) || upstreamLength !== responseLength))
       ) {
         await stored.body.cancel().catch(() => undefined);
         return Response.json(
