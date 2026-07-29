@@ -41,6 +41,8 @@ describe('Question Bank answer feedback and media seeking', () => {
     expect(assetRoute).toContain("'Content-Range': `bytes */${byteSize}`");
     expect(assetRoute).toContain('status: 206');
     expect(assetRoute).toContain('status: 416');
+    expect(assetRoute).toContain('stored.status !== 206');
+    expect(assetRoute).toContain("{ error: 'Asset range unavailable.' }");
     expect(assetRoute).toContain(
       'data.slice(range.start, range.end + 1, asset.content_type)',
     );
