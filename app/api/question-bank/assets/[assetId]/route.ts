@@ -141,6 +141,8 @@ export async function GET(
       .download(asset.storage_key);
     if (storageError || !data)
       return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
+    if (data.size !== byteSize)
+      return Response.json({ error: 'Asset unavailable.' }, { status: 502 });
     if (range) {
       const partial = data.slice(range.start, range.end + 1, asset.content_type);
       return new Response(partial.stream(), {
