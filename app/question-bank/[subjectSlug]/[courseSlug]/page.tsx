@@ -12,6 +12,7 @@ import {
   visibleQuestionPages,
 } from '@/components/question-bank/question-results-pagination';
 import { requireMember } from '@/lib/auth';
+import { dedupePaperOptions } from '@/lib/question-bank/filter-options';
 import {
   isOldCourse,
   oldCourseFinalAssessmentYear,
@@ -20,6 +21,8 @@ import {
   getCourseQuestionBank,
   parseQuestionFilters,
 } from '@/lib/question-bank/queries';
+
+import styles from './course-question-bank.module.css';
 
 const QUESTION_PAGE_SIZE = 24;
 
@@ -132,6 +135,9 @@ export default async function CourseQuestionBank({
   const total = Number(data.questions[0]?.total_count || 0);
   const pages = Math.max(1, Math.ceil(total / QUESTION_PAGE_SIZE));
   const topics = data.topics as TopicRecord[];
+  const paperOptions = dedupePaperOptions(
+    data.papers as Array<{ id: string; reference: string }>,
+  );
   const sidebarTopicGroups = groupTopicsForSidebar(topics);
   const initialVariantId = selectedQuestion(rawParams.question);
   const oldCourse = isOldCourse(data.course, data.siblingCourses);
@@ -154,7 +160,9 @@ export default async function CourseQuestionBank({
         email={membership.email}
         userId={membership.id}
       />
-      <main className="mx-auto max-w-[1500px] px-4 py-6 pb-24 sm:px-6 lg:px-8">
+      <main
+        className={`${styles.coursePage} mx-auto max-w-[1500px] px-4 py-6 pb-24 sm:px-6 lg:px-8`}
+      >
         <nav className="dp-qb-breadcrumb" aria-label="Breadcrumb">
           <Link href="/question-bank">Question Bank</Link>
           <span aria-hidden>/</span>
@@ -243,7 +251,7 @@ export default async function CourseQuestionBank({
           <section className="min-w-0">
             <QuestionBankFilters
               topics={topics}
-              papers={data.papers as any[]}
+              papers={paperOptions}
               filters={filters}
               filterOptions={data.filterOptions}
               resetHref={basePath}

@@ -1,0 +1,30 @@
+.coursePage :global(.dp-qb-practice-layout.is-open) {
+  display: block;
+}
+
+.coursePage :global(.dp-qb-practice-layout.is-open > section[aria-label='Question results']) {
+  display: none;
+}
+
+.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-pane) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 120 !important;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-content) {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  padding-bottom: 5rem;
+}
+
+.coursePage :global(.dp-qb-practice-layout.is-open .dp-qb-practice-toolbar) {
+  padding-inline: max(0.75rem, calc((100vw - 1100px) / 2));
+}
