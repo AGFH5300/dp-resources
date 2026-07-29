@@ -1,7 +1,9 @@
 const ATTRIBUTION_LINE = /revision\s+village.*created\s+with\s+chemix/i;
-const STYLE_ATTRIBUTE = /\{\s*style\s*=\s*(?:"[^"]*"|'[^']*')\s*\}/gi;
+const STYLE_ATTRIBUTE =
+  /\{\s*style\s*=\s*\\?(?:"[^}\n]*"|'[^}\n]*')\s*\}/gi;
+const TABLE_OPTIONS_DIRECTIVE = /:::tableoptions\s*\{[^}\n]*\}/gi;
 const IMPORTED_TABLE_ATTRIBUTE =
-  /\b(?:col|row)\d+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
+  /\b(?:col|row)\d+\s*=\s*(?:\\?["'][^"'\n]*\\?["']|[^\s,;}\]]+)/gi;
 const MAXIMUM_MARK_LINE =
   /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*\\*\s*$/i;
 const STANDALONE_MATH_DELIMITER = /^\s*\$\s*$/;
@@ -27,6 +29,70 @@ function readableExponents(value: string) {
   return value.replace(/\^\(([−–-]?\d+)\)/g, (_match, exponent: string) =>
     [...exponent].map((character) => SUPERSCRIPT[character] || character).join(''),
   );
+}
+
+function replaceBracketDirective(
+  value: string,
+  name: string,
+  replacement: (content: string) => string,
+) {
+  const token = `:${name.toLocaleLowerCase()}[`;
+  const lower = value.toLocaleLowerCase();
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    const start = lower.indexOf(token, cursor);
+    if (start < 0) {
+      output += value.slice(cursor);
+      break;
+    }
+
+    output += value.slice(cursor, start);
+    const opening = start + token.length - 1;
+    let depth = 0;
+    let closing = -1;
+
+    for (let index = opening; index < value.length; index += 1) {
+      if (value[index] === '[') depth += 1;
+      else if (value[index] === ']') {
+        depth -= 1;
+        if (depth === 0) {
+          closing = index;
+          break;
+        }
+      }
+    }
+
+    if (closing < 0) {
+      // Preserve the readable content even when the imported wrapper is broken.
+      output += value.slice(opening + 1);
+      break;
+    }
+
+    output += replacement(value.slice(opening + 1, closing));
+    cursor = closing + 1;
+  }
+
+  return output;
+}
+
+function importedSubscript(content: string) {
+  const clean = content.trim().replace(/[{}]/g, '');
+  if (!clean) return '';
+  return /[A-Za-z]/.test(clean)
+    ? `$_{\\mathrm{${clean}}}$`
+    : `$_{${clean}}$`;
+}
+
+function normalizeImportedContainers(value: string) {
+  return value
+    .replace(/:::centre\b/gi, ':::center')
+    .replace(/:::indent\b/gi, '::indent')
+    // These are visual source-format wrappers. Their contents are retained,
+    // while the unsupported wrapper tokens are removed before rendering.
+    .replace(/:::answer\b/gi, '')
+    .replace(/:::box\b/gi, '');
 }
 
 function normalizeImportedNotation(value: string) {
@@ -153,12 +219,19 @@ export function normalizeQuestionSource(value: string) {
         !ATTRIBUTION_LINE.test(line) && !MAXIMUM_MARK_LINE.test(line),
     );
 
+  let imported = normalizeStandaloneMath(normalizeSplitListMath(lines)).join('\n');
+  imported = replaceBracketDirective(imported, 'box', (content) => `\n${content}\n`);
+  imported = replaceBracketDirective(imported, 'sub', importedSubscript);
+
   return readableExponents(
     normalizeImportedNotation(
-      normalizeStandaloneMath(normalizeSplitListMath(lines))
-        .join('\n')
+      normalizeImportedContainers(imported)
+        .replace(TABLE_OPTIONS_DIRECTIVE, '')
         .replace(STYLE_ATTRIBUTE, '')
         .replace(IMPORTED_TABLE_ATTRIBUTE, ' ')
+        .replace(/<(https?:\/\/[^>\s]+)>/gi, '$1')
+        .replace(/<(mailto:[^>\s]+)>/gi, '$1')
+        .replace(/^\s*[-*]\s*$/gm, '')
         .replace(/^\s*]\s*$/gm, '')
         .replace(
           /\\hspace\s*(?:\{\s*[^}]*\}|[\d.]+(?:em|ex|px|pt|cm|mm|in)?)/gi,
