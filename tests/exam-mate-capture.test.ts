@@ -17,21 +17,32 @@ describe('Exam-Mate capture safety helpers', () => {
       redactHeaders({ Cookie: 'session=secret', Authorization: 'Bearer secret', Accept: 'text/html' }),
     ).toEqual({ Cookie: '[REDACTED]', Authorization: '[REDACTED]', Accept: 'text/html' });
 
-    expect(sanitizeUrl('https://www.exam-mate.com/path?token=secret&page=2#private')).toBe(
-      'https://www.exam-mate.com/path?token=%5BREDACTED%5D&page=2',
+    expect(sanitizeUrl('https://www.exam-mate.com/path?accessToken=secret&page=2#private')).toBe(
+      'https://www.exam-mate.com/path?accessToken=%5BREDACTED%5D&page=2',
     );
   });
 
-  it('redacts sensitive JSON response fields while preserving question content', () => {
+  it('redacts sensitive JSON response fields and personal data while preserving questions', () => {
     const body = sanitizeTextBody(
-      JSON.stringify({ token: 'secret', question: 'Calculate x.', nested: { session_id: 'hidden' } }),
+      JSON.stringify({
+        accessToken: 'secret',
+        email: 'student@example.com',
+        question: 'Contact student@example.com, then calculate x.',
+        nested: { session_id: 'hidden' },
+      }),
       'application/json',
     );
     expect(JSON.parse(body)).toEqual({
-      token: '[REDACTED]',
-      question: 'Calculate x.',
+      accessToken: '[REDACTED]',
+      email: '[REDACTED]',
+      question: 'Contact [REDACTED_EMAIL], then calculate x.',
       nested: { session_id: '[REDACTED]' },
     });
+  });
+
+  it('redacts JWT-like values from captured text', () => {
+    const jwt = `eyJ${'a'.repeat(24)}.${'b'.repeat(24)}.${'c'.repeat(16)}`;
+    expect(sanitizeTextBody(`value=${jwt}`, 'text/plain')).toBe('value=[REDACTED_JWT]');
   });
 
   it('recognises Exam-Mate IB references and generated QIDs', () => {
