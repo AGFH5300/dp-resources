@@ -5,6 +5,19 @@ import path from 'node:path';
 
 const SENSITIVE_HEADER = /^(?:authorization|cookie|set-cookie|proxy-authorization|x-api-key|x-csrf-token|x-xsrf-token)$/i;
 const SENSITIVE_KEY = /(?:^|[_-])(?:access|auth|authorization|bearer|cookie|csrf|email|jwt|key|password|refresh|secret|session|token|xsrf)(?:$|[_-])/i;
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+
+function isSensitiveKey(value) {
+  const normalized = String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  return SENSITIVE_KEY.test(normalized);
+}
+
+function redactSensitiveString(value) {
+  return String(value || '')
+    .replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
+    .replace(/\beyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{10,}\b/g, '[REDACTED_JWT]');
+}
+
 const QUESTION_REFERENCE_PATTERNS = [
   /\b[A-Z][A-Z0-9-]{2,}\/\d+(?:_[A-Z]{2})?_(?:Summer|Winter|Spring)_\d{4}_Q\d+\b/gi,
   /\b[A-Z][A-Z0-9-]{2,}\/\d+(?:_[A-Z]{2})?_[A-Za-z]+_\d{4}_Q\d+\b/gi,
@@ -62,7 +75,7 @@ export function sanitizeUrl(value) {
     parsed.username = '';
     parsed.password = '';
     for (const key of [...parsed.searchParams.keys()]) {
-      if (SENSITIVE_KEY.test(key)) parsed.searchParams.set(key, '[REDACTED]');
+      if (isSensitiveKey(key)) parsed.searchParams.set(key, '[REDACTED]');
     }
     parsed.hash = '';
     return parsed.toString();
@@ -76,11 +89,12 @@ export function sanitizeUrl(value) {
 
 function redactSensitiveObject(value) {
   if (Array.isArray(value)) return value.map(redactSensitiveObject);
+  if (typeof value === 'string') return redactSensitiveString(value);
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(
     Object.entries(value).map(([key, child]) => [
       key,
-      SENSITIVE_KEY.test(key) ? '[REDACTED]' : redactSensitiveObject(child),
+      isSensitiveKey(key) ? '[REDACTED]' : redactSensitiveObject(child),
     ]),
   );
 }
@@ -94,12 +108,14 @@ export function sanitizeTextBody(body, contentType = '') {
       // Fall through to conservative text redaction.
     }
   }
-  return text
-    .replace(
-      /((?:access|auth|authorization|csrf|key|password|secret|session|token|xsrf)[_-]?[a-z0-9]*["']?\s*[:=]\s*["'])[^"']+(["'])/gi,
-      '$1[REDACTED]$2',
-    )
-    .replace(/(<input\b[^>]*\b(?:name|id)=["'][^"']*(?:csrf|token|password|email|session)[^"']*["'][^>]*\bvalue=["'])[^"']*(["'])/gi, '$1[REDACTED]$2');
+  return redactSensitiveString(
+    text
+      .replace(
+        /((?:access|auth|authorization|csrf|key|password|secret|session|token|xsrf)[_-]?[a-z0-9]*["']?\s*[:=]\s*["'])[^"']+(["'])/gi,
+        '$1[REDACTED]$2',
+      )
+      .replace(/(<input\b[^>]*\b(?:name|id)=["'][^"']*(?:csrf|token|password|email|session)[^"']*["'][^>]*\bvalue=["'])[^"']*(["'])/gi, '$1[REDACTED]$2'),
+  );
 }
 
 export function extractQuestionReferences(text) {
