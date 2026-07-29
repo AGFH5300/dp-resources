@@ -103,12 +103,14 @@ export async function GET(
     if (!stored.ok || !stored.body)
       return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
 
+    let expectedContentRange: string | null = null;
     if (range) {
-      const upstreamContentRange = stored.headers.get('content-range');
+      expectedContentRange = `bytes ${range.start}-${range.end}/${byteSize}`;
+      const upstreamContentRange = stored.headers.get('content-range')?.trim();
       const upstreamLength = Number(stored.headers.get('content-length'));
       if (
         stored.status !== 206 ||
-        !upstreamContentRange ||
+        upstreamContentRange?.toLowerCase() !== expectedContentRange.toLowerCase() ||
         (Number.isFinite(upstreamLength) && upstreamLength !== responseLength)
       ) {
         await stored.body.cancel().catch(() => undefined);
@@ -120,12 +122,7 @@ export async function GET(
     }
 
     const headers = new Headers(assetHeaders(asset.content_type, responseLength));
-    if (range)
-      headers.set(
-        'Content-Range',
-        stored.headers.get('content-range') ||
-          `bytes ${range.start}-${range.end}/${byteSize}`,
-      );
+    if (expectedContentRange) headers.set('Content-Range', expectedContentRange);
     for (const name of ['etag', 'last-modified']) {
       const value = stored.headers.get(name);
       if (value) headers.set(name, value);
