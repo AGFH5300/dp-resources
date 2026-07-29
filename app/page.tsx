@@ -33,6 +33,9 @@ async function hasSignedInUser() {
   }
 }
 
+const questionBankButtonClass =
+  'shrink-0 whitespace-nowrap rounded-full border border-[#f2b84b] bg-[#f2b84b] font-semibold text-[#172033] shadow-sm hover:border-[#ffd27a] hover:bg-[#ffd27a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2b84b]/50';
+
 export default async function Home() {
   const isSignedIn = await hasSignedInUser();
   const accountHref = isSignedIn ? '/library' : '/auth/login';
@@ -44,9 +47,9 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
-        <header className="flex items-center justify-between gap-3 border-b border-[#d9ccba] pb-5 sm:gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d9ccba] pb-5 sm:flex-nowrap sm:gap-4">
           <BrandWordmark href="/" className="text-base sm:text-xl" />
-          <nav className="flex shrink-0 items-center gap-2 text-sm font-medium sm:gap-3">
+          <nav className="flex w-full items-center justify-end gap-2 text-sm font-medium sm:w-auto sm:shrink-0 sm:gap-3">
             <ThemeToggle />
             <Link
               href="/privacy"
@@ -63,7 +66,7 @@ export default async function Home() {
             <Link
               href={questionBankHref}
               aria-label="Open question bank"
-              className="shrink-0 whitespace-nowrap rounded-full border border-[#b5832d] bg-[#fffaf1] px-3 py-2 text-[#7a561d] hover:bg-white sm:px-4"
+              className={`${questionBankButtonClass} px-3 py-2 sm:px-4`}
             >
               <span className="sm:hidden">Questions</span>
               <span className="hidden sm:inline">Open question bank</span>
@@ -101,7 +104,7 @@ export default async function Home() {
                   </Link>
                   <Link
                     href="/question-bank"
-                    className="rounded-full border border-[#b5832d] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#7a561d] shadow-sm hover:bg-white"
+                    className={`${questionBankButtonClass} px-6 py-3 text-sm`}
                   >
                     Open question bank
                   </Link>
@@ -116,7 +119,7 @@ export default async function Home() {
                   </Link>
                   <Link
                     href="/auth/login?next=%2Fquestion-bank"
-                    className="rounded-full border border-[#b5832d] bg-[#fffaf1] px-6 py-3 text-sm font-semibold text-[#7a561d] shadow-sm hover:bg-white"
+                    className={`${questionBankButtonClass} px-6 py-3 text-sm`}
                   >
                     Open question bank
                   </Link>
