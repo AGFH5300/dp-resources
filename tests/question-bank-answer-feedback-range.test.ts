@@ -35,6 +35,12 @@ describe('Question Bank answer feedback and media seeking', () => {
     );
   });
 
+  it('prefers a verified optimized object while retaining canonical fallback', () => {
+    expect(assetRoute).toContain(".from('dp_qb_asset_optimizations')");
+    expect(assetRoute).toContain(".eq('verification_status', 'verified')");
+    expect(assetRoute).toContain('const storedAsset: StoredAsset = optimized || asset;');
+  });
+
   it('supports authenticated byte-range responses for seekable audio', () => {
     expect(assetRoute).toContain("request.headers.get('range')");
     expect(assetRoute).toContain("'Accept-Ranges': 'bytes'");
@@ -48,7 +54,7 @@ describe('Question Bank answer feedback and media seeking', () => {
     expect(assetRoute).toContain('data.size !== byteSize');
     expect(assetRoute).toContain("{ error: 'Asset range unavailable.' }");
     expect(assetRoute).toContain(
-      'data.slice(range.start, range.end + 1, asset.content_type)',
+      'data.slice(range.start, range.end + 1, storedAsset.content_type)',
     );
     expect(r2Client).toContain('range?: string');
     expect(r2Client).toContain('range: input.range');

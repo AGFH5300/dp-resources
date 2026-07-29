@@ -11,6 +11,13 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ByteRange = { start: number; end: number };
+type StoredAsset = {
+  content_type: string;
+  byte_size: number | string;
+  storage_provider: string;
+  storage_bucket: string;
+  storage_key: string;
+};
 
 function parseByteRange(value: string | null, byteSize: number): ByteRange | null | false {
   if (!value) return null;
@@ -74,34 +81,47 @@ export async function GET(
     );
 
   const admin = createSupabaseAdminClient();
-  const { data: asset, error } = await admin
-    .from('dp_qb_assets')
-    .select(
-      'id,content_type,byte_size,storage_provider,storage_bucket,storage_key,verification_status',
-    )
-    .eq('id', assetId)
-    .eq('verification_status', 'verified')
-    .maybeSingle();
-  if (error || !asset)
+  const [assetResult, optimizationResult] = await Promise.all([
+    admin
+      .from('dp_qb_assets')
+      .select(
+        'id,content_type,byte_size,storage_provider,storage_bucket,storage_key,verification_status',
+      )
+      .eq('id', assetId)
+      .eq('verification_status', 'verified')
+      .maybeSingle(),
+    admin
+      .from('dp_qb_asset_optimizations')
+      .select(
+        'asset_id,content_type,byte_size,storage_provider,storage_bucket,storage_key,verification_status',
+      )
+      .eq('asset_id', assetId)
+      .eq('verification_status', 'verified')
+      .maybeSingle(),
+  ]);
+  const asset = assetResult.data;
+  if (assetResult.error || !asset)
     return Response.json({ error: 'Asset not found.' }, { status: 404 });
 
-  const byteSize = Number(asset.byte_size);
+  const optimized = optimizationResult.error ? null : optimizationResult.data;
+  const storedAsset: StoredAsset = optimized || asset;
+  const byteSize = Number(storedAsset.byte_size);
   if (!Number.isSafeInteger(byteSize) || byteSize < 0)
     return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
   const range = parseByteRange(request.headers.get('range'), byteSize);
-  if (range === false) return rangeNotSatisfiable(asset.content_type, byteSize);
+  if (range === false) return rangeNotSatisfiable(storedAsset.content_type, byteSize);
   const normalizedRange = range ? `bytes=${range.start}-${range.end}` : undefined;
   const responseLength = range ? range.end - range.start + 1 : byteSize;
 
-  if (asset.storage_provider === 'r2') {
+  if (storedAsset.storage_provider === 'r2') {
     const stored = await getPrivateR2Object(
-      asset.storage_bucket,
-      asset.storage_key,
+      storedAsset.storage_bucket,
+      storedAsset.storage_key,
       request.signal,
       normalizedRange,
     );
     if (stored.status === 416)
-      return rangeNotSatisfiable(asset.content_type, byteSize);
+      return rangeNotSatisfiable(storedAsset.content_type, byteSize);
     if (!stored.ok || !stored.body)
       return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
 
@@ -126,7 +146,7 @@ export async function GET(
       }
     }
 
-    const headers = new Headers(assetHeaders(asset.content_type, responseLength));
+    const headers = new Headers(assetHeaders(storedAsset.content_type, responseLength));
     if (expectedContentRange) headers.set('Content-Range', expectedContentRange);
     for (const name of ['etag', 'last-modified']) {
       const value = stored.headers.get(name);
@@ -135,27 +155,27 @@ export async function GET(
     return new Response(stored.body, { status: range ? 206 : 200, headers });
   }
 
-  if (asset.storage_provider === 'supabase') {
+  if (storedAsset.storage_provider === 'supabase') {
     const { data, error: storageError } = await admin.storage
-      .from(asset.storage_bucket)
-      .download(asset.storage_key);
+      .from(storedAsset.storage_bucket)
+      .download(storedAsset.storage_key);
     if (storageError || !data)
       return Response.json({ error: 'Asset unavailable.' }, { status: 404 });
     if (data.size !== byteSize)
       return Response.json({ error: 'Asset unavailable.' }, { status: 502 });
     if (range) {
-      const partial = data.slice(range.start, range.end + 1, asset.content_type);
+      const partial = data.slice(range.start, range.end + 1, storedAsset.content_type);
       return new Response(partial.stream(), {
         status: 206,
         headers: {
-          ...assetHeaders(asset.content_type, partial.size),
+          ...assetHeaders(storedAsset.content_type, partial.size),
           'Content-Range': `bytes ${range.start}-${range.end}/${byteSize}`,
         },
       });
     }
     return new Response(data.stream(), {
       status: 200,
-      headers: assetHeaders(asset.content_type, byteSize),
+      headers: assetHeaders(storedAsset.content_type, byteSize),
     });
   }
 
