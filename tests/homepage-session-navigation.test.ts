@@ -34,4 +34,11 @@ describe('homepage session-aware navigation', () => {
     expect(homepage).toContain('Practise and understand.');
     expect(homepage).toContain('Instant answer feedback');
   });
+
+  it('keeps the Question Bank action readable and the mobile header contained', () => {
+    expect(homepage).toContain("bg-[#f2b84b]");
+    expect(homepage).toContain("text-[#172033]");
+    expect(homepage).toContain('flex flex-wrap items-center');
+    expect(homepage).toContain('w-full items-center justify-end');
+  });
 });
