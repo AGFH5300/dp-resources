@@ -35,6 +35,12 @@ describe('Question Bank answer feedback and media seeking', () => {
     );
   });
 
+  it('prefers a verified optimized object while retaining canonical fallback', () => {
+    expect(assetRoute).toContain(".from('dp_qb_asset_optimizations')");
+    expect(assetRoute).toContain(".eq('verification_status', 'verified')");
+    expect(assetRoute).toContain('const storedAsset: StoredAsset = optimized || asset;');
+  });
+
   it('supports authenticated byte-range responses for seekable audio', () => {
     expect(assetRoute).toContain("request.headers.get('range')");
     expect(assetRoute).toContain("'Accept-Ranges': 'bytes'");
