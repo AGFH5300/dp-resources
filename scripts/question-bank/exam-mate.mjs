@@ -1,0 +1,1257 @@
+import crypto from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import {
+  access,
+  mkdtemp,
+  opendir,
+  readFile,
+  readdir,
+  rm,
+  stat,
+} from 'node:fs/promises';
+import path from 'node:path';
+import readline from 'node:readline';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+
+import { deterministicUuid } from './archive.mjs';
+
+export const EXAM_MATE_IMPORTER_VERSION = 'exam-mate-1.0.0';
+export const EXAM_MATE_AUDIT_ZIP_SHA256 =
+  '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f';
+export const EXAM_MATE_CHECKSUMS_SHA256 =
+  'ac4699532e92f6dd40ae79a89bc03b4b2556d2ab3030c766ba84bed70224d361';
+
+export const EXAM_MATE_EXPECTED = Object.freeze({
+  sourceQuestions: 14_199,
+  sourceOccurrences: 14_199,
+  assetManifestRows: 32_198,
+  uniquePhysicalAssets: 31_336,
+  metadataPages: 589,
+  discoveredJobs: 27,
+  completedJobs: 11,
+  emptyOrUnavailableJobs: 16,
+  importableQuestions: 14_128,
+  quarantinedQuestions: 71,
+  importableAssetUrls: 32_093,
+  importablePhysicalAssets: 31_231,
+});
+
+const SUBJECTS = Object.freeze({
+  Biology: { id: 'biology', slug: 'biology', name: 'Biology', order: 0 },
+  Mathematics: { id: 'math', slug: 'mathematics', name: 'Mathematics', order: 1, legacyTrack: 'mathematics' },
+  'Mathematical Studies': { id: 'math', slug: 'mathematics', name: 'Mathematics', order: 1, legacyTrack: 'mathematical-studies' },
+  'Further Mathematics': { id: 'math', slug: 'mathematics', name: 'Mathematics', order: 1, legacyTrack: 'further-mathematics' },
+  Physics: { id: 'physics', slug: 'physics', name: 'Physics', order: 2 },
+  Chemistry: { id: 'chemistry', slug: 'chemistry', name: 'Chemistry', order: 3 },
+  Psychology: { id: 'psychology', slug: 'psychology', name: 'Psychology', order: 5 },
+  Economics: { id: 'economics', slug: 'economics', name: 'Economics', order: 6 },
+  'Global Politics': { id: 'global-politics', slug: 'global-politics', name: 'Global Politics', order: 13 },
+  Philosophy: { id: 'philosophy', slug: 'philosophy', name: 'Philosophy', order: 14 },
+  'World Religions': { id: 'world-religions', slug: 'world-religions', name: 'World Religions', order: 15 },
+});
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+async function hashFile(filePath) {
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+async function exists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function* readNdjson(filePath) {
+  const input = createReadStream(filePath, { encoding: 'utf8' });
+  const lines = readline.createInterface({ input, crlfDelay: Infinity });
+  let lineNumber = 0;
+  for await (const line of lines) {
+    lineNumber += 1;
+    if (!line.trim()) continue;
+    try {
+      yield JSON.parse(line);
+    } catch (error) {
+      throw new Error(
+        `Invalid NDJSON at ${path.basename(filePath)}:${lineNumber}: ${error.message}`,
+      );
+    }
+  }
+}
+
+async function readAllNdjson(filePath) {
+  const rows = [];
+  for await (const row of readNdjson(filePath)) rows.push(row);
+  return rows;
+}
+
+async function archiveRootFromExtracted(directory) {
+  if (await exists(path.join(directory, 'summary.json'))) return directory;
+  const entries = await readdir(directory, { withFileTypes: true });
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const nested = path.join(directory, entry.name);
+    if (await exists(path.join(nested, 'summary.json'))) candidates.push(nested);
+  }
+  if (candidates.length !== 1) {
+    throw new Error('Unable to identify the Exam-Mate archive root.');
+  }
+  return candidates[0];
+}
+
+export async function resolveExamMateArchive(inputPath, options = {}) {
+  const resolved = path.resolve(inputPath);
+  const inputStat = await stat(resolved);
+  if (inputStat.isDirectory()) {
+    return {
+      root: await archiveRootFromExtracted(resolved),
+      assetRoot: options.assetRoot ? path.resolve(options.assetRoot) : resolved,
+      sourcePath: resolved,
+      sourceSha256: null,
+      cleanup: async () => {},
+    };
+  }
+  if (!resolved.toLowerCase().endsWith('.zip')) {
+    throw new Error('Exam-Mate input must be the reviewed ZIP or extracted directory.');
+  }
+  const digest = await hashFile(resolved);
+  if (digest !== EXAM_MATE_AUDIT_ZIP_SHA256) {
+    throw new Error(
+      `Exam-Mate audit ZIP SHA-256 mismatch: expected ${EXAM_MATE_AUDIT_ZIP_SHA256}, received ${digest}.`,
+    );
+  }
+  const destination = await mkdtemp(path.join(tmpdir(), 'dp-exam-mate-qb-'));
+  const result = spawnSync('unzip', ['-q', resolved, '-d', destination], {
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`Unable to extract Exam-Mate archive: ${result.stderr}`);
+  }
+  return {
+    root: await archiveRootFromExtracted(destination),
+    assetRoot: options.assetRoot ? path.resolve(options.assetRoot) : destination,
+    sourcePath: resolved,
+    sourceSha256: digest,
+    cleanup: () => rm(destination, { recursive: true, force: true }),
+  };
+}
+
+async function verifyChecksums(root) {
+  const checksumPath = path.join(root, 'checksums.sha256');
+  const checksumDigest = await hashFile(checksumPath);
+  if (checksumDigest !== EXAM_MATE_CHECKSUMS_SHA256) {
+    throw new Error(
+      `Exam-Mate checksums file mismatch: expected ${EXAM_MATE_CHECKSUMS_SHA256}, received ${checksumDigest}.`,
+    );
+  }
+  const content = await readFile(checksumPath, 'utf8');
+  const rows = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^([0-9a-f]{64})\s{2}(.+)$/i);
+      if (!match) throw new Error(`Invalid checksum line: ${line}`);
+      return { sha256: match[1].toLowerCase(), relative: match[2] };
+    });
+
+  let verified = 0;
+  for (const row of rows) {
+    if (row.relative.startsWith('assets/sha256/')) continue;
+    const filePath = path.join(root, ...row.relative.split('/'));
+    if (!(await exists(filePath))) {
+      throw new Error(`Checksummed metadata file is missing: ${row.relative}`);
+    }
+    const digest = await hashFile(filePath);
+    if (digest !== row.sha256) {
+      throw new Error(`Checksum mismatch for ${row.relative}.`);
+    }
+    verified += 1;
+  }
+  return { rows, verified };
+}
+
+function cleanText(value) {
+  return String(value ?? '')
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function slugify(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'uncategorized';
+}
+
+function titleCase(value) {
+  return String(value || '')
+    .split('-')
+    .filter(Boolean)
+    .map((part) => {
+      const lower = part.toLowerCase();
+      if (['and', 'of', 'the', 'to', 'in'].includes(lower)) return lower;
+      if (['hl', 'sl', 'ai', 'aa'].includes(lower)) return lower.toUpperCase();
+      return `${lower.charAt(0).toUpperCase()}${lower.slice(1)}`;
+    })
+    .join(' ');
+}
+
+function finding(severity, code, details = {}, source = {}) {
+  return {
+    id: deterministicUuid(
+      `exam-mate-finding:${severity}:${code}:${source.sourceQuestionId || ''}:${JSON.stringify(details)}`,
+    ),
+    severity,
+    code,
+    source_dataset: source.subject || null,
+    source_question_id: null,
+    source_reference: source.reference || null,
+    details,
+  };
+}
+
+function referenceParts(question) {
+  const provided = question.referenceParts;
+  if (
+    provided &&
+    provided.sourcePaperCode &&
+    provided.level &&
+    provided.season &&
+    provided.year &&
+    provided.questionNumber != null
+  ) {
+    return {
+      raw: question.reference,
+      sourceCourseCode: provided.sourceCourseCode || null,
+      sourcePaperCode: String(provided.sourcePaperCode),
+      level: String(provided.level).toUpperCase(),
+      season: String(provided.season),
+      year: Number(provided.year),
+      questionNumber: String(provided.questionNumber),
+    };
+  }
+  const match = String(question.reference || '').match(
+    /^([A-Z0-9-]+)\/(.+?)_(HL|SL)_(Summer|Winter)_(\d{4})_Q(.+)$/i,
+  );
+  if (!match) return null;
+  return {
+    raw: question.reference,
+    sourceCourseCode: match[1],
+    sourcePaperCode: match[2],
+    level: match[3].toUpperCase(),
+    season: match[4],
+    year: Number(match[5]),
+    questionNumber: match[6],
+  };
+}
+
+function paperParts(parts) {
+  const raw = String(parts?.sourcePaperCode || '');
+  const digits = raw.match(/(\d)(\d)$/);
+  if (!digits) return null;
+  return {
+    paper: digits[1],
+    timezone: digits[2],
+  };
+}
+
+export function canonicalExamKey(subject, referenceOrQuestion) {
+  if (referenceOrQuestion && typeof referenceOrQuestion === 'object') {
+    const parts = referenceParts(referenceOrQuestion);
+    const paper = paperParts(parts);
+    if (!parts || !paper) return null;
+    const session = parts.season === 'Winter' ? 'N' : parts.season === 'Summer' ? 'M' : null;
+    if (!session) return null;
+    return [
+      slugify(subject),
+      String(parts.year).slice(-2),
+      session,
+      paper.paper,
+      parts.level,
+      `TZ${paper.timezone}`,
+      parts.questionNumber,
+    ].join('|');
+  }
+
+  const value = cleanText(referenceOrQuestion);
+  const pestle = value.match(/^(\d{2})([MN])\.(\d+)\.(HL|SL)(?:\.TZ(\d+))?\.(.+)$/i);
+  if (pestle) {
+    return [
+      slugify(subject),
+      pestle[1],
+      pestle[2].toUpperCase(),
+      pestle[3],
+      pestle[4].toUpperCase(),
+      `TZ${pestle[5] || '0'}`,
+      pestle[6],
+    ].join('|');
+  }
+  return null;
+}
+
+function sourceCourse(subjectDescriptor, level) {
+  const levelSlug = level.toLowerCase();
+  if (subjectDescriptor.legacyTrack) {
+    return `${subjectDescriptor.legacyTrack}-${levelSlug}`;
+  }
+  return levelSlug;
+}
+
+export function courseDescriptor(subjectName, level) {
+  const subject = SUBJECTS[subjectName];
+  if (!subject) throw new Error(`Unsupported Exam-Mate subject: ${subjectName}`);
+  const normalizedLevel = String(level || '').toUpperCase();
+  if (!['SL', 'HL'].includes(normalizedLevel)) {
+    throw new Error(`Unsupported Exam-Mate level ${level} for ${subjectName}.`);
+  }
+  const courseSlug = sourceCourse(subject, normalizedLevel);
+  const courseName = subject.legacyTrack
+    ? `${titleCase(subject.legacyTrack)} ${normalizedLevel}`
+    : `${subject.name} ${normalizedLevel}`;
+  return {
+    subject: {
+      id: subject.id,
+      slug: subject.slug,
+      name: subject.name,
+      sort_order: subject.order,
+    },
+    course: {
+      id: deterministicUuid(`course:${subject.id}:${courseSlug}`),
+      subject_id: subject.id,
+      source_key: `${subject.id}:${courseSlug}`,
+      slug: courseSlug,
+      name: courseName,
+      level: normalizedLevel,
+      syllabus_label: 'Legacy syllabus',
+      sort_order: normalizedLevel === 'SL' ? 0 : 1,
+    },
+  };
+}
+
+function sourceFileId(question, role, ordinal, url) {
+  return deterministicUuid(
+    `exam-mate:source-file:${question.sourceQuestionId}:${role}:${ordinal}:${url}`,
+  );
+}
+
+function questionMarkdown(question) {
+  const blocks = [];
+  if (cleanText(question.questionText)) blocks.push(cleanText(question.questionText));
+  for (const [index, url] of (question.questionImages || []).entries()) {
+    const id = sourceFileId(question, 'question', index, url);
+    blocks.push(`![Question image ${index + 1}](question:${id})`);
+  }
+  return blocks.join('\n\n');
+}
+
+function answerMarkdown(question) {
+  const blocks = [];
+  if (cleanText(question.answerText)) blocks.push(cleanText(question.answerText));
+  for (const [index, url] of (question.answerImages || []).entries()) {
+    const id = sourceFileId(question, 'markscheme', index, url);
+    blocks.push(`![Markscheme image ${index + 1}](markscheme:${id})`);
+  }
+  return blocks.join('\n\n');
+}
+
+function strictQuestionSignature(question) {
+  return sha256(
+    JSON.stringify({
+      reference: cleanText(question.reference),
+      content: cleanText(question.content),
+      markScheme: cleanText(question.mark_scheme),
+      maximumMark: Number(question.maximum_mark || 0),
+    }),
+  );
+}
+
+function sourceQuestionSignature(question) {
+  return strictQuestionSignature({
+    reference: question.reference,
+    content: questionMarkdown(question),
+    mark_scheme: answerMarkdown(question),
+    maximum_mark: 0,
+  });
+}
+
+function topicLabel(question) {
+  return cleanText(question.topicsRaw) || 'Uncategorized';
+}
+
+function paperDescriptor(question) {
+  const parts = referenceParts(question);
+  const paper = paperParts(parts);
+  if (!parts || !paper) return null;
+  const session = `${String(parts.year).slice(-2)}${parts.season === 'Winter' ? 'N' : 'M'}`;
+  const reference = `${session} · Paper ${paper.paper} · TZ${paper.timezone}`;
+  return {
+    id: deterministicUuid(`paper:${reference}:null`),
+    reference,
+    calculator_allowed: null,
+    formula_booklet_source_url: null,
+    formula_booklet_filename: null,
+    formula_booklet_storage_provider: null,
+    formula_booklet_storage_bucket: null,
+    formula_booklet_storage_key: null,
+    source_metadata: {
+      provider: 'Exam-Mate',
+      year: parts.year,
+      season: parts.season,
+      paper: paper.paper,
+      timezone: paper.timezone,
+      sourcePaperCode: parts.sourcePaperCode,
+    },
+  };
+}
+
+function mapBy(rows, key) {
+  return new Map(rows.map((row) => [key(row), row]));
+}
+
+function groupBy(rows, key) {
+  const output = new Map();
+  for (const row of rows) {
+    const value = key(row);
+    if (!output.has(value)) output.set(value, []);
+    output.get(value).push(row);
+  }
+  return output;
+}
+
+async function fetchAll(client, table, columns, orderColumn = 'id') {
+  const output = [];
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client
+      .from(table)
+      .select(columns)
+      .order(orderColumn, { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(`${table} read failed: ${error.message}`);
+    output.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return output;
+}
+
+function localAssetPath(assetRoot, manifestRow) {
+  if (!manifestRow?.path) return null;
+  return path.join(assetRoot, ...String(manifestRow.path).split('/'));
+}
+
+function assetUrls(question) {
+  return [
+    ...(question.questionImages || []),
+    ...(question.answerImages || []),
+  ].filter(Boolean);
+}
+
+export async function normalizeExamMateArchive(root, options = {}) {
+  const required = [
+    'summary.json',
+    'progress.json',
+    'checksums.sha256',
+    'index/questions.ndjson',
+    'index/question-occurrences.ndjson',
+    'index/asset-manifest.ndjson',
+    'source/discovered-jobs.json',
+  ];
+  for (const relative of required) {
+    if (!(await exists(path.join(root, ...relative.split('/'))))) {
+      throw new Error(`Exam-Mate capture is missing ${relative}.`);
+    }
+  }
+
+  const checksumResult = await verifyChecksums(root);
+  const [summary, progress, jobs, questionsIndex, occurrences, assetManifest] =
+    await Promise.all([
+      readFile(path.join(root, 'summary.json'), 'utf8').then(JSON.parse),
+      readFile(path.join(root, 'progress.json'), 'utf8').then(JSON.parse),
+      readFile(path.join(root, 'source', 'discovered-jobs.json'), 'utf8').then(JSON.parse),
+      readAllNdjson(path.join(root, 'index', 'questions.ndjson')),
+      readAllNdjson(path.join(root, 'index', 'question-occurrences.ndjson')),
+      readAllNdjson(path.join(root, 'index', 'asset-manifest.ndjson')),
+    ]);
+
+  const findings = [];
+  const sourceQuestions = [];
+  const sourceQuestionFiles = await readdir(path.join(root, 'source', 'questions'));
+  for (const filename of sourceQuestionFiles.sort()) {
+    if (!filename.endsWith('.json')) continue;
+    sourceQuestions.push(
+      JSON.parse(await readFile(path.join(root, 'source', 'questions', filename), 'utf8')),
+    );
+  }
+
+  const verifiedAssetByUrl = new Map(
+    assetManifest
+      .filter((row) => row.status === 'verified' && row.url && row.sha256)
+      .map((row) => [row.url, row]),
+  );
+  const quarantinedQuestions = [];
+  const importableQuestions = [];
+  const usedAssetUrls = new Set();
+
+  for (const question of sourceQuestions) {
+    const reasons = [];
+    if (
+      !cleanText(question.questionText) &&
+      !(question.questionImages || []).length
+    ) {
+      reasons.push('missing_question_payload');
+    }
+    if (!cleanText(question.answerText) && !(question.answerImages || []).length) {
+      reasons.push('missing_answer_payload');
+    }
+    const parts = referenceParts(question);
+    if (!parts || !paperParts(parts) || !SUBJECTS[question.subject]) {
+      reasons.push('unparseable_reference');
+    }
+    const missingAssetUrls = assetUrls(question).filter(
+      (url) => !verifiedAssetByUrl.has(url),
+    );
+    if (missingAssetUrls.length) reasons.push('missing_verified_asset');
+
+    if (reasons.length) {
+      const row = {
+        ...question,
+        quarantineReasons: reasons,
+        missingAssetUrls,
+      };
+      quarantinedQuestions.push(row);
+      findings.push(
+        finding('warning', 'exam_mate_question_quarantined', {
+          reasons,
+          missingAssetUrls,
+        }, question),
+      );
+      continue;
+    }
+
+    for (const url of assetUrls(question)) usedAssetUrls.add(url);
+    importableQuestions.push(question);
+  }
+
+  const usedPhysicalHashes = new Set(
+    [...usedAssetUrls]
+      .map((url) => verifiedAssetByUrl.get(url)?.sha256)
+      .filter(Boolean),
+  );
+  const allPhysicalHashes = new Set(
+    assetManifest.map((row) => row.sha256).filter(Boolean),
+  );
+
+  const actualCounts = {
+    sourceQuestions: sourceQuestions.length,
+    sourceOccurrences: occurrences.length,
+    assetManifestRows: assetManifest.length,
+    uniquePhysicalAssets: allPhysicalHashes.size,
+    metadataPages: Number(summary.totalPagesCaptured || 0),
+    discoveredJobs: jobs.length,
+    completedJobs: Number(summary.completedJobs || 0),
+    emptyOrUnavailableJobs: Number(summary.emptyOrUnavailableJobs || 0),
+    importableQuestions: importableQuestions.length,
+    quarantinedQuestions: quarantinedQuestions.length,
+    importableAssetUrls: usedAssetUrls.size,
+    importablePhysicalAssets: usedPhysicalHashes.size,
+    verifiedMetadataFiles: checksumResult.verified,
+    checksumRows: checksumResult.rows.length,
+  };
+
+  for (const [key, expected] of Object.entries(EXAM_MATE_EXPECTED)) {
+    if (actualCounts[key] !== expected) {
+      findings.push(
+        finding('critical', 'exam_mate_count_mismatch', {
+          key,
+          expected,
+          actual: actualCounts[key],
+        }),
+      );
+    }
+  }
+
+  if (summary.format !== 'dp-resources-exam-mate-source-index-v1') {
+    findings.push(
+      finding('critical', 'exam_mate_format_mismatch', {
+        expected: 'dp-resources-exam-mate-source-index-v1',
+        actual: summary.format,
+      }),
+    );
+  }
+  if (summary.indexerVersion !== '1.2.2') {
+    findings.push(
+      finding('critical', 'exam_mate_indexer_version_mismatch', {
+        expected: '1.2.2',
+        actual: summary.indexerVersion,
+      }),
+    );
+  }
+
+  const assetRoot = options.assetRoot || root;
+  const assetManifestByHash = new Map(
+    assetManifest.map((row) => [String(row.sha256 || '').toLowerCase(), row]),
+  );
+  let localVerifiedAssets = 0;
+  let missingLocalAssets = 0;
+  for (const hash of usedPhysicalHashes) {
+    const row = assetManifestByHash.get(String(hash).toLowerCase());
+    const localPath = row ? localAssetPath(assetRoot, row) : null;
+    if (!localPath || !(await exists(localPath))) {
+      missingLocalAssets += 1;
+      continue;
+    }
+    if (options.verifyLocalAssets) {
+      const fileStat = await stat(localPath);
+      const digest = await hashFile(localPath);
+      if (digest !== hash || fileStat.size !== Number(row.bytes)) {
+        findings.push(
+          finding('critical', 'exam_mate_local_asset_verification_failed', {
+            hash,
+            expectedBytes: row.bytes,
+            actualBytes: fileStat.size,
+            actualHash: digest,
+          }),
+        );
+        continue;
+      }
+    }
+    localVerifiedAssets += 1;
+  }
+
+  if (options.requireLocalAssets && missingLocalAssets) {
+    findings.push(
+      finding('critical', 'exam_mate_local_assets_missing', {
+        expected: usedPhysicalHashes.size,
+        available: localVerifiedAssets,
+        missing: missingLocalAssets,
+        assetRoot,
+      }),
+    );
+  }
+
+  actualCounts.localVerifiedAssets = localVerifiedAssets;
+  actualCounts.missingLocalAssets = missingLocalAssets;
+
+  const critical = findings.filter((row) => row.severity === 'critical');
+  return {
+    importerVersion: EXAM_MATE_IMPORTER_VERSION,
+    archiveIdentifier: 'exam-mate-source-index-20260729-223333',
+    archiveSha256: EXAM_MATE_AUDIT_ZIP_SHA256,
+    processedAt: new Date().toISOString(),
+    expectedCounts: EXAM_MATE_EXPECTED,
+    actualCounts,
+    verificationStatus: critical.length ? 'failed' : 'passed',
+    findings,
+    source: {
+      root,
+      assetRoot,
+      summary,
+      progress,
+      jobs,
+      questionsIndex,
+      occurrences,
+      assetManifest,
+      verifiedAssetByUrl,
+      importableQuestions,
+      quarantinedQuestions,
+      usedAssetUrls,
+      usedPhysicalHashes,
+    },
+  };
+}
+
+function nextFreeOccurrence(existingTupleCounts, questionId, datasetId, sourceIndex) {
+  const key = `${questionId}\u0000${datasetId}\u0000${sourceIndex}`;
+  const next = existingTupleCounts.get(key) || 0;
+  existingTupleCounts.set(key, next + 1);
+  return next;
+}
+
+export async function resolveExamMateForProduction(normalized, client, options = {}) {
+  if (normalized.verificationStatus !== 'passed') {
+    throw new Error('Production resolution refused because source verification failed.');
+  }
+
+  const [
+    existingSubjects,
+    existingCourses,
+    existingDatasets,
+    existingTopics,
+    existingSubtopics,
+    existingQuestions,
+    existingVariants,
+    existingPapers,
+    existingAssets,
+    existingQuestionSources,
+    existingVariantSources,
+  ] = await Promise.all([
+    fetchAll(client, 'dp_qb_subjects', 'id,slug,name,sort_order'),
+    fetchAll(client, 'dp_qb_courses', 'id,subject_id,source_key,slug,name,level,syllabus_label,sort_order'),
+    fetchAll(client, 'dp_qb_datasets', 'id,course_id,source_filename,encoded_filename,chunk_id,topic_slug,expected_question_count,expected_subtopic_count,source_metadata'),
+    fetchAll(client, 'dp_qb_topics', 'id,dataset_id,course_id,slug,name,sort_order'),
+    fetchAll(client, 'dp_qb_subtopics', 'id,topic_id,course_id,slug,name,code,description,sort_order'),
+    fetchAll(client, 'dp_qb_questions', 'id,reference,content,mark_scheme,examiner_report,maximum_mark,source_status,content_hash,source_metadata'),
+    fetchAll(client, 'dp_qb_question_variants', 'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,difficulty_value,difficulty_label,section_raw,section_normalized,calculator_allowed,source_metadata'),
+    fetchAll(client, 'dp_qb_papers', 'id,reference,calculator_allowed,formula_booklet_source_url,formula_booklet_filename,formula_booklet_storage_provider,formula_booklet_storage_bucket,formula_booklet_storage_key,source_metadata'),
+    fetchAll(client, 'dp_qb_assets', 'id,content_hash,canonical_source_path,original_filename,file_extension,content_type,byte_size,storage_provider,storage_bucket,storage_key,upload_status,verification_status'),
+    fetchAll(client, 'dp_qb_question_sources', 'id,provider,source_question_id,question_id'),
+    fetchAll(client, 'dp_qb_variant_sources', 'id,provider,source_question_id,source_course,source_topic,variant_id'),
+  ]);
+
+  const findings = [...normalized.findings];
+  const rows = {
+    subjects: [],
+    courses: [],
+    datasets: [],
+    topics: [],
+    subtopics: [],
+    papers: [],
+    coursePapers: [],
+    questions: [],
+    questionSources: [],
+    variants: [],
+    variantSources: [],
+    placements: [],
+    variantPapers: [],
+    assets: [],
+    assetSources: [],
+    variantAssets: [],
+    searchDocuments: [],
+    assetUploadCandidates: [],
+  };
+
+  const subjectById = mapBy(existingSubjects, (row) => row.id);
+  const courseBySourceKey = mapBy(existingCourses, (row) => row.source_key);
+  const datasetByFilename = mapBy(existingDatasets, (row) => row.source_filename);
+  const topicByCourseSlug = mapBy(existingTopics, (row) => `${row.course_id}\u0000${row.slug}`);
+  const subtopicByTopicSlug = mapBy(existingSubtopics, (row) => `${row.topic_id}\u0000${row.slug}`);
+  const existingQuestionById = mapBy(existingQuestions, (row) => row.id);
+  const existingQuestionsByHash = groupBy(existingQuestions, (row) => row.content_hash);
+  const existingQuestionsByReference = groupBy(existingQuestions, (row) => cleanText(row.reference));
+  const existingVariantByQuestionCourseTopic = groupBy(
+    existingVariants,
+    (row) => `${row.question_id}\u0000${row.course_id}\u0000${row.topic_id}`,
+  );
+  const existingVariantTupleCounts = new Map();
+  for (const row of existingVariants) {
+    const key = `${row.question_id}\u0000${row.dataset_id}\u0000${row.source_index}`;
+    existingVariantTupleCounts.set(
+      key,
+      Math.max(existingVariantTupleCounts.get(key) || 0, Number(row.source_occurrence || 0) + 1),
+    );
+  }
+  const existingPaperByReference = groupBy(existingPapers, (row) => cleanText(row.reference));
+  const assetByHash = mapBy(existingAssets, (row) => row.content_hash);
+  const questionSourceByKey = mapBy(
+    existingQuestionSources,
+    (row) => `${row.provider}\u0000${row.source_question_id}`,
+  );
+  const variantSourceByKey = mapBy(
+    existingVariantSources,
+    (row) => `${row.provider}\u0000${row.source_question_id}\u0000${row.source_course}\u0000${row.source_topic}`,
+  );
+
+  const existingExamKeyMapsBySubject = new Map();
+  function examKeyMapForSubject(subject) {
+    if (existingExamKeyMapsBySubject.has(subject)) {
+      return existingExamKeyMapsBySubject.get(subject);
+    }
+    const result = new Map();
+    for (const question of existingQuestions) {
+      const key = canonicalExamKey(subject, question.reference);
+      if (!key) continue;
+      if (!result.has(key)) result.set(key, []);
+      result.get(key).push(question);
+    }
+    existingExamKeyMapsBySubject.set(subject, result);
+    return result;
+  }
+
+  function ensureSubject(descriptor) {
+    let subject = subjectById.get(descriptor.subject.id);
+    if (!subject) {
+      subject = descriptor.subject;
+      rows.subjects.push(subject);
+      subjectById.set(subject.id, subject);
+    }
+    return subject;
+  }
+
+  function ensureCourse(descriptor) {
+    ensureSubject(descriptor);
+    let course = courseBySourceKey.get(descriptor.course.source_key);
+    if (!course) {
+      course = descriptor.course;
+      rows.courses.push(course);
+      courseBySourceKey.set(course.source_key, course);
+    }
+    return course;
+  }
+
+  let nextTopicOrder = existingTopics.length;
+  function ensureTopic(course, sourceTopic) {
+    const slug = slugify(sourceTopic);
+    const key = `${course.id}\u0000${slug}`;
+    let topic = topicByCourseSlug.get(key);
+    if (topic) return topic;
+    const datasetFilename = `exam-mate/${course.source_key}/${slug}.json`;
+    let dataset = datasetByFilename.get(datasetFilename);
+    if (!dataset) {
+      dataset = {
+        id: deterministicUuid(`exam-mate:dataset:${course.id}:${slug}`),
+        course_id: course.id,
+        source_filename: datasetFilename,
+        encoded_filename: datasetFilename,
+        chunk_id: 0,
+        topic_slug: slug,
+        expected_question_count: 0,
+        expected_subtopic_count: 1,
+        source_metadata: {
+          provider: 'Exam-Mate',
+          sourceTopic,
+        },
+      };
+      rows.datasets.push(dataset);
+      datasetByFilename.set(datasetFilename, dataset);
+    }
+    topic = {
+      id: deterministicUuid(`exam-mate:topic:${course.id}:${slug}`),
+      dataset_id: dataset.id,
+      course_id: course.id,
+      slug,
+      name: sourceTopic === 'Uncategorized' ? 'Uncategorized' : sourceTopic,
+      sort_order: nextTopicOrder++,
+    };
+    rows.topics.push(topic);
+    topicByCourseSlug.set(key, topic);
+    return topic;
+  }
+
+  function ensureSubtopic(course, topic) {
+    const key = `${topic.id}\u0000${topic.slug}`;
+    let subtopic = subtopicByTopicSlug.get(key);
+    if (subtopic) return subtopic;
+    subtopic = {
+      id: deterministicUuid(`exam-mate:subtopic:${topic.id}:${topic.slug}`),
+      topic_id: topic.id,
+      course_id: course.id,
+      slug: topic.slug,
+      name: topic.name,
+      code: '',
+      description: '',
+      sort_order: 0,
+    };
+    rows.subtopics.push(subtopic);
+    subtopicByTopicSlug.set(key, subtopic);
+    return subtopic;
+  }
+
+  const canonicalQuestionBySourceId = new Map();
+  const sourceQuestionData = new Map();
+  for (const sourceQuestion of normalized.source.importableQuestions) {
+    const parts = referenceParts(sourceQuestion);
+    const descriptor = courseDescriptor(sourceQuestion.subject, parts.level);
+    const content = questionMarkdown(sourceQuestion);
+    const markScheme = answerMarkdown(sourceQuestion);
+    const candidate = {
+      id: deterministicUuid(`exam-mate:question:${sourceQuestion.sourceQuestionId}`),
+      reference: cleanText(sourceQuestion.reference),
+      content,
+      mark_scheme: markScheme,
+      examiner_report: '',
+      maximum_mark: 0,
+      source_status: 'exam_mate_import_ready',
+      content_hash: sourceQuestionSignature(sourceQuestion),
+      source_metadata: {
+        provider: 'Exam-Mate',
+        providerSubject: sourceQuestion.subject,
+        sourceQuestionId: String(sourceQuestion.sourceQuestionId),
+        referenceParts: parts,
+        sourceTopic: topicLabel(sourceQuestion),
+        mcqAnswerRaw: sourceQuestion.mcqAnswer || null,
+        sourceUrl: sourceQuestion.sourceUrl,
+      },
+    };
+
+    let canonical = null;
+    const exact = existingQuestionsByHash.get(candidate.content_hash) || [];
+    if (exact.length) {
+      canonical = [...exact].sort((a, b) => a.id.localeCompare(b.id))[0];
+      findings.push(
+        finding('info', 'exam_mate_question_reused_exact_content', {
+          sourceQuestionId: sourceQuestion.sourceQuestionId,
+          canonicalQuestionId: canonical.id,
+        }, sourceQuestion),
+      );
+    }
+
+    if (!canonical) {
+      const sameReference = existingQuestionsByReference.get(candidate.reference) || [];
+      if (sameReference.length === 1) canonical = sameReference[0];
+    }
+
+    if (!canonical) {
+      const examKey = canonicalExamKey(sourceQuestion.subject, sourceQuestion);
+      const matches = examKey
+        ? examKeyMapForSubject(sourceQuestion.subject).get(examKey) || []
+        : [];
+      if (matches.length) {
+        canonical = [...matches].sort((a, b) => {
+          const readyA = /_ready$/.test(a.source_status || '') ? 0 : 1;
+          const readyB = /_ready$/.test(b.source_status || '') ? 0 : 1;
+          return readyA - readyB || a.id.localeCompare(b.id);
+        })[0];
+        findings.push(
+          finding(matches.length > 1 ? 'warning' : 'info', 'exam_mate_question_reused_exam_reference', {
+            examKey,
+            matchCount: matches.length,
+            canonicalQuestionId: canonical.id,
+          }, sourceQuestion),
+        );
+      }
+    }
+
+    if (!canonical) {
+      canonical = candidate;
+      rows.questions.push(candidate);
+      existingQuestionById.set(candidate.id, candidate);
+      if (!existingQuestionsByHash.has(candidate.content_hash)) {
+        existingQuestionsByHash.set(candidate.content_hash, []);
+      }
+      existingQuestionsByHash.get(candidate.content_hash).push(candidate);
+      if (!existingQuestionsByReference.has(candidate.reference)) {
+        existingQuestionsByReference.set(candidate.reference, []);
+      }
+      existingQuestionsByReference.get(candidate.reference).push(candidate);
+    }
+
+    const sourceId = String(sourceQuestion.sourceQuestionId);
+    canonicalQuestionBySourceId.set(sourceId, canonical.id);
+    sourceQuestionData.set(sourceId, { sourceQuestion, descriptor, content, markScheme });
+
+    const sourceKey = `exam_mate\u0000${sourceId}`;
+    if (!questionSourceByKey.has(sourceKey)) {
+      const row = {
+        id: deterministicUuid(`exam-mate:question-source:${sourceId}`),
+        question_id: canonical.id,
+        provider: 'exam_mate',
+        source_question_id: sourceId,
+        source_subject_id: String(sourceQuestion.subjectId || ''),
+        source_reference: sourceQuestion.reference,
+        source_url: sourceQuestion.sourceUrl || null,
+        source_metadata: {
+          curriculum: sourceQuestion.curriculum,
+          subject: sourceQuestion.subject,
+          topic: topicLabel(sourceQuestion),
+          referenceParts: parts,
+          sourcePage: sourceQuestion.page,
+          sourceEventKey: sourceQuestion.eventKey,
+        },
+      };
+      rows.questionSources.push(row);
+      questionSourceByKey.set(sourceKey, row);
+    }
+  }
+
+  const paperByReference = new Map();
+  for (const sourceQuestion of normalized.source.importableQuestions) {
+    const descriptor = paperDescriptor(sourceQuestion);
+    if (!descriptor || paperByReference.has(descriptor.reference)) continue;
+    const existing = existingPaperByReference.get(descriptor.reference) || [];
+    const paper = existing.length ? existing[0] : descriptor;
+    paperByReference.set(descriptor.reference, paper);
+    if (!existing.length) rows.papers.push(paper);
+  }
+
+  const variantBySourceQuestion = new Map();
+  const placementKeys = new Set();
+  const coursePaperKeys = new Set();
+  const variantPaperKeys = new Set();
+  let sourceIndex = 0;
+  for (const [sourceId, data] of sourceQuestionData) {
+    const canonicalQuestionId = canonicalQuestionBySourceId.get(sourceId);
+    const course = ensureCourse(data.descriptor);
+    const topicName = topicLabel(data.sourceQuestion);
+    const topic = ensureTopic(course, topicName);
+    const subtopic = ensureSubtopic(course, topic);
+    const variantKey = `${canonicalQuestionId}\u0000${course.id}\u0000${topic.id}`;
+    const existing = existingVariantByQuestionCourseTopic.get(variantKey) || [];
+    let variant;
+    if (existing.length) {
+      variant = [...existing].sort((a, b) => a.id.localeCompare(b.id))[0];
+    } else {
+      const occurrence = nextFreeOccurrence(
+        existingVariantTupleCounts,
+        canonicalQuestionId,
+        topic.dataset_id,
+        sourceIndex,
+      );
+      const paper = paperDescriptor(data.sourceQuestion);
+      const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
+      variant = {
+        id: deterministicUuid(`exam-mate:variant:${canonicalQuestionId}:${course.source_key}:${topic.slug}`),
+        question_id: canonicalQuestionId,
+        dataset_id: topic.dataset_id,
+        course_id: course.id,
+        topic_id: topic.id,
+        paper_id: canonicalPaper?.id || null,
+        source_index: sourceIndex,
+        source_occurrence: occurrence,
+        canonical_source_subtopic_id: subtopic.id,
+        difficulty_value: null,
+        difficulty_label: null,
+        section_raw: null,
+        section_normalized: null,
+        calculator_allowed: null,
+        source_metadata: {
+          provider: 'Exam-Mate',
+          sourceQuestionId: sourceId,
+          sourceTopic: topicName,
+          sourceCourse: course.source_key,
+        },
+      };
+      rows.variants.push(variant);
+      if (!existingVariantByQuestionCourseTopic.has(variantKey)) {
+        existingVariantByQuestionCourseTopic.set(variantKey, []);
+      }
+      existingVariantByQuestionCourseTopic.get(variantKey).push(variant);
+    }
+    variantBySourceQuestion.set(sourceId, variant);
+
+    const variantSourceKey = `exam_mate\u0000${sourceId}\u0000${course.source_key}\u0000${topic.slug}`;
+    if (!variantSourceByKey.has(variantSourceKey)) {
+      const row = {
+        id: deterministicUuid(`exam-mate:variant-source:${sourceId}:${course.source_key}:${topic.slug}`),
+        variant_id: variant.id,
+        provider: 'exam_mate',
+        source_question_id: sourceId,
+        source_course: course.source_key,
+        source_topic: topic.slug,
+        source_index: sourceIndex,
+        source_metadata: {
+          curriculum: data.sourceQuestion.curriculum,
+          subject: data.sourceQuestion.subject,
+          sourceTopic: topicName,
+          sourceUrl: data.sourceQuestion.sourceUrl,
+        },
+      };
+      rows.variantSources.push(row);
+      variantSourceByKey.set(variantSourceKey, row);
+    }
+
+    const placementKey = `${variant.id}\u0000${subtopic.id}`;
+    if (!placementKeys.has(placementKey)) {
+      placementKeys.add(placementKey);
+      rows.placements.push({
+        variant_id: variant.id,
+        subtopic_id: subtopic.id,
+        placement_order: 0,
+        placement_difficulty: null,
+        is_fallback: topicName === 'Uncategorized',
+        fallback_reason:
+          topicName === 'Uncategorized' ? 'exam_mate_uncategorized' : null,
+      });
+    }
+
+    const paper = paperDescriptor(data.sourceQuestion);
+    const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
+    if (canonicalPaper) {
+      const coursePaperKey = `${course.id}\u0000${canonicalPaper.id}`;
+      if (!coursePaperKeys.has(coursePaperKey)) {
+        coursePaperKeys.add(coursePaperKey);
+        rows.coursePapers.push({ course_id: course.id, paper_id: canonicalPaper.id });
+      }
+      const variantPaperKey = `${variant.id}\u0000${canonicalPaper.id}`;
+      if (!variantPaperKeys.has(variantPaperKey)) {
+        variantPaperKeys.add(variantPaperKey);
+        rows.variantPapers.push({
+          variant_id: variant.id,
+          paper_id: canonicalPaper.id,
+          is_primary: true,
+          sort_order: 0,
+        });
+      }
+    }
+
+    rows.searchDocuments.push({
+      variant_id: variant.id,
+      search_text: [
+        data.sourceQuestion.reference,
+        data.sourceQuestion.subject,
+        course.name,
+        topicName,
+        cleanText(data.sourceQuestion.questionText),
+        cleanText(data.sourceQuestion.answerText),
+      ].filter(Boolean).join(' '),
+    });
+    sourceIndex += 1;
+  }
+
+  for (const dataset of rows.datasets) {
+    dataset.expected_question_count = rows.variants.filter(
+      (variant) => variant.dataset_id === dataset.id,
+    ).length;
+    const topic = rows.topics.find((candidate) => candidate.dataset_id === dataset.id);
+    dataset.expected_subtopic_count = topic
+      ? rows.subtopics.filter((subtopic) => subtopic.topic_id === topic.id).length
+      : 0;
+  }
+
+  const storageProvider = options.storageProvider || 'r2';
+  const storageBucket = options.storageBucket || 'dp-pdf-previews';
+  const resolvedAssetByHash = new Map();
+  const usedManifestRows = [...normalized.source.usedAssetUrls]
+    .map((url) => normalized.source.verifiedAssetByUrl.get(url))
+    .filter(Boolean);
+
+  for (const manifestRow of usedManifestRows) {
+    const hash = manifestRow.sha256;
+    let asset = assetByHash.get(hash);
+    if (!asset) {
+      const extension = path.extname(manifestRow.path || '') || '.png';
+      asset = {
+        id: deterministicUuid(`asset:${hash}`),
+        content_hash: hash,
+        canonical_source_path: manifestRow.path,
+        original_filename: path.basename(new URL(manifestRow.url).pathname) || `${hash}${extension}`,
+        file_extension: extension,
+        content_type: manifestRow.contentType || 'image/png',
+        byte_size: Number(manifestRow.bytes || 0),
+        storage_provider: storageProvider,
+        storage_bucket: storageBucket,
+        storage_key: `question-bank/assets/sha256/${hash.slice(0, 2)}/${hash}${extension}`,
+        upload_status: 'pending',
+        verification_status: 'pending',
+        uploaded_at: null,
+        verified_at: null,
+        last_error: null,
+        local_path: localAssetPath(normalized.source.assetRoot, manifestRow),
+      };
+      rows.assets.push(asset);
+      rows.assetUploadCandidates.push(asset);
+      assetByHash.set(hash, asset);
+    } else if (asset.verification_status !== 'verified') {
+      const localPath = localAssetPath(normalized.source.assetRoot, manifestRow);
+      const uploadCandidate = {
+        ...asset,
+        local_path: localPath,
+      };
+      if (!rows.assetUploadCandidates.some((candidate) => candidate.id === asset.id)) {
+        rows.assetUploadCandidates.push(uploadCandidate);
+      }
+    }
+    resolvedAssetByHash.set(hash, asset);
+  }
+
+  const assetSourceKeys = new Set();
+  const variantAssetKeys = new Set();
+  for (const [sourceId, data] of sourceQuestionData) {
+    const variant = variantBySourceQuestion.get(sourceId);
+    const canonicalQuestionId = canonicalQuestionBySourceId.get(sourceId);
+    for (const [role, urls] of [
+      ['question', data.sourceQuestion.questionImages || []],
+      ['markscheme', data.sourceQuestion.answerImages || []],
+    ]) {
+      for (const [ordinal, url] of urls.entries()) {
+        const manifestRow = normalized.source.verifiedAssetByUrl.get(url);
+        if (!manifestRow) continue;
+        const asset = resolvedAssetByHash.get(manifestRow.sha256) || assetByHash.get(manifestRow.sha256);
+        if (!asset) continue;
+        const fileId = sourceFileId(data.sourceQuestion, role, ordinal, url);
+        const sourceKey = `exam-mate:${sourceId}:${role}:${ordinal}:${url}`;
+        if (!assetSourceKeys.has(sourceKey)) {
+          assetSourceKeys.add(sourceKey);
+          rows.assetSources.push({
+            id: deterministicUuid(`exam-mate:asset-source-row:${sourceKey}`),
+            asset_id: asset.id,
+            source_key: sourceKey,
+            source_file_id: fileId,
+            source_question_id: canonicalQuestionId,
+            original_filename: path.basename(new URL(url).pathname),
+            original_source_path: new URL(url).pathname,
+            original_source_url: url,
+            canonical_normalized_source_path: manifestRow.path,
+            source_created_at: null,
+            source_updated_at: null,
+            source_uploaded_at: manifestRow.capturedAt || null,
+          });
+        }
+        const variantAssetKey = `${variant.id}\u0000${asset.id}\u0000${role}`;
+        if (!variantAssetKeys.has(variantAssetKey)) {
+          variantAssetKeys.add(variantAssetKey);
+          rows.variantAssets.push({
+            variant_id: variant.id,
+            asset_id: asset.id,
+            source_file_id: fileId,
+            role,
+            sort_order: ordinal,
+            alt_text: role === 'question' ? 'Question image' : 'Markscheme image',
+          });
+        }
+      }
+    }
+  }
+
+  const actualCounts = {
+    ...normalized.actualCounts,
+    newQuestionCores: rows.questions.length,
+    questionSources: rows.questionSources.length,
+    variants: rows.variants.length,
+    variantSources: rows.variantSources.length,
+    placements: rows.placements.length,
+    papers: rows.papers.length,
+    assetRows: rows.assets.length,
+    assetSources: rows.assetSources.length,
+    variantAssets: rows.variantAssets.length,
+    assetUploadCandidates: rows.assetUploadCandidates.length,
+  };
+
+  const critical = findings.filter((row) => row.severity === 'critical');
+  return {
+    ...normalized,
+    processedAt: new Date().toISOString(),
+    actualCounts,
+    verificationStatus: critical.length ? 'failed' : 'passed',
+    findings,
+    rows,
+  };
+}
+
+export function publicExamMateReport(normalized) {
+  return {
+    importerVersion: normalized.importerVersion,
+    archiveIdentifier: normalized.archiveIdentifier,
+    archiveSha256: normalized.archiveSha256,
+    expectedCounts: normalized.expectedCounts,
+    actualCounts: normalized.actualCounts,
+    verificationStatus: normalized.verificationStatus,
+    findingsBySeverity: normalized.findings.reduce((output, row) => {
+      output[row.severity] = (output[row.severity] || 0) + 1;
+      return output;
+    }, {}),
+    findings: normalized.findings,
+    quarantineSample: normalized.source.quarantinedQuestions.slice(0, 20).map((row) => ({
+      sourceQuestionId: row.sourceQuestionId,
+      reference: row.reference,
+      subject: row.subject,
+      reasons: row.quarantineReasons,
+      missingAssetUrls: row.missingAssetUrls,
+    })),
+  };
+}

@@ -13,4 +13,6 @@ image-manifest.json
 image-urls.json
 decrypted-datasets/
 assets.revisionvillage.com/
+ExamMate-index-*/
+ExamMate-audit-bundle-*.zip
 tsconfig.tsbuildinfo
