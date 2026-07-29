@@ -41,6 +41,7 @@ async function signedR2Request(input: {
   bucket: string;
   key: string;
   signal?: AbortSignal;
+  range?: string;
 }) {
   const configuration = r2Configuration();
   if (!configuration)
@@ -92,6 +93,7 @@ async function signedR2Request(input: {
       authorization,
       'x-amz-content-sha256': payloadHash,
       'x-amz-date': amzDate,
+      ...(input.range ? { range: input.range } : {}),
     },
   });
 }
@@ -100,6 +102,7 @@ export function getPrivateR2Object(
   bucket: string,
   key: string,
   signal?: AbortSignal,
+  range?: string,
 ) {
-  return signedR2Request({ method: 'GET', bucket, key, signal });
+  return signedR2Request({ method: 'GET', bucket, key, signal, range });
 }

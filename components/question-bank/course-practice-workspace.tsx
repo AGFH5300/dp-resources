@@ -319,14 +319,21 @@ export function CoursePracticeWorkspace({
     }
     const selections = { ...selectedChoiceIdsBySection, [sectionId]: next };
     setSelectedChoiceIdsBySection(selections);
+    if (section.selectionMode === 'single') {
+      void checkSection(section.id, selections);
+      return;
+    }
     persistAttempt(selections, checkedSectionIds, false);
   }
 
-  async function checkSection(sectionId: string) {
+  async function checkSection(
+    sectionId: string,
+    selections = selectedChoiceIdsBySection,
+  ) {
     if (!detail || !interactive || checkedSectionIds.includes(sectionId)) return;
     const section = interactive.sections.find((item) => item.id === sectionId);
     if (!section) return;
-    const selected = selectedChoiceIdsBySection[sectionId] || [];
+    const selected = selections[sectionId] || [];
     if (selected.length !== section.requiredSelectionCount) {
       toast.error(
         section.requiredSelectionCount === 1
@@ -339,7 +346,7 @@ export function CoursePracticeWorkspace({
     const allChecked = interactive.sections.every((item) => checked.includes(item.id));
     setCheckedSectionIds(checked);
     if (allChecked) setShowExplanation(true);
-    persistAttempt(selectedChoiceIdsBySection, checked, allChecked || showExplanation);
+    persistAttempt(selections, checked, allChecked || showExplanation);
 
     if (allChecked && !interactive.isPartialInteraction) {
       const previousStatus = detail.progress.status;
@@ -438,14 +445,6 @@ export function CoursePracticeWorkspace({
     return (
       <div key={section.id} className="my-5">
         <div
-          className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-blue-800"
-          role="status"
-        >
-          {section.selectionMode === 'multiple'
-            ? `Select exactly ${section.requiredSelectionCount} answers. ${selectedChoiceIds.length} selected.`
-            : 'Select one answer, then check it.'}
-        </div>
-        <div
           className="dp-qb-answer-choices"
           role={section.selectionMode === 'multiple' ? 'group' : 'radiogroup'}
           aria-label="Answer choices"
@@ -455,6 +454,15 @@ export function CoursePracticeWorkspace({
             const isCorrect =
               answerChecked && section.correctChoiceIds.includes(choice.id);
             const isIncorrect = answerChecked && isSelected && !isCorrect;
+            const answerStateLabel = !answerChecked
+              ? null
+              : isSelected && isCorrect
+                ? 'Your answer · Correct'
+                : isIncorrect
+                  ? 'Your answer · Incorrect'
+                  : isCorrect
+                    ? 'Correct answer'
+                    : null;
             const maxReached =
               section.selectionMode === 'multiple' &&
               selectedChoiceIds.length >= section.requiredSelectionCount &&
@@ -476,27 +484,36 @@ export function CoursePracticeWorkspace({
                   source={choice.source}
                   assets={nonAudioQuestionAssets}
                 />
-                {isCorrect ? <Check className="ml-auto size-5" /> : null}
-                {isIncorrect ? <X className="ml-auto size-5" /> : null}
+                {answerStateLabel ? (
+                  <span
+                    className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      isIncorrect
+                        ? 'bg-red-100 text-red-800 dark:bg-red-950/70 dark:text-red-200'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-200'
+                    }`}
+                  >
+                    {isIncorrect ? (
+                      <X className="size-4" aria-hidden />
+                    ) : (
+                      <Check className="size-4" aria-hidden />
+                    )}
+                    {answerStateLabel}
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
-        <button
-          type="button"
-          className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-          onClick={() => void checkSection(section.id)}
-          disabled={
-            answerChecked ||
-            selectedChoiceIds.length !== section.requiredSelectionCount
-          }
-        >
-          {answerChecked
-            ? 'Answer checked'
-            : section.selectionMode === 'multiple'
-              ? 'Check answers'
-              : 'Check answer'}
-        </button>
+        {section.selectionMode === 'multiple' && !answerChecked ? (
+          <button
+            type="button"
+            className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            onClick={() => void checkSection(section.id)}
+            disabled={selectedChoiceIds.length !== section.requiredSelectionCount}
+          >
+            Check answers
+          </button>
+        ) : null}
         {answerChecked ? (
           <div
             className={`dp-qb-feedback-banner mt-4 ${
@@ -512,12 +529,18 @@ export function CoursePracticeWorkspace({
             <div>
               <strong>{correct ? 'Correct — nice work.' : 'Not quite yet.'}</strong>
               {!correct ? (
-                <p>
-                  The correct {section.correctChoiceIds.length > 1
-                    ? 'answers are'
-                    : 'answer is'}{' '}
-                  {answerList(section.correctChoiceIds)}.
-                </p>
+                <div className="mt-1 space-y-1">
+                  <p>
+                    <strong>Your answer:</strong>{' '}
+                    {answerList(selectedChoiceIds) || 'No answer selected'}.
+                  </p>
+                  <p>
+                    <strong>
+                      Correct {section.correctChoiceIds.length > 1 ? 'answers' : 'answer'}:
+                    </strong>{' '}
+                    {answerList(section.correctChoiceIds)}.
+                  </p>
+                </div>
               ) : null}
             </div>
           </div>
