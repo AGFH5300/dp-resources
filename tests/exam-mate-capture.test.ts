@@ -7,6 +7,8 @@ import {
   sanitizeTextBody,
   sanitizeUrl,
   stableJson,
+// The capture helpers are intentionally plain ESM so the CLI runs without a build step.
+// @ts-expect-error Direct coverage for the plain-ESM capture module.
 } from '../scripts/question-bank/exam-mate-capture.mjs';
 
 describe('Exam-Mate capture safety helpers', () => {
