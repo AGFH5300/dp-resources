@@ -7,6 +7,7 @@ import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { QuestionBankFilters } from '@/components/question-bank/question-bank-filters';
+import { QuestionPracticeFullscreenControl } from '@/components/question-bank/question-practice-fullscreen-control';
 import {
   QuestionResultsPagination,
   visibleQuestionPages,
@@ -288,6 +289,7 @@ export default async function CourseQuestionBank({
                 coursePath={basePath}
               />
             </QuestionResultsPagination>
+            <QuestionPracticeFullscreenControl />
           </section>
         </div>
       </main>
