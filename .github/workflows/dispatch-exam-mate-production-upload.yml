@@ -1,5 +1,5 @@
 name: Dispatch guarded Exam-Mate production upload
-# One-time retry after correcting the pinned retained BMP MIME type.
+# One-time retry after pinning the reviewed partial-import recovery counts.
 
 on:
   push:
