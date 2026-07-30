@@ -1,0 +1,20 @@
+name: Trigger Exam-Mate production import
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trigger-exam-mate-production-import.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the reviewed one-time production import
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run exam-mate-production-import.yml --ref main
