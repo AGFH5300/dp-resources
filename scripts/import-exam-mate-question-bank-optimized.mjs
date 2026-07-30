@@ -7,7 +7,13 @@ import { pathToFileURL } from 'node:url';
 
 import { createClient } from '@supabase/supabase-js';
 
-import { getPrivateR2Object, putPrivateR2Object } from './r2-s3.mjs';
+import {
+  getPrivateR2Object,
+  headPrivateR2Bucket,
+  headPrivateR2Object,
+  listPrivateR2Objects,
+  putPrivateR2Object,
+} from './r2-s3.mjs';
 import { deterministicUuid } from './question-bank/archive.mjs';
 import {
   normalizeExamMateArchive,
@@ -48,6 +54,25 @@ const NO_BATCH_COLUMNS = new Set([
   'dp_qb_course_papers',
   'dp_qb_question_search',
 ]);
+const UPDATE_EXISTING_TABLES = new Set([
+  'dp_qb_assets',
+  'dp_qb_question_search',
+]);
+const PAGED_ORDER_COLUMNS = new Map([
+  ['dp_qb_question_sources', ['id']],
+  ['dp_qb_variant_sources', ['id']],
+  ['dp_qb_question_variants', ['id']],
+  ['dp_qb_papers', ['id']],
+  ['dp_qb_question_subtopics', ['variant_id', 'subtopic_id']],
+  ['dp_qb_course_papers', ['course_id', 'paper_id']],
+  ['dp_qb_variant_papers', ['variant_id', 'paper_id']],
+  ['dp_qb_assets', ['id']],
+  ['dp_qb_asset_sources', ['id']],
+  ['dp_qb_variant_assets', ['variant_id', 'asset_id', 'role']],
+  ['dp_qb_question_search', ['variant_id']],
+  ['dp_qb_import_batches', ['id']],
+  ['dp_qb_import_findings', ['id']],
+]);
 
 function usage() {
   return `
@@ -72,6 +97,7 @@ Options:
   --workers <n>                 R2 upload concurrency (default: 8, max: 16).
   --batch-size <n>              Supabase upsert batch size (default: 250).
   --storage-bucket <name>       Private R2 bucket override.
+  --resume-batch-id <uuid>      Resume this exact failed logical batch.
   --report <path>               JSON report output path.
   --confirm-production          Required for database/R2 writes.
   --help                        Show this help.
@@ -90,6 +116,7 @@ export function parseArguments(argv) {
     workers: 8,
     batchSize: 250,
     storageBucket: null,
+    resumeBatchId: null,
     report: null,
     confirmProduction: false,
     help: false,
@@ -104,6 +131,7 @@ export function parseArguments(argv) {
     else if (token === '--workers') options.workers = Number(argv[++index]);
     else if (token === '--batch-size') options.batchSize = Number(argv[++index]);
     else if (token === '--storage-bucket') options.storageBucket = argv[++index];
+    else if (token === '--resume-batch-id') options.resumeBatchId = argv[++index];
     else if (token === '--report') options.report = argv[++index];
     else if (token === '--confirm-production') options.confirmProduction = true;
     else throw new Error(`Unknown argument: ${token}`);
@@ -127,6 +155,14 @@ export function parseArguments(argv) {
   if ((options.mode === 'assets' || options.mode === 'all') && !options.assetsRoot) {
     throw new Error('--assets-root is required for assets/all mode.');
   }
+  if (
+    options.resumeBatchId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      options.resumeBatchId,
+    )
+  ) {
+    throw new Error('--resume-batch-id must be a UUID.');
+  }
   return options;
 }
 
@@ -149,13 +185,23 @@ function createImportClient() {
   );
 }
 
-function storageBucket(options) {
-  return (
-    options.storageBucket ||
+export function resolveQuestionBankBucket(options = {}) {
+  const bucket =
+    options.storageBucket?.trim() ||
     process.env.R2_QUESTION_BANK_BUCKET?.trim() ||
-    process.env.R2_PDF_PREVIEW_BUCKET?.trim() ||
-    'dp-pdf-previews'
-  );
+    '';
+  if (!bucket) {
+    throw new Error(
+      'R2_QUESTION_BANK_BUCKET is required; Question Bank assets never fall back to PDF preview storage.',
+    );
+  }
+  const previewBucket = process.env.R2_PDF_PREVIEW_BUCKET?.trim();
+  if (bucket === 'dp-pdf-previews' || (previewBucket && bucket === previewBucket)) {
+    throw new Error(
+      'R2_QUESTION_BANK_BUCKET must be a dedicated bucket and cannot equal the PDF preview bucket.',
+    );
+  }
+  return bucket;
 }
 
 function chunks(values, size) {
@@ -170,10 +216,96 @@ function databaseRow(row, batchId, table) {
   const output = { ...row };
   delete output.local_path;
   if (!NO_BATCH_COLUMNS.has(table)) {
-    output.created_by_batch_id = batchId;
+    output.created_by_batch_id = row.created_by_batch_id || batchId;
     output.last_seen_batch_id = batchId;
   }
   return output;
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function upsertConflictKey(row, columns) {
+  return columns.map((column) => String(row?.[column] ?? '')).join('\u0000');
+}
+
+export function deduplicateRowsForUpsert(
+  table,
+  rows,
+  conflict,
+  updateExisting = false,
+) {
+  const columns = String(conflict)
+    .split(',')
+    .map((column) => column.trim())
+    .filter(Boolean);
+  if (!columns.length) throw new Error(`${table} has no upsert conflict columns.`);
+
+  const byKey = new Map();
+  let duplicateRowsRemoved = 0;
+  let mergedRows = 0;
+  for (const row of rows) {
+    const key = upsertConflictKey(row, columns);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+
+    duplicateRowsRemoved += 1;
+    if (table === 'dp_qb_question_search') {
+      const existingComparable = { ...existing };
+      const rowComparable = { ...row };
+      delete existingComparable.search_text;
+      delete rowComparable.search_text;
+      if (canonicalJson(existingComparable) !== canonicalJson(rowComparable)) {
+        throw new Error(
+          `${table} duplicate conflict key has incompatible non-search fields (${columns.join(',')}).`,
+        );
+      }
+      const mergedSearchText = [...new Set(
+        [existing.search_text, row.search_text]
+          .map((value) => String(value || '').trim())
+          .filter(Boolean),
+      )]
+        .sort((left, right) => left.localeCompare(right))
+        .join('\n');
+      if (mergedSearchText !== existing.search_text) mergedRows += 1;
+      byKey.set(key, { ...row, search_text: mergedSearchText });
+      continue;
+    }
+
+    if (canonicalJson(existing) !== canonicalJson(row)) {
+      throw new Error(
+        `${table} duplicate conflict key has incompatible rows (${columns.join(',')}).`,
+      );
+    }
+    if (updateExisting) byKey.set(key, row);
+  }
+
+  return {
+    rows: [...byKey.values()],
+    stats: {
+      inputRows: rows.length,
+      processedRows: byKey.size,
+      duplicateRowsRemoved,
+      mergedRows,
+      rule:
+        table === 'dp_qb_question_search'
+          ? 'compatible-search-text-merge'
+          : updateExisting
+            ? 'validated-last-write-wins'
+            : 'validated-first-write-wins',
+    },
+  };
 }
 
 async function retry(operation, attempts = 4) {
@@ -200,11 +332,16 @@ async function upsertRows(
   batchId,
   updateExisting = false,
 ) {
+  const prepared = deduplicateRowsForUpsert(
+    table,
+    rows.map((row) => databaseRow(row, batchId, table)),
+    conflict,
+    updateExisting,
+  );
   let processed = 0;
-  for (const group of chunks(rows, batchSize)) {
-    const payload = group.map((row) => databaseRow(row, batchId, table));
+  for (const group of chunks(prepared.rows, batchSize)) {
     const { error } = await retry(() =>
-      client.from(table).upsert(payload, {
+      client.from(table).upsert(group, {
         onConflict: conflict,
         ignoreDuplicates: !updateExisting,
       }),
@@ -212,10 +349,39 @@ async function upsertRows(
     if (error) throw new Error(`${table} upsert failed: ${error.message}`);
     processed += group.length;
   }
-  return processed;
+  return { ...prepared.stats, processedRows: processed };
 }
 
-async function createOrResumeBatch(client, normalized, mode) {
+export function validateBatchResume(existing, resumeBatchId, mode) {
+  if (resumeBatchId && existing.id !== resumeBatchId) {
+    throw new Error(
+      `Refusing to resume batch ${existing.id}; --resume-batch-id selected ${resumeBatchId}.`,
+    );
+  }
+  if (!resumeBatchId && WRITE_MODES.has(mode)) {
+    throw new Error(
+      `Existing logical batch ${existing.id} requires --resume-batch-id for a production retry.`,
+    );
+  }
+  if (existing.status === 'importing') {
+    throw new Error(
+      `Import batch ${existing.id} is already marked importing; concurrent or stale ownership must be resolved before retrying.`,
+    );
+  }
+  if (existing.status === 'completed') {
+    throw new Error(
+      `Import batch ${existing.id} is already completed and cannot be resumed.`,
+    );
+  }
+  return existing.id;
+}
+
+async function createOrResumeBatch(
+  client,
+  normalized,
+  mode,
+  resumeBatchId = null,
+) {
   const payload = {
     archive_identifier: normalized.archiveIdentifier,
     archive_sha256: normalized.archiveSha256,
@@ -232,11 +398,38 @@ async function createOrResumeBatch(client, normalized, mode) {
     verification_status: normalized.verificationStatus,
     completed_at: null,
   };
+  const { data: existing, error: existingError } = await client
+    .from('dp_qb_import_batches')
+    .select('id,status')
+    .eq('archive_sha256', payload.archive_sha256)
+    .eq('importer_version', payload.importer_version)
+    .eq('mode', payload.mode)
+    .maybeSingle();
+  if (existingError) {
+    throw new Error(`Unable to inspect import batch: ${existingError.message}`);
+  }
+
+  if (existing) {
+    validateBatchResume(existing, resumeBatchId, mode);
+    const { data, error } = await client
+      .from('dp_qb_import_batches')
+      .update(payload)
+      .eq('id', existing.id)
+      .neq('status', 'importing')
+      .select('id')
+      .single();
+    if (error) throw new Error(`Unable to resume import batch: ${error.message}`);
+    return data.id;
+  }
+
+  if (resumeBatchId) {
+    throw new Error(
+      `The requested resume batch ${resumeBatchId} does not match the pinned archive identity.`,
+    );
+  }
   const { data, error } = await client
     .from('dp_qb_import_batches')
-    .upsert(payload, {
-      onConflict: 'archive_sha256,importer_version,mode',
-    })
+    .insert(payload)
     .select('id')
     .single();
   if (error) throw new Error(`Unable to create import batch: ${error.message}`);
@@ -263,7 +456,12 @@ async function importDatabase(normalized, options) {
     throw new Error('Database import refused because normalization failed.');
   }
   const client = options.client;
-  const batchId = await createOrResumeBatch(client, normalized, options.mode);
+  const batchId = await createOrResumeBatch(
+    client,
+    normalized,
+    options.mode,
+    options.resumeBatchId,
+  );
   const operationCounts = {};
   try {
     for (const [table, rowKey, conflict] of TABLES) {
@@ -275,9 +473,12 @@ async function importDatabase(normalized, options) {
         conflict,
         options.batchSize,
         batchId,
-        table === 'dp_qb_question_search',
+        UPDATE_EXISTING_TABLES.has(table),
       );
-      process.stdout.write(`${table}: ${operationCounts[table]} row(s) processed\n`);
+      process.stdout.write(
+        `${table}: ${operationCounts[table].processedRows} row(s) processed; ` +
+          `${operationCounts[table].duplicateRowsRemoved} duplicate input row(s) normalized\n`,
+      );
     }
     operationCounts.dp_qb_import_findings = await storeFindings(
       client,
@@ -323,41 +524,82 @@ async function verifyR2Body(asset, response) {
   return digest === asset.content_hash;
 }
 
-async function uploadOneAsset(asset) {
-  if (asset.verification_status === 'verified') {
-    return { status: 'skipped_verified', asset };
-  }
-  const existing = await getPrivateR2Object({
-    bucket: asset.storage_bucket,
-    key: asset.storage_key,
-    signal: AbortSignal.timeout(45_000),
-  });
-  if (existing.status !== 404 && (await verifyR2Body(asset, existing))) {
-    return { status: 'verified_existing_object', asset };
-  }
+function normalizedContentType(value) {
+  return String(value || '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+}
 
+export function verifyR2Head(asset, response) {
+  if (!response?.ok) return false;
+  const contentLength = Number(response.headers.get('content-length'));
+  const contentType = normalizedContentType(response.headers.get('content-type'));
+  const sha256Metadata = String(
+    response.headers.get('x-amz-meta-sha256') || '',
+  ).toLowerCase();
+  return (
+    contentLength === Number(asset.byte_size) &&
+    contentType === normalizedContentType(asset.content_type) &&
+    sha256Metadata === String(asset.content_hash).toLowerCase()
+  );
+}
+
+async function readVerifiedLocalAsset(asset) {
   const body = await readFile(asset.local_path);
   const digest = crypto.createHash('sha256').update(body).digest('hex');
   if (digest !== asset.content_hash || body.byteLength !== Number(asset.byte_size)) {
     throw new Error(`Local selected asset verification failed for ${asset.content_hash}.`);
   }
+  return body;
+}
+
+async function uploadOneAsset(asset) {
+  const existingHead = await headPrivateR2Object({
+    bucket: asset.storage_bucket,
+    key: asset.storage_key,
+    signal: AbortSignal.timeout(45_000),
+  });
+  if (verifyR2Head(asset, existingHead)) {
+    return { status: 'verified_existing_object', asset };
+  }
+
+  let existingBodyVerified = false;
+  if (existingHead.status !== 404) {
+    const existingBody = await getPrivateR2Object({
+      bucket: asset.storage_bucket,
+      key: asset.storage_key,
+      signal: AbortSignal.timeout(60_000),
+    });
+    existingBodyVerified = await verifyR2Body(asset, existingBody);
+  }
+
+  const body = await readVerifiedLocalAsset(asset);
   await putPrivateR2Object({
     bucket: asset.storage_bucket,
     key: asset.storage_key,
     body,
     contentType: asset.content_type,
     cacheControl: 'private, max-age=31536000, immutable',
+    sha256Metadata: asset.content_hash,
     signal: AbortSignal.timeout(60_000),
   });
-  const stored = await getPrivateR2Object({
+  const stored = await headPrivateR2Object({
     bucket: asset.storage_bucket,
     key: asset.storage_key,
     signal: AbortSignal.timeout(60_000),
   });
-  if (!(await verifyR2Body(asset, stored))) {
-    throw new Error(`R2 SHA-256/size verification failed for ${asset.storage_key}.`);
+  if (!verifyR2Head(asset, stored)) {
+    throw new Error(
+      `R2 size/content-type/checksum-metadata verification failed for ${asset.storage_key}.`,
+    );
   }
-  return { status: 'uploaded_verified', asset };
+  return {
+    status: existingBodyVerified
+      ? 'metadata_repaired_verified'
+      : 'uploaded_verified',
+    asset,
+  };
 }
 
 async function updateAssetStates(client, results, batchSize) {
@@ -412,6 +654,10 @@ async function uploadAssets(normalized, options) {
     throw new Error('Asset upload refused because normalization failed.');
   }
   const candidates = normalized.rows.assetUploadCandidates;
+  const bucket = resolveQuestionBankBucket(options);
+  const prefix = 'question-bank/assets/sha256/';
+  const beforeObjects = await listAllPrivateR2Objects(bucket, prefix);
+  const beforeKeys = new Set(beforeObjects.map((row) => row.key));
   const results = new Array(candidates.length);
   let cursor = 0;
   let completed = 0;
@@ -442,6 +688,15 @@ async function uploadAssets(normalized, options) {
 
   await Promise.all(Array.from({ length: options.workers }, worker));
   await updateAssetStates(options.client, results, options.batchSize);
+  const afterObjects = await listAllPrivateR2Objects(bucket, prefix);
+  const afterKeys = new Set(afterObjects.map((row) => row.key));
+  const expectedKeys = new Set(candidates.map((row) => row.storage_key));
+  const missingExpectedKeys = [...expectedKeys].filter(
+    (key) => !afterKeys.has(key),
+  );
+  const unexpectedNewKeys = [...afterKeys].filter(
+    (key) => !beforeKeys.has(key) && !expectedKeys.has(key),
+  );
   const counts = results.reduce((output, item) => {
     output[item.status] = (output[item.status] || 0) + 1;
     return output;
@@ -453,21 +708,83 @@ async function uploadAssets(normalized, options) {
       key: result.asset.storage_key,
       error: result.error,
     }));
+  if (missingExpectedKeys.length || unexpectedNewKeys.length) {
+    failures.push({
+      id: null,
+      key: null,
+      error:
+        `R2 inventory mismatch: ${missingExpectedKeys.length} expected keys missing, ` +
+        `${unexpectedNewKeys.length} unexpected new keys.`,
+    });
+  }
   return {
     provider: 'r2',
-    bucket: storageBucket(options),
+    bucket,
     counts,
+    inventory: {
+      prefix,
+      beforeObjects: beforeObjects.length,
+      afterObjects: afterObjects.length,
+      addedObjects: [...afterKeys].filter((key) => !beforeKeys.has(key)).length,
+      expectedKeys: expectedKeys.size,
+      missingExpectedKeys: missingExpectedKeys.length,
+      unexpectedNewKeys: unexpectedNewKeys.length,
+      missingExpectedKeyHashes: missingExpectedKeys
+        .slice(0, 20)
+        .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+      unexpectedNewKeyHashes: unexpectedNewKeys
+        .slice(0, 20)
+        .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    },
     failures,
     failed: failures.length,
   };
+}
+
+async function listAllPrivateR2Objects(bucket, prefix) {
+  const objects = [];
+  let continuationToken = null;
+  do {
+    const page = await listPrivateR2Objects({
+      bucket,
+      prefix,
+      continuationToken,
+      signal: AbortSignal.timeout(60_000),
+    });
+    objects.push(...page.objects);
+    continuationToken = page.isTruncated
+      ? page.nextContinuationToken
+      : null;
+    if (page.isTruncated && !continuationToken) {
+      throw new Error('R2 listing was truncated without a continuation token.');
+    }
+  } while (continuationToken);
+  return objects;
+}
+
+async function preflightPrivateR2Bucket(options) {
+  const bucket = resolveQuestionBankBucket(options);
+  await headPrivateR2Bucket({
+    bucket,
+    signal: AbortSignal.timeout(45_000),
+  });
+  return bucket;
 }
 
 async function fetchPaged(client, table, columns, applyFilters = (query) => query) {
   const output = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
-    let query = client.from(table).select(columns).range(offset, offset + pageSize - 1);
+    let query = client.from(table).select(columns);
     query = applyFilters(query);
+    const orderColumns = PAGED_ORDER_COLUMNS.get(table);
+    if (!orderColumns) {
+      throw new Error(`Stable verification order is not configured for ${table}.`);
+    }
+    for (const orderColumn of orderColumns) {
+      query = query.order(orderColumn, { ascending: true });
+    }
+    query = query.range(offset, offset + pageSize - 1);
     const { data, error } = await query;
     if (error) throw new Error(`${table} verification read failed: ${error.message}`);
     output.push(...(data || []));
@@ -476,42 +793,127 @@ async function fetchPaged(client, table, columns, applyFilters = (query) => quer
   return output;
 }
 
+async function verifyPrivateR2Assets(assets, workers) {
+  const results = new Array(assets.length);
+  let cursor = 0;
+  let completed = 0;
+
+  async function worker() {
+    while (true) {
+      const index = cursor++;
+      if (index >= assets.length) return;
+      const asset = assets[index];
+      try {
+        const response = await headPrivateR2Object({
+          bucket: asset.storage_bucket,
+          key: asset.storage_key,
+          signal: AbortSignal.timeout(45_000),
+        });
+        results[index] = {
+          asset,
+          verified: verifyR2Head(asset, response),
+          status: response.status,
+        };
+      } catch (error) {
+        results[index] = {
+          asset,
+          verified: false,
+          status: Number(error.statusCode || 0),
+          error: String(error.message || error),
+        };
+      }
+      completed += 1;
+      if (completed % 500 === 0 || completed === assets.length) {
+        const failed = results.filter((row) => row && !row.verified).length;
+        process.stdout.write(
+          `Exam-Mate private R2 verification ${completed}/${assets.length}; failures ${failed}\n`,
+        );
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: workers }, worker));
+  return results;
+}
+
 async function verifyProduction(normalized, options) {
   const client = options.client;
+  const expectations = normalized.productionExpectations;
+  if (!expectations) {
+    throw new Error('Production verification expectations are unavailable.');
+  }
   const expectedSourceIds = normalized.source.importableQuestions.map(
     (row) => String(row.sourceQuestionId),
   );
-  const expectedVariantKeys = normalized.rows.variantSources.map(
-    (row) => `${row.source_question_id}:${row.source_course}:${row.source_topic}`,
-  );
+  const expectedVariantKeys = normalized.productionExpectations.variantSourceKeys;
   const expectedHashes = new Set([...normalized.source.usedPhysicalHashes].map(String));
 
-  const [questionSources, variantSources, assets, batches] = await Promise.all([
+  const [
+    questionSources,
+    variantSources,
+    variants,
+    papers,
+    placements,
+    coursePapers,
+    variantPapers,
+    assets,
+    assetSources,
+    variantAssets,
+    searchDocuments,
+    batches,
+    importFindings,
+  ] = await Promise.all([
     fetchPaged(
       client,
       'dp_qb_question_sources',
-      'source_question_id,question_id',
+      'id,source_question_id,question_id',
       (query) => query.eq('provider', 'exam_mate'),
     ),
     fetchPaged(
       client,
       'dp_qb_variant_sources',
-      'source_question_id,source_course,source_topic,variant_id',
+      'id,source_question_id,source_course,source_topic,variant_id',
       (query) => query.eq('provider', 'exam_mate'),
     ),
     fetchPaged(
       client,
-      'dp_qb_assets',
-      'id,content_hash,verification_status,storage_provider,storage_bucket,storage_key',
+      'dp_qb_question_variants',
+      'id,question_id,paper_id',
     ),
+    fetchPaged(client, 'dp_qb_papers', 'id'),
+    fetchPaged(
+      client,
+      'dp_qb_question_subtopics',
+      'variant_id,subtopic_id',
+    ),
+    fetchPaged(client, 'dp_qb_course_papers', 'course_id,paper_id'),
+    fetchPaged(client, 'dp_qb_variant_papers', 'variant_id,paper_id'),
+    fetchPaged(
+      client,
+      'dp_qb_assets',
+      'id,content_hash,content_type,byte_size,verification_status,storage_provider,storage_bucket,storage_key',
+    ),
+    fetchPaged(client, 'dp_qb_asset_sources', 'id,asset_id'),
+    fetchPaged(
+      client,
+      'dp_qb_variant_assets',
+      'variant_id,asset_id,role',
+    ),
+    fetchPaged(client, 'dp_qb_question_search', 'variant_id'),
     fetchPaged(
       client,
       'dp_qb_import_batches',
-      'id,archive_sha256,importer_version,mode,status,verification_status,operation_counts,actual_counts',
+      'id,archive_sha256,importer_version,mode,status,verification_status,operation_counts,actual_counts,completed_at',
       (query) =>
         query
           .eq('archive_sha256', normalized.archiveSha256)
           .eq('importer_version', normalized.importerVersion),
+    ),
+    fetchPaged(
+      client,
+      'dp_qb_import_findings',
+      'id,severity,batch_id',
+      (query) => query.eq('severity', 'critical'),
     ),
   ]);
 
@@ -521,22 +923,164 @@ async function verifyProduction(normalized, options) {
       (row) => `${row.source_question_id}:${row.source_course}:${row.source_topic}`,
     ),
   );
+  const expectedBucket = resolveQuestionBankBucket(options);
+  const expectedQuestionSourceRowIds = new Set(expectations.questionSourceIds);
+  const expectedVariantSourceRowIds = new Set(expectations.variantSourceIds);
+  const expectedVariantIds = new Set(expectations.variantIds);
+  const expectedPlacementKeys = new Set(expectations.placementKeys);
+  const expectedCoursePaperKeys = new Set(expectations.coursePaperKeys);
+  const expectedVariantPaperKeys = new Set(expectations.variantPaperKeys);
+  const expectedPaperIds = new Set(expectations.paperIds);
+  const expectedAssetIds = new Set(expectations.assetIds);
+  const expectedAssetSourceIds = new Set(expectations.assetSourceIds);
+  const expectedVariantAssetKeys = new Set(expectations.variantAssetKeys);
+
+  const questionSourceRowIds = new Set(questionSources.map((row) => row.id));
+  const variantSourceRowIds = new Set(variantSources.map((row) => row.id));
+  const variantIds = new Set(variants.map((row) => row.id));
+  const paperIds = new Set(papers.map((row) => row.id));
+  const placementKeys = new Set(
+    placements.map((row) => `${row.variant_id}\u0000${row.subtopic_id}`),
+  );
+  const coursePaperKeys = new Set(
+    coursePapers.map((row) => `${row.course_id}\u0000${row.paper_id}`),
+  );
+  const variantPaperKeys = new Set(
+    variantPapers.map((row) => `${row.variant_id}\u0000${row.paper_id}`),
+  );
+  const assetIds = new Set(assets.map((row) => row.id));
+  const assetSourceIds = new Set(assetSources.map((row) => row.id));
+  const variantAssetKeys = new Set(
+    variantAssets.map(
+      (row) => `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
+    ),
+  );
+  const searchVariantIds = new Set(
+    searchDocuments.map((row) => row.variant_id),
+  );
+  const examMateVariantIds = new Set(
+    variantSources.map((row) => row.variant_id),
+  );
+
+  const missingQuestionSourceRows = [...expectedQuestionSourceRowIds].filter(
+    (id) => !questionSourceRowIds.has(id),
+  );
+  const unexpectedQuestionSourceRows = [...questionSourceRowIds].filter(
+    (id) => !expectedQuestionSourceRowIds.has(id),
+  );
+  const missingVariantSourceRows = [...expectedVariantSourceRowIds].filter(
+    (id) => !variantSourceRowIds.has(id),
+  );
+  const unexpectedVariantSourceRows = [...variantSourceRowIds].filter(
+    (id) => !expectedVariantSourceRowIds.has(id),
+  );
+  const missingVariants = [...expectedVariantIds].filter(
+    (id) => !variantIds.has(id),
+  );
+  const missingPlacements = [...expectedPlacementKeys].filter(
+    (key) => !placementKeys.has(key),
+  );
+  const missingCoursePapers = [...expectedCoursePaperKeys].filter(
+    (key) => !coursePaperKeys.has(key),
+  );
+  const missingVariantPapers = [...expectedVariantPaperKeys].filter(
+    (key) => !variantPaperKeys.has(key),
+  );
+  const missingAssetRows = [...expectedAssetIds].filter(
+    (id) => !assetIds.has(id),
+  );
+  const missingAssetSources = [...expectedAssetSourceIds].filter(
+    (id) => !assetSourceIds.has(id),
+  );
+  const missingVariantAssets = [...expectedVariantAssetKeys].filter(
+    (key) => !variantAssetKeys.has(key),
+  );
+  const missingSearchDocuments = [...expectedVariantIds].filter(
+    (id) => !searchVariantIds.has(id),
+  );
+  const unexpectedSearchDocuments = [...searchVariantIds].filter(
+    (id) =>
+      expectedVariantIds.has(id) === false &&
+      examMateVariantIds.has(id),
+  );
+  const missingPapers = [...expectedPaperIds].filter(
+    (id) => !paperIds.has(id),
+  );
+
+  const assetByHash = new Map(assets.map((row) => [row.content_hash, row]));
+  const databaseVerifiedAssets = [...expectedHashes]
+    .map((hash) => assetByHash.get(hash))
+    .filter(
+      (row) =>
+        row &&
+        row.verification_status === 'verified' &&
+        row.storage_provider === 'r2' &&
+        row.storage_bucket === expectedBucket &&
+        String(row.storage_key || '').startsWith('question-bank/assets/sha256/'),
+    );
+  const r2Results = await verifyPrivateR2Assets(
+    databaseVerifiedAssets,
+    options.workers,
+  );
   const verifiedHashes = new Set(
-    assets
-      .filter(
+    r2Results
+      .filter((row) => row.verified)
+      .map((row) => row.asset.content_hash),
+  );
+  const inventoryObjects = await listAllPrivateR2Objects(
+    expectedBucket,
+    'question-bank/assets/sha256/',
+  );
+  const inventoryKeys = new Set(inventoryObjects.map((row) => row.key));
+  const expectedStorageKeys = new Set(
+    databaseVerifiedAssets.map((row) => row.storage_key),
+  );
+  const missingInventoryKeys = [...expectedStorageKeys].filter(
+    (key) => !inventoryKeys.has(key),
+  );
+  const unusedPlanKeys = new Set(
+    normalized.source.optimizationAudit.planRows
+      .filter((row) => !expectedHashes.has(row.selectedHash))
+      .map(
         (row) =>
-          row.verification_status === 'verified' && row.storage_provider === 'r2',
-      )
-      .map((row) => row.content_hash),
+          `question-bank/assets/sha256/${row.selectedHash.slice(0, 2)}/` +
+          `${row.selectedHash}.${row.selectedFormat}`,
+      ),
+  );
+  const uploadedUnusedPlanKeys = [...unusedPlanKeys].filter((key) =>
+    inventoryKeys.has(key),
   );
 
   const missingQuestionSources = expectedSourceIds.filter((id) => !sourceSet.has(id));
   const missingVariantSources = expectedVariantKeys.filter((key) => !variantSet.has(key));
   const missingAssets = [...expectedHashes].filter((hash) => !verifiedHashes.has(hash));
+  const matchingBatchIds = new Set(batches.map((row) => row.id));
+  const criticalImportFindings = importFindings.filter(
+    (row) =>
+      matchingBatchIds.has(row.batch_id) &&
+      row.severity === 'critical',
+  );
   const passed =
     missingQuestionSources.length === 0 &&
     missingVariantSources.length === 0 &&
-    missingAssets.length === 0;
+    missingAssets.length === 0 &&
+    missingInventoryKeys.length === 0 &&
+    uploadedUnusedPlanKeys.length === 0 &&
+    missingQuestionSourceRows.length === 0 &&
+    unexpectedQuestionSourceRows.length === 0 &&
+    missingVariantSourceRows.length === 0 &&
+    unexpectedVariantSourceRows.length === 0 &&
+    missingVariants.length === 0 &&
+    missingPlacements.length === 0 &&
+    missingCoursePapers.length === 0 &&
+    missingVariantPapers.length === 0 &&
+    missingPapers.length === 0 &&
+    missingAssetRows.length === 0 &&
+    missingAssetSources.length === 0 &&
+    missingVariantAssets.length === 0 &&
+    missingSearchDocuments.length === 0 &&
+    unexpectedSearchDocuments.length === 0 &&
+    criticalImportFindings.length === 0;
 
   return {
     status: passed ? 'passed' : 'failed',
@@ -546,9 +1090,79 @@ async function verifyProduction(normalized, options) {
     expectedVariantSources: expectedVariantKeys.length,
     verifiedSelectedAssets: expectedHashes.size - missingAssets.length,
     expectedSelectedAssets: expectedHashes.size,
+    r2ObjectsChecked: r2Results.length,
+    r2ObjectsVerified: verifiedHashes.size,
+    r2ObjectsInvalid: r2Results.length - verifiedHashes.size,
+    r2InventoryObjects: inventoryObjects.length,
+    expectedR2InventoryKeys: expectedStorageKeys.size,
+    missingR2InventoryKeys: missingInventoryKeys.length,
+    unusedOptimizationPlanAssets: unusedPlanKeys.size,
+    uploadedUnusedOptimizationPlanAssets: uploadedUnusedPlanKeys.length,
+    expectedUniqueVariants: expectedVariantIds.size,
+    uniqueVariants: expectedVariantIds.size - missingVariants.length,
+    expectedPlacements: expectedPlacementKeys.size,
+    placements: expectedPlacementKeys.size - missingPlacements.length,
+    expectedCoursePapers: expectedCoursePaperKeys.size,
+    coursePapers: expectedCoursePaperKeys.size - missingCoursePapers.length,
+    expectedVariantPapers: expectedVariantPaperKeys.size,
+    variantPapers: expectedVariantPaperKeys.size - missingVariantPapers.length,
+    expectedPapers: expectedPaperIds.size,
+    papers: expectedPaperIds.size - missingPapers.length,
+    expectedAssetRows: expectedAssetIds.size,
+    assetRows: expectedAssetIds.size - missingAssetRows.length,
+    expectedAssetSources: expectedAssetSourceIds.size,
+    assetSources: expectedAssetSourceIds.size - missingAssetSources.length,
+    expectedVariantAssets: expectedVariantAssetKeys.size,
+    variantAssets: expectedVariantAssetKeys.size - missingVariantAssets.length,
+    expectedSearchDocuments: expectedVariantIds.size,
+    searchDocuments: expectedVariantIds.size - missingSearchDocuments.length,
+    duplicateSearchVariantIds:
+      searchDocuments.length - searchVariantIds.size,
+    unexpectedExamMateQuestionSourceRows:
+      unexpectedQuestionSourceRows.length,
+    unexpectedExamMateVariantSourceRows:
+      unexpectedVariantSourceRows.length,
+    unexpectedExamMateSearchDocuments:
+      unexpectedSearchDocuments.length,
+    criticalImportFindings: criticalImportFindings.length,
+    missingR2InventoryKeyHashes: missingInventoryKeys
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    uploadedUnusedOptimizationKeyHashes: uploadedUnusedPlanKeys
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    invalidR2Objects: r2Results
+      .filter((row) => !row.verified)
+      .slice(0, 20)
+      .map((row) => ({
+        id: row.asset.id,
+        contentHash: row.asset.content_hash,
+        storageKey: row.asset.storage_key,
+        status: row.status,
+        error: row.error || null,
+      })),
     missingQuestionSources: missingQuestionSources.slice(0, 20),
     missingVariantSources: missingVariantSources.slice(0, 20),
     missingAssets: missingAssets.slice(0, 20),
+    missingQuestionSourceRows: missingQuestionSourceRows.slice(0, 20),
+    missingVariantSourceRows: missingVariantSourceRows.slice(0, 20),
+    missingVariants: missingVariants.slice(0, 20),
+    missingPlacements: missingPlacements
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    missingCoursePapers: missingCoursePapers
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    missingVariantPapers: missingVariantPapers
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    missingPapers: missingPapers.slice(0, 20),
+    missingAssetRows: missingAssetRows.slice(0, 20),
+    missingAssetSources: missingAssetSources.slice(0, 20),
+    missingVariantAssets: missingVariantAssets
+      .slice(0, 20)
+      .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
+    missingSearchDocuments: missingSearchDocuments.slice(0, 20),
     batches,
   };
 }
@@ -623,15 +1237,13 @@ async function main() {
       client = createImportClient();
       normalized = await resolveExamMateForProduction(optimizedSource, client, {
         storageProvider: 'r2',
-        storageBucket: storageBucket(options),
+        storageBucket: resolveQuestionBankBucket(options),
+        recoveryBatchId: options.resumeBatchId,
       });
     }
 
     const report = {
       ...publicExamMateReport(normalized),
-      sourceArchiveSha256: normalized.sourceArchiveSha256,
-      optimizationAuditSha256: normalized.optimizationAuditSha256,
-      optimizationChecksumsSha256: normalized.optimizationChecksumsSha256,
       optimizationSummary: optimizationAudit.summary,
       requestedMode: options.mode,
       productionWritePerformed: false,
@@ -647,6 +1259,13 @@ async function main() {
       return;
     }
 
+    if (options.mode === 'assets' || options.mode === 'all') {
+      const verifiedBucket = await preflightPrivateR2Bucket(options);
+      process.stdout.write(
+        `Authenticated dedicated R2 bucket preflight passed for ${verifiedBucket}.\n`,
+      );
+    }
+
     if (options.mode === 'database' || options.mode === 'all') {
       const result = await importDatabase(normalized, { ...options, client });
       batchId = result.batchId;
@@ -655,21 +1274,57 @@ async function main() {
     }
 
     if (options.mode === 'assets' || options.mode === 'all') {
-      report.assetUpload = await uploadAssets(normalized, {
-        ...options,
-        client,
-        storageBucket: storageBucket(options),
-      });
-      report.productionWritePerformed = true;
-      if (report.assetUpload.failed) process.exitCode = 1;
+      try {
+        report.assetUpload = await uploadAssets(normalized, {
+          ...options,
+          client,
+          storageBucket: resolveQuestionBankBucket(options),
+        });
+        report.productionWritePerformed = true;
+        if (report.assetUpload.failed) process.exitCode = 1;
+      } catch (error) {
+        if (batchId) {
+          await finalizeBatch(
+            client,
+            batchId,
+            {
+              stage: 'assets',
+              sourceArchiveSha256: normalized.sourceArchiveSha256,
+              optimizationAuditSha256: normalized.optimizationAuditSha256,
+              error: String(error.message || error).slice(0, 1000),
+            },
+            'failed',
+          );
+        }
+        throw error;
+      }
     }
 
     if (options.mode === 'verify' || options.mode === 'all') {
-      report.productionVerification = await verifyProduction(normalized, {
-        ...options,
-        client,
-      });
-      if (report.productionVerification.status !== 'passed') process.exitCode = 1;
+      try {
+        report.productionVerification = await verifyProduction(normalized, {
+          ...options,
+          client,
+        });
+        if (report.productionVerification.status !== 'passed') {
+          process.exitCode = 1;
+        }
+      } catch (error) {
+        if (batchId) {
+          await finalizeBatch(
+            client,
+            batchId,
+            {
+              stage: 'verification',
+              sourceArchiveSha256: normalized.sourceArchiveSha256,
+              optimizationAuditSha256: normalized.optimizationAuditSha256,
+              error: String(error.message || error).slice(0, 1000),
+            },
+            'failed',
+          );
+        }
+        throw error;
+      }
     }
 
     const finalStatus =
@@ -690,6 +1345,7 @@ async function main() {
                 provider: report.assetUpload.provider,
                 bucket: report.assetUpload.bucket,
                 counts: report.assetUpload.counts,
+                inventory: report.assetUpload.inventory,
                 failed: report.assetUpload.failed,
               }
             : null,
@@ -715,6 +1371,7 @@ async function main() {
                 provider: report.assetUpload.provider,
                 bucket: report.assetUpload.bucket,
                 counts: report.assetUpload.counts,
+                inventory: report.assetUpload.inventory,
                 failed: report.assetUpload.failed,
               }
             : null,

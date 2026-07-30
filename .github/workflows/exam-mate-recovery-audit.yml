@@ -1,0 +1,322 @@
+name: Exam-Mate recovery read-only audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/exam-mate-recovery-audit.yml
+      - .github/workflows/exam-mate-production-import.yml
+      - scripts/import-exam-mate-question-bank-optimized.mjs
+      - scripts/question-bank/exam-mate.mjs
+      - scripts/question-bank/exam-mate-optimization.mjs
+      - scripts/r2-s3.mjs
+      - scripts/verify-exam-mate-staging.mjs
+      - tests/exam-mate-importer.test.mjs
+      - tests/exam-mate-optimization-importer.test.mjs
+      - tests/exam-mate-production-recovery.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-mate-recovery-audit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Pinned audit and production-aware dry run
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_QUESTION_BANK_BUCKET: dp-question-bank
+
+    steps:
+      - name: Check out recovery branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Initialize private runner workspace
+        shell: bash
+        run: echo "ROOT=$RUNNER_TEMP/ExamMate-recovery-audit" >> "$GITHUB_ENV"
+
+      - name: Validate read-only audit configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+          test -n "$R2_ACCESS_KEY_ID"
+          test -n "$R2_SECRET_ACCESS_KEY"
+          test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
+          test "$R2_QUESTION_BANK_BUCKET" = "dp-question-bank"
+
+      - name: Verify dedicated private R2 bucket read access
+        run: |
+          node --input-type=module <<'NODE'
+          import {
+            headPrivateR2Bucket,
+            listPrivateR2Objects,
+          } from './scripts/r2-s3.mjs';
+
+          const bucket = process.env.R2_QUESTION_BANK_BUCKET;
+          await headPrivateR2Bucket({
+            bucket,
+            signal: AbortSignal.timeout(45_000),
+          });
+          const inventory = await listPrivateR2Objects({
+            bucket,
+            prefix: 'question-bank/assets/sha256/',
+            signal: AbortSignal.timeout(60_000),
+          });
+          const base =
+            process.env.R2_ENDPOINT?.trim() ||
+            `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+          const unsignedUrl = new URL(
+            `${base.replace(/\/+$/, '')}/${encodeURIComponent(bucket)}`,
+          );
+          const unsigned = await fetch(unsignedUrl, {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (![401, 403].includes(unsigned.status)) {
+            throw new Error(
+              `Unsigned R2 bucket endpoint did not fail closed: ${unsigned.status}`,
+            );
+          }
+          console.log(
+            `Read-only R2 preflight passed; first page has ${inventory.objects.length} object(s), unsigned status ${unsigned.status}.`,
+          );
+          NODE
+
+      - name: Run recovery regression tests
+        run: >-
+          npx vitest run
+          tests/exam-mate-importer.test.mjs
+          tests/exam-mate-optimization-importer.test.mjs
+          tests/exam-mate-production-recovery.test.mjs
+
+      - name: Run TypeScript validation
+        run: npm run typecheck
+
+      - name: Download pinned private audits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/staging"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { google } from 'googleapis';
+
+          const files = {
+            'ExamMate-audit-bundle-20260729-234339.zip':
+              '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2',
+            'ExamMate-optimization-audit-20260730-153128.zip':
+              '1Dt7c_Bm1y8Alst0tyTjIZkPyxmrN6bEX',
+          };
+          let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
+          if (
+            (key.startsWith('"') && key.endsWith('"')) ||
+            (key.startsWith("'") && key.endsWith("'"))
+          ) {
+            key = key.slice(1, -1);
+          }
+          key = key.replace(/\\n/g, '\n').trim();
+          const auth = new google.auth.JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          });
+          const drive = google.drive({ version: 'v3', auth });
+          for (const [name, id] of Object.entries(files)) {
+            const target = path.join(process.env.ROOT, 'staging', name);
+            const response = await drive.files.get(
+              { fileId: id, alt: 'media', supportsAllDrives: true },
+              { responseType: 'stream' },
+            );
+            await new Promise((resolve, reject) => {
+              const output = fs.createWriteStream(target, { flags: 'wx' });
+              response.data.pipe(output);
+              output.on('finish', resolve);
+              output.on('error', reject);
+              response.data.on('error', reject);
+            });
+            console.log(`Downloaded ${name}: ${fs.statSync(target).size} bytes`);
+          }
+          NODE
+
+      - name: Verify audit pins and safe archive structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$ROOT/staging"
+          echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  ExamMate-audit-bundle-20260729-234339.zip' | sha256sum -c -
+          echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  ExamMate-optimization-audit-20260730-153128.zip' | sha256sum -c -
+          python3 - ExamMate-audit-bundle-20260729-234339.zip ExamMate-optimization-audit-20260730-153128.zip <<'PY'
+          import pathlib
+          import stat
+          import sys
+          import zipfile
+
+          for raw in sys.argv[1:]:
+            archive = pathlib.Path(raw)
+            with zipfile.ZipFile(archive) as source:
+              if source.testzip() is not None:
+                raise SystemExit(f'ZIP integrity failed: {archive}')
+              seen = set()
+              for member in source.infolist():
+                name = member.filename
+                pure = pathlib.PurePosixPath(name)
+                mode = member.external_attr >> 16
+                entry_type = stat.S_IFMT(mode)
+                if (
+                  not name
+                  or '\\' in name
+                  or pure.is_absolute()
+                  or '..' in pure.parts
+                  or name in seen
+                  or (mode and stat.S_ISLNK(mode))
+                  or (
+                    entry_type
+                    and not stat.S_ISREG(mode)
+                    and not stat.S_ISDIR(mode)
+                  )
+                  or member.flag_bits & 0x1
+                ):
+                  raise SystemExit(f'Unsafe ZIP member in {archive}: {name!r}')
+                seen.add(name)
+          PY
+
+      - name: Prepare reviewed source capture layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/source-capture"
+          unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
+          test -f "$ROOT/source-capture/index/jobs.json"
+          test ! -e "$ROOT/source-capture/source/discovered-jobs.json"
+          cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
+
+      - name: Run pinned offline audit
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode audit \
+            --report "$ROOT/audit-report.json"
+
+      - name: Run production-aware dry run
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode dry-run \
+            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
+            --report "$ROOT/dry-run-report.json"
+
+      - name: Enforce recovery dry-run gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(
+            fs.readFileSync(`${process.env.ROOT}/dry-run-report.json`, 'utf8'),
+          );
+          const counts = report.actualCounts;
+          const exact = {
+            sourceQuestions: 14199,
+            importableQuestions: 14128,
+            quarantinedQuestions: 71,
+            assetManifestRows: 32198,
+            uniquePhysicalAssets: 31336,
+            importableAssetUrls: 32093,
+            importablePhysicalAssets: 31231,
+            resolvedQuestionSources: 14128,
+            resolvedVariantSources: 14128,
+            resolvedPhysicalAssets: 31231,
+          };
+          if (report.verificationStatus !== 'passed') {
+            throw new Error('Recovery dry-run verification did not pass.');
+          }
+          if (report.productionWritePerformed !== false) {
+            throw new Error('Recovery dry run unexpectedly wrote to production.');
+          }
+          if ((report.findingsBySeverity?.critical || 0) !== 0) {
+            throw new Error('Recovery dry run contains a critical finding.');
+          }
+          const pins = {
+            sourceArchiveSha256:
+              '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f',
+            sourceChecksumsSha256:
+              'ac4699532e92f6dd40ae79a89bc03b4b2556d2ab3030c766ba84bed70224d361',
+            optimizationAuditSha256:
+              'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8',
+            optimizationChecksumsSha256:
+              '3a7729dcf1cc7db10a1e57bcaa9df4fb7ffaa2e4e940e025efeee2b0d6f73883',
+            optimizationPlanSha256:
+              '4d43d7eeff8bfba65463d72d0d300482d52c0c5cf9df1e3dc7db10ec933f8b74',
+            optimizationRowsSha256:
+              'a04411148771050bde7e47f70de0fe2727b31db589a61265eddf57e0303ef67e',
+          };
+          for (const [key, expected] of Object.entries(pins)) {
+            if (report[key] !== expected) {
+              throw new Error(`${key}: ${report[key]} !== ${expected}`);
+            }
+          }
+          for (const [key, expected] of Object.entries(exact)) {
+            if (counts?.[key] !== expected) {
+              throw new Error(`${key}: ${counts?.[key]} !== ${expected}`);
+            }
+          }
+          if (
+            counts.searchDocumentCandidates !== counts.importableQuestions ||
+            counts.searchDocuments !== counts.uniqueVariantIds ||
+            counts.searchDocumentsDeduplicated !==
+              counts.searchDocumentCandidates - counts.searchDocuments ||
+            counts.searchDocumentMateriallyDivergentGroups !== 0
+          ) {
+            throw new Error('Search-document duplicate analysis did not pass.');
+          }
+          for (const [collection, result] of Object.entries(
+            counts.normalizedUniqueness || {},
+          )) {
+            if (result.duplicateKeys !== 0) {
+              throw new Error(`${collection} retains duplicate conflict keys.`);
+            }
+          }
+          console.log('Recovery dry-run gate passed.', counts);
+          NODE
+
+      - name: Upload compact redacted audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-recovery-audit-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ExamMate-recovery-audit/*-report.json
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Secure runner cleanup
+        if: always()
+        shell: bash
+        run: rm -rf "$ROOT"
