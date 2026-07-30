@@ -11,6 +11,8 @@ type RendererProps = {
 
 const TABLE_OPTIONS =
   /^\s*(?:[-*]\s+)?(:{1,3}tableoptions(?:\{[^}]*\})?)\s*$/i;
+const TEXTUAL_SOURCE_NOTE =
+  /\$\\(?:footnotesize|scriptsize|tiny|small)\s*\{\s*\\(?:textrm|text)\s*\{([\s\S]*?)\}\s*\}\$/g;
 const IMAGE_ROLES: QuestionAsset['role'][] = [
   'question',
   'markscheme',
@@ -76,8 +78,26 @@ function normalizeImportedTableRows(value: string) {
   return output.join('\n');
 }
 
+function decodeTextualSourceNote(value: string) {
+  return value
+    .replace(/\\textunderscore\s*/g, '_')
+    .replace(/\\textasciitilde\s*/g, '~')
+    .replace(/\\([#$%&_{}])/g, '$1')
+    .replace(/\\(?:,|;|:|!)/g, ' ')
+    .replace(/https?:\/\/\s+/g, (prefix) => prefix.replace(/\s+/g, ''))
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function normalizeTextualSourceNotes(value: string) {
+  return String(value || '').replace(
+    TEXTUAL_SOURCE_NOTE,
+    (_match, note: string) => decodeTextualSourceNote(note),
+  );
+}
+
 function normalizeProductionSource(value: string) {
-  return normalizeImportedTableRows(value)
+  return normalizeImportedTableRows(normalizeTextualSourceNotes(value))
     .replace(/<\s*no\s*link\s*>/gi, '')
     .replace(/::answer\[/gi, ':answer[')
     .replace(/^::tableoptions(?:\{[^}]*\})?\s*$/gim, ':::tableoptions')
@@ -129,10 +149,12 @@ export function QuestionContent({
   kind = 'question',
 }: RendererProps) {
   return (
-    <RoutedQuestionContent
-      source={normalizeProductionSource(source)}
-      assets={expandImageRoleAliases(assets)}
-      kind={kind}
-    />
+    <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+      <RoutedQuestionContent
+        source={normalizeProductionSource(source)}
+        assets={expandImageRoleAliases(assets)}
+        kind={kind}
+      />
+    </div>
   );
 }
