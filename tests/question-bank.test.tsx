@@ -671,6 +671,9 @@ describe('question filters and production security expectations', () => {
     expect(assetRoute).toContain('requireMember');
     expect(assetRoute).toContain(".eq('verification_status', 'verified')");
     expect(assetRoute).toContain('getPrivateR2Object');
+    expect(assetRoute).toContain(
+      "'Cache-Control': 'private, no-store, max-age=0'",
+    );
     expect(assetRoute).toContain("default-src 'none'; sandbox");
   });
 
