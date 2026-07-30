@@ -648,17 +648,24 @@ export async function fetchAll(
 ) {
   const output = [];
   const pageSize = 1000;
-  for (let offset = 0; ; offset += pageSize) {
+  const orderedColumns = Array.isArray(orderColumns)
+    ? orderColumns
+    : [orderColumns];
+  const useKeysetPagination = orderedColumns.length === 1;
+  let cursor = null;
+  for (let pageIndex = 0; ; pageIndex += 1) {
     let data = null;
     let error = null;
     for (let attempt = 1; attempt <= 4; attempt += 1) {
       const result = await withExamMateReadSlot(async () => {
         let query = client.from(table).select(columns);
-        for (const orderColumn of Array.isArray(orderColumns)
-          ? orderColumns
-          : [orderColumns]) {
+        for (const orderColumn of orderedColumns) {
           query = query.order(orderColumn, { ascending: true });
         }
+        if (useKeysetPagination && cursor !== null) {
+          query = query.gt(orderedColumns[0], cursor);
+        }
+        const offset = useKeysetPagination ? 0 : pageIndex * pageSize;
         return query.range(offset, offset + pageSize - 1);
       });
       data = result.data;
@@ -669,15 +676,25 @@ export async function fetchAll(
         /statement timeout/i.test(String(error.message || ''));
       if (!error || !retriable || attempt === 4) break;
       process.stderr.write(
-        `${table} read page ${offset / pageSize + 1} timed out; retrying attempt ${attempt + 1}/4.\n`,
+        `${table} read page ${pageIndex + 1} timed out; retrying attempt ${attempt + 1}/4.\n`,
       );
       await new Promise((resolve) =>
         setTimeout(resolve, attempt * retryDelayMs),
       );
     }
     if (error) throw new Error(`${table} read failed: ${error.message}`);
-    output.push(...(data || []));
-    if (!data || data.length < pageSize) break;
+    const rows = data || [];
+    output.push(...rows);
+    if (rows.length < pageSize) break;
+    if (useKeysetPagination) {
+      const nextCursor = rows.at(-1)?.[orderedColumns[0]];
+      if (nextCursor == null || nextCursor === cursor) {
+        throw new Error(
+          `${table} keyset pagination did not advance on page ${pageIndex + 1}.`,
+        );
+      }
+      cursor = nextCursor;
+    }
   }
   return output;
 }

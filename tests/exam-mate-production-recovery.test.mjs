@@ -91,6 +91,46 @@ describe('Exam-Mate production recovery', () => {
     );
   });
 
+  it('uses a deterministic keyset after the first single-ID page', async () => {
+    const ranges = [];
+    const greaterThan = [];
+    const pages = [
+      {
+        data: Array.from({ length: 1000 }, (_, index) => ({
+          id: String(index).padStart(4, '0'),
+        })),
+        error: null,
+      },
+      { data: [{ id: '1000' }], error: null },
+    ];
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          order: vi.fn(() => query),
+          gt: vi.fn((column, value) => {
+            greaterThan.push([column, value]);
+            return query;
+          }),
+          range: vi.fn((start, end) => {
+            ranges.push([start, end]);
+            return Promise.resolve(pages.shift());
+          }),
+        };
+        return query;
+      }),
+    };
+
+    const rows = await fetchAll(client, 'dp_qb_questions', 'id', ['id'], 0);
+
+    expect(rows).toHaveLength(1001);
+    expect(ranges).toEqual([
+      [0, 999],
+      [0, 999],
+    ]);
+    expect(greaterThan).toEqual([['id', '0999']]);
+  });
+
   it('does not retry a non-timeout PostgreSQL cancellation', async () => {
     const range = vi.fn(() =>
       Promise.resolve({
