@@ -1,5 +1,5 @@
 name: Dispatch guarded Exam-Mate production upload
-# One-time retry after normalizing the reviewed split-archive layout.
+# One-time retry after excluding macOS metadata from the reviewed archives.
 
 on:
   push:
