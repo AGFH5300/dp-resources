@@ -1593,6 +1593,11 @@ export async function resolveExamMateForProduction(normalized, client, options =
   for (const manifestRow of usedManifestRows) {
     const hash = manifestRow.sha256;
     const extension = path.extname(manifestRow.path || '') || '.png';
+    const desiredOriginalFilename =
+      path.basename(new URL(manifestRow.url).pathname) ||
+      `${hash}${extension}`;
+    const desiredContentType = manifestRow.contentType || 'image/png';
+    const desiredByteSize = Number(manifestRow.bytes || 0);
     const desiredStorageKey =
       `question-bank/assets/sha256/${hash.slice(0, 2)}/${hash}${extension}`;
     let asset = assetByHash.get(hash);
@@ -1601,10 +1606,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
         id: deterministicUuid(`asset:${hash}`),
         content_hash: hash,
         canonical_source_path: manifestRow.path,
-        original_filename: path.basename(new URL(manifestRow.url).pathname) || `${hash}${extension}`,
+        original_filename: desiredOriginalFilename,
         file_extension: extension,
-        content_type: manifestRow.contentType || 'image/png',
-        byte_size: Number(manifestRow.bytes || 0),
+        content_type: desiredContentType,
+        byte_size: desiredByteSize,
         storage_provider: storageProvider,
         storage_bucket: storageBucket,
         storage_key: `question-bank/assets/sha256/${hash.slice(0, 2)}/${hash}${extension}`,
@@ -1627,7 +1632,12 @@ export async function resolveExamMateForProduction(normalized, client, options =
         asset.storage_provider === storageProvider &&
         asset.storage_bucket === storageBucket &&
         asset.storage_key === desiredStorageKey;
-      if (!desiredLocation) {
+      const desiredMetadata =
+        asset.canonical_source_path === manifestRow.path &&
+        asset.file_extension === extension &&
+        asset.content_type === desiredContentType &&
+        Number(asset.byte_size) === desiredByteSize;
+      if (!desiredLocation || !desiredMetadata) {
         const safePartialExamMateAsset = canRetargetExamMatePartialAsset(
           asset,
           examMateAssetIds,
@@ -1635,7 +1645,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
         );
         if (!safePartialExamMateAsset) {
           findings.push(
-            finding('critical', 'exam_mate_existing_asset_location_conflict', {
+            finding('critical', 'exam_mate_existing_asset_recovery_conflict', {
               assetId: asset.id,
               contentHash: hash,
               currentProvider: asset.storage_provider,
@@ -1644,6 +1654,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
               desiredProvider: storageProvider,
               desiredBucket: storageBucket,
               desiredKey: desiredStorageKey,
+              currentContentType: asset.content_type,
+              desiredContentType,
+              currentByteSize: Number(asset.byte_size),
+              desiredByteSize,
               uploadStatus: asset.upload_status,
               verificationStatus: asset.verification_status,
             }),
@@ -1652,12 +1666,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
           asset = {
             ...asset,
             canonical_source_path: manifestRow.path,
-            original_filename:
-              path.basename(new URL(manifestRow.url).pathname) ||
-              `${hash}${extension}`,
+            original_filename: desiredOriginalFilename,
             file_extension: extension,
-            content_type: manifestRow.contentType || 'image/png',
-            byte_size: Number(manifestRow.bytes || 0),
+            content_type: desiredContentType,
+            byte_size: desiredByteSize,
             storage_provider: storageProvider,
             storage_bucket: storageBucket,
             storage_key: desiredStorageKey,
