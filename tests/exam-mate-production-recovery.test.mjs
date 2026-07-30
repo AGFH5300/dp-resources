@@ -381,17 +381,22 @@ describe('Exam-Mate production recovery', () => {
   });
 
   it('requires the exact failed batch identity for a production resume', () => {
-    expect(
-      parseArguments([
-        '--mode',
-        'all',
-        '--assets-root',
-        '/tmp/assets',
-        '--confirm-production',
-        '--resume-batch-id',
-        '27462015-2a25-41bf-93b0-c4efd24d9a3a',
-      ]).resumeBatchId,
-    ).toBe('27462015-2a25-41bf-93b0-c4efd24d9a3a');
+    const options = parseArguments([
+      '--mode',
+      'all',
+      '--assets-root',
+      '/tmp/assets',
+      '--storage-bucket',
+      'dp-pdf-previews',
+      '--allow-shared-private-bucket',
+      '--confirm-production',
+      '--resume-batch-id',
+      '27462015-2a25-41bf-93b0-c4efd24d9a3a',
+    ]);
+    expect(options.resumeBatchId).toBe(
+      '27462015-2a25-41bf-93b0-c4efd24d9a3a',
+    );
+    expect(options.allowSharedPrivateBucket).toBe(true);
     expect(() =>
       parseArguments([
         '--mode',
@@ -401,6 +406,9 @@ describe('Exam-Mate production recovery', () => {
         'not-a-uuid',
       ]),
     ).toThrow('--resume-batch-id must be a UUID');
+    expect(() =>
+      parseArguments(['--allow-shared-private-bucket']),
+    ).toThrow('requires an explicit --storage-bucket');
   });
 
   it('resumes only the same failed archive batch', () => {
@@ -431,7 +439,7 @@ describe('Exam-Mate production recovery', () => {
     ).toThrow('requires --resume-batch-id');
   });
 
-  it('fails closed without a dedicated Question Bank bucket', () => {
+  it('requires an explicit override to share the private preview bucket', () => {
     delete process.env.R2_QUESTION_BANK_BUCKET;
     delete process.env.R2_PDF_PREVIEW_BUCKET;
     expect(() => resolveQuestionBankBucket()).toThrow(
@@ -439,7 +447,20 @@ describe('Exam-Mate production recovery', () => {
     );
 
     process.env.R2_QUESTION_BANK_BUCKET = 'dp-pdf-previews';
-    expect(() => resolveQuestionBankBucket()).toThrow('dedicated bucket');
+    expect(() => resolveQuestionBankBucket()).toThrow(
+      'only with an explicit --storage-bucket',
+    );
+    expect(() =>
+      resolveQuestionBankBucket({
+        allowSharedPrivateBucket: true,
+      }),
+    ).toThrow('only with an explicit --storage-bucket');
+    expect(
+      resolveQuestionBankBucket({
+        storageBucket: 'dp-pdf-previews',
+        allowSharedPrivateBucket: true,
+      }),
+    ).toBe('dp-pdf-previews');
 
     process.env.R2_QUESTION_BANK_BUCKET = 'dp-question-bank';
     process.env.R2_PDF_PREVIEW_BUCKET = 'dp-pdf-previews';
