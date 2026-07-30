@@ -64,6 +64,10 @@ $4.$ $\hspace{1em}$ $\answer{\textrm{enter data}}$ :marks[1]
 :br
 $5.$ $\hspace{1em}$ $\answer{\textrm{a true professional}}$ :marks[1]`;
 
+const longSourceNote = String.raw`:::center
+$\footnotesize{\textrm{[© Revision Village 2023. Nature reserve pattern: kjpargeter. Free vector abstract pattern background. Freepik.}}$ $\footnotesize{\textrm{Retrieved June 12, 2023, from https:// www.freepik.com/free-vector/abstract-pattern-background\textunderscore28456133.htm. Copyright free.]}}$
+:::`;
+
 describe('EB0383 production rendering', () => {
   it('keeps choices directly below their own instruction', () => {
     const parsed = parseInteractiveQuestion(content, markScheme, 5);
@@ -107,6 +111,16 @@ describe('EB0383 production rendering', () => {
     expect(normalized).toContain('5. :answer[a true professional]');
     expect(output).not.toContain('\\answer');
     expect(output).not.toContain('textquotedblleft');
+  });
+
+  it('renders long textual source notes as wrapping text instead of unbreakable math', () => {
+    const output = renderToStaticMarkup(<QuestionContent source={longSourceNote} />);
+
+    expect(output).toContain('https://www.freepik.com/free-vector/');
+    expect(output).toContain('abstract-pattern-background_28456133.htm');
+    expect(output).not.toContain('footnotesize');
+    expect(output).not.toContain('textunderscore');
+    expect(output).not.toContain('class="katex"');
   });
 
   it('uses the final production wrapper while preserving independent section state', () => {
