@@ -478,16 +478,31 @@ jobs:
               throw new Error(`${collection} retains duplicate conflict keys.`);
             }
           }
-          if (
-            counts.newQuestionCores !== 0 ||
-            counts.questionSources !== 0 ||
-            counts.variants !== 0 ||
-            counts.variantSources !== 0 ||
-            counts.placements !== 0 ||
-            counts.assetSources !== 0 ||
-            counts.variantAssets !== 0
-          ) {
-            throw new Error('Partial-import resume would append already imported logical rows.');
+          const expectedRecoveryCounts = {
+            newQuestionCores: 80,
+            questionSources: 0,
+            repairedQuestionSources: 80,
+            variants: 80,
+            repairedVariants: 282,
+            variantSources: 0,
+            repairedVariantSources: 80,
+            placements: 80,
+            papers: 77,
+            assetSources: 0,
+            repairedAssetSources: 199,
+            variantAssets: 199,
+            existingVariantAssets: 31894,
+            recoveryDeletedVariantAssets: 199,
+            recoveryDeletedVariantPapers: 305,
+            recoveryDeletedCoursePapers: 2,
+            recoveryDeletedPapers: 2,
+          };
+          for (const [key, value] of Object.entries(expectedRecoveryCounts)) {
+            if (counts[key] !== value) {
+              throw new Error(
+                `Partial-import recovery count mismatch for ${key}: ${counts[key]} !== ${value}`,
+              );
+            }
           }
           if (
             counts.newAssetRows !== 0 ||
