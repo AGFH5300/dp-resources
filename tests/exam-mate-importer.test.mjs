@@ -6,7 +6,7 @@ import {
   canonicalExamKey,
   courseDescriptor,
 } from '../scripts/question-bank/exam-mate.mjs';
-import { parseArguments } from '../scripts/import-exam-mate-question-bank.mjs';
+import { parseArguments } from '../scripts/import-exam-mate-question-bank-optimized.mjs';
 
 describe('Exam-Mate Question Bank importer', () => {
   it('pins the reviewed audit and exact source counts', () => {
