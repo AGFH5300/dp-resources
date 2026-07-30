@@ -168,8 +168,14 @@ async function retry(operation, attempts = 4) {
 }
 
 export function minifySvg(source) {
-  return source
-    .replace(/<!--(?!\[if)[\s\S]*?-->/g, '')
+  let output = source;
+  let previous;
+  do {
+    previous = output;
+    output = output.replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
+  } while (output !== previous);
+
+  return output
     .replace(/>\s+</g, '><')
     .replace(/\s+\/>/g, '/>')
     .trim();
