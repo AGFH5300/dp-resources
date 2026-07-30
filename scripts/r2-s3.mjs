@@ -44,6 +44,7 @@ async function signedR2Request({
   method,
   bucket,
   key,
+  accountRoot = false,
   body,
   contentType,
   cacheControl,
@@ -52,7 +53,10 @@ async function signedR2Request({
   signal,
 }) {
   const configuration = assertR2Configured();
-  if (!bucket?.trim()) throw new Error('R2 bucket is required');
+  if (accountRoot && (bucket != null || key != null)) {
+    throw new Error('R2 account-root requests cannot include a bucket or key');
+  }
+  if (!accountRoot && !bucket?.trim()) throw new Error('R2 bucket is required');
   if (key != null && !key.trim())
     throw new Error('R2 object key cannot be empty');
 
@@ -60,9 +64,10 @@ async function signedR2Request({
   const basePath = endpoint.pathname.replace(/\/+$/, '');
   const encodedKey =
     key == null ? null : key.split('/').map(encodePathSegment).join('/');
-  endpoint.pathname =
-    `${basePath}/${encodePathSegment(bucket)}` +
-    (encodedKey == null ? '' : `/${encodedKey}`);
+  endpoint.pathname = accountRoot
+    ? `${basePath}/`
+    : `${basePath}/${encodePathSegment(bucket)}` +
+      (encodedKey == null ? '' : `/${encodedKey}`);
   const canonicalQuery = Object.entries(query || {})
     .filter(([, value]) => value != null)
     .map(([name, value]) => [
@@ -213,6 +218,22 @@ function decodeXml(value) {
 function xmlValue(body, name) {
   const match = body.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`));
   return match ? decodeXml(match[1]) : null;
+}
+
+export async function listPrivateR2Buckets({ signal } = {}) {
+  const response = await signedR2Request({
+    method: 'GET',
+    bucket: null,
+    key: null,
+    accountRoot: true,
+    signal,
+  });
+  if (!response.ok) throw await errorFromResponse('R2 bucket listing', response);
+  const body = await response.text();
+  return [...body.matchAll(/<Bucket>([\s\S]*?)<\/Bucket>/g)]
+    .map((match) => xmlValue(match[1], 'Name'))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 export async function listPrivateR2Objects({
