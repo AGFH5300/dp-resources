@@ -257,8 +257,13 @@ jobs:
               for member in source.infolist():
                 if member.is_dir():
                   continue
-                leaf = pathlib.PurePosixPath(member.filename).name.lower()
-                if leaf == '.ds_store':
+                member_path = pathlib.PurePosixPath(member.filename)
+                leaf = member_path.name.lower()
+                if (
+                  '__macosx' in {part.lower() for part in member_path.parts}
+                  or leaf == '.ds_store'
+                  or leaf.startswith('._')
+                ):
                   ignored_metadata.append(f'{archive}:{member.filename}')
                   continue
                 match = hash_name.fullmatch(leaf)
