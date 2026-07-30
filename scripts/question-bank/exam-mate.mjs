@@ -262,12 +262,15 @@ function referenceParts(question) {
 }
 
 function paperParts(parts) {
-  const raw = String(parts?.sourcePaperCode || '');
-  const digits = raw.match(/(\d)(\d)$/);
-  if (!digits) return null;
+  const raw = String(parts?.sourcePaperCode || '').trim();
+  const digits = raw.match(/^(\d)(\d)$/);
+  const legacyMathematicsOption = raw.match(/^(\d)\s+.+?(\d)$/i);
+  const singlePaperWithoutTimezone = raw.match(/^(\d)$/);
+  const match = digits || legacyMathematicsOption || singlePaperWithoutTimezone;
+  if (!match) return null;
   return {
-    paper: digits[1],
-    timezone: digits[2],
+    paper: match[1],
+    timezone: match[2] || '0',
   };
 }
 
@@ -470,7 +473,7 @@ export async function normalizeExamMateArchive(root, options = {}) {
     'index/questions.ndjson',
     'index/question-occurrences.ndjson',
     'index/asset-manifest.ndjson',
-    'source/discovered-jobs.json',
+    'index/jobs.json',
   ];
   for (const relative of required) {
     if (!(await exists(path.join(root, ...relative.split('/'))))) {
@@ -483,7 +486,7 @@ export async function normalizeExamMateArchive(root, options = {}) {
     await Promise.all([
       readFile(path.join(root, 'summary.json'), 'utf8').then(JSON.parse),
       readFile(path.join(root, 'progress.json'), 'utf8').then(JSON.parse),
-      readFile(path.join(root, 'source', 'discovered-jobs.json'), 'utf8').then(JSON.parse),
+      readFile(path.join(root, 'index', 'jobs.json'), 'utf8').then(JSON.parse),
       readAllNdjson(path.join(root, 'index', 'questions.ndjson')),
       readAllNdjson(path.join(root, 'index', 'question-occurrences.ndjson')),
       readAllNdjson(path.join(root, 'index', 'asset-manifest.ndjson')),
