@@ -1,0 +1,14 @@
+name: Trigger Exam-Mate production import
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'The dedicated Exam-Mate production import workflow is present on main.'
