@@ -34,7 +34,7 @@ export function assertR2Configured() {
   const configuration = r2Configuration();
   if (!configuration) {
     throw new Error(
-      'R2_ACCOUNT_ID (or R2_ENDPOINT), R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required for R2 previews',
+      'R2_ACCOUNT_ID (or R2_ENDPOINT), R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required for private R2 access',
     );
   }
   return configuration;
@@ -44,20 +44,42 @@ async function signedR2Request({
   method,
   bucket,
   key,
+  accountRoot = false,
   body,
   contentType,
   cacheControl,
+  sha256Metadata,
+  query,
   signal,
 }) {
   const configuration = assertR2Configured();
-  if (!bucket?.trim() || !key?.trim())
-    throw new Error('R2 bucket and object key are required');
+  if (accountRoot && (bucket != null || key != null)) {
+    throw new Error('R2 account-root requests cannot include a bucket or key');
+  }
+  if (!accountRoot && !bucket?.trim()) throw new Error('R2 bucket is required');
+  if (key != null && !key.trim())
+    throw new Error('R2 object key cannot be empty');
 
   const endpoint = new URL(configuration.endpoint);
   const basePath = endpoint.pathname.replace(/\/+$/, '');
-  const encodedKey = key.split('/').map(encodePathSegment).join('/');
-  endpoint.pathname = `${basePath}/${encodePathSegment(bucket)}/${encodedKey}`;
-  endpoint.search = '';
+  const encodedKey =
+    key == null ? null : key.split('/').map(encodePathSegment).join('/');
+  endpoint.pathname = accountRoot
+    ? `${basePath}/`
+    : `${basePath}/${encodePathSegment(bucket)}` +
+      (encodedKey == null ? '' : `/${encodedKey}`);
+  const canonicalQuery = Object.entries(query || {})
+    .filter(([, value]) => value != null)
+    .map(([name, value]) => [
+      encodePathSegment(name),
+      encodePathSegment(String(value)),
+    ])
+    .sort(([leftName, leftValue], [rightName, rightValue]) =>
+      leftName.localeCompare(rightName) || leftValue.localeCompare(rightValue),
+    )
+    .map(([name, value]) => `${name}=${value}`)
+    .join('&');
+  endpoint.search = canonicalQuery;
 
   const payload = body ?? Buffer.alloc(0);
   const payloadHash = sha256Hex(payload);
@@ -71,6 +93,8 @@ async function signedR2Request({
   };
   if (contentType) signedHeaderValues['content-type'] = contentType;
   if (cacheControl) signedHeaderValues['cache-control'] = cacheControl;
+  if (sha256Metadata)
+    signedHeaderValues['x-amz-meta-sha256'] = sha256Metadata;
 
   const headerNames = Object.keys(signedHeaderValues).sort();
   const canonicalHeaders = `${headerNames.map((name) => `${name}:${String(signedHeaderValues[name]).trim().replace(/\s+/g, ' ')}`).join('\n')}\n`;
@@ -78,7 +102,7 @@ async function signedR2Request({
   const canonicalRequest = [
     method,
     endpoint.pathname,
-    '',
+    canonicalQuery,
     canonicalHeaders,
     signedHeaders,
     payloadHash,
@@ -106,6 +130,7 @@ async function signedR2Request({
   };
   if (contentType) headers['content-type'] = contentType;
   if (cacheControl) headers['cache-control'] = cacheControl;
+  if (sha256Metadata) headers['x-amz-meta-sha256'] = sha256Metadata;
 
   return fetch(endpoint, {
     method,
@@ -131,6 +156,7 @@ export async function putPrivateR2Object({
   body,
   contentType = 'application/octet-stream',
   cacheControl = 'private, max-age=31536000, immutable',
+  sha256Metadata,
   signal,
 }) {
   const response = await signedR2Request({
@@ -140,6 +166,7 @@ export async function putPrivateR2Object({
     body,
     contentType,
     cacheControl,
+    sha256Metadata,
     signal,
   });
   if (response.ok) return { etag: response.headers.get('etag') };
@@ -166,6 +193,82 @@ export async function headPrivateR2Object({ bucket, key, signal }) {
   });
   if (response.ok || response.status === 404) return response;
   throw await errorFromResponse('R2 metadata read', response);
+}
+
+export async function headPrivateR2Bucket({ bucket, signal }) {
+  const response = await signedR2Request({
+    method: 'HEAD',
+    bucket,
+    key: null,
+    signal,
+  });
+  if (response.ok) return response;
+  throw await errorFromResponse('R2 bucket verification', response);
+}
+
+function decodeXml(value) {
+  return String(value || '')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&apos;', "'")
+    .replaceAll('&amp;', '&');
+}
+
+function xmlValue(body, name) {
+  const match = body.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`));
+  return match ? decodeXml(match[1]) : null;
+}
+
+export async function listPrivateR2Buckets({ signal } = {}) {
+  const response = await signedR2Request({
+    method: 'GET',
+    bucket: null,
+    key: null,
+    accountRoot: true,
+    signal,
+  });
+  if (!response.ok) throw await errorFromResponse('R2 bucket listing', response);
+  const body = await response.text();
+  return [...body.matchAll(/<Bucket>([\s\S]*?)<\/Bucket>/g)]
+    .map((match) => xmlValue(match[1], 'Name'))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+export async function listPrivateR2Objects({
+  bucket,
+  prefix = '',
+  continuationToken = null,
+  signal,
+}) {
+  const response = await signedR2Request({
+    method: 'GET',
+    bucket,
+    key: null,
+    query: {
+      'list-type': '2',
+      prefix,
+      ...(continuationToken
+        ? { 'continuation-token': continuationToken }
+        : {}),
+    },
+    signal,
+  });
+  if (!response.ok) throw await errorFromResponse('R2 object listing', response);
+  const body = await response.text();
+  const objects = [...body.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)].map(
+    (match) => ({
+      key: xmlValue(match[1], 'Key'),
+      size: Number(xmlValue(match[1], 'Size') || 0),
+      etag: xmlValue(match[1], 'ETag'),
+    }),
+  );
+  return {
+    objects,
+    isTruncated: xmlValue(body, 'IsTruncated') === 'true',
+    nextContinuationToken: xmlValue(body, 'NextContinuationToken'),
+  };
 }
 
 export async function deletePrivateR2Object({ bucket, key, signal }) {

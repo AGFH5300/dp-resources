@@ -509,6 +509,8 @@ export async function applyExamMateOptimizationPlan(normalized, optimizationAudi
     archiveSha256: combinedArchiveSha256,
     optimizationAuditSha256: EXAM_MATE_OPTIMIZATION_AUDIT_SHA256,
     optimizationChecksumsSha256: EXAM_MATE_OPTIMIZATION_CHECKSUMS_SHA256,
+    optimizationPlanSha256: EXAM_MATE_OPTIMIZATION_PLAN_SHA256,
+    optimizationRowsSha256: EXAM_MATE_OPTIMIZATION_ROWS_SHA256,
     expectedCounts,
     actualCounts,
     verificationStatus: critical.length ? 'failed' : 'passed',
