@@ -5,6 +5,7 @@ import {
   EXAM_MATE_OPTIMIZATION_CHECKSUMS_SHA256,
   EXAM_MATE_OPTIMIZATION_EXPECTED,
   EXAM_MATE_OPTIMIZATION_PLAN_SHA256,
+  EXAM_MATE_RETAINED_BMP_CORRECTION,
   EXAM_MATE_OPTIMIZATION_ROWS_SHA256,
   applyExamMateOptimizationPlan,
   selectedManifestRow,
@@ -67,6 +68,36 @@ describe('Exam-Mate local optimization import', () => {
       bytes: plan.selectedBytes,
       contentType: 'image/webp',
       optimized: true,
+    });
+  });
+
+  it('corrects the exact retained BMP MIME type without changing its pinned path or hash', () => {
+    const correction = EXAM_MATE_RETAINED_BMP_CORRECTION;
+    const original = {
+      url: 'https://www.exam-mate.com/questions/example.png',
+      sha256: correction.hash,
+      path: correction.path,
+      bytes: correction.bytes,
+      contentType: correction.auditedContentType,
+    };
+    const selected = selectedManifestRow(original, {
+      originalSourceHash: correction.hash,
+      selectedHash: correction.hash,
+      selectedPath: correction.path,
+      selectedBytes: correction.bytes,
+      selectedContentType: correction.auditedContentType,
+      selectedFormat: correction.auditedFormat,
+      optimized: false,
+      savingsBytes: 0,
+      savingsPercent: 0,
+      pixelVerification: { mode: correction.verificationMode, passed: true },
+    });
+    expect(selected).toMatchObject({
+      sha256: correction.hash,
+      path: correction.path,
+      bytes: correction.bytes,
+      contentType: 'image/bmp',
+      selectedFormat: 'png',
     });
   });
 
