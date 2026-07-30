@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/exam-mate-production-import.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -55,6 +56,12 @@ jobs:
           test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
           test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
 
+      - name: Run importer regression tests
+        run: npx vitest run tests/exam-mate-importer.test.mjs tests/exam-mate-optimization-importer.test.mjs
+
+      - name: Run TypeScript validation
+        run: npm run typecheck
+
       - name: Download private staging files from Google Drive
         shell: bash
         run: |
@@ -67,22 +74,22 @@ jobs:
 
           const root = process.env.ROOT;
           const files = {
-            'ExamMate-audit-bundle-20260729-234339.zip': '1-hkHNs6dE-lQYVZcX9YdABwaKVBvTSqf',
-            'ExamMate-optimization-audit-20260730-153128.zip': '1TRMUuPrC9kA4Lx0KmJiBd1vA6PxAa-Bc',
-            'exam-mate-assets-split-manifest.json': '1ONb7pABHUvOjPFtRBdzRbwaU4SOmvCEG',
-            'exam-mate-bas-part-00.zip': '1K6VLPLZB6SzxZNfceJRn7gMkw8AeeYQk',
-            'exam-mate-bas-part-01.zip': '17eIwtjRVnY2amBk2LJOUbAAK6tf-PeSY',
-            'exam-mate-bas-part-02.zip': '1Ep36IyETP7aX0g0IatLZ6bTpxFEfzf6-',
-            'exam-mate-bas-part-03.zip': '1fEKFl6ny4DtHfYYfUZWXy7BHk1sl5p21',
-            'exam-mate-sas-part-00.zip': '1XZn82mJDewFc6FNE86eW5_iq2rfS5I8l',
-            'exam-mate-sas-part-01.zip': '1_a4cgYv3oO5HI5O8EZR5YcRalGyYblql',
-            'exam-mate-sas-part-02.zip': '16MnMu5R4lnsLjJq0MlV7gIg3sqwRmQRu',
-            'exam-mate-sas-part-03.zip': '1QKI5dSfLUoPsH8wvp9GctiYD3z96MyTH',
-            'exam-mate-sas-part-04.zip': '1QJ9eoZZ5glb8RsMfpje9mkDHWw22mgkN',
+            'ExamMate-audit-bundle-20260729-234339.zip': '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2',
+            'ExamMate-optimization-audit-20260730-153128.zip': '1Dt7c_Bm1y8Alst0tyTjIZkPyxmrN6bEX',
+            'asset-parts-manifest.json': '11y6Tdx4uvZ5Xk3IDrswa9c-hhDadPC6p',
+            'bas.part-00': '18t_7Qn0PmPJfOjzsydD0dqah7WrVOKLQ',
+            'bas.part-01': '1cFrhzNpS_n9EBZRaOL7GR6tJNGWG1KAx',
+            'bas.part-02': '1dsH52k90dWn8-yPHrR-PApED_vbYHnia',
+            'bas.part-03': '1yTa1fVQzKhEQcV8t3anwjz7sx8-jJTfd',
+            'sas.part-00': '19eZu-zOsPl3aNPPLDwiunoxlhKlvlhda',
+            'sas.part-01': '1ZGIOC70rK4CTW_yD0II6X5L0I2jeQGBK',
+            'sas.part-02': '15C7aZTLfpSIPoeR0Nqc-qmoOmTL5k0PH',
+            'sas.part-03': '1Vnb2NcYMfUCrY3xYSomfGyCb_SJ0Ogbp',
+            'sas.part-04': '1HfAY8ZdKDUezKGzVh0QpET4AVBfSeLkK',
           };
           let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
           if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) key = key.slice(1, -1);
-          key = key.replace(/\\n/g, '\n').replace(/\\/g, '').trim();
+          key = key.replace(/\\n/g, '\n').trim();
           const auth = new google.auth.JWT({
             email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
             key,
@@ -103,24 +110,45 @@ jobs:
           }
           NODE
 
-      - name: Reconstruct and verify uploaded asset archives
+      - name: Verify split parts and reconstruct asset archives
         shell: bash
         run: |
           set -euo pipefail
           cd "$ROOT/staging"
-          for wrapper in exam-mate-bas-part-*.zip exam-mate-sas-part-*.zip; do unzip -q "$wrapper"; done
+          echo '7e7755224001ed80da081ca44d09af495e6fd6c33dd03766a057cf24f719a564  asset-parts-manifest.json' | sha256sum -c -
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import path from 'node:path';
+          const root = path.join(process.env.ROOT, 'staging');
+          const manifest = JSON.parse(fs.readFileSync(path.join(root, 'asset-parts-manifest.json'), 'utf8'));
+          for (const input of manifest.inputs) {
+            for (const part of input.parts) {
+              const file = path.join(root, part.name);
+              const body = fs.readFileSync(file);
+              const hash = crypto.createHash('sha256').update(body).digest('hex');
+              if (body.byteLength !== part.size || hash !== part.sha256) {
+                throw new Error(`Split part verification failed: ${part.name}`);
+              }
+            }
+          }
+          NODE
           cat bas.part-00 bas.part-01 bas.part-02 bas.part-03 > bas.zip
           cat sas.part-00 sas.part-01 sas.part-02 sas.part-03 sas.part-04 > sas.zip
-          echo 'f99d8c229d145ac24c01969ec44b6c828fd65e01ecf8c13e9b377e9903e33aa8  bas.zip' | sha256sum -c -
-          echo 'a03dc9676f95dc64d5f769b38436b6faccd9f0d432b150d30bc0dda3157bf646  sas.zip' | sha256sum -c -
+          echo '0382233687c95632725d1507246e5c8289141f980f54dbd7441ddcaa2c2b4c39  bas.zip' | sha256sum -c -
+          echo '17e6b30a4242b5065e755e92a036e4b6e1f2077b1ab60f27eddc992368b16f91  sas.zip' | sha256sum -c -
           echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  ExamMate-audit-bundle-20260729-234339.zip' | sha256sum -c -
           echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  ExamMate-optimization-audit-20260730-153128.zip' | sha256sum -c -
+          unzip -tq bas.zip
+          unzip -tq sas.zip
           mkdir -p "$ROOT/optimized-assets/sha256" "$ROOT/assets/sha256"
           unzip -q bas.zip -d unpack-bas
           unzip -q sas.zip -d unpack-sas
           cp -a unpack-bas/bas/. "$ROOT/optimized-assets/sha256/"
           cp -a unpack-sas/sas/. "$ROOT/optimized-assets/sha256/"
+          find "$ROOT/optimized-assets/sha256" -name '.DS_Store' -delete
           test "$(find "$ROOT/optimized-assets/sha256" -type f -name '*.webp' | wc -l)" -eq 31328
+          test "$(find "$ROOT/optimized-assets/sha256" -type f | wc -l)" -eq 31328
 
       - name: Retrieve and verify eight exact retained PNG assets
         shell: bash
@@ -159,6 +187,32 @@ jobs:
             --mode dry-run \
             --report "$ROOT/dry-run-report.json"
 
+      - name: Enforce dry-run production gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync(`${process.env.ROOT}/dry-run-report.json`, 'utf8'));
+          const expected = {
+            sourceQuestions: 14199,
+            importableQuestions: 14128,
+            quarantinedQuestions: 71,
+            importableAssetUrls: 32093,
+            importablePhysicalAssets: 31231,
+          };
+          if (report.verificationStatus !== 'passed') throw new Error('Dry-run verification did not pass.');
+          if (report.productionWritePerformed !== false) throw new Error('Dry-run unexpectedly performed a production write.');
+          if ((report.findingsBySeverity?.critical || 0) !== 0) throw new Error('Dry-run contains critical findings.');
+          if ((report.findingsBySeverity?.error || 0) !== 0) throw new Error('Dry-run contains error findings.');
+          if (report.sourceArchiveSha256 !== '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f') throw new Error('Source archive pin mismatch.');
+          if (report.optimizationAuditSha256 !== 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8') throw new Error('Optimization audit pin mismatch.');
+          for (const [key, value] of Object.entries(expected)) {
+            if (report.actualCounts?.[key] !== value) throw new Error(`Dry-run count mismatch for ${key}: ${report.actualCounts?.[key]} !== ${value}`);
+          }
+          if (report.actualCounts?.questionSources !== 14128) throw new Error('Expected exactly 14,128 Exam-Mate question-source rows.');
+          if (!Number.isInteger(report.actualCounts?.variantSources) || report.actualCounts.variantSources < 14128) throw new Error('Variant-source count is unexpectedly low.');
+          console.log('Dry-run production gate passed.', report.actualCounts);
+          NODE
+
       - name: Import database and selected private R2 assets
         run: |
           npm run question-bank:exam-mate -- \
@@ -170,6 +224,22 @@ jobs:
             --confirm-production \
             --report "$ROOT/import-report.json"
 
+      - name: Enforce import verification gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync(`${process.env.ROOT}/import-report.json`, 'utf8'));
+          const verification = report.productionVerification;
+          if (report.verificationStatus !== 'passed') throw new Error('Import normalization did not pass.');
+          if (report.productionWritePerformed !== true) throw new Error('Import did not record a production write.');
+          if ((report.assetUpload?.failed || 0) !== 0) throw new Error('One or more selected assets failed to upload.');
+          if (verification?.status !== 'passed') throw new Error('Post-import verification did not pass.');
+          if (verification.expectedQuestionSources !== 14128 || verification.questionSources !== 14128) throw new Error('Question-source verification count mismatch.');
+          if (verification.verifiedSelectedAssets !== verification.expectedSelectedAssets) throw new Error('Selected asset verification count mismatch.');
+          if (verification.missingQuestionSources?.length || verification.missingVariantSources?.length || verification.missingAssets?.length) throw new Error('Post-import verification reports missing records or assets.');
+          console.log('Import verification gate passed.', verification);
+          NODE
+
       - name: Run independent post-import verification
         run: |
           npm run question-bank:exam-mate -- \
@@ -177,6 +247,20 @@ jobs:
             --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
             --mode verify \
             --report "$ROOT/verify-report.json"
+
+      - name: Enforce independent verification gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(fs.readFileSync(`${process.env.ROOT}/verify-report.json`, 'utf8'));
+          const verification = report.productionVerification;
+          if (report.productionWritePerformed !== false) throw new Error('Independent verification unexpectedly wrote to production.');
+          if (verification?.status !== 'passed') throw new Error('Independent production verification failed.');
+          if (verification.questionSources !== 14128 || verification.expectedQuestionSources !== 14128) throw new Error('Independent question-source verification mismatch.');
+          if (verification.verifiedSelectedAssets !== verification.expectedSelectedAssets) throw new Error('Independent selected-asset verification mismatch.');
+          if (verification.missingQuestionSources?.length || verification.missingVariantSources?.length || verification.missingAssets?.length) throw new Error('Independent verification reports missing records or assets.');
+          console.log('Independent verification gate passed.', verification);
+          NODE
 
       - name: Upload immutable audit reports
         if: always()
