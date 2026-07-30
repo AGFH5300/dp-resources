@@ -1,4 +1,4 @@
-name: Trigger Exam-Mate production import
+name: Inspect Exam-Mate production import
 
 on:
   push:
@@ -8,14 +8,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: read
 
 jobs:
-  dispatch:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch the reviewed one-time production import
+      - name: Print current Exam-Mate workflow runs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run exam-mate-production-import.yml --repo AGFH5300/dp-resources --ref main
+        run: |
+          gh run list \
+            --repo AGFH5300/dp-resources \
+            --workflow exam-mate-production-import.yml \
+            --limit 10 \
+            --json databaseId,status,conclusion,headSha,event,createdAt,updatedAt,url,displayTitle,workflowName
+          echo 'Intentional monitor exit so the run ID is delivered through the existing failure-notification channel.'
+          exit 1
