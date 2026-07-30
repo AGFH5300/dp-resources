@@ -1,31 +1,27 @@
 name: Exam-Mate recovery read-only audit
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/exam-mate-recovery-audit.yml
-      - .github/workflows/exam-mate-production-import.yml
-      - scripts/import-exam-mate-question-bank-optimized.mjs
-      - scripts/question-bank/exam-mate.mjs
-      - scripts/question-bank/exam-mate-optimization.mjs
-      - scripts/r2-s3.mjs
-      - scripts/verify-exam-mate-staging.mjs
-      - tests/exam-mate-importer.test.mjs
-      - tests/exam-mate-optimization-importer.test.mjs
-      - tests/exam-mate-production-recovery.test.mjs
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RUN-EXAM-MATE-READ-ONLY-AUDIT
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: exam-mate-recovery-audit-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: exam-mate-recovery-read-only-audit
+  cancel-in-progress: false
 
 jobs:
   audit:
     name: Pinned audit and production-aware dry run
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'RUN-EXAM-MATE-READ-ONLY-AUDIT'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -41,8 +37,17 @@ jobs:
       R2_QUESTION_BANK_BUCKET: dp-question-bank
 
     steps:
-      - name: Check out recovery branch
+      - name: Check out merged importer
         uses: actions/checkout@v5
+
+      - name: Enforce trusted main read-only guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "${{ inputs.confirmation }}" = "RUN-EXAM-MATE-READ-ONLY-AUDIT"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
