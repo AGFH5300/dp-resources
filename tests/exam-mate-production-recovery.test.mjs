@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   canRepairExamMatePartialRow,
   canRetargetExamMatePartialAsset,
   canonicalExamKey,
+  fetchAll,
   normalizeExamMateSearchDocuments,
   normalizedRowUniqueness,
 } from '../scripts/question-bank/exam-mate.mjs';
@@ -44,9 +45,119 @@ afterEach(() => {
     delete process.env.R2_SECRET_ACCESS_KEY;
   else process.env.R2_SECRET_ACCESS_KEY = ORIGINAL_ENV.secretAccessKey;
   globalThis.fetch = ORIGINAL_FETCH;
+  vi.restoreAllMocks();
 });
 
 describe('Exam-Mate production recovery', () => {
+  it('retries a timed-out production read with the same deterministic page', async () => {
+    const ranges = [];
+    const results = [
+      {
+        data: null,
+        error: {
+          code: '57014',
+          message: 'canceling statement due to statement timeout',
+        },
+      },
+      { data: [{ id: 'row-1' }], error: null },
+    ];
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          order: vi.fn(() => query),
+          range: vi.fn((start, end) => {
+            ranges.push([start, end]);
+            return Promise.resolve(results.shift());
+          }),
+        };
+        return query;
+      }),
+    };
+    const stderr = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+
+    await expect(
+      fetchAll(client, 'dp_qb_question_sources', 'id', ['id'], 0),
+    ).resolves.toEqual([{ id: 'row-1' }]);
+
+    expect(ranges).toEqual([
+      [0, 999],
+      [0, 999],
+    ]);
+    expect(stderr).toHaveBeenCalledWith(
+      'dp_qb_question_sources read page 1 timed out; retrying attempt 2/4.\n',
+    );
+  });
+
+  it('does not retry a non-timeout PostgreSQL cancellation', async () => {
+    const range = vi.fn(() =>
+      Promise.resolve({
+        data: null,
+        error: {
+          code: '57014',
+          message: 'canceling statement due to user request',
+        },
+      }),
+    );
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          order: vi.fn(() => query),
+          range,
+        };
+        return query;
+      }),
+    };
+
+    await expect(
+      fetchAll(client, 'dp_qb_question_sources', 'id', ['id'], 0),
+    ).rejects.toThrow('canceling statement due to user request');
+    expect(range).toHaveBeenCalledTimes(1);
+  });
+
+  it('limits concurrent production reads to four', async () => {
+    let activeReads = 0;
+    let maximumActiveReads = 0;
+    const releases = [];
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          order: vi.fn(() => query),
+          range: vi.fn(
+            () =>
+              new Promise((resolve) => {
+                activeReads += 1;
+                maximumActiveReads = Math.max(
+                  maximumActiveReads,
+                  activeReads,
+                );
+                releases.push(() => {
+                  activeReads -= 1;
+                  resolve({ data: [], error: null });
+                });
+              }),
+          ),
+        };
+        return query;
+      }),
+    };
+    const reads = Array.from({ length: 8 }, (_, index) =>
+      fetchAll(client, `table_${index}`, 'id', ['id'], 0),
+    );
+
+    await vi.waitFor(() => expect(releases).toHaveLength(4));
+    releases.splice(0, 4).forEach((release) => release());
+    await vi.waitFor(() => expect(releases).toHaveLength(4));
+    releases.splice(0, 4).forEach((release) => release());
+    await Promise.all(reads);
+
+    expect(maximumActiveReads).toBe(4);
+  });
+
   it('keeps the reviewed legacy paper parser correction in source', () => {
     const legacyOption = {
       reference: 'MATHE/1 Option A 2_HL_Summer_2018_Q7',
