@@ -15,6 +15,17 @@ describe('question bank feedback fixes', () => {
     ).toBe('What does Source A suggest? Source A: The peasants are happy.');
   });
 
+  it('renders PH0232 fractions readably without leaking LaTeX command names', () => {
+    const preview = questionPreview(
+      String.raw`The gravitational field strength on the surface of the moon is $\dfrac{g_E}{6}$. Two objects of different masses $m$ and $2m$ are released.`,
+    );
+
+    expect(preview).toBe(
+      'The gravitational field strength on the surface of the moon is gE/6. Two objects of different masses m and 2m are released.',
+    );
+    expect(preview).not.toMatch(/dfrac|frac|textrm|mathrm/i);
+  });
+
   it('removes complete table-option and image-style metadata, including escaped quotes', () => {
     const normalized = normalizeQuestionSource(
       ':::tableoptions{col1=\\"hide\\" col2=\\"hide\\"}\n' +
