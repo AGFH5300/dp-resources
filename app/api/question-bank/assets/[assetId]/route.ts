@@ -45,7 +45,7 @@ function assetHeaders(contentType: string, contentLength: number) {
     'Content-Type': contentType,
     'Content-Length': String(contentLength),
     'Accept-Ranges': 'bytes',
-    'Cache-Control': 'private, max-age=86400, stale-while-revalidate=604800',
+    'Cache-Control': 'private, no-store, max-age=0',
     'Content-Security-Policy': "default-src 'none'; sandbox",
     'X-Content-Type-Options': 'nosniff',
     'Cross-Origin-Resource-Policy': 'same-origin',
