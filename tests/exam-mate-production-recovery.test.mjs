@@ -91,6 +91,33 @@ describe('Exam-Mate production recovery', () => {
     );
   });
 
+  it('does not retry a non-timeout PostgreSQL cancellation', async () => {
+    const range = vi.fn(() =>
+      Promise.resolve({
+        data: null,
+        error: {
+          code: '57014',
+          message: 'canceling statement due to user request',
+        },
+      }),
+    );
+    const client = {
+      from: vi.fn(() => {
+        const query = {
+          select: vi.fn(() => query),
+          order: vi.fn(() => query),
+          range,
+        };
+        return query;
+      }),
+    };
+
+    await expect(
+      fetchAll(client, 'dp_qb_question_sources', 'id', ['id'], 0),
+    ).rejects.toThrow('canceling statement due to user request');
+    expect(range).toHaveBeenCalledTimes(1);
+  });
+
   it('limits concurrent production reads to four', async () => {
     let activeReads = 0;
     let maximumActiveReads = 0;
