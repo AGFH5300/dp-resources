@@ -1,5 +1,5 @@
 name: Dispatch guarded Exam-Mate production upload
-# One-time retry with serialized production snapshot reads.
+# One-time retry with keyset production snapshot reads.
 
 on:
   push:
