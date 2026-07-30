@@ -34,6 +34,41 @@ jobs:
       - name: Check out merged importer
         uses: actions/checkout@v5
 
+      - name: Apply reviewed legacy reference parser correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/question-bank/exam-mate.mjs')
+          text = path.read_text()
+          old = """function paperParts(parts) {
+            const raw = String(parts?.sourcePaperCode || '');
+            const digits = raw.match(/(\d)(\d)$/);
+            if (!digits) return null;
+            return {
+              paper: digits[1],
+              timezone: digits[2],
+            };
+          }"""
+          new = """function paperParts(parts) {
+            const raw = String(parts?.sourcePaperCode || '').trim();
+            const digits = raw.match(/^(\d)(\d)$/);
+            const legacyMathematicsOption = raw.match(/^(\d)\s+.+?(\d)$/i);
+            const singlePaperWithoutTimezone = raw.match(/^(\d)$/);
+            const match = digits || legacyMathematicsOption || singlePaperWithoutTimezone;
+            if (!match) return null;
+            return {
+              paper: match[1],
+              timezone: match[2] || '0',
+            };
+          }"""
+          if text.count(old) != 1:
+            raise SystemExit('Expected exactly one legacy paperParts block to patch.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          grep -q "legacyMathematicsOption" scripts/question-bank/exam-mate.mjs
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
