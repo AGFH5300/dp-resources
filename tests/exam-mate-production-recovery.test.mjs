@@ -13,12 +13,18 @@ import {
   validateBatchResume,
   verifyR2Head,
 } from '../scripts/import-exam-mate-question-bank-optimized.mjs';
+import { listPrivateR2Buckets } from '../scripts/r2-s3.mjs';
 import { selectedFileSignature } from '../scripts/verify-exam-mate-staging.mjs';
 
 const ORIGINAL_ENV = {
   questionBank: process.env.R2_QUESTION_BANK_BUCKET,
   preview: process.env.R2_PDF_PREVIEW_BUCKET,
+  accountId: process.env.R2_ACCOUNT_ID,
+  endpoint: process.env.R2_ENDPOINT,
+  accessKeyId: process.env.R2_ACCESS_KEY_ID,
+  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
 };
+const ORIGINAL_FETCH = globalThis.fetch;
 
 afterEach(() => {
   if (ORIGINAL_ENV.questionBank == null)
@@ -26,6 +32,16 @@ afterEach(() => {
   else process.env.R2_QUESTION_BANK_BUCKET = ORIGINAL_ENV.questionBank;
   if (ORIGINAL_ENV.preview == null) delete process.env.R2_PDF_PREVIEW_BUCKET;
   else process.env.R2_PDF_PREVIEW_BUCKET = ORIGINAL_ENV.preview;
+  if (ORIGINAL_ENV.accountId == null) delete process.env.R2_ACCOUNT_ID;
+  else process.env.R2_ACCOUNT_ID = ORIGINAL_ENV.accountId;
+  if (ORIGINAL_ENV.endpoint == null) delete process.env.R2_ENDPOINT;
+  else process.env.R2_ENDPOINT = ORIGINAL_ENV.endpoint;
+  if (ORIGINAL_ENV.accessKeyId == null) delete process.env.R2_ACCESS_KEY_ID;
+  else process.env.R2_ACCESS_KEY_ID = ORIGINAL_ENV.accessKeyId;
+  if (ORIGINAL_ENV.secretAccessKey == null)
+    delete process.env.R2_SECRET_ACCESS_KEY;
+  else process.env.R2_SECRET_ACCESS_KEY = ORIGINAL_ENV.secretAccessKey;
+  globalThis.fetch = ORIGINAL_FETCH;
 });
 
 describe('Exam-Mate production recovery', () => {
@@ -340,6 +356,37 @@ describe('Exam-Mate production recovery', () => {
 
     expect(verifyR2Head(asset, valid)).toBe(true);
     expect(verifyR2Head(asset, missingChecksum)).toBe(false);
+  });
+
+  it('discovers private R2 buckets through a signed account-root request', async () => {
+    process.env.R2_ACCOUNT_ID = 'account-id';
+    process.env.R2_ACCESS_KEY_ID = 'access-key-id';
+    process.env.R2_SECRET_ACCESS_KEY = 'secret-access-key';
+    delete process.env.R2_ENDPOINT;
+    let requestedUrl = '';
+    let requestedHeaders = {};
+    globalThis.fetch = async (url, options) => {
+      requestedUrl = String(url);
+      requestedHeaders = options.headers;
+      return new Response(
+        [
+          '<ListAllMyBucketsResult><Buckets>',
+          '<Bucket><Name>dp-pdf-previews</Name></Bucket>',
+          '<Bucket><Name>dp-question-bank-private</Name></Bucket>',
+          '</Buckets></ListAllMyBucketsResult>',
+        ].join(''),
+        { status: 200 },
+      );
+    };
+
+    await expect(listPrivateR2Buckets()).resolves.toEqual([
+      'dp-pdf-previews',
+      'dp-question-bank-private',
+    ]);
+    expect(requestedUrl).toBe(
+      'https://account-id.r2.cloudflarestorage.com/',
+    );
+    expect(requestedHeaders.authorization).toContain('AWS4-HMAC-SHA256');
   });
 
   it('recognizes only the pinned PNG and WebP staging signatures', () => {
