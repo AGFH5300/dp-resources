@@ -300,9 +300,9 @@ jobs:
 
           const accountId = process.env.R2_ACCOUNT_ID?.trim();
           const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
-          if (!accountId || !apiToken) {
+          if (!accountId) {
             throw new Error(
-              'R2_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for the private-bucket control-plane audit.',
+              'R2_ACCOUNT_ID is required for the private-bucket data-plane audit.',
             );
           }
           const bucketNames = await listPrivateR2Buckets({
@@ -358,6 +358,15 @@ jobs:
           if (![401, 403].includes(unsigned.status)) {
             throw new Error(
               `Unsigned R2 bucket endpoint did not fail closed: ${unsigned.status}`,
+            );
+          }
+
+          console.log(
+            `Private R2 data-plane preflight passed: first page ${inventory.objects.length} object(s), unsigned status ${unsigned.status}.`,
+          );
+          if (!apiToken) {
+            throw new Error(
+              'CLOUDFLARE_API_TOKEN is required to prove that r2.dev and custom-domain public access are disabled.',
             );
           }
 
