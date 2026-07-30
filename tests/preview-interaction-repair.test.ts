@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { parseSingleByteRange, ifRangeMatches } from '../lib/range-requests';
-const read = (p: string) => readFileSync(p, 'utf8');
+const SOURCE_TEXT_MARKER = '\n\u0000dp-source-text\u0000';
+const read = (p: string) =>
+  readFileSync(p, 'utf8').replaceAll(SOURCE_TEXT_MARKER, '');
+const normalizeSource = (value: string) =>
+  value.replace(/\s+/g, '').replace(/["'`]/g, '"').replaceAll(';', '');
 
 describe('preview quality and interaction repair', () => {
   it('removes student-visible technical preview copy', () => {
@@ -17,11 +21,16 @@ describe('preview quality and interaction repair', () => {
   });
   it('global search opens fresh and clears selected navigation', () => {
     const s = read('components/global-search.tsx');
-    expect(s).toContain('const openSearch=()=>{clearState();setOpen(true);};');
-    expect(s).toContain(
-      'const resetSearch=()=>{clearState();setOpen(false);};',
+    const normalized = normalizeSource(s);
+    expect(normalized).toContain(
+      normalizeSource(
+        'const openSearch=()=>{clearState();setScope(null);setOpen(true);};',
+      ),
     );
-    expect(s).toContain('router.push(href)');
+    expect(normalized).toContain(normalizeSource(
+      'const resetSearch=()=>{clearState();setScope(null);setOpen(false);};',
+    ));
+    expect(normalized).toContain(normalizeSource('router.push(href)'));
   });
   it('range parser validates single byte ranges and rejects bad requests', () => {
     expect(parseSingleByteRange('bytes=0-99', 1000)).toMatchObject({
@@ -56,13 +65,16 @@ describe('preview quality and interaction repair', () => {
       'app/api/files/[fileId]/open/route.ts',
     ]) {
       const s = read(f);
-      expect(s.indexOf('parseSingleByteRange')).toBeLessThan(
-        s.indexOf('if-none-match'),
+      const normalized = normalizeSource(s);
+      expect(normalized.indexOf('parseSingleByteRange')).toBeLessThan(
+        normalized.indexOf('if-none-match'),
       );
-      expect(s).toContain(
+      expect(normalized).toContain(normalizeSource(
         "if (!requestedRange && req.headers.get('if-none-match') === etag)",
+      ));
+      expect(normalized).toContain(
+        normalizeSource('shouldServeRange && contentRange ? 206 : 200'),
       );
-      expect(s).toContain('shouldServeRange && contentRange ? 206 : 200');
     }
   });
   it('pptx outline is removed while LibreOffice is unavailable', () => {
