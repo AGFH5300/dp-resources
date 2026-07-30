@@ -252,8 +252,24 @@ export function normalizeQuestionSource(value: string) {
   );
 }
 
+function readablePreviewMath(value: string) {
+  return value
+    .replace(
+      /\\(?:dfrac|tfrac|frac)\s*\{([^{}]*)\}\s*\{([^{}]*)\}/gi,
+      '$1/$2',
+    )
+    .replace(/\\sqrt\s*\{([^{}]*)\}/gi, '√($1)')
+    .replace(/\\(?:text|textrm|mathrm|mathbf|mathit)\s*\{([^{}]*)\}/gi, '$1')
+    .replace(/\\(?:times|cdot)\b/gi, ' × ')
+    .replace(/\\pm\b/gi, ' ± ')
+    .replace(/\\(?:leq|le)\b/gi, ' ≤ ')
+    .replace(/\\(?:geq|ge)\b/gi, ' ≥ ')
+    .replace(/\\neq\b/gi, ' ≠ ')
+    .replace(/\\[A-Za-z]+\b/g, ' ');
+}
+
 export function questionPreview(value: string) {
-  return normalizeQuestionSource(value)
+  return readablePreviewMath(normalizeQuestionSource(value))
     .replace(AUDIO_DIRECTIVE, ' Listening audio. ')
     .replace(/!\[[^\]]*\]\(question:[^)]+\)/gi, ' Diagram. ')
     .replace(/:{1,3}[a-z]+(?:\[[^\]]*\])?/gi, ' ')
