@@ -237,13 +237,74 @@ jobs:
           unzip -tq bas.zip
           unzip -tq sas.zip
           mkdir -p "$ROOT/optimized-assets/sha256" "$ROOT/assets/sha256"
-          unzip -q bas.zip -d unpack-bas
-          unzip -q sas.zip -d unpack-sas
-          cp -a unpack-bas/bas/. "$ROOT/optimized-assets/sha256/"
-          cp -a unpack-sas/sas/. "$ROOT/optimized-assets/sha256/"
-          test -z "$(find "$ROOT/optimized-assets/sha256" -name '.DS_Store' -print -quit)"
-          test "$(find "$ROOT/optimized-assets/sha256" -type f -name '*.webp' | wc -l)" -eq 31328
-          test "$(find "$ROOT/optimized-assets/sha256" -type f | wc -l)" -eq 31328
+          python3 - bas.zip sas.zip "$ROOT/optimized-assets/sha256" <<'PY'
+          import hashlib
+          import pathlib
+          import re
+          import sys
+          import zipfile
+
+          archives = [pathlib.Path(value) for value in sys.argv[1:3]]
+          destination_root = pathlib.Path(sys.argv[3])
+          expected_count = 31328
+          hash_name = re.compile(r'([0-9a-f]{64})\.webp')
+          seen = set()
+
+          for archive in archives:
+            archive_count = 0
+            with zipfile.ZipFile(archive) as source:
+              for member in source.infolist():
+                if member.is_dir():
+                  continue
+                leaf = pathlib.PurePosixPath(member.filename).name.lower()
+                match = hash_name.fullmatch(leaf)
+                if not match:
+                  raise SystemExit(
+                    f'Unexpected optimized asset member in {archive}: {member.filename!r}',
+                  )
+                expected_hash = match.group(1)
+                if expected_hash in seen:
+                  raise SystemExit(
+                    f'Duplicate optimized asset hash across split archives: {expected_hash}',
+                  )
+                target = (
+                  destination_root
+                  / expected_hash[:2]
+                  / f'{expected_hash}.webp'
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                digest = hashlib.sha256()
+                with source.open(member) as input_file, target.open('wb') as output_file:
+                  while chunk := input_file.read(1024 * 1024):
+                    digest.update(chunk)
+                    output_file.write(chunk)
+                actual_hash = digest.hexdigest()
+                if actual_hash != expected_hash:
+                  target.unlink(missing_ok=True)
+                  raise SystemExit(
+                    f'Optimized asset SHA-256 mismatch for {member.filename!r}: '
+                    f'expected {expected_hash}, received {actual_hash}',
+                  )
+                seen.add(expected_hash)
+                archive_count += 1
+            print(f'Normalized {archive_count} verified WebP files from {archive}.')
+
+          if len(seen) != expected_count:
+            raise SystemExit(
+              f'Optimized WebP count mismatch: expected {expected_count}, received {len(seen)}',
+            )
+          staged = [
+            path
+            for path in destination_root.rglob('*')
+            if path.is_file()
+          ]
+          if len(staged) != expected_count:
+            raise SystemExit(
+              f'Normalized staging count mismatch: expected {expected_count}, '
+              f'received {len(staged)}',
+            )
+          print(f'Normalized and hash-verified {len(staged)} optimized WebP files.')
+          PY
 
       - name: Prepare reviewed source capture layout
         shell: bash
