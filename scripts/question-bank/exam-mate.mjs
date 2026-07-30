@@ -375,6 +375,14 @@ export function canRetargetExamMatePartialAsset(
   );
 }
 
+export function canRepairExamMatePartialRow(row, recoveryBatchId) {
+  return Boolean(
+    recoveryBatchId &&
+      row?.created_by_batch_id &&
+      row.created_by_batch_id === recoveryBatchId,
+  );
+}
+
 function referenceParts(question) {
   const provided = question.referenceParts;
   if (
@@ -413,13 +421,31 @@ function referenceParts(question) {
 function paperParts(parts) {
   const raw = String(parts?.sourcePaperCode || '').trim();
   const digits = raw.match(/^(\d)(\d)$/);
-  const legacyMathematicsOption = raw.match(/^(\d)\s+.+?(\d)$/i);
+  const legacyMathematicsOption = raw.match(/^(\d)\s+(.+?)(\d)$/i);
   const singlePaperWithoutTimezone = raw.match(/^(\d)$/);
-  const match = digits || legacyMathematicsOption || singlePaperWithoutTimezone;
-  if (!match) return null;
+  if (digits) {
+    return {
+      paper: digits[1],
+      timezone: digits[2],
+      option: null,
+    };
+  }
+  if (legacyMathematicsOption) {
+    const option = cleanText(legacyMathematicsOption[2]).replace(
+      /^option\s+/i,
+      '',
+    );
+    return {
+      paper: legacyMathematicsOption[1],
+      timezone: legacyMathematicsOption[3],
+      option,
+    };
+  }
+  if (!singlePaperWithoutTimezone) return null;
   return {
-    paper: match[1],
-    timezone: match[2] || '0',
+    paper: singlePaperWithoutTimezone[1],
+    timezone: '0',
+    option: null,
   };
 }
 
@@ -430,7 +456,7 @@ export function canonicalExamKey(subject, referenceOrQuestion) {
     if (!parts || !paper) return null;
     const session = parts.season === 'Winter' ? 'N' : parts.season === 'Summer' ? 'M' : null;
     if (!session) return null;
-    return [
+    const key = [
       slugify(subject),
       String(parts.year).slice(-2),
       session,
@@ -438,7 +464,9 @@ export function canonicalExamKey(subject, referenceOrQuestion) {
       parts.level,
       `TZ${paper.timezone}`,
       parts.questionNumber,
-    ].join('|');
+    ];
+    if (paper.option) key.push(`OPT${slugify(paper.option)}`);
+    return key.join('|');
   }
 
   const value = cleanText(referenceOrQuestion);
@@ -551,7 +579,12 @@ function paperDescriptor(question) {
   const paper = paperParts(parts);
   if (!parts || !paper) return null;
   const session = `${String(parts.year).slice(-2)}${parts.season === 'Winter' ? 'N' : 'M'}`;
-  const reference = `${session} · Paper ${paper.paper} · TZ${paper.timezone}`;
+  const reference = [
+    session,
+    `Paper ${paper.paper}`,
+    `TZ${paper.timezone}`,
+    ...(paper.option ? [`Option ${paper.option}`] : []),
+  ].join(' · ');
   return {
     id: deterministicUuid(`paper:${reference}:null`),
     reference,
@@ -567,6 +600,7 @@ function paperDescriptor(question) {
       season: parts.season,
       paper: paper.paper,
       timezone: paper.timezone,
+      option: paper.option,
       sourcePaperCode: parts.sourcePaperCode,
     },
   };
@@ -908,11 +942,11 @@ export async function resolveExamMateForProduction(normalized, client, options =
     fetchAll(client, 'dp_qb_topics', 'id,dataset_id,course_id,slug,name,sort_order'),
     fetchAll(client, 'dp_qb_subtopics', 'id,topic_id,course_id,slug,name,code,description,sort_order'),
     fetchAll(client, 'dp_qb_questions', 'id,reference,content,mark_scheme,examiner_report,maximum_mark,source_status,content_hash,source_metadata'),
-    fetchAll(client, 'dp_qb_question_variants', 'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,difficulty_value,difficulty_label,section_raw,section_normalized,calculator_allowed,source_metadata'),
-    fetchAll(client, 'dp_qb_papers', 'id,reference,calculator_allowed,formula_booklet_source_url,formula_booklet_filename,formula_booklet_storage_provider,formula_booklet_storage_bucket,formula_booklet_storage_key,source_metadata'),
+    fetchAll(client, 'dp_qb_question_variants', 'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,difficulty_value,difficulty_label,section_raw,section_normalized,calculator_allowed,source_metadata,created_by_batch_id,last_seen_batch_id'),
+    fetchAll(client, 'dp_qb_papers', 'id,reference,calculator_allowed,formula_booklet_source_url,formula_booklet_filename,formula_booklet_storage_provider,formula_booklet_storage_bucket,formula_booklet_storage_key,source_metadata,created_by_batch_id,last_seen_batch_id'),
     fetchAll(client, 'dp_qb_assets', 'id,content_hash,canonical_source_path,original_filename,file_extension,content_type,byte_size,storage_provider,storage_bucket,storage_key,upload_status,verification_status,uploaded_at,verified_at,last_error,created_by_batch_id,last_seen_batch_id'),
-    fetchAll(client, 'dp_qb_question_sources', 'id,provider,source_question_id,question_id'),
-    fetchAll(client, 'dp_qb_variant_sources', 'id,provider,source_question_id,source_course,source_topic,variant_id'),
+    fetchAll(client, 'dp_qb_question_sources', 'id,provider,source_question_id,question_id,created_by_batch_id,last_seen_batch_id'),
+    fetchAll(client, 'dp_qb_variant_sources', 'id,provider,source_question_id,source_course,source_topic,variant_id,created_by_batch_id,last_seen_batch_id'),
     fetchAll(
       client,
       'dp_qb_course_papers',
@@ -922,20 +956,20 @@ export async function resolveExamMateForProduction(normalized, client, options =
     fetchAll(
       client,
       'dp_qb_question_subtopics',
-      'variant_id,subtopic_id',
+      'variant_id,subtopic_id,created_by_batch_id,last_seen_batch_id',
       ['variant_id', 'subtopic_id'],
     ),
     fetchAll(
       client,
       'dp_qb_variant_papers',
-      'variant_id,paper_id',
+      'variant_id,paper_id,created_by_batch_id,last_seen_batch_id',
       ['variant_id', 'paper_id'],
     ),
-    fetchAll(client, 'dp_qb_asset_sources', 'id,asset_id,source_key', 'id'),
+    fetchAll(client, 'dp_qb_asset_sources', 'id,asset_id,source_key,source_question_id,created_by_batch_id,last_seen_batch_id', 'id'),
     fetchAll(
       client,
       'dp_qb_variant_assets',
-      'variant_id,asset_id,role',
+      'variant_id,asset_id,role,created_by_batch_id,last_seen_batch_id',
       ['variant_id', 'asset_id', 'role'],
     ),
   ]);
@@ -961,6 +995,17 @@ export async function resolveExamMateForProduction(normalized, client, options =
     searchDocuments: [],
     assetUploadCandidates: [],
   };
+  const recoveryPlan = {
+    questionSourceUpdates: [],
+    variantUpdates: [],
+    variantSourceUpdates: [],
+    assetSourceUpdates: [],
+    deleteVariantAssets: [],
+    deleteVariantPapers: [],
+    deleteCoursePapers: [],
+    deletePapers: [],
+  };
+  const recoveryBatchId = options.recoveryBatchId || null;
 
   const subjectById = mapBy(existingSubjects, (row) => row.id);
   const courseBySourceKey = mapBy(existingCourses, (row) => row.source_key);
@@ -1114,6 +1159,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const canonicalQuestionBySourceId = new Map();
   const sourceQuestionData = new Map();
   const resolvedQuestionSourceIds = new Set();
+  const resolvedQuestionSourceQuestionIds = new Map();
   for (const sourceQuestion of normalized.source.importableQuestions) {
     const sourceId = String(sourceQuestion.sourceQuestionId);
     const sourceKey = `exam_mate\u0000${sourceId}`;
@@ -1201,28 +1247,62 @@ export async function resolveExamMateForProduction(normalized, client, options =
     canonicalQuestionBySourceId.set(sourceId, canonical.id);
     sourceQuestionData.set(sourceId, { sourceQuestion, descriptor, content, markScheme });
 
-    if (!questionSourceByKey.has(sourceKey)) {
-      const row = {
-        id: deterministicUuid(`exam-mate:question-source:${sourceId}`),
-        question_id: canonical.id,
-        provider: 'exam_mate',
-        source_question_id: sourceId,
-        source_subject_id: String(sourceQuestion.subjectId || ''),
-        source_reference: sourceQuestion.reference,
-        source_url: sourceQuestion.sourceUrl || null,
-        source_metadata: {
-          curriculum: sourceQuestion.curriculum,
-          subject: sourceQuestion.subject,
-          topic: topicLabel(sourceQuestion),
-          referenceParts: parts,
-          sourcePage: sourceQuestion.page,
-          sourceEventKey: sourceQuestion.eventKey,
-        },
-      };
-      rows.questionSources.push(row);
-      questionSourceByKey.set(sourceKey, row);
+    const desiredQuestionSource = {
+      id: deterministicUuid(`exam-mate:question-source:${sourceId}`),
+      question_id: canonical.id,
+      provider: 'exam_mate',
+      source_question_id: sourceId,
+      source_subject_id: String(sourceQuestion.subjectId || ''),
+      source_reference: sourceQuestion.reference,
+      source_url: sourceQuestion.sourceUrl || null,
+      source_metadata: {
+        curriculum: sourceQuestion.curriculum,
+        subject: sourceQuestion.subject,
+        topic: topicLabel(sourceQuestion),
+        referenceParts: parts,
+        sourcePage: sourceQuestion.page,
+        sourceEventKey: sourceQuestion.eventKey,
+      },
+    };
+    const existingQuestionSource = questionSourceByKey.get(sourceKey);
+    if (!existingQuestionSource) {
+      rows.questionSources.push(desiredQuestionSource);
+      questionSourceByKey.set(sourceKey, desiredQuestionSource);
+    } else if (existingQuestionSource.question_id !== canonical.id) {
+      if (
+        !canRepairExamMatePartialRow(
+          existingQuestionSource,
+          recoveryBatchId,
+        )
+      ) {
+        findings.push(
+          finding(
+            'critical',
+            'exam_mate_question_source_repair_not_owned_by_failed_batch',
+            {
+              sourceQuestionId: sourceId,
+              questionSourceId: existingQuestionSource.id,
+              currentQuestionId: existingQuestionSource.question_id,
+              expectedQuestionId: canonical.id,
+            },
+            sourceQuestion,
+          ),
+        );
+      } else {
+        const repair = {
+          ...desiredQuestionSource,
+          created_by_batch_id: existingQuestionSource.created_by_batch_id,
+        };
+        recoveryPlan.questionSourceUpdates.push(repair);
+        questionSourceByKey.set(sourceKey, repair);
+      }
     }
-    resolvedQuestionSourceIds.add(questionSourceByKey.get(sourceKey).id);
+    const resolvedQuestionSource = questionSourceByKey.get(sourceKey);
+    resolvedQuestionSourceIds.add(resolvedQuestionSource.id);
+    resolvedQuestionSourceQuestionIds.set(
+      resolvedQuestionSource.id,
+      canonical.id,
+    );
   }
 
   const paperByReference = new Map();
@@ -1243,6 +1323,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const resolvedCoursePaperKeys = new Set();
   const resolvedVariantPaperKeys = new Set();
   const resolvedVariantSourceIds = new Set();
+  const resolvedVariantSourceVariantIds = new Map();
   const resolvedVariantSourceKeys = new Set();
   const searchDocumentCandidates = [];
   let sourceIndex = 0;
@@ -1252,11 +1333,41 @@ export async function resolveExamMateForProduction(normalized, client, options =
     const topicName = topicLabel(data.sourceQuestion);
     const topic = ensureTopic(course, topicName);
     const subtopic = ensureSubtopic(course, topic);
+    const paper = paperDescriptor(data.sourceQuestion);
+    const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
     const variantKey = `${canonicalQuestionId}\u0000${course.id}\u0000${topic.id}`;
     const existing = existingVariantByQuestionCourseTopic.get(variantKey) || [];
     let variant;
     if (existing.length) {
       variant = [...existing].sort((a, b) => a.id.localeCompare(b.id))[0];
+      if (
+        variant.paper_id !== (canonicalPaper?.id || null) ||
+        variant.canonical_source_subtopic_id !== subtopic.id
+      ) {
+        if (!canRepairExamMatePartialRow(variant, recoveryBatchId)) {
+          findings.push(
+            finding(
+              'critical',
+              'exam_mate_variant_repair_not_owned_by_failed_batch',
+              {
+                sourceQuestionId: sourceId,
+                variantId: variant.id,
+                currentPaperId: variant.paper_id,
+                expectedPaperId: canonicalPaper?.id || null,
+              },
+              data.sourceQuestion,
+            ),
+          );
+        } else {
+          variant = {
+            ...variant,
+            paper_id: canonicalPaper?.id || null,
+            canonical_source_subtopic_id: subtopic.id,
+          };
+          recoveryPlan.variantUpdates.push(variant);
+          existingVariantByQuestionCourseTopic.set(variantKey, [variant]);
+        }
+      }
     } else {
       const occurrence = nextFreeOccurrence(
         existingVariantTupleCounts,
@@ -1264,8 +1375,6 @@ export async function resolveExamMateForProduction(normalized, client, options =
         topic.dataset_id,
         sourceIndex,
       );
-      const paper = paperDescriptor(data.sourceQuestion);
-      const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
       variant = {
         id: deterministicUuid(`exam-mate:variant:${canonicalQuestionId}:${course.source_key}:${topic.slug}`),
         question_id: canonicalQuestionId,
@@ -1300,27 +1409,56 @@ export async function resolveExamMateForProduction(normalized, client, options =
     resolvedVariantSourceKeys.add(
       `${sourceId}:${course.source_key}:${topic.slug}`,
     );
-    if (!variantSourceByKey.has(variantSourceKey)) {
-      const row = {
-        id: deterministicUuid(`exam-mate:variant-source:${sourceId}:${course.source_key}:${topic.slug}`),
-        variant_id: variant.id,
-        provider: 'exam_mate',
-        source_question_id: sourceId,
-        source_course: course.source_key,
-        source_topic: topic.slug,
-        source_index: sourceIndex,
-        source_metadata: {
-          curriculum: data.sourceQuestion.curriculum,
-          subject: data.sourceQuestion.subject,
-          sourceTopic: topicName,
-          sourceUrl: data.sourceQuestion.sourceUrl,
-        },
-      };
-      rows.variantSources.push(row);
-      variantSourceByKey.set(variantSourceKey, row);
+    const desiredVariantSource = {
+      id: deterministicUuid(`exam-mate:variant-source:${sourceId}:${course.source_key}:${topic.slug}`),
+      variant_id: variant.id,
+      provider: 'exam_mate',
+      source_question_id: sourceId,
+      source_course: course.source_key,
+      source_topic: topic.slug,
+      source_index: sourceIndex,
+      source_metadata: {
+        curriculum: data.sourceQuestion.curriculum,
+        subject: data.sourceQuestion.subject,
+        sourceTopic: topicName,
+        sourceUrl: data.sourceQuestion.sourceUrl,
+      },
+    };
+    const existingVariantSource = variantSourceByKey.get(variantSourceKey);
+    if (!existingVariantSource) {
+      rows.variantSources.push(desiredVariantSource);
+      variantSourceByKey.set(variantSourceKey, desiredVariantSource);
+    } else if (existingVariantSource.variant_id !== variant.id) {
+      if (
+        !canRepairExamMatePartialRow(existingVariantSource, recoveryBatchId)
+      ) {
+        findings.push(
+          finding(
+            'critical',
+            'exam_mate_variant_source_repair_not_owned_by_failed_batch',
+            {
+              sourceQuestionId: sourceId,
+              variantSourceId: existingVariantSource.id,
+              currentVariantId: existingVariantSource.variant_id,
+              expectedVariantId: variant.id,
+            },
+            data.sourceQuestion,
+          ),
+        );
+      } else {
+        const repair = {
+          ...desiredVariantSource,
+          created_by_batch_id: existingVariantSource.created_by_batch_id,
+        };
+        recoveryPlan.variantSourceUpdates.push(repair);
+        variantSourceByKey.set(variantSourceKey, repair);
+      }
     }
-    resolvedVariantSourceIds.add(
-      variantSourceByKey.get(variantSourceKey).id,
+    const resolvedVariantSource = variantSourceByKey.get(variantSourceKey);
+    resolvedVariantSourceIds.add(resolvedVariantSource.id);
+    resolvedVariantSourceVariantIds.set(
+      resolvedVariantSource.id,
+      variant.id,
     );
 
     const placementKey = `${variant.id}\u0000${subtopic.id}`;
@@ -1338,8 +1476,6 @@ export async function resolveExamMateForProduction(normalized, client, options =
       });
     }
 
-    const paper = paperDescriptor(data.sourceQuestion);
-    const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
     if (canonicalPaper) {
       const coursePaperKey = `${course.id}\u0000${canonicalPaper.id}`;
       resolvedCoursePaperKeys.add(coursePaperKey);
@@ -1527,6 +1663,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const assetSourceByKey = new Map(existingAssetSourceByKey);
   const variantAssetKeys = new Set(existingVariantAssetKeys);
   const resolvedAssetSourceIds = new Set();
+  const resolvedAssetSourceQuestionIds = new Map();
   const resolvedVariantAssetKeys = new Set();
   for (const [sourceId, data] of sourceQuestionData) {
     const variant = variantBySourceQuestion.get(sourceId);
@@ -1542,25 +1679,66 @@ export async function resolveExamMateForProduction(normalized, client, options =
         if (!asset) continue;
         const fileId = sourceFileId(data.sourceQuestion, role, ordinal, url);
         const sourceKey = `exam-mate:${sourceId}:${role}:${ordinal}:${url}`;
-        if (!assetSourceByKey.has(sourceKey)) {
-          const assetSource = {
-            id: deterministicUuid(`exam-mate:asset-source-row:${sourceKey}`),
-            asset_id: asset.id,
-            source_key: sourceKey,
-            source_file_id: fileId,
-            source_question_id: canonicalQuestionId,
-            original_filename: path.basename(new URL(url).pathname),
-            original_source_path: new URL(url).pathname,
-            original_source_url: url,
-            canonical_normalized_source_path: manifestRow.path,
-            source_created_at: null,
-            source_updated_at: null,
-            source_uploaded_at: manifestRow.capturedAt || null,
-          };
-          rows.assetSources.push(assetSource);
-          assetSourceByKey.set(sourceKey, assetSource);
+        const desiredAssetSource = {
+          id: deterministicUuid(`exam-mate:asset-source-row:${sourceKey}`),
+          asset_id: asset.id,
+          source_key: sourceKey,
+          source_file_id: fileId,
+          source_question_id: canonicalQuestionId,
+          original_filename: path.basename(new URL(url).pathname),
+          original_source_path: new URL(url).pathname,
+          original_source_url: url,
+          canonical_normalized_source_path: manifestRow.path,
+          source_created_at: null,
+          source_updated_at: null,
+          source_uploaded_at: manifestRow.capturedAt || null,
+        };
+        const existingAssetSource = assetSourceByKey.get(sourceKey);
+        if (!existingAssetSource) {
+          rows.assetSources.push(desiredAssetSource);
+          assetSourceByKey.set(sourceKey, desiredAssetSource);
+        } else if (
+          existingAssetSource.asset_id !== asset.id ||
+          existingAssetSource.source_question_id !== canonicalQuestionId
+        ) {
+          if (
+            !canRepairExamMatePartialRow(
+              existingAssetSource,
+              recoveryBatchId,
+            )
+          ) {
+            findings.push(
+              finding(
+                'critical',
+                'exam_mate_asset_source_repair_not_owned_by_failed_batch',
+                {
+                  sourceQuestionId: sourceId,
+                  assetSourceId: existingAssetSource.id,
+                  currentAssetId: existingAssetSource.asset_id,
+                  expectedAssetId: asset.id,
+                  currentQuestionId:
+                    existingAssetSource.source_question_id,
+                  expectedQuestionId: canonicalQuestionId,
+                },
+                data.sourceQuestion,
+              ),
+            );
+          } else {
+            const repair = {
+              ...desiredAssetSource,
+              created_by_batch_id:
+                existingAssetSource.created_by_batch_id,
+            };
+            recoveryPlan.assetSourceUpdates.push(repair);
+            assetSourceByKey.set(sourceKey, repair);
+          }
         }
-        resolvedAssetSourceIds.add(assetSourceByKey.get(sourceKey).id);
+        const resolvedAssetSource = assetSourceByKey.get(sourceKey);
+        resolvedAssetSourceIds.add(resolvedAssetSource.id);
+        resolvedAssetSourceQuestionIds.set(
+          resolvedAssetSource.id,
+          canonicalQuestionId,
+        );
         const variantAssetKey = `${variant.id}\u0000${asset.id}\u0000${role}`;
         resolvedVariantAssetKeys.add(variantAssetKey);
         if (!variantAssetKeys.has(variantAssetKey)) {
@@ -1578,6 +1756,102 @@ export async function resolveExamMateForProduction(normalized, client, options =
     }
   }
 
+  const expectedPaperIds = new Set(
+    [...paperByReference.values()].map((row) => row.id),
+  );
+  const repairedVariantIds = new Set(
+    recoveryPlan.variantUpdates.map((row) => row.id),
+  );
+  const stalePapers = existingPapers.filter(
+    (row) =>
+      canRepairExamMatePartialRow(row, recoveryBatchId) &&
+      !expectedPaperIds.has(row.id),
+  );
+  const stalePaperIds = new Set(stalePapers.map((row) => row.id));
+  const blockedStalePaperVariants = existingVariants.filter(
+    (row) =>
+      stalePaperIds.has(row.paper_id) &&
+      !repairedVariantIds.has(row.id),
+  );
+  const blockedStaleVariantPapers = existingVariantPapers.filter(
+    (row) =>
+      stalePaperIds.has(row.paper_id) &&
+      !canRepairExamMatePartialRow(row, recoveryBatchId),
+  );
+  if (
+    blockedStalePaperVariants.length ||
+    blockedStaleVariantPapers.length
+  ) {
+    findings.push(
+      finding('critical', 'exam_mate_stale_paper_has_unowned_references', {
+        stalePaperCount: stalePapers.length,
+        blockingVariantCount: blockedStalePaperVariants.length,
+        blockingVariantPaperCount: blockedStaleVariantPapers.length,
+      }),
+    );
+  } else {
+    recoveryPlan.deleteVariantAssets = existingVariantAssets
+      .filter(
+        (row) =>
+          canRepairExamMatePartialRow(row, recoveryBatchId) &&
+          !resolvedVariantAssetKeys.has(
+            `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
+          ),
+      )
+      .map((row) => ({
+        variant_id: row.variant_id,
+        asset_id: row.asset_id,
+        role: row.role,
+        created_by_batch_id: row.created_by_batch_id,
+      }));
+    recoveryPlan.deleteVariantPapers = existingVariantPapers
+      .filter(
+        (row) =>
+          canRepairExamMatePartialRow(row, recoveryBatchId) &&
+          !resolvedVariantPaperKeys.has(
+            `${row.variant_id}\u0000${row.paper_id}`,
+          ),
+      )
+      .map((row) => ({
+        variant_id: row.variant_id,
+        paper_id: row.paper_id,
+        created_by_batch_id: row.created_by_batch_id,
+      }));
+    recoveryPlan.deleteCoursePapers = existingCoursePapers
+      .filter((row) => stalePaperIds.has(row.paper_id))
+      .map((row) => ({
+        course_id: row.course_id,
+        paper_id: row.paper_id,
+      }));
+    recoveryPlan.deletePapers = stalePapers.map((row) => ({
+      id: row.id,
+      created_by_batch_id: row.created_by_batch_id,
+    }));
+  }
+  const recoveryOperationCount = Object.values(recoveryPlan).reduce(
+    (total, values) => total + values.length,
+    0,
+  );
+  if (recoveryOperationCount) {
+    findings.push(
+      finding('info', 'exam_mate_partial_batch_reconciliation_planned', {
+        recoveryBatchId,
+        questionSourceUpdates:
+          recoveryPlan.questionSourceUpdates.length,
+        variantUpdates: recoveryPlan.variantUpdates.length,
+        variantSourceUpdates: recoveryPlan.variantSourceUpdates.length,
+        assetSourceUpdates: recoveryPlan.assetSourceUpdates.length,
+        deleteVariantAssets:
+          recoveryPlan.deleteVariantAssets.length,
+        deleteVariantPapers:
+          recoveryPlan.deleteVariantPapers.length,
+        deleteCoursePapers:
+          recoveryPlan.deleteCoursePapers.length,
+        deletePapers: recoveryPlan.deletePapers.length,
+      }),
+    );
+  }
+
   const uniqueness = normalizedRowUniqueness(rows);
   findings.push(...uniqueness.findings);
   const resolvedQuestionIds = new Set(canonicalQuestionBySourceId.values());
@@ -1591,14 +1865,19 @@ export async function resolveExamMateForProduction(normalized, client, options =
     reusedQuestionCores: resolvedQuestionIds.size - rows.questions.length,
     resolvedQuestionCores: resolvedQuestionIds.size,
     questionSources: rows.questionSources.length,
+    repairedQuestionSources:
+      recoveryPlan.questionSourceUpdates.length,
     existingQuestionSources:
       normalized.source.importableQuestions.length - rows.questionSources.length,
     resolvedQuestionSources: normalized.source.importableQuestions.length,
     variants: rows.variants.length,
+    repairedVariants: recoveryPlan.variantUpdates.length,
     existingVariants: resolvedVariantIds.size - rows.variants.length,
     resolvedVariants: resolvedVariantIds.size,
     uniqueVariantIds: resolvedVariantIds.size,
     variantSources: rows.variantSources.length,
+    repairedVariantSources:
+      recoveryPlan.variantSourceUpdates.length,
     existingVariantSources:
       normalized.source.importableQuestions.length - rows.variantSources.length,
     resolvedVariantSources: normalized.source.importableQuestions.length,
@@ -1610,6 +1889,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
     retargetedAssetRows,
     resolvedPhysicalAssets: resolvedAssetByHash.size,
     assetSources: rows.assetSources.length,
+    repairedAssetSources: recoveryPlan.assetSourceUpdates.length,
     existingAssetSources:
       resolvedAssetSourceIds.size - rows.assetSources.length,
     resolvedAssetSources: resolvedAssetSourceIds.size,
@@ -1628,6 +1908,13 @@ export async function resolveExamMateForProduction(normalized, client, options =
       normalizedSearchDocuments.counts.mergedSearchCandidates,
     searchDocumentMateriallyDivergentGroups:
       normalizedSearchDocuments.counts.materiallyDivergentGroups,
+    recoveryDeletedVariantAssets:
+      recoveryPlan.deleteVariantAssets.length,
+    recoveryDeletedVariantPapers:
+      recoveryPlan.deleteVariantPapers.length,
+    recoveryDeletedCoursePapers:
+      recoveryPlan.deleteCoursePapers.length,
+    recoveryDeletedPapers: recoveryPlan.deletePapers.length,
     normalizedUniqueness: uniqueness.counts,
   };
 
@@ -1639,21 +1926,55 @@ export async function resolveExamMateForProduction(normalized, client, options =
     verificationStatus: critical.length ? 'failed' : 'passed',
     findings,
     rows,
+    recoveryPlan,
     productionExpectations: {
       questionSourceIds: [...resolvedQuestionSourceIds].sort(),
+      questionSourceQuestionIds: Object.fromEntries(
+        [...resolvedQuestionSourceQuestionIds.entries()].sort(
+          ([left], [right]) => left.localeCompare(right),
+        ),
+      ),
       variantSourceIds: [...resolvedVariantSourceIds].sort(),
+      variantSourceVariantIds: Object.fromEntries(
+        [...resolvedVariantSourceVariantIds.entries()].sort(
+          ([left], [right]) => left.localeCompare(right),
+        ),
+      ),
       variantSourceKeys: [...resolvedVariantSourceKeys].sort(),
       variantIds: [...resolvedVariantIds].sort(),
+      variantQuestionIds: Object.fromEntries(
+        [...new Map(
+          [...variantBySourceQuestion.values()].map((row) => [
+            row.id,
+            row.question_id,
+          ]),
+        ).entries()].sort(([left], [right]) =>
+          left.localeCompare(right),
+        ),
+      ),
+      variantPaperIds: Object.fromEntries(
+        [...new Map(
+          [...variantBySourceQuestion.values()].map((row) => [
+            row.id,
+            row.paper_id || null,
+          ]),
+        ).entries()].sort(([left], [right]) =>
+          left.localeCompare(right),
+        ),
+      ),
       placementKeys: [...resolvedPlacementKeys].sort(),
       coursePaperKeys: [...resolvedCoursePaperKeys].sort(),
       variantPaperKeys: [...resolvedVariantPaperKeys].sort(),
-      paperIds: [...new Set(
-        [...paperByReference.values()].map((row) => row.id),
-      )].sort(),
+      paperIds: [...expectedPaperIds].sort(),
       assetIds: [...new Set(
         [...resolvedAssetByHash.values()].map((row) => row.id),
       )].sort(),
       assetSourceIds: [...resolvedAssetSourceIds].sort(),
+      assetSourceQuestionIds: Object.fromEntries(
+        [...resolvedAssetSourceQuestionIds.entries()].sort(
+          ([left], [right]) => left.localeCompare(right),
+        ),
+      ),
       variantAssetKeys: [...resolvedVariantAssetKeys].sort(),
     },
   };
