@@ -15,4 +15,4 @@ jobs:
     name: Recovery audit trigger marker
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'The trusted-main recovery audit is triggered by this file change.'
+      - run: echo 'Trusted-main recovery audit trigger: bounded-read retry.'
