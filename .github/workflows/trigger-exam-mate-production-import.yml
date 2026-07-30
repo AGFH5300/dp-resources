@@ -1,4 +1,4 @@
-name: Capture Exam-Mate retained PNGs
+name: Inspect Exam-Mate production import
 
 on:
   push:
@@ -8,54 +8,21 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
-  capture:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Download and verify retained PNGs
-        shell: bash
+      - name: Print current Exam-Mate workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          root="$RUNNER_TEMP/exam-mate-retained-pngs/assets/sha256"
-          fetch_png() {
-            hash="$1"; bytes="$2"; url="$3"; dir="$root/${hash:0:2}"; file="$dir/$hash.png"
-            mkdir -p "$dir"
-            echo "Fetching $hash"
-            curl --location --silent --show-error \
-              --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
-              --referer 'https://www.exam-mate.com/topicalpastpapers/IB%20Diploma-7/Biology-74' \
-              --header 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
-              --header 'Sec-Fetch-Dest: image' \
-              --header 'Sec-Fetch-Mode: no-cors' \
-              --header 'Sec-Fetch-Site: same-origin' \
-              --output "$file" \
-              "$url"
-            test "$(stat -c %s "$file")" -eq "$bytes"
-            test "$(sha256sum "$file" | awk '{print $1}')" = "$hash"
-          }
-          fetch_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171 'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
-          fetch_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255 'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
-          fetch_png 36fc60ebfc9a5d561eb7ffcdc1edf660632c5e7ccd63ada77c7e7c5a89b5e82c 1853 'https://www.exam-mate.com/questions/6056/38697/6056_a_38697_10_2.png'
-          fetch_png 78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b 601454 'https://www.exam-mate.com/questions/27399/92184/27399_a_92184_1_1.png'
-          fetch_png 846ac0a08c764d41ec2dff9209ac810e5bfab34d77a14015dd93e79d68b61957 913 'https://www.exam-mate.com/questions/6406/37782/6406_a_37782_9_2.png'
-          fetch_png 9b126d902848af4f5d7d7a3f7261037287a72d28fc61a07691d3683da74bf764 987 'https://www.exam-mate.com/questions/6106/37853/6106_a_37853_13_3.png'
-          fetch_png a41449c35a3669f809d8c14b033949fafb4eec608e3d185716ae3bb4b480a7df 1382 'https://www.exam-mate.com/questions/5957/34241/5957_a_34241_2_1.png'
-          fetch_png c947caf8167543bf30976686f1d925ec43d1076ba02a64b1fc7d34a8f30e3b0b 873 'https://www.exam-mate.com/questions/6104/37427/6104_a_37427_10_3.png'
-          test "$(find "$root" -type f -name '*.png' | wc -l)" -eq 8
-          tar -C "$RUNNER_TEMP/exam-mate-retained-pngs" -czf "$RUNNER_TEMP/exam-mate-retained-pngs.tar.gz" assets
-          sha256sum "$RUNNER_TEMP/exam-mate-retained-pngs.tar.gz"
-
-      - name: Upload verified retained PNG bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: exam-mate-retained-pngs-${{ github.run_id }}
-          path: ${{ runner.temp }}/exam-mate-retained-pngs.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Emit run identifier
-        run: |
-          echo "Captured retained PNGs in run $GITHUB_RUN_ID"
+          gh run list \
+            --repo AGFH5300/dp-resources \
+            --workflow exam-mate-production-import.yml \
+            --limit 10 \
+            --json databaseId,status,conclusion,headSha,event,createdAt,updatedAt,url,displayTitle,workflowName
+          echo 'Intentional monitor exit so the run ID is delivered through the existing failure-notification channel.'
           exit 1
