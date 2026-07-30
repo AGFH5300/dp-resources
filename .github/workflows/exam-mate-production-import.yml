@@ -15,8 +15,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  fetch-retained-pngs:
+    name: Fetch retained PNGs (attempt ${{ matrix.attempt }})
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: Fetch and verify exact retained PNGs
+        id: fetch
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$RUNNER_TEMP/retained-pngs"
+          mkdir -p "$ROOT/assets/sha256"
+          fetch_png() {
+            hash="$1"; bytes="$2"; url="$3"; dir="$ROOT/assets/sha256/${hash:0:2}"; file="$dir/$hash.png"
+            mkdir -p "$dir"
+            curl --fail --location --connect-timeout 20 --max-time 120 --silent --show-error \
+              --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
+              --referer 'https://www.exam-mate.com/topicalpastpapers/IB%20Diploma-7/Biology-74' \
+              --header 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
+              --header 'Sec-Fetch-Dest: image' \
+              --header 'Sec-Fetch-Mode: no-cors' \
+              --header 'Sec-Fetch-Site: same-origin' \
+              "$url" -o "$file"
+            test "$(stat -c %s "$file")" -eq "$bytes"
+            test "$(sha256sum "$file" | awk '{print $1}')" = "$hash"
+          }
+          fetch_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171 'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
+          fetch_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255 'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
+          fetch_png 36fc60ebfc9a5d561eb7ffcdc1edf660632c5e7ccd63ada77c7e7c5a89b5e82c 1853 'https://www.exam-mate.com/questions/6056/38697/6056_a_38697_10_2.png'
+          fetch_png 78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b 601454 'https://www.exam-mate.com/questions/27399/92184/27399_a_92184_1_1.png'
+          fetch_png 846ac0a08c764d41ec2dff9209ac810e5bfab34d77a14015dd93e79d68b61957 913 'https://www.exam-mate.com/questions/6406/37782/6406_a_37782_9_2.png'
+          fetch_png 9b126d902848af4f5d7d7a3f7261037287a72d28fc61a07691d3683da74bf764 987 'https://www.exam-mate.com/questions/6106/37853/6106_a_37853_13_3.png'
+          fetch_png a41449c35a3669f809d8c14b033949fafb4eec608e3d185716ae3bb4b480a7df 1382 'https://www.exam-mate.com/questions/5957/34241/5957_a_34241_2_1.png'
+          fetch_png c947caf8167543bf30976686f1d925ec43d1076ba02a64b1fc7d34a8f30e3b0b 873 'https://www.exam-mate.com/questions/6104/37427/6104_a_37427_10_3.png'
+          test "$(find "$ROOT/assets/sha256" -type f -name '*.png' | wc -l)" -eq 8
+          cd "$ROOT"
+          zip -qr "$GITHUB_WORKSPACE/retained-pngs.zip" assets
+
+      - name: Upload verified PNG artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-retained-pngs-${{ matrix.attempt }}
+          path: retained-pngs.zip
+          if-no-files-found: error
+          retention-days: 1
+
   import:
     name: Audit, import and verify Exam-Mate
+    needs: fetch-retained-pngs
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -164,36 +216,33 @@ jobs:
           cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
           test -f "$ROOT/source-capture/source/discovered-jobs.json"
 
-      - name: Retrieve and verify eight exact retained PNG assets
+      - name: Download verified retained PNG artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: exam-mate-retained-pngs-*
+          path: ${{ runner.temp }}/retained-png-artifacts
+
+      - name: Install and verify retained PNGs
         shell: bash
         run: |
           set -euo pipefail
-          fetch_png() {
-            hash="$1"; bytes="$2"; url="$3"; dir="$ROOT/assets/sha256/${hash:0:2}"; file="$dir/$hash.png"
-            mkdir -p "$dir"
-            echo "Fetching retained PNG $hash"
-            curl --fail --location --retry 5 --retry-all-errors --silent --show-error \
-              --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
-              --referer 'https://www.exam-mate.com/topicalpastpapers/IB%20Diploma-7/Biology-74' \
-              --header 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
-              --header 'Sec-Fetch-Dest: image' \
-              --header 'Sec-Fetch-Mode: no-cors' \
-              --header 'Sec-Fetch-Site: same-origin' \
-              "$url" -o "$file"
-            actual_bytes="$(stat -c %s "$file")"
-            actual_hash="$(sha256sum "$file" | awk '{print $1}')"
-            test "$actual_bytes" -eq "$bytes"
-            test "$actual_hash" = "$hash"
-            echo "$hash: verified ($actual_bytes bytes)"
+          archive="$(find "$RUNNER_TEMP/retained-png-artifacts" -type f -name 'retained-pngs.zip' | sort | head -1)"
+          test -n "$archive"
+          unzip -q "$archive" -d "$ROOT"
+          verify_png() {
+            hash="$1"; bytes="$2"; file="$ROOT/assets/sha256/${hash:0:2}/$hash.png"
+            test -f "$file"
+            test "$(stat -c %s "$file")" -eq "$bytes"
+            test "$(sha256sum "$file" | awk '{print $1}')" = "$hash"
           }
-          fetch_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171 'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
-          fetch_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255 'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
-          fetch_png 36fc60ebfc9a5d561eb7ffcdc1edf660632c5e7ccd63ada77c7e7c5a89b5e82c 1853 'https://www.exam-mate.com/questions/6056/38697/6056_a_38697_10_2.png'
-          fetch_png 78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b 601454 'https://www.exam-mate.com/questions/27399/92184/27399_a_92184_1_1.png'
-          fetch_png 846ac0a08c764d41ec2dff9209ac810e5bfab34d77a14015dd93e79d68b61957 913 'https://www.exam-mate.com/questions/6406/37782/6406_a_37782_9_2.png'
-          fetch_png 9b126d902848af4f5d7d7a3f7261037287a72d28fc61a07691d3683da74bf764 987 'https://www.exam-mate.com/questions/6106/37853/6106_a_37853_13_3.png'
-          fetch_png a41449c35a3669f809d8c14b033949fafb4eec608e3d185716ae3bb4b480a7df 1382 'https://www.exam-mate.com/questions/5957/34241/5957_a_34241_2_1.png'
-          fetch_png c947caf8167543bf30976686f1d925ec43d1076ba02a64b1fc7d34a8f30e3b0b 873 'https://www.exam-mate.com/questions/6104/37427/6104_a_37427_10_3.png'
+          verify_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171
+          verify_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255
+          verify_png 36fc60ebfc9a5d561eb7ffcdc1edf660632c5e7ccd63ada77c7e7c5a89b5e82c 1853
+          verify_png 78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b 601454
+          verify_png 846ac0a08c764d41ec2dff9209ac810e5bfab34d77a14015dd93e79d68b61957 913
+          verify_png 9b126d902848af4f5d7d7a3f7261037287a72d28fc61a07691d3683da74bf764 987
+          verify_png a41449c35a3669f809d8c14b033949fafb4eec608e3d185716ae3bb4b480a7df 1382
+          verify_png c947caf8167543bf30976686f1d925ec43d1076ba02a64b1fc7d34a8f30e3b0b 873
           test "$(find "$ROOT/assets/sha256" -type f -name '*.png' | wc -l)" -eq 8
 
       - name: Run pinned offline audit
