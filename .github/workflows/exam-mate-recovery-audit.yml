@@ -37,6 +37,7 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CF_API_TOKEN }}
       R2_QUESTION_BANK_BUCKET: dp-question-bank
 
     steps:
@@ -68,45 +69,6 @@ jobs:
           test -n "$R2_SECRET_ACCESS_KEY"
           test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
           test "$R2_QUESTION_BANK_BUCKET" = "dp-question-bank"
-
-      - name: Verify dedicated private R2 bucket read access
-        run: |
-          node --input-type=module <<'NODE'
-          import {
-            headPrivateR2Bucket,
-            listPrivateR2Objects,
-          } from './scripts/r2-s3.mjs';
-
-          const bucket = process.env.R2_QUESTION_BANK_BUCKET;
-          await headPrivateR2Bucket({
-            bucket,
-            signal: AbortSignal.timeout(45_000),
-          });
-          const inventory = await listPrivateR2Objects({
-            bucket,
-            prefix: 'question-bank/assets/sha256/',
-            signal: AbortSignal.timeout(60_000),
-          });
-          const base =
-            process.env.R2_ENDPOINT?.trim() ||
-            `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-          const unsignedUrl = new URL(
-            `${base.replace(/\/+$/, '')}/${encodeURIComponent(bucket)}`,
-          );
-          const unsigned = await fetch(unsignedUrl, {
-            method: 'HEAD',
-            cache: 'no-store',
-            signal: AbortSignal.timeout(30_000),
-          });
-          if (![401, 403].includes(unsigned.status)) {
-            throw new Error(
-              `Unsigned R2 bucket endpoint did not fail closed: ${unsigned.status}`,
-            );
-          }
-          console.log(
-            `Read-only R2 preflight passed; first page has ${inventory.objects.length} object(s), unsigned status ${unsigned.status}.`,
-          );
-          NODE
 
       - name: Run recovery regression tests
         run: >-
@@ -304,6 +266,128 @@ jobs:
             }
           }
           console.log('Recovery dry-run gate passed.', counts);
+          NODE
+
+      - name: Discover and verify dedicated private R2 bucket
+        id: r2_preflight
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {
+            headPrivateR2Bucket,
+            listPrivateR2Buckets,
+            listPrivateR2Objects,
+          } from './scripts/r2-s3.mjs';
+
+          const accountId = process.env.R2_ACCOUNT_ID?.trim();
+          const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+          if (!accountId || !apiToken) {
+            throw new Error(
+              'R2_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for the private-bucket control-plane audit.',
+            );
+          }
+          const bucketNames = await listPrivateR2Buckets({
+            signal: AbortSignal.timeout(45_000),
+          });
+          const candidates = bucketNames.filter((name) => {
+            const words = name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+            const joined = words.join('-');
+            if (joined.includes('pdf-preview')) return false;
+            return (
+              (words.includes('question') && words.includes('bank')) ||
+              words.includes('qb')
+            );
+          });
+          const pinned = process.env.R2_QUESTION_BANK_BUCKET;
+          const bucket = candidates.includes(pinned)
+            ? pinned
+            : candidates.length === 1
+              ? candidates[0]
+              : null;
+          if (!bucket) {
+            throw new Error(
+              `Expected exactly one dedicated Question Bank bucket candidate; found ${candidates.length}.`,
+            );
+          }
+          console.log(`Discovered dedicated Question Bank bucket: ${bucket}`);
+          if (bucket !== pinned) {
+            throw new Error(
+              `Workflow bucket pin must be updated from ${pinned} to the discovered dedicated bucket.`,
+            );
+          }
+
+          await headPrivateR2Bucket({
+            bucket,
+            signal: AbortSignal.timeout(45_000),
+          });
+          const inventory = await listPrivateR2Objects({
+            bucket,
+            prefix: 'question-bank/assets/sha256/',
+            signal: AbortSignal.timeout(60_000),
+          });
+          const base =
+            process.env.R2_ENDPOINT?.trim() ||
+            `https://${accountId}.r2.cloudflarestorage.com`;
+          const unsignedUrl = new URL(
+            `${base.replace(/\/+$/, '')}/${encodeURIComponent(bucket)}`,
+          );
+          const unsigned = await fetch(unsignedUrl, {
+            method: 'HEAD',
+            cache: 'no-store',
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (![401, 403].includes(unsigned.status)) {
+            throw new Error(
+              `Unsigned R2 bucket endpoint did not fail closed: ${unsigned.status}`,
+            );
+          }
+
+          const cloudflare = async (suffix) => {
+            const response = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/r2/buckets/${encodeURIComponent(bucket)}/domains/${suffix}`,
+              {
+                headers: { authorization: `Bearer ${apiToken}` },
+                cache: 'no-store',
+                signal: AbortSignal.timeout(30_000),
+              },
+            );
+            if (!response.ok) {
+              throw new Error(
+                `Cloudflare ${suffix} domain audit failed with status ${response.status}.`,
+              );
+            }
+            const body = await response.json();
+            if (!body.success) {
+              throw new Error(`Cloudflare ${suffix} domain audit did not succeed.`);
+            }
+            return body.result;
+          };
+          const customResult = await cloudflare('custom');
+          const customDomains = Array.isArray(customResult)
+            ? customResult
+            : customResult?.domains;
+          if (!Array.isArray(customDomains)) {
+            throw new Error('Unexpected Cloudflare custom-domain response.');
+          }
+          const enabledCustomDomains = customDomains.filter(
+            (domain) => domain?.enabled !== false,
+          );
+          if (enabledCustomDomains.length !== 0) {
+            throw new Error(
+              `Dedicated R2 bucket has ${enabledCustomDomains.length} enabled custom domain(s).`,
+            );
+          }
+          const managedResult = await cloudflare('managed');
+          if (managedResult?.enabled !== false) {
+            throw new Error('Dedicated R2 bucket r2.dev access is not disabled.');
+          }
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `bucket=${bucket}\nobject_count_first_page=${inventory.objects.length}\nunsigned_status=${unsigned.status}\n`,
+          );
+          console.log(
+            `Private R2 preflight passed: first page ${inventory.objects.length} object(s), unsigned status ${unsigned.status}, no enabled public domain.`,
+          );
           NODE
 
       - name: Upload compact redacted audit reports
