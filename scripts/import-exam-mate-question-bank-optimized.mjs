@@ -98,6 +98,8 @@ Options:
   --workers <n>                 R2 upload concurrency (default: 8, max: 16).
   --batch-size <n>              Supabase upsert batch size (default: 250).
   --storage-bucket <name>       Private R2 bucket override.
+  --allow-shared-private-bucket Allow an explicit bucket override to use the
+                                existing private PDF-preview bucket.
   --resume-batch-id <uuid>      Resume this exact failed logical batch.
   --report <path>               JSON report output path.
   --confirm-production          Required for database/R2 writes.
@@ -117,6 +119,7 @@ export function parseArguments(argv) {
     workers: 8,
     batchSize: 250,
     storageBucket: null,
+    allowSharedPrivateBucket: false,
     resumeBatchId: null,
     report: null,
     confirmProduction: false,
@@ -132,6 +135,8 @@ export function parseArguments(argv) {
     else if (token === '--workers') options.workers = Number(argv[++index]);
     else if (token === '--batch-size') options.batchSize = Number(argv[++index]);
     else if (token === '--storage-bucket') options.storageBucket = argv[++index];
+    else if (token === '--allow-shared-private-bucket')
+      options.allowSharedPrivateBucket = true;
     else if (token === '--resume-batch-id') options.resumeBatchId = argv[++index];
     else if (token === '--report') options.report = argv[++index];
     else if (token === '--confirm-production') options.confirmProduction = true;
@@ -163,6 +168,14 @@ export function parseArguments(argv) {
     )
   ) {
     throw new Error('--resume-batch-id must be a UUID.');
+  }
+  if (
+    options.allowSharedPrivateBucket &&
+    !options.storageBucket?.trim()
+  ) {
+    throw new Error(
+      '--allow-shared-private-bucket requires an explicit --storage-bucket.',
+    );
   }
   return options;
 }
@@ -197,9 +210,18 @@ export function resolveQuestionBankBucket(options = {}) {
     );
   }
   const previewBucket = process.env.R2_PDF_PREVIEW_BUCKET?.trim();
-  if (bucket === 'dp-pdf-previews' || (previewBucket && bucket === previewBucket)) {
+  const sharesPreviewBucket =
+    bucket === 'dp-pdf-previews' ||
+    (previewBucket && bucket === previewBucket);
+  if (
+    sharesPreviewBucket &&
+    !(
+      options.allowSharedPrivateBucket === true &&
+      options.storageBucket?.trim() === bucket
+    )
+  ) {
     throw new Error(
-      'R2_QUESTION_BANK_BUCKET must be a dedicated bucket and cannot equal the PDF preview bucket.',
+      'Question Bank assets can use the private PDF preview bucket only with an explicit --storage-bucket and --allow-shared-private-bucket.',
     );
   }
   return bucket;
@@ -1538,7 +1560,7 @@ async function main() {
     if (options.mode === 'assets' || options.mode === 'all') {
       const verifiedBucket = await preflightPrivateR2Bucket(options);
       process.stdout.write(
-        `Authenticated dedicated R2 bucket preflight passed for ${verifiedBucket}.\n`,
+        `Authenticated private R2 bucket preflight passed for ${verifiedBucket}.\n`,
       );
     }
 
