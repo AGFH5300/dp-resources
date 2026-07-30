@@ -14,13 +14,48 @@ const fullscreenControl = readFileSync(
   'utf8',
 );
 
+function selectorsContaining(styles: string, fragment: string) {
+  const withoutComments = styles.replace(/\/\*[\s\S]*?\*\//g, '');
+  const selectors: string[] = [];
+  let boundary = 0;
+  for (let index = 0; index < withoutComments.length; index += 1) {
+    const character = withoutComments[index];
+    if (character === '{') {
+      const ruleHeader = withoutComments.slice(boundary, index).trim();
+      if (!ruleHeader.startsWith('@')) {
+        selectors.push(
+          ...ruleHeader
+            .split(',')
+            .map((selector) => selector.trim())
+            .filter((selector) => selector.includes(fragment)),
+        );
+      }
+      boundary = index + 1;
+    } else if (character === '}' || character === ';') {
+      boundary = index + 1;
+    }
+  }
+  return selectors;
+}
+
 describe('Question Bank practice layout', () => {
   it('keeps the normal selected-question view compact', () => {
-    expect(courseStyles).not.toMatch(
-      /(?:^|})\s*\.coursePage\s+:global\(\.dp-qb-practice-layout\.is-open\)/,
+    const guardedRoot = ':global(html.dp-qb-practice-fullscreen)';
+    const compactOverrides = selectorsContaining(
+      courseStyles,
+      ':global(.dp-qb-practice-layout.is-open)',
     );
-    expect(courseStyles).not.toMatch(
-      /(?:^|})\s*\.coursePage\s+:global\(\.dp-qb-practice-layout\.is-open > section\[aria-label='Question results'\]\)/,
+    const resultOverrides = selectorsContaining(
+      courseStyles,
+      ":global(.dp-qb-practice-layout.is-open > section[aria-label='Question results'])",
+    );
+    expect(compactOverrides).not.toHaveLength(0);
+    expect(resultOverrides).not.toHaveLength(0);
+    expect(compactOverrides.every((selector) => selector.includes(guardedRoot))).toBe(
+      true,
+    );
+    expect(resultOverrides.every((selector) => selector.includes(guardedRoot))).toBe(
+      true,
     );
   });
 
