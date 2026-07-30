@@ -1,0 +1,32 @@
+name: Exam-Mate production import
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export-reviewed-source:
+    if: github.head_ref == 'ops/exam-mate-production-import-20260730'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact importer branch
+        uses: actions/checkout@v5
+      - name: Package repository source for independent audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=node_modules -czf /tmp/dp-resources-source.tgz .
+          sha256sum /tmp/dp-resources-source.tgz | tee /tmp/dp-resources-source.sha256
+      - name: Upload independent-audit source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-importer-source
+          path: |
+            /tmp/dp-resources-source.tgz
+            /tmp/dp-resources-source.sha256
+          if-no-files-found: error
+          retention-days: 1
