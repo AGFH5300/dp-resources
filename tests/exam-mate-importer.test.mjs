@@ -37,6 +37,22 @@ describe('Exam-Mate Question Bank importer', () => {
     );
   });
 
+  it('parses legacy Mathematics option references without quarantining them', () => {
+  expect(
+    canonicalExamKey('Mathematics', {
+      reference: 'MAT/3 Statistics0_HL_Winter_2013_Q3',
+    }),
+  ).toBe('mathematics|13|N|3|HL|TZ0|3');
+});
+
+it('parses Further Mathematics papers that omit a timezone digit', () => {
+  expect(
+    canonicalExamKey('Further Mathematics', {
+      reference: 'FURMA/1_HL_Summer_2018_Q1',
+    }),
+  ).toBe('further-mathematics|18|M|1|HL|TZ0|1');
+});
+
   it('keeps old Mathematics tracks separate from AA and AI', () => {
     expect(courseDescriptor('Mathematical Studies', 'SL').course.source_key).toBe(
       'math:mathematical-studies-sl',
