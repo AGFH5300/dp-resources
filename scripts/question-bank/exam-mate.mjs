@@ -665,10 +665,8 @@ export async function fetchAll(
       error = result.error;
       const retriable =
         error &&
-        (error.code === '57014' ||
-          /statement timeout|canceling statement/i.test(
-            String(error.message || ''),
-          ));
+        error.code === '57014' &&
+        /statement timeout/i.test(String(error.message || ''));
       if (!error || !retriable || attempt === 4) break;
       process.stderr.write(
         `${table} read page ${offset / pageSize + 1} timed out; retrying attempt ${attempt + 1}/4.\n`,
