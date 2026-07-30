@@ -24,7 +24,7 @@ const schema = readFileSync('supabase/schema.sql', 'utf8');
 
 describe('auth redirects and public entry points', () => {
   it('keeps the public homepage indexable while redirecting legacy auth entry points', () => {
-    expect(rootPage).toContain('Free DP Study Resource Library');
+    expect(rootPage).toContain('Free DP Study Library and Question Bank');
     expect(rootPage).toContain('href="/auth/sign-up"');
     expect(rootPage).toContain('Sign up');
     expect(rootPage).not.toContain("redirect('/auth/login')");
