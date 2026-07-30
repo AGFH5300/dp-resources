@@ -262,7 +262,7 @@ describe('Exam-Mate production recovery', () => {
     ).toThrow('--resume-batch-id must be a UUID');
   });
 
-  it('resumes the same failed archive batch but refuses concurrent ownership', () => {
+  it('resumes only the same failed archive batch', () => {
     const batch = {
       id: '27462015-2a25-41bf-93b0-c4efd24d9a3a',
       status: 'failed',
@@ -274,12 +274,17 @@ describe('Exam-Mate production recovery', () => {
         'all',
       ),
     ).toBe(batch.id);
-    expect(() =>
-      validateBatchResume({ ...batch, status: 'importing' }, batch.id, 'all'),
-    ).toThrow('already marked importing');
-    expect(() =>
-      validateBatchResume({ ...batch, status: 'completed' }, batch.id, 'all'),
-    ).toThrow('already completed');
+    for (const status of [
+      'started',
+      'audited',
+      'rolled_back',
+      'importing',
+      'completed',
+    ]) {
+      expect(() =>
+        validateBatchResume({ ...batch, status }, batch.id, 'all'),
+      ).toThrow('accepts only the exact failed batch');
+    }
     expect(() =>
       validateBatchResume(batch, null, 'all'),
     ).toThrow('requires --resume-batch-id');
