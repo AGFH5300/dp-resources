@@ -1,4 +1,4 @@
-name: Inspect Exam-Mate production import
+name: Diagnose Exam-Mate source verification
 
 on:
   push:
@@ -8,21 +8,65 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
-  inspect:
+  diagnose:
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
     steps:
-      - name: Print current Exam-Mate workflow runs
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v5
+
+      - name: Download reviewed source audit
+        shell: bash
         run: |
-          gh run list \
-            --repo AGFH5300/dp-resources \
-            --workflow exam-mate-production-import.yml \
-            --limit 10 \
-            --json databaseId,status,conclusion,headSha,event,createdAt,updatedAt,url,displayTitle,workflowName
-          echo 'Intentional monitor exit so the run ID is delivered through the existing failure-notification channel.'
-          exit 1
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { google } from 'googleapis';
+          let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
+          if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) key = key.slice(1, -1);
+          key = key.replace(/\\n/g, '\n').trim();
+          const auth = new google.auth.JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          });
+          const drive = google.drive({ version: 'v3', auth });
+          const response = await drive.files.get(
+            { fileId: '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2', alt: 'media', supportsAllDrives: true },
+            { responseType: 'stream' },
+          );
+          await new Promise((resolve, reject) => {
+            const output = fs.createWriteStream('/tmp/exam-mate-source.zip', { flags: 'wx' });
+            response.data.pipe(output);
+            output.on('finish', resolve);
+            output.on('error', reject);
+            response.data.on('error', reject);
+          });
+          NODE
+          echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  /tmp/exam-mate-source.zip' | sha256sum -c -
+          mkdir -p /tmp/exam-mate-source
+          unzip -q /tmp/exam-mate-source.zip -d /tmp/exam-mate-source
+          cp /tmp/exam-mate-source/index/jobs.json /tmp/exam-mate-source/source/discovered-jobs.json
+
+      - name: Print exact source verification result
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { normalizeExamMateArchive, publicExamMateReport } from './scripts/question-bank/exam-mate.mjs';
+          const normalized = await normalizeExamMateArchive('/tmp/exam-mate-source', {
+            requireLocalAssets: false,
+            verifyLocalAssets: false,
+          });
+          const report = publicExamMateReport(normalized);
+          console.log(JSON.stringify({
+            verificationStatus: report.verificationStatus,
+            actualCounts: report.actualCounts,
+            findingsBySeverity: report.findingsBySeverity,
+            criticalFindings: report.findings.filter((row) => row.severity === 'critical'),
+          }, null, 2));
+          if (normalized.verificationStatus !== 'passed') process.exit(1);
+          NODE
