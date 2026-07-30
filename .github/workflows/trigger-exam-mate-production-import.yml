@@ -1,4 +1,4 @@
-name: Monitor Exam-Mate recovery read-only audit
+name: Start guarded Exam-Mate recovery audit
 
 on:
   push:
@@ -8,37 +8,11 @@ on:
       - .github/workflows/trigger-exam-mate-production-import.yml
 
 permissions:
-  actions: read
   contents: read
-  pull-requests: write
-
-concurrency:
-  group: exam-mate-recovery-audit-monitor
-  cancel-in-progress: false
 
 jobs:
-  inspect:
-    name: Record latest guarded audit run
+  marker:
+    name: Recovery audit trigger marker
     runs-on: ubuntu-latest
     steps:
-      - name: Record latest recovery audit
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/main"
-          RUN_JSON="$(gh run list \
-            --repo AGFH5300/dp-resources \
-            --workflow exam-mate-recovery-audit.yml \
-            --event workflow_dispatch \
-            --limit 1 \
-            --json databaseId,status,conclusion,headSha,url,createdAt)"
-          test "$(jq 'length' <<<"$RUN_JSON")" = "1"
-          RUN_ID="$(jq -r '.[0].databaseId' <<<"$RUN_JSON")"
-          STATUS="$(jq -r '.[0].status' <<<"$RUN_JSON")"
-          CONCLUSION="$(jq -r '.[0].conclusion // "pending"' <<<"$RUN_JSON")"
-          HEAD_SHA="$(jq -r '.[0].headSha' <<<"$RUN_JSON")"
-          test "$HEAD_SHA" = "4e84bd6f5605878ec7e0277498fa8bc37e1025ff"
-          gh pr comment 179 \
-            --repo AGFH5300/dp-resources \
-            --body "Guarded read-only recovery audit run: \`$RUN_ID\` (status: \`$STATUS\`, conclusion: \`$CONCLUSION\`, head: \`$HEAD_SHA\`)."
+      - run: echo 'The trusted-main recovery audit is triggered by this file change.'
