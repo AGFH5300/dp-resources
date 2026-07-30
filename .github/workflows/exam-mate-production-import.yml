@@ -1,0 +1,195 @@
+name: One-time Exam-Mate production import
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/exam-mate-production-import.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-mate-production-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Audit, import and verify Exam-Mate
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_QUESTION_BANK_BUCKET: ${{ secrets.R2_QUESTION_BANK_BUCKET }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+      ROOT: ${{ runner.temp }}/ExamMate-index-20260729-223333
+
+    steps:
+      - name: Check out merged importer
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate protected configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$R2_ACCESS_KEY_ID"
+          test -n "$R2_SECRET_ACCESS_KEY"
+          test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+
+      - name: Download private staging files from Google Drive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/staging"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { google } from 'googleapis';
+
+          const root = process.env.ROOT;
+          const files = {
+            'ExamMate-audit-bundle-20260729-234339.zip': '1-hkHNs6dE-lQYVZcX9YdABwaKVBvTSqf',
+            'ExamMate-optimization-audit-20260730-153128.zip': '1TRMUuPrC9kA4Lx0KmJiBd1vA6PxAa-Bc',
+            'exam-mate-assets-split-manifest.json': '1ONb7pABHUvOjPFtRBdzRbwaU4SOmvCEG',
+            'exam-mate-bas-part-00.zip': '1K6VLPLZB6SzxZNfceJRn7gMkw8AeeYQk',
+            'exam-mate-bas-part-01.zip': '17eIwtjRVnY2amBk2LJOUbAAK6tf-PeSY',
+            'exam-mate-bas-part-02.zip': '1Ep36IyETP7aX0g0IatLZ6bTpxFEfzf6-',
+            'exam-mate-bas-part-03.zip': '1fEKFl6ny4DtHfYYfUZWXy7BHk1sl5p21',
+            'exam-mate-sas-part-00.zip': '1XZn82mJDewFc6FNE86eW5_iq2rfS5I8l',
+            'exam-mate-sas-part-01.zip': '1_a4cgYv3oO5HI5O8EZR5YcRalGyYblql',
+            'exam-mate-sas-part-02.zip': '16MnMu5R4lnsLjJq0MlV7gIg3sqwRmQRu',
+            'exam-mate-sas-part-03.zip': '1QKI5dSfLUoPsH8wvp9GctiYD3z96MyTH',
+            'exam-mate-sas-part-04.zip': '1QJ9eoZZ5glb8RsMfpje9mkDHWw22mgkN',
+          };
+          let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
+          if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) key = key.slice(1, -1);
+          key = key.replace(/\\n/g, '\n').replace(/\\/g, '').trim();
+          const auth = new google.auth.JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          });
+          const drive = google.drive({ version: 'v3', auth });
+          for (const [name, id] of Object.entries(files)) {
+            const target = path.join(root, 'staging', name);
+            const response = await drive.files.get({ fileId: id, alt: 'media', supportsAllDrives: true }, { responseType: 'stream' });
+            await new Promise((resolve, reject) => {
+              const output = fs.createWriteStream(target, { flags: 'wx' });
+              response.data.pipe(output);
+              output.on('finish', resolve);
+              output.on('error', reject);
+              response.data.on('error', reject);
+            });
+            console.log(`Downloaded ${name}: ${fs.statSync(target).size} bytes`);
+          }
+          NODE
+
+      - name: Reconstruct and verify uploaded asset archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$ROOT/staging"
+          for wrapper in exam-mate-bas-part-*.zip exam-mate-sas-part-*.zip; do unzip -q "$wrapper"; done
+          cat bas.part-00 bas.part-01 bas.part-02 bas.part-03 > bas.zip
+          cat sas.part-00 sas.part-01 sas.part-02 sas.part-03 sas.part-04 > sas.zip
+          echo 'f99d8c229d145ac24c01969ec44b6c828fd65e01ecf8c13e9b377e9903e33aa8  bas.zip' | sha256sum -c -
+          echo 'a03dc9676f95dc64d5f769b38436b6faccd9f0d432b150d30bc0dda3157bf646  sas.zip' | sha256sum -c -
+          echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  ExamMate-audit-bundle-20260729-234339.zip' | sha256sum -c -
+          echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  ExamMate-optimization-audit-20260730-153128.zip' | sha256sum -c -
+          mkdir -p "$ROOT/optimized-assets/sha256" "$ROOT/assets/sha256"
+          unzip -q bas.zip -d unpack-bas
+          unzip -q sas.zip -d unpack-sas
+          cp -a unpack-bas/bas/. "$ROOT/optimized-assets/sha256/"
+          cp -a unpack-sas/sas/. "$ROOT/optimized-assets/sha256/"
+          test "$(find "$ROOT/optimized-assets/sha256" -type f -name '*.webp' | wc -l)" -eq 31328
+
+      - name: Retrieve and verify eight exact retained PNG assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          fetch_png() {
+            hash="$1"; bytes="$2"; url="$3"; dir="$ROOT/assets/sha256/${hash:0:2}"; file="$dir/$hash.png"
+            mkdir -p "$dir"
+            curl --fail --location --retry 5 --retry-all-errors --silent --show-error "$url" -o "$file"
+            test "$(stat -c %s "$file")" -eq "$bytes"
+            echo "$hash  $file" | sha256sum -c -
+          }
+          fetch_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171 'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
+          fetch_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255 'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
+          fetch_png 36fc60ebfc9a5d561eb7ffcdc1edf660632c5e7ccd63ada77c7e7c5a89b5e82c 1853 'https://www.exam-mate.com/questions/6056/38697/6056_a_38697_10_2.png'
+          fetch_png 78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b 601454 'https://www.exam-mate.com/questions/27399/92184/27399_a_92184_1_1.png'
+          fetch_png 846ac0a08c764d41ec2dff9209ac810e5bfab34d77a14015dd93e79d68b61957 913 'https://www.exam-mate.com/questions/6406/37782/6406_a_37782_9_2.png'
+          fetch_png 9b126d902848af4f5d7d7a3f7261037287a72d28fc61a07691d3683da74bf764 987 'https://www.exam-mate.com/questions/6106/37853/6106_a_37853_13_3.png'
+          fetch_png a41449c35a3669f809d8c14b033949fafb4eec608e3d185716ae3bb4b480a7df 1382 'https://www.exam-mate.com/questions/5957/34241/5957_a_34241_2_1.png'
+          fetch_png c947caf8167543bf30976686f1d925ec43d1076ba02a64b1fc7d34a8f30e3b0b 873 'https://www.exam-mate.com/questions/6104/37427/6104_a_37427_10_3.png'
+          test "$(find "$ROOT/assets/sha256" -type f -name '*.png' | wc -l)" -eq 8
+
+      - name: Run pinned offline audit
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode audit \
+            --report "$ROOT/audit-report.json"
+
+      - name: Run production-aware dry run
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode dry-run \
+            --report "$ROOT/dry-run-report.json"
+
+      - name: Import database and selected private R2 assets
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --assets-root "$ROOT" \
+            --mode all \
+            --workers 8 \
+            --confirm-production \
+            --report "$ROOT/import-report.json"
+
+      - name: Run independent post-import verification
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode verify \
+            --report "$ROOT/verify-report.json"
+
+      - name: Upload immutable audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-production-reports-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ExamMate-index-20260729-223333/*-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Secure runner cleanup
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$ROOT"
