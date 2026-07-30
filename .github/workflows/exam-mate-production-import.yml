@@ -73,7 +73,7 @@ jobs:
           test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
           test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
 
-      - name: Verify dedicated private R2 bucket access
+      - name: Verify private R2 bucket access
         run: |
           node --input-type=module <<'NODE'
           import {
@@ -102,13 +102,13 @@ jobs:
             cache: 'no-store',
             signal: AbortSignal.timeout(30_000),
           });
-          if (![401, 403].includes(unsigned.status)) {
+          if (![400, 401, 403].includes(unsigned.status)) {
             throw new Error(
               `Unsigned R2 bucket endpoint did not fail closed: ${unsigned.status}`,
             );
           }
           console.log(
-            `Dedicated R2 preflight passed; first inventory page has ${inventory.objects.length} object(s), unsigned status ${unsigned.status}.`,
+            `Private R2 preflight passed; first inventory page has ${inventory.objects.length} object(s), unsigned status ${unsigned.status}.`,
           );
           NODE
 

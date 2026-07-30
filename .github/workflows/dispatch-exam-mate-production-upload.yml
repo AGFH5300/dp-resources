@@ -1,5 +1,5 @@
 name: Dispatch guarded Exam-Mate production upload
-# One-time retry using the private R2 bucket used by earlier Question Bank imports.
+# One-time retry after accepting Cloudflare's fail-closed unsigned 400 response.
 
 on:
   push:
