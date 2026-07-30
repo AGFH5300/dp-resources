@@ -249,6 +249,7 @@ jobs:
           expected_count = 31328
           hash_name = re.compile(r'([0-9a-f]{64})\.webp')
           seen = set()
+          ignored_metadata = []
 
           for archive in archives:
             archive_count = 0
@@ -257,6 +258,9 @@ jobs:
                 if member.is_dir():
                   continue
                 leaf = pathlib.PurePosixPath(member.filename).name.lower()
+                if leaf == '.ds_store':
+                  ignored_metadata.append(f'{archive}:{member.filename}')
+                  continue
                 match = hash_name.fullmatch(leaf)
                 if not match:
                   raise SystemExit(
@@ -289,6 +293,10 @@ jobs:
                 archive_count += 1
             print(f'Normalized {archive_count} verified WebP files from {archive}.')
 
+          print(
+            f'Ignored {len(ignored_metadata)} macOS metadata member(s): '
+            + ', '.join(ignored_metadata),
+          )
           if len(seen) != expected_count:
             raise SystemExit(
               f'Optimized WebP count mismatch: expected {expected_count}, received {len(seen)}',
