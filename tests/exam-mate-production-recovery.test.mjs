@@ -118,7 +118,7 @@ describe('Exam-Mate production recovery', () => {
     expect(range).toHaveBeenCalledTimes(1);
   });
 
-  it('limits concurrent production reads to four', async () => {
+  it('serializes production snapshot reads to avoid statement-timeout contention', async () => {
     let activeReads = 0;
     let maximumActiveReads = 0;
     const releases = [];
@@ -149,13 +149,13 @@ describe('Exam-Mate production recovery', () => {
       fetchAll(client, `table_${index}`, 'id', ['id'], 0),
     );
 
-    await vi.waitFor(() => expect(releases).toHaveLength(4));
-    releases.splice(0, 4).forEach((release) => release());
-    await vi.waitFor(() => expect(releases).toHaveLength(4));
-    releases.splice(0, 4).forEach((release) => release());
+    for (let index = 0; index < reads.length; index += 1) {
+      await vi.waitFor(() => expect(releases).toHaveLength(1));
+      releases.shift()();
+    }
     await Promise.all(reads);
 
-    expect(maximumActiveReads).toBe(4);
+    expect(maximumActiveReads).toBe(1);
   });
 
   it('keeps the reviewed legacy paper parser correction in source', () => {

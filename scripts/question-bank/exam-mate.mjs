@@ -620,7 +620,7 @@ function groupBy(rows, key) {
   return output;
 }
 
-const EXAM_MATE_READ_CONCURRENCY = 4;
+const EXAM_MATE_READ_CONCURRENCY = 1;
 let activeExamMateReads = 0;
 const examMateReadWaiters = [];
 

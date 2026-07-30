@@ -1,5 +1,5 @@
 name: Dispatch guarded Exam-Mate production upload
-# One-time retry after pinning the reviewed partial-import recovery counts.
+# One-time retry with serialized production snapshot reads.
 
 on:
   push:
