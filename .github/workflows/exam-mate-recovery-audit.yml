@@ -305,9 +305,20 @@ jobs:
               'R2_ACCOUNT_ID is required for the private-bucket data-plane audit.',
             );
           }
-          const bucketNames = await listPrivateR2Buckets({
-            signal: AbortSignal.timeout(45_000),
-          });
+          const pinned = process.env.R2_QUESTION_BANK_BUCKET;
+          let bucketNames;
+          try {
+            bucketNames = await listPrivateR2Buckets({
+              signal: AbortSignal.timeout(45_000),
+            });
+          } catch (error) {
+            const message = String(error?.message || error);
+            if (!/status 403[\s\S]*AccessDenied/i.test(message)) throw error;
+            console.log(
+              'R2 account listing is restricted; verifying only the explicit dedicated bucket pin.',
+            );
+            bucketNames = [pinned];
+          }
           const candidates = bucketNames.filter((name) => {
             const words = name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
             const joined = words.join('-');
@@ -317,7 +328,6 @@ jobs:
               words.includes('qb')
             );
           });
-          const pinned = process.env.R2_QUESTION_BANK_BUCKET;
           const bucket = candidates.includes(pinned)
             ? pinned
             : candidates.length === 1
