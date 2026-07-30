@@ -1,6 +1,11 @@
 name: Exam-Mate recovery read-only audit
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/trigger-exam-mate-production-import.yml
   workflow_dispatch:
     inputs:
       confirmation:
@@ -10,18 +15,24 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: exam-mate-recovery-read-only-audit
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   audit:
     name: Pinned audit and production-aware dry run
     if: >-
-      github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      inputs.confirmation == 'RUN-EXAM-MATE-READ-ONLY-AUDIT'
+      (
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          inputs.confirmation == 'RUN-EXAM-MATE-READ-ONLY-AUDIT'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -44,10 +55,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
           test "$GITHUB_REF" = "refs/heads/main"
-          test "${{ inputs.confirmation }}" = "RUN-EXAM-MATE-READ-ONLY-AUDIT"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            test "${{ inputs.confirmation }}" = "RUN-EXAM-MATE-READ-ONLY-AUDIT"
+          else
+            test "$GITHUB_EVENT_NAME" = "push"
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -409,3 +423,12 @@ jobs:
         if: always()
         shell: bash
         run: rm -rf "$ROOT"
+
+      - name: Record recovery audit run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 181 \
+            --repo AGFH5300/dp-resources \
+            --body "Guarded read-only recovery audit run: \`$GITHUB_RUN_ID\` (job: \`${{ job.status }}\`, head: \`$GITHUB_SHA\`)."
