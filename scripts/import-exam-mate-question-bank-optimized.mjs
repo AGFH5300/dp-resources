@@ -62,6 +62,7 @@ const PAGED_ORDER_COLUMNS = new Map([
   ['dp_qb_question_sources', ['id']],
   ['dp_qb_variant_sources', ['id']],
   ['dp_qb_question_variants', ['id']],
+  ['dp_qb_questions', ['id']],
   ['dp_qb_papers', ['id']],
   ['dp_qb_question_subtopics', ['variant_id', 'subtopic_id']],
   ['dp_qb_course_papers', ['course_id', 'paper_id']],
@@ -410,7 +411,7 @@ async function createOrResumeBatch(
       .from('dp_qb_import_batches')
       .update(payload)
       .eq('id', existing.id)
-      .neq('status', 'importing')
+      .eq('status', 'failed')
       .select('id')
       .single();
     if (error) throw new Error(`Unable to resume import batch: ${error.message}`);
@@ -446,6 +447,126 @@ async function storeFindings(client, normalized, batchId, batchSize) {
   return rows.length;
 }
 
+async function deleteExactRecoveryRows(
+  client,
+  table,
+  rows,
+  columns,
+  batchId,
+  requireBatchOwnership,
+) {
+  let deletedRows = 0;
+  const ordered = [...rows].sort((left, right) =>
+    upsertConflictKey(left, columns).localeCompare(
+      upsertConflictKey(right, columns),
+    ),
+  );
+  for (const row of ordered) {
+    const deleted = await retry(async () => {
+      let query = client.from(table).delete();
+      for (const column of columns) query = query.eq(column, row[column]);
+      if (requireBatchOwnership) {
+        query = query.eq('created_by_batch_id', batchId);
+      }
+      const { data, error } = await query.select(columns.join(','));
+      if (error) {
+        throw new Error(
+          `${table} recovery cleanup failed: ${error.message}`,
+        );
+      }
+      return data || [];
+    });
+    if (deleted.length !== 1) {
+      throw new Error(
+        `${table} recovery cleanup expected one exact row but deleted ${deleted.length}.`,
+      );
+    }
+    deletedRows += 1;
+  }
+  return deletedRows;
+}
+
+export async function applyPartialBatchRecovery(
+  client,
+  normalized,
+  batchId,
+  batchSize,
+) {
+  const plan = normalized.recoveryPlan || {};
+  const updates = [
+    [
+      'dp_qb_question_sources',
+      plan.questionSourceUpdates || [],
+      'id',
+    ],
+    [
+      'dp_qb_question_variants',
+      plan.variantUpdates || [],
+      'id',
+    ],
+    [
+      'dp_qb_variant_sources',
+      plan.variantSourceUpdates || [],
+      'id',
+    ],
+    [
+      'dp_qb_asset_sources',
+      plan.assetSourceUpdates || [],
+      'id',
+    ],
+  ];
+  const result = { updates: {}, deletes: {} };
+  for (const [table, rows, conflict] of updates) {
+    result.updates[table] = await upsertRows(
+      client,
+      table,
+      rows,
+      conflict,
+      batchSize,
+      batchId,
+      true,
+    );
+  }
+
+  const deletes = [
+    [
+      'dp_qb_variant_assets',
+      plan.deleteVariantAssets || [],
+      ['variant_id', 'asset_id', 'role'],
+      true,
+    ],
+    [
+      'dp_qb_variant_papers',
+      plan.deleteVariantPapers || [],
+      ['variant_id', 'paper_id'],
+      true,
+    ],
+    [
+      'dp_qb_course_papers',
+      plan.deleteCoursePapers || [],
+      ['course_id', 'paper_id'],
+      false,
+    ],
+    [
+      'dp_qb_papers',
+      plan.deletePapers || [],
+      ['id'],
+      true,
+    ],
+  ];
+  for (const [table, rows, columns, requireBatchOwnership] of deletes) {
+    result.deletes[table] = await deleteExactRecoveryRows(
+      client,
+      table,
+      rows,
+      columns,
+      batchId,
+      requireBatchOwnership,
+    );
+  }
+  return result;
+}
+
 async function importDatabase(normalized, options) {
   if (normalized.verificationStatus !== 'passed') {
     throw new Error('Database import refused because normalization failed.');
@@ -475,6 +596,13 @@ async function importDatabase(normalized, options) {
           `${operationCounts[table].duplicateRowsRemoved} duplicate input row(s) normalized\n`,
       );
     }
+    operationCounts.partial_batch_recovery =
+      await applyPartialBatchRecovery(
+        client,
+        normalized,
+        batchId,
+        options.batchSize,
+      );
     operationCounts.dp_qb_import_findings = await storeFindings(
       client,
       normalized,
@@ -847,6 +975,7 @@ async function verifyProduction(normalized, options) {
     questionSources,
     variantSources,
     variants,
+    questions,
     papers,
     placements,
     coursePapers,
@@ -861,38 +990,51 @@ async function verifyProduction(normalized, options) {
     fetchPaged(
       client,
       'dp_qb_question_sources',
-      'id,source_question_id,question_id',
+      'id,source_question_id,question_id,created_by_batch_id',
       (query) => query.eq('provider', 'exam_mate'),
     ),
     fetchPaged(
       client,
       'dp_qb_variant_sources',
-      'id,source_question_id,source_course,source_topic,variant_id',
+      'id,source_question_id,source_course,source_topic,variant_id,created_by_batch_id',
       (query) => query.eq('provider', 'exam_mate'),
     ),
     fetchPaged(
       client,
       'dp_qb_question_variants',
-      'id,question_id,paper_id',
+      'id,question_id,paper_id,created_by_batch_id',
     ),
-    fetchPaged(client, 'dp_qb_papers', 'id'),
+    fetchPaged(
+      client,
+      'dp_qb_questions',
+      'id,created_by_batch_id',
+    ),
+    fetchPaged(client, 'dp_qb_papers', 'id,created_by_batch_id'),
     fetchPaged(
       client,
       'dp_qb_question_subtopics',
-      'variant_id,subtopic_id',
+      'variant_id,subtopic_id,created_by_batch_id',
     ),
     fetchPaged(client, 'dp_qb_course_papers', 'course_id,paper_id'),
-    fetchPaged(client, 'dp_qb_variant_papers', 'variant_id,paper_id'),
+    fetchPaged(
+      client,
+      'dp_qb_variant_papers',
+      'variant_id,paper_id,created_by_batch_id',
+    ),
     fetchPaged(
       client,
       'dp_qb_assets',
-      'id,content_hash,content_type,byte_size,verification_status,storage_provider,storage_bucket,storage_key',
+      'id,content_hash,content_type,byte_size,verification_status,storage_provider,storage_bucket,storage_key,created_by_batch_id',
     ),
-    fetchPaged(client, 'dp_qb_asset_sources', 'id,asset_id'),
+    fetchPaged(
+      client,
+      'dp_qb_asset_sources',
+      'id,asset_id,source_question_id,created_by_batch_id',
+    ),
     fetchPaged(
       client,
       'dp_qb_variant_assets',
-      'variant_id,asset_id,role',
+      'variant_id,asset_id,role,created_by_batch_id',
     ),
     fetchPaged(client, 'dp_qb_question_search', 'variant_id'),
     fetchPaged(
@@ -920,18 +1062,33 @@ async function verifyProduction(normalized, options) {
   );
   const expectedBucket = resolveQuestionBankBucket(options);
   const expectedQuestionSourceRowIds = new Set(expectations.questionSourceIds);
+  const expectedQuestionSourceQuestionIds =
+    expectations.questionSourceQuestionIds || {};
   const expectedVariantSourceRowIds = new Set(expectations.variantSourceIds);
+  const expectedVariantSourceVariantIds =
+    expectations.variantSourceVariantIds || {};
   const expectedVariantIds = new Set(expectations.variantIds);
+  const expectedVariantQuestionIds = expectations.variantQuestionIds || {};
+  const expectedVariantPaperIds = expectations.variantPaperIds || {};
   const expectedPlacementKeys = new Set(expectations.placementKeys);
   const expectedCoursePaperKeys = new Set(expectations.coursePaperKeys);
   const expectedVariantPaperKeys = new Set(expectations.variantPaperKeys);
   const expectedPaperIds = new Set(expectations.paperIds);
   const expectedAssetIds = new Set(expectations.assetIds);
   const expectedAssetSourceIds = new Set(expectations.assetSourceIds);
+  const expectedAssetSourceQuestionIds =
+    expectations.assetSourceQuestionIds || {};
   const expectedVariantAssetKeys = new Set(expectations.variantAssetKeys);
 
   const questionSourceRowIds = new Set(questionSources.map((row) => row.id));
+  const questionSourceById = new Map(
+    questionSources.map((row) => [row.id, row]),
+  );
   const variantSourceRowIds = new Set(variantSources.map((row) => row.id));
+  const variantSourceById = new Map(
+    variantSources.map((row) => [row.id, row]),
+  );
+  const variantById = new Map(variants.map((row) => [row.id, row]));
   const variantIds = new Set(variants.map((row) => row.id));
   const paperIds = new Set(papers.map((row) => row.id));
   const placementKeys = new Set(
@@ -945,6 +1102,9 @@ async function verifyProduction(normalized, options) {
   );
   const assetIds = new Set(assets.map((row) => row.id));
   const assetSourceIds = new Set(assetSources.map((row) => row.id));
+  const assetSourceById = new Map(
+    assetSources.map((row) => [row.id, row]),
+  );
   const variantAssetKeys = new Set(
     variantAssets.map(
       (row) => `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
@@ -956,6 +1116,7 @@ async function verifyProduction(normalized, options) {
   const examMateVariantIds = new Set(
     variantSources.map((row) => row.variant_id),
   );
+  const matchingBatchIds = new Set(batches.map((row) => row.id));
 
   const missingQuestionSourceRows = [...expectedQuestionSourceRowIds].filter(
     (id) => !questionSourceRowIds.has(id),
@@ -972,6 +1133,29 @@ async function verifyProduction(normalized, options) {
   const missingVariants = [...expectedVariantIds].filter(
     (id) => !variantIds.has(id),
   );
+  const mismatchedQuestionSources = Object.entries(
+    expectedQuestionSourceQuestionIds,
+  ).filter(
+    ([id, questionId]) =>
+      questionSourceById.get(id)?.question_id !== questionId,
+  );
+  const mismatchedVariantSources = Object.entries(
+    expectedVariantSourceVariantIds,
+  ).filter(
+    ([id, variantId]) =>
+      variantSourceById.get(id)?.variant_id !== variantId,
+  );
+  const mismatchedVariants = Object.entries(
+    expectedVariantQuestionIds,
+  ).filter(([id, questionId]) => {
+    const variant = variantById.get(id);
+    return (
+      !variant ||
+      variant.question_id !== questionId ||
+      (variant.paper_id || null) !==
+        (expectedVariantPaperIds[id] || null)
+    );
+  });
   const missingPlacements = [...expectedPlacementKeys].filter(
     (key) => !placementKeys.has(key),
   );
@@ -987,6 +1171,12 @@ async function verifyProduction(normalized, options) {
   const missingAssetSources = [...expectedAssetSourceIds].filter(
     (id) => !assetSourceIds.has(id),
   );
+  const mismatchedAssetSources = Object.entries(
+    expectedAssetSourceQuestionIds,
+  ).filter(
+    ([id, questionId]) =>
+      assetSourceById.get(id)?.source_question_id !== questionId,
+  );
   const missingVariantAssets = [...expectedVariantAssetKeys].filter(
     (key) => !variantAssetKeys.has(key),
   );
@@ -1000,6 +1190,67 @@ async function verifyProduction(normalized, options) {
   );
   const missingPapers = [...expectedPaperIds].filter(
     (id) => !paperIds.has(id),
+  );
+  const expectedQuestionIds = new Set(
+    Object.values(expectedQuestionSourceQuestionIds),
+  );
+  const unexpectedQuestions = questions.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedQuestionIds.has(row.id),
+  );
+  const unexpectedVariants = variants.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedVariantIds.has(row.id),
+  );
+  const unexpectedPapers = papers.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedPaperIds.has(row.id),
+  );
+  const batchPaperIds = new Set(
+    papers
+      .filter((row) => matchingBatchIds.has(row.created_by_batch_id))
+      .map((row) => row.id),
+  );
+  const unexpectedCoursePapers = coursePapers.filter(
+    (row) =>
+      batchPaperIds.has(row.paper_id) &&
+      !expectedCoursePaperKeys.has(
+        `${row.course_id}\u0000${row.paper_id}`,
+      ),
+  );
+  const unexpectedPlacements = placements.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedPlacementKeys.has(
+        `${row.variant_id}\u0000${row.subtopic_id}`,
+      ),
+  );
+  const unexpectedVariantPapers = variantPapers.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedVariantPaperKeys.has(
+        `${row.variant_id}\u0000${row.paper_id}`,
+      ),
+  );
+  const unexpectedAssetRows = assets.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedAssetIds.has(row.id),
+  );
+  const unexpectedAssetSources = assetSources.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedAssetSourceIds.has(row.id),
+  );
+  const unexpectedVariantAssets = variantAssets.filter(
+    (row) =>
+      matchingBatchIds.has(row.created_by_batch_id) &&
+      !expectedVariantAssetKeys.has(
+        `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
+      ),
   );
 
   const assetByHash = new Map(assets.map((row) => [row.content_hash, row]));
@@ -1049,7 +1300,6 @@ async function verifyProduction(normalized, options) {
   const missingQuestionSources = expectedSourceIds.filter((id) => !sourceSet.has(id));
   const missingVariantSources = expectedVariantKeys.filter((key) => !variantSet.has(key));
   const missingAssets = [...expectedHashes].filter((hash) => !verifiedHashes.has(hash));
-  const matchingBatchIds = new Set(batches.map((row) => row.id));
   const criticalImportFindings = importFindings.filter(
     (row) =>
       matchingBatchIds.has(row.batch_id) &&
@@ -1066,15 +1316,28 @@ async function verifyProduction(normalized, options) {
     missingVariantSourceRows.length === 0 &&
     unexpectedVariantSourceRows.length === 0 &&
     missingVariants.length === 0 &&
+    mismatchedQuestionSources.length === 0 &&
+    mismatchedVariantSources.length === 0 &&
+    mismatchedVariants.length === 0 &&
     missingPlacements.length === 0 &&
     missingCoursePapers.length === 0 &&
     missingVariantPapers.length === 0 &&
     missingPapers.length === 0 &&
     missingAssetRows.length === 0 &&
     missingAssetSources.length === 0 &&
+    mismatchedAssetSources.length === 0 &&
     missingVariantAssets.length === 0 &&
     missingSearchDocuments.length === 0 &&
     unexpectedSearchDocuments.length === 0 &&
+    unexpectedQuestions.length === 0 &&
+    unexpectedVariants.length === 0 &&
+    unexpectedPapers.length === 0 &&
+    unexpectedCoursePapers.length === 0 &&
+    unexpectedPlacements.length === 0 &&
+    unexpectedVariantPapers.length === 0 &&
+    unexpectedAssetRows.length === 0 &&
+    unexpectedAssetSources.length === 0 &&
+    unexpectedVariantAssets.length === 0 &&
     criticalImportFindings.length === 0;
 
   return {
@@ -1119,6 +1382,24 @@ async function verifyProduction(normalized, options) {
       unexpectedVariantSourceRows.length,
     unexpectedExamMateSearchDocuments:
       unexpectedSearchDocuments.length,
+    mismatchedQuestionSourceRelationships:
+      mismatchedQuestionSources.length,
+    mismatchedVariantSourceRelationships:
+      mismatchedVariantSources.length,
+    mismatchedVariantRelationships: mismatchedVariants.length,
+    mismatchedAssetSourceRelationships:
+      mismatchedAssetSources.length,
+    unexpectedBatchQuestions: unexpectedQuestions.length,
+    unexpectedBatchVariants: unexpectedVariants.length,
+    unexpectedBatchPapers: unexpectedPapers.length,
+    unexpectedBatchCoursePapers: unexpectedCoursePapers.length,
+    unexpectedBatchPlacements: unexpectedPlacements.length,
+    unexpectedBatchVariantPapers:
+      unexpectedVariantPapers.length,
+    unexpectedBatchAssets: unexpectedAssetRows.length,
+    unexpectedBatchAssetSources: unexpectedAssetSources.length,
+    unexpectedBatchVariantAssets:
+      unexpectedVariantAssets.length,
     criticalImportFindings: criticalImportFindings.length,
     missingR2InventoryKeyHashes: missingInventoryKeys
       .slice(0, 20)
