@@ -15,4 +15,4 @@ jobs:
     name: Recovery audit trigger marker
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'Trusted-main recovery audit trigger: bounded-read retry.'
+      - run: echo 'Trusted-main recovery audit trigger: R2 data-plane preflight.'
