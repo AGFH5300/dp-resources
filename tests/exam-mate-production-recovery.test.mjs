@@ -680,7 +680,7 @@ describe('Exam-Mate production recovery', () => {
     expect(requestedHeaders.authorization).toContain('AWS4-HMAC-SHA256');
   });
 
-  it('recognizes only the pinned PNG and WebP staging signatures', () => {
+  it('recognizes the pinned PNG, WebP, and retained BMP staging signatures', () => {
     expect(
       selectedFileSignature(
         Buffer.from([
@@ -692,6 +692,7 @@ describe('Exam-Mate production recovery', () => {
     expect(
       selectedFileSignature(Buffer.from('RIFF0000WEBP'), 'webp'),
     ).toBe(true);
+    expect(selectedFileSignature(Buffer.from('BMretained'), 'bmp')).toBe(true);
     expect(selectedFileSignature(Buffer.from('not-an-image'), 'png')).toBe(
       false,
     );

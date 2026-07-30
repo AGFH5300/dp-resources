@@ -491,7 +491,7 @@ jobs:
           }
           if (
             counts.newAssetRows !== 0 ||
-            counts.retargetedAssetRows !== 0 ||
+            counts.retargetedAssetRows !== 1 ||
             counts.assetUploadCandidates !== 31231
           ) {
             throw new Error('Partial asset recovery counts do not match the audited failed batch.');

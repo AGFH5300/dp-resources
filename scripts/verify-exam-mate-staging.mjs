@@ -18,6 +18,7 @@ import {
   EXAM_MATE_OPTIMIZATION_EXPECTED,
   EXAM_MATE_OPTIMIZATION_PLAN_SHA256,
   EXAM_MATE_OPTIMIZATION_ROWS_SHA256,
+  correctedExamMateSelectedContentType,
   loadExamMateOptimizationAudit,
   resolveExamMateOptimizationAudit,
 } from './question-bank/exam-mate-optimization.mjs';
@@ -64,6 +65,9 @@ export function selectedFileSignature(buffer, format) {
       buffer.subarray(8, 12).toString('ascii') === 'WEBP'
     );
   }
+  if (format === 'bmp') {
+    return buffer.subarray(0, 2).toString('ascii') === 'BM';
+  }
   return false;
 }
 
@@ -107,11 +111,14 @@ async function verifySelectedFile(assetsRoot, row) {
   if (extension !== expectedExtension) {
     throw new Error(`Selected extension mismatch: ${row.selectedPath}`);
   }
-  const expectedContentType =
+  const auditedContentType =
     row.selectedFormat === 'webp' ? 'image/webp' : 'image/png';
-  if (row.selectedContentType !== expectedContentType) {
+  if (row.selectedContentType !== auditedContentType) {
     throw new Error(`Selected MIME type mismatch: ${row.selectedPath}`);
   }
+  const correctedContentType = correctedExamMateSelectedContentType(row);
+  const signatureFormat =
+    correctedContentType === 'image/bmp' ? 'bmp' : row.selectedFormat;
   const handle = await open(target, 'r');
   const header = Buffer.alloc(12);
   try {
@@ -119,7 +126,7 @@ async function verifySelectedFile(assetsRoot, row) {
   } finally {
     await handle.close();
   }
-  if (!selectedFileSignature(header, row.selectedFormat)) {
+  if (!selectedFileSignature(header, signatureFormat)) {
     throw new Error(`Selected file signature mismatch: ${row.selectedPath}`);
   }
   const digest = await hashFile(target);

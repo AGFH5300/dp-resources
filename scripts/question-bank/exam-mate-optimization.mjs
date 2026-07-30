@@ -23,6 +23,16 @@ export const EXAM_MATE_OPTIMIZATION_PLAN_SHA256 =
   '4d43d7eeff8bfba65463d72d0d300482d52c0c5cf9df1e3dc7db10ec933f8b74';
 export const EXAM_MATE_OPTIMIZATION_ROWS_SHA256 =
   'a04411148771050bde7e47f70de0fe2727b31db589a61265eddf57e0303ef67e';
+export const EXAM_MATE_RETAINED_BMP_CORRECTION = Object.freeze({
+  hash: '78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b',
+  path:
+    'assets/sha256/78/78f599c7ed82ee88047aec5471df1e727c3802b81f630c63978e0c95e9511c2b.png',
+  bytes: 601_454,
+  auditedContentType: 'image/png',
+  auditedFormat: 'png',
+  contentType: 'image/bmp',
+  verificationMode: 'optimizer-error-original-retained-by-exact-sha256',
+});
 export const EXAM_MATE_OPTIMIZATION_EXPECTED = Object.freeze({
   totalAssets: 31_336,
   optimizedWebp: 31_328,
@@ -40,6 +50,25 @@ export const EXAM_MATE_OPTIMIZATION_EXPECTED = Object.freeze({
   sourceAssetManifestSha256:
     'd37b50b37676cfc28028706a69d9e249782d11124126ca3d5b906501d92474e0',
 });
+
+export function correctedExamMateSelectedContentType(row) {
+  if (row.selectedHash !== EXAM_MATE_RETAINED_BMP_CORRECTION.hash) {
+    return row.selectedContentType;
+  }
+  const correction = EXAM_MATE_RETAINED_BMP_CORRECTION;
+  if (
+    row.selectedPath !== correction.path ||
+    Number(row.selectedBytes) !== correction.bytes ||
+    row.selectedContentType !== correction.auditedContentType ||
+    row.selectedFormat !== correction.auditedFormat ||
+    row.pixelVerification?.mode !== correction.verificationMode
+  ) {
+    throw new Error(
+      'Pinned retained-BMP correction no longer matches the reviewed optimization row.',
+    );
+  }
+  return correction.contentType;
+}
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -382,7 +411,7 @@ export function selectedManifestRow(originalRow, planRow) {
     sha256: planRow.selectedHash,
     path: planRow.selectedPath,
     bytes: Number(planRow.selectedBytes),
-    contentType: planRow.selectedContentType,
+    contentType: correctedExamMateSelectedContentType(planRow),
     selectedFormat: planRow.selectedFormat,
     optimized: Boolean(planRow.optimized),
     savingsBytes: Number(planRow.savingsBytes || 0),
