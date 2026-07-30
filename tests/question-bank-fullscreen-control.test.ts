@@ -16,11 +16,11 @@ const fullscreenControl = readFileSync(
 
 describe('Question Bank practice layout', () => {
   it('keeps the normal selected-question view compact', () => {
-    expect(courseStyles).not.toContain(
-      '.coursePage :global(.dp-qb-practice-layout.is-open)',
+    expect(courseStyles).not.toMatch(
+      /(?:^|})\s*\.coursePage\s+:global\(\.dp-qb-practice-layout\.is-open\)/,
     );
-    expect(courseStyles).not.toContain(
-      ".coursePage :global(.dp-qb-practice-layout.is-open > section[aria-label='Question results'])",
+    expect(courseStyles).not.toMatch(
+      /(?:^|})\s*\.coursePage\s+:global\(\.dp-qb-practice-layout\.is-open > section\[aria-label='Question results'\]\)/,
     );
   });
 
