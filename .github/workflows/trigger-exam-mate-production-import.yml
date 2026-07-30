@@ -1,4 +1,4 @@
-name: Inspect Exam-Mate production import
+name: Diagnose Exam-Mate retained PNG fetch
 
 on:
   push:
@@ -8,21 +8,45 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
-  inspect:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Print current Exam-Mate workflow runs
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Inspect retained PNG responses
+        shell: bash
         run: |
-          gh run list \
-            --repo AGFH5300/dp-resources \
-            --workflow exam-mate-production-import.yml \
-            --limit 10 \
-            --json databaseId,status,conclusion,headSha,event,createdAt,updatedAt,url,displayTitle,workflowName
-          echo 'Intentional monitor exit so the run ID is delivered through the existing failure-notification channel.'
+          set -u
+          urls=(
+            'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
+            'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
+            'https://www.exam-mate.com/questions/6056/38697/6056_a_38697_10_2.png'
+            'https://www.exam-mate.com/questions/27399/92184/27399_a_92184_1_1.png'
+            'https://www.exam-mate.com/questions/6406/37782/6406_a_37782_9_2.png'
+            'https://www.exam-mate.com/questions/6106/37853/6106_a_37853_13_3.png'
+            'https://www.exam-mate.com/questions/5957/34241/5957_a_34241_2_1.png'
+            'https://www.exam-mate.com/questions/6104/37427/6104_a_37427_10_3.png'
+          )
+          mkdir -p /tmp/png-diag
+          for i in "${!urls[@]}"; do
+            url="${urls[$i]}"
+            file="/tmp/png-diag/$i.bin"
+            headers="/tmp/png-diag/$i.headers"
+            code=$(curl --location --silent --show-error \
+              --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
+              --referer 'https://www.exam-mate.com/topicalpastpapers/IB%20Diploma-7/Biology-74' \
+              --header 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
+              --header 'Sec-Fetch-Dest: image' \
+              --header 'Sec-Fetch-Mode: no-cors' \
+              --header 'Sec-Fetch-Site: same-origin' \
+              --dump-header "$headers" \
+              --output "$file" \
+              --write-out '%{http_code}' \
+              "$url" || true)
+            echo "URL[$i]=$url"
+            echo "HTTP=$code BYTES=$(stat -c %s "$file" 2>/dev/null || echo 0) SHA256=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')"
+            grep -iE '^(HTTP/|content-type:|content-length:|location:|set-cookie:|server:|cf-)' "$headers" || true
+          done
+          echo 'Intentional diagnostic exit.'
           exit 1
