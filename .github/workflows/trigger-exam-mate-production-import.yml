@@ -1,28 +1,33 @@
-name: Inspect Exam-Mate production import
+name: Trigger Exam-Mate recovery read-only audit
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - '.github/workflows/trigger-exam-mate-production-import.yml'
-  workflow_dispatch:
+      - .github/workflows/trigger-exam-mate-production-import.yml
 
 permissions:
-  actions: read
+  actions: write
   contents: read
 
+concurrency:
+  group: exam-mate-recovery-audit-trigger
+  cancel-in-progress: false
+
 jobs:
-  inspect:
+  dispatch:
+    name: Dispatch guarded read-only audit
     runs-on: ubuntu-latest
     steps:
-      - name: Print current Exam-Mate workflow runs
+      - name: Dispatch merged-main recovery audit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run list \
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          gh workflow run exam-mate-recovery-audit.yml \
             --repo AGFH5300/dp-resources \
-            --workflow exam-mate-production-import.yml \
-            --limit 10 \
-            --json databaseId,status,conclusion,headSha,event,createdAt,updatedAt,url,displayTitle,workflowName
-          echo 'Corrected-import monitor.'
-          exit 1
+            --ref main \
+            -f confirmation=RUN-EXAM-MATE-READ-ONLY-AUDIT
+          echo 'Guarded Exam-Mate read-only recovery audit dispatched.'
