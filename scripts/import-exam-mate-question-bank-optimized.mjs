@@ -363,14 +363,9 @@ export function validateBatchResume(existing, resumeBatchId, mode) {
       `Existing logical batch ${existing.id} requires --resume-batch-id for a production retry.`,
     );
   }
-  if (existing.status === 'importing') {
+  if (existing.status !== 'failed') {
     throw new Error(
-      `Import batch ${existing.id} is already marked importing; concurrent or stale ownership must be resolved before retrying.`,
-    );
-  }
-  if (existing.status === 'completed') {
-    throw new Error(
-      `Import batch ${existing.id} is already completed and cannot be resumed.`,
+      `Import batch ${existing.id} has status ${existing.status}; this recovery accepts only the exact failed batch.`,
     );
   }
   return existing.id;
