@@ -153,6 +153,17 @@ jobs:
           test "$(find "$ROOT/optimized-assets/sha256" -type f -name '*.webp' | wc -l)" -eq 31328
           test "$(find "$ROOT/optimized-assets/sha256" -type f | wc -l)" -eq 31328
 
+      - name: Prepare reviewed source capture layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/source-capture"
+          unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
+          test -f "$ROOT/source-capture/index/jobs.json"
+          test ! -e "$ROOT/source-capture/source/discovered-jobs.json"
+          cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
+          test -f "$ROOT/source-capture/source/discovered-jobs.json"
+
       - name: Retrieve and verify eight exact retained PNG assets
         shell: bash
         run: |
@@ -188,7 +199,7 @@ jobs:
       - name: Run pinned offline audit
         run: |
           npm run question-bank:exam-mate -- \
-            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --archive "$ROOT/source-capture" \
             --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
             --mode audit \
             --report "$ROOT/audit-report.json"
@@ -196,7 +207,7 @@ jobs:
       - name: Run production-aware dry run
         run: |
           npm run question-bank:exam-mate -- \
-            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --archive "$ROOT/source-capture" \
             --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
             --mode dry-run \
             --report "$ROOT/dry-run-report.json"
@@ -230,7 +241,7 @@ jobs:
       - name: Import database and selected private R2 assets
         run: |
           npm run question-bank:exam-mate -- \
-            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --archive "$ROOT/source-capture" \
             --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
             --assets-root "$ROOT" \
             --mode all \
@@ -257,7 +268,7 @@ jobs:
       - name: Run independent post-import verification
         run: |
           npm run question-bank:exam-mate -- \
-            --archive "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" \
+            --archive "$ROOT/source-capture" \
             --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
             --mode verify \
             --report "$ROOT/verify-report.json"
