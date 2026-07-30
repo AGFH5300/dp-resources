@@ -160,9 +160,20 @@ jobs:
           fetch_png() {
             hash="$1"; bytes="$2"; url="$3"; dir="$ROOT/assets/sha256/${hash:0:2}"; file="$dir/$hash.png"
             mkdir -p "$dir"
-            curl --fail --location --retry 5 --retry-all-errors --silent --show-error "$url" -o "$file"
-            test "$(stat -c %s "$file")" -eq "$bytes"
-            echo "$hash  $file" | sha256sum -c -
+            echo "Fetching retained PNG $hash"
+            curl --fail --location --retry 5 --retry-all-errors --silent --show-error \
+              --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36' \
+              --referer 'https://www.exam-mate.com/topicalpastpapers/IB%20Diploma-7/Biology-74' \
+              --header 'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' \
+              --header 'Sec-Fetch-Dest: image' \
+              --header 'Sec-Fetch-Mode: no-cors' \
+              --header 'Sec-Fetch-Site: same-origin' \
+              "$url" -o "$file"
+            actual_bytes="$(stat -c %s "$file")"
+            actual_hash="$(sha256sum "$file" | awk '{print $1}')"
+            test "$actual_bytes" -eq "$bytes"
+            test "$actual_hash" = "$hash"
+            echo "$hash: verified ($actual_bytes bytes)"
           }
           fetch_png 06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46 2583171 'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png'
           fetch_png 120c982865a8a7d71cb6c5f438ba4e7a70050c2091bd636fb4bda81a9b5531bd 1255 'https://www.exam-mate.com/questions/5985/38387/5985_a_38387_5_3.png'
