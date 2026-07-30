@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  canRepairExamMatePartialRow,
   canRetargetExamMatePartialAsset,
   canonicalExamKey,
   normalizeExamMateSearchDocuments,
   normalizedRowUniqueness,
 } from '../scripts/question-bank/exam-mate.mjs';
 import {
+  applyPartialBatchRecovery,
   deduplicateRowsForUpsert,
   parseArguments,
   resolveQuestionBankBucket,
@@ -67,12 +69,40 @@ describe('Exam-Mate production recovery', () => {
       },
     };
 
-    expect(canonicalExamKey('Mathematics', legacyOption)).toContain(
-      '18|M|1|HL|TZ2|7',
+    expect(canonicalExamKey('Mathematics', legacyOption)).toBe(
+      'mathematics|18|M|1|HL|TZ2|7|OPTa',
     );
     expect(canonicalExamKey('Mathematics', singlePaper)).toContain(
       '17|N|2|SL|TZ0|4',
     );
+  });
+
+  it('keeps legacy Mathematics option papers in distinct canonical keys', () => {
+    const keys = [
+      '3 Calculus0',
+      '3 Discrete0',
+      '3 Sets0',
+      '3 Statistics0',
+    ].map((sourcePaperCode) =>
+      canonicalExamKey('Mathematics', {
+        reference: `redacted-${sourcePaperCode}`,
+        referenceParts: {
+          sourcePaperCode,
+          level: 'HL',
+          season: 'Summer',
+          year: 2019,
+          questionNumber: '1',
+        },
+      }),
+    );
+
+    expect(new Set(keys).size).toBe(4);
+    expect(keys).toEqual([
+      'mathematics|19|M|3|HL|TZ0|1|OPTcalculus',
+      'mathematics|19|M|3|HL|TZ0|1|OPTdiscrete',
+      'mathematics|19|M|3|HL|TZ0|1|OPTsets',
+      'mathematics|19|M|3|HL|TZ0|1|OPTstatistics',
+    ]);
   });
 
   it('normalizes identical duplicate search rows to one deterministic row', () => {
@@ -335,6 +365,130 @@ describe('Exam-Mate production recovery', () => {
     expect(
       canRetargetExamMatePartialAsset(asset, new Set(), batchId),
     ).toBe(false);
+  });
+
+  it('repairs partial rows only when the exact failed batch owns them', () => {
+    const batchId = '27462015-2a25-41bf-93b0-c4efd24d9a3a';
+    expect(
+      canRepairExamMatePartialRow(
+        { created_by_batch_id: batchId },
+        batchId,
+      ),
+    ).toBe(true);
+    expect(
+      canRepairExamMatePartialRow(
+        { created_by_batch_id: 'unrelated-batch' },
+        batchId,
+      ),
+    ).toBe(false);
+    expect(canRepairExamMatePartialRow({}, batchId)).toBe(false);
+  });
+
+  it('applies only the exact deterministic partial-batch recovery plan', async () => {
+    const batchId = '27462015-2a25-41bf-93b0-c4efd24d9a3a';
+    const calls = [];
+    const client = {
+      from(table) {
+        return {
+          async upsert(rows, options) {
+            calls.push({ operation: 'upsert', table, rows, options });
+            return { error: null };
+          },
+          delete() {
+            const filters = {};
+            const query = {
+              eq(column, value) {
+                filters[column] = value;
+                return query;
+              },
+              async select(columns) {
+                calls.push({
+                  operation: 'delete',
+                  table,
+                  columns,
+                  filters: { ...filters },
+                });
+                return {
+                  data: [
+                    Object.fromEntries(
+                      columns.split(',').map((column) => [
+                        column,
+                        filters[column],
+                      ]),
+                    ),
+                  ],
+                  error: null,
+                };
+              },
+            };
+            return query;
+          },
+        };
+      },
+    };
+    const normalized = {
+      recoveryPlan: {
+        questionSourceUpdates: [
+          { id: 'question-source-1', question_id: 'question-1' },
+        ],
+        variantUpdates: [],
+        variantSourceUpdates: [],
+        assetSourceUpdates: [],
+        deleteVariantAssets: [
+          {
+            variant_id: 'variant-1',
+            asset_id: 'asset-1',
+            role: 'question',
+            created_by_batch_id: batchId,
+          },
+        ],
+        deleteVariantPapers: [
+          {
+            variant_id: 'variant-1',
+            paper_id: 'paper-old',
+            created_by_batch_id: batchId,
+          },
+        ],
+        deleteCoursePapers: [
+          { course_id: 'course-1', paper_id: 'paper-old' },
+        ],
+        deletePapers: [
+          { id: 'paper-old', created_by_batch_id: batchId },
+        ],
+      },
+    };
+
+    const result = await applyPartialBatchRecovery(
+      client,
+      normalized,
+      batchId,
+      100,
+    );
+
+    expect(result.updates.dp_qb_question_sources.processedRows).toBe(1);
+    expect(result.deletes).toEqual({
+      dp_qb_variant_assets: 1,
+      dp_qb_variant_papers: 1,
+      dp_qb_course_papers: 1,
+      dp_qb_papers: 1,
+    });
+    const ownedDeletes = calls.filter(
+      (call) =>
+        call.operation === 'delete' &&
+        call.table !== 'dp_qb_course_papers',
+    );
+    expect(
+      ownedDeletes.every(
+        (call) => call.filters.created_by_batch_id === batchId,
+      ),
+    ).toBe(true);
+    expect(
+      calls.find(
+        (call) =>
+          call.operation === 'delete' &&
+          call.table === 'dp_qb_course_papers',
+      ).filters,
+    ).toEqual({ course_id: 'course-1', paper_id: 'paper-old' });
   });
 
   it('requires size, MIME type, and SHA-256 metadata in R2 HEAD checks', () => {
