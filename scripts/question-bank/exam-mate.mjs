@@ -620,22 +620,63 @@ function groupBy(rows, key) {
   return output;
 }
 
-async function fetchAll(client, table, columns, orderColumns = ['id']) {
+const EXAM_MATE_READ_CONCURRENCY = 4;
+let activeExamMateReads = 0;
+const examMateReadWaiters = [];
+
+async function withExamMateReadSlot(operation) {
+  if (activeExamMateReads < EXAM_MATE_READ_CONCURRENCY) {
+    activeExamMateReads += 1;
+  } else {
+    await new Promise((resolve) => examMateReadWaiters.push(resolve));
+  }
+  try {
+    return await operation();
+  } finally {
+    const next = examMateReadWaiters.shift();
+    if (next) next();
+    else activeExamMateReads -= 1;
+  }
+}
+
+export async function fetchAll(
+  client,
+  table,
+  columns,
+  orderColumns = ['id'],
+  retryDelayMs = 500,
+) {
   const output = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
-    let query = client
-      .from(table)
-      .select(columns);
-    for (const orderColumn of Array.isArray(orderColumns)
-      ? orderColumns
-      : [orderColumns]) {
-      query = query.order(orderColumn, { ascending: true });
+    let data = null;
+    let error = null;
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      const result = await withExamMateReadSlot(async () => {
+        let query = client.from(table).select(columns);
+        for (const orderColumn of Array.isArray(orderColumns)
+          ? orderColumns
+          : [orderColumns]) {
+          query = query.order(orderColumn, { ascending: true });
+        }
+        return query.range(offset, offset + pageSize - 1);
+      });
+      data = result.data;
+      error = result.error;
+      const retriable =
+        error &&
+        (error.code === '57014' ||
+          /statement timeout|canceling statement/i.test(
+            String(error.message || ''),
+          ));
+      if (!error || !retriable || attempt === 4) break;
+      process.stderr.write(
+        `${table} read page ${offset / pageSize + 1} timed out; retrying attempt ${attempt + 1}/4.\n`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, attempt * retryDelayMs),
+      );
     }
-    const { data, error } = await query.range(
-      offset,
-      offset + pageSize - 1,
-    );
     if (error) throw new Error(`${table} read failed: ${error.message}`);
     output.push(...(data || []));
     if (!data || data.length < pageSize) break;
