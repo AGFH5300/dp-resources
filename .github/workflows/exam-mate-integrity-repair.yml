@@ -1,4 +1,4 @@
-name: One-time Exam-Mate exhaustive integrity audit
+name: One-time Exam-Mate asset repair and exhaustive integrity audit
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   repair:
-    name: Render-audit and verify every Exam-Mate asset
+    name: Repair one damaged asset, then audit the full corpus
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -97,6 +97,8 @@ jobs:
               '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2',
             'ExamMate-optimization-audit-20260730-153128.zip':
               '1Dt7c_Bm1y8Alst0tyTjIZkPyxmrN6bEX',
+            'exam-mate-59266-restored-1074a94ff484b364.png':
+              '1eOOobyKBv4sGKWBho7_sdBwm8YtGjg9M',
           };
           let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
           if (
@@ -130,8 +132,17 @@ jobs:
           NODE
           echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  '"$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" | sha256sum -c -
           echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  '"$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" | sha256sum -c -
+          echo '1074a94ff484b36426e13d251ea79bb1b66f999379ad6a2964bb9fa8acfb6bc4  '"$ROOT/staging/exam-mate-59266-restored-1074a94ff484b364.png" | sha256sum -c -
           unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
           cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
+
+      - name: Repair the one truncated Exam-Mate asset
+        run: |
+          node scripts/repair-exam-mate-asset-59266.mjs \
+            --asset "$ROOT/staging/exam-mate-59266-restored-1074a94ff484b364.png" \
+            --bucket "$R2_PDF_PREVIEW_BUCKET" \
+            --confirmation REPAIR-EXAM-MATE-ASSET-59266 \
+            --report "$ROOT/asset-repair-report.json"
 
       - name: Render every question and markscheme
         env:
@@ -178,7 +189,7 @@ jobs:
             integrity.relationshipVerification?.status !== 'passed' ||
             integrity.objectVerification?.status !== 'passed' ||
             integrity.objectVerification?.objectsVerified !== 31231 ||
-            integrity.objectVerification?.bytesVerified !== 862344646 ||
+            integrity.objectVerification?.bytesVerified !== 862378639 ||
             integrity.objectVerification?.corruptOrUnreadableObjects !== 0
           ) {
             throw new Error('Full private-object integrity audit failed.');
@@ -193,6 +204,7 @@ jobs:
           name: exam-mate-integrity-repair-reports
           path: |
             ${{ env.ROOT }}/render-audit-report.json
+            ${{ env.ROOT }}/asset-repair-report.json
             ${{ env.ROOT }}/full-integrity-report.json
           if-no-files-found: warn
           retention-days: 1

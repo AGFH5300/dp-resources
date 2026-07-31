@@ -86,6 +86,45 @@ function redactedFailure(asset, code, details = {}) {
   };
 }
 
+export function readBmpMetadata(body) {
+  if (
+    !Buffer.isBuffer(body) ||
+    body.byteLength < 54 ||
+    body[0] !== 0x42 ||
+    body[1] !== 0x4d
+  ) {
+    throw new Error('Invalid BMP header.');
+  }
+  const declaredBytes = body.readUInt32LE(2);
+  const pixelOffset = body.readUInt32LE(10);
+  const dibBytes = body.readUInt32LE(14);
+  const width = body.readInt32LE(18);
+  const signedHeight = body.readInt32LE(22);
+  const planes = body.readUInt16LE(26);
+  const bitsPerPixel = body.readUInt16LE(28);
+  const compression = body.readUInt32LE(30);
+  if (
+    declaredBytes !== body.byteLength ||
+    pixelOffset < 14 ||
+    pixelOffset >= body.byteLength ||
+    dibBytes < 40 ||
+    dibBytes > body.byteLength - 14 ||
+    width <= 0 ||
+    signedHeight === 0 ||
+    planes !== 1 ||
+    ![1, 4, 8, 16, 24, 32].includes(bitsPerPixel) ||
+    ![0, 1, 2, 3, 6].includes(compression)
+  ) {
+    throw new Error('Invalid or unsupported BMP metadata.');
+  }
+  return {
+    width,
+    height: Math.abs(signedHeight),
+    bitsPerPixel,
+    compression,
+  };
+}
+
 async function readAndDecodeAsset(asset, bucket) {
   let lastError = null;
   for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -124,6 +163,16 @@ async function readAndDecodeAsset(asset, bucket) {
         return redactedFailure(asset, 'file_signature_mismatch', {
           expectedContentType: asset.content_type,
         });
+      }
+      if (format === 'bmp') {
+        const metadata = readBmpMetadata(body);
+        return {
+          ok: true,
+          bytes: body.byteLength,
+          contentType: asset.content_type,
+          width: metadata.width,
+          height: metadata.height,
+        };
       }
       const metadata = await sharp(body, {
         failOn: 'error',
