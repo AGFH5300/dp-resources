@@ -56,12 +56,14 @@ describe('question-bank taxonomy grouping', () => {
 
     expect(groups).toHaveLength(2);
     expect(groups[0]).toMatchObject({
+      id: 'topic-cell-plain',
       name: 'Cell Biology',
       canonicalKey: 'cell biology',
       ids: expect.arrayContaining(['topic-cell-numbered', 'topic-cell-plain']),
     });
     expect(groups[0].subtopics).toHaveLength(2);
     expect(groups[0].subtopics[0]).toMatchObject({
+      id: 'subtopic-water-plain',
       name: 'Water',
       canonicalKey: 'water',
       ids: expect.arrayContaining([
@@ -70,6 +72,7 @@ describe('question-bank taxonomy grouping', () => {
       ]),
     });
     expect(groups[1]).toMatchObject({
+      id: 'topic-option-plain',
       name: 'Ecology and Conservation',
       canonicalKey: 'ecology and conservation',
     });
