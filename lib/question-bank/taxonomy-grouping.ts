@@ -36,6 +36,20 @@ export type GroupedTopic = {
   subtopics: GroupedSubtopic[];
 };
 
+function canonicalLabel(value: unknown) {
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(
+      /^(?:(?:(?:topic|unit|chapter|theme|option)\s*)(?:\d+(?:\.\d+)*|[a-z](?:\.\d+)*|[ivxlcdm]+)\s*[:.)\]-]?\s*|(?:\d+(?:\.\d+)+|[a-z]\.\d+(?:\.\d+)*)\s*[:.)\]-]?\s*|(?:\d+|[a-z]|[ivxlcdm]+)\s*[:.)\]-]\s*)/i,
+      '',
+    )
+    .replace(/&/g, ' and ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function fallbackKey(value: unknown) {
   return String(value || '')
     .normalize('NFKC')
@@ -51,7 +65,7 @@ function rowName(row: {
   name: string;
   canonical_name?: string | null;
 }) {
-  return String(row.canonical_name || row.name || '').trim();
+  return String(row.canonical_name || canonicalLabel(row.name)).trim();
 }
 
 function rowKey(row: {
