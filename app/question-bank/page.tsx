@@ -250,7 +250,7 @@ export default async function QuestionBankLanding() {
 
           <Link
             href="/question-bank/build"
-            className="group rounded-2xl border border-blue-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
           >
             <div className="flex items-start gap-4">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white">
