@@ -1,7 +1,7 @@
 import { isOldCourse } from './presentation';
 
 export type MathematicsCourse = {
-  id?: string;
+  id: string;
   name: string;
   slug: string;
   level?: string | null;
