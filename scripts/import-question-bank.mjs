@@ -11,7 +11,7 @@ import {
 import {
   importDatabase,
   uploadAssets,
-  verifyDatabase,
+  verifyImportRows,
 } from './question-bank/import.mjs';
 
 function usage() {
@@ -138,7 +138,7 @@ async function main() {
       if (report.assetUpload.failed > 0) process.exitCode = 1;
     }
     if (options.mode === 'verify' || options.mode === 'all') {
-      report.databaseVerification = await verifyDatabase(normalized);
+      report.databaseVerification = await verifyImportRows(normalized);
       if (report.databaseVerification.status !== 'passed') process.exitCode = 1;
     }
 

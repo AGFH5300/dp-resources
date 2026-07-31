@@ -79,7 +79,33 @@ describe('question-bank taxonomy grouping', () => {
     expect(groups[1].ids).toHaveLength(3);
   });
 
-  it('does not interpret ordinary words beginning with Unit as taxonomy prefixes', () => {
+  it('merges the four official Biology theme letters without stripping ordinary articles', () => {
+    const groups = groupCourseTopics([
+      { id: 'theme-a', name: 'A Unity and Diversity', sort_order: 1 },
+      { id: 'theme-a-plain', name: 'Unity and Diversity', sort_order: 2 },
+      { id: 'theme-b', name: 'B Form and Function', sort_order: 3 },
+      { id: 'theme-b-plain', name: 'Form and Function', sort_order: 4 },
+      { id: 'ordinary-article', name: 'A Theory of Knowledge', sort_order: 5 },
+    ]);
+
+    expect(groups).toHaveLength(3);
+    expect(groups[0]).toMatchObject({
+      name: 'Unity and Diversity',
+      canonicalKey: 'unity and diversity',
+      ids: expect.arrayContaining(['theme-a', 'theme-a-plain']),
+    });
+    expect(groups[1]).toMatchObject({
+      name: 'Form and Function',
+      canonicalKey: 'form and function',
+      ids: expect.arrayContaining(['theme-b', 'theme-b-plain']),
+    });
+    expect(groups[2]).toMatchObject({
+      name: 'A Theory of Knowledge',
+      canonicalKey: 'a theory of knowledge',
+    });
+  });
+
+  it('does not interpret Unity, Units, or UNITED as Unit-prefixed taxonomy labels', () => {
     const groups = groupCourseTopics([
       {
         id: 'history-numbered',
@@ -91,16 +117,73 @@ describe('question-bank taxonomy grouping', () => {
         name: 'UNITED States Civil War Causes Course and Effects 1840 77',
         sort_order: 2,
       },
+      { id: 'unity', name: 'Unity and Diversity', sort_order: 3 },
+      {
+        id: 'units',
+        name: 'Units, Significant Figures, and Measurement',
+        sort_order: 4,
+      },
     ]);
 
-    expect(groups).toHaveLength(1);
+    expect(groups).toHaveLength(3);
     expect(groups[0]).toMatchObject({
       id: 'history-plain',
       name: 'UNITED States Civil War Causes Course and Effects 1840 77',
       canonicalKey: 'united states civil war causes course and effects 1840 77',
       ids: expect.arrayContaining(['history-numbered', 'history-plain']),
     });
-    expect(groups[0].name).not.toMatch(/^D States/);
+    expect(groups.map((group) => group.name)).toContain('Unity and Diversity');
+    expect(groups.map((group) => group.name)).toContain(
+      'Units, Significant Figures, and Measurement',
+    );
+  });
+
+  it('strips numbered and alphanumeric syllabus codes from subtopics', () => {
+    const groups = groupCourseTopics([
+      {
+        id: 'design-topic',
+        name: 'Final Production',
+        subtopics: [
+          { id: 'composites-coded', name: '4.2F Composites', sort_order: 1 },
+          { id: 'composites-plain', name: 'Composites', sort_order: 2 },
+          {
+            id: 'anthropometrics-coded',
+            name: '1.1A Anthropometrics',
+            sort_order: 3,
+          },
+          {
+            id: 'anthropometrics-plain',
+            name: 'Anthropometrics',
+            sort_order: 4,
+          },
+          {
+            id: 'twentieth-century',
+            name: '11.20TH Century Nationalist and Independence Movements in Africa',
+            sort_order: 5,
+          },
+        ],
+      },
+    ]);
+
+    expect(groups[0].subtopics).toHaveLength(3);
+    expect(groups[0].subtopics[0]).toMatchObject({
+      name: 'Composites',
+      canonicalKey: 'composites',
+      ids: expect.arrayContaining(['composites-coded', 'composites-plain']),
+    });
+    expect(groups[0].subtopics[1]).toMatchObject({
+      name: 'Anthropometrics',
+      canonicalKey: 'anthropometrics',
+      ids: expect.arrayContaining([
+        'anthropometrics-coded',
+        'anthropometrics-plain',
+      ]),
+    });
+    expect(groups[0].subtopics[2]).toMatchObject({
+      name: '20TH Century Nationalist and Independence Movements in Africa',
+      canonicalKey:
+        '20th century nationalist and independence movements in africa',
+    });
   });
 
   it('keeps syllabus-year topic groups separate', () => {
