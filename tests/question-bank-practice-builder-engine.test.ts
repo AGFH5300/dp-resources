@@ -37,13 +37,11 @@ describe('Question Bank practice builder engine', () => {
     expect(migration).toContain('configuration_hash');
   });
 
-  it('keeps candidate and session writes service-role only', () => {
-    expect(migration).toContain(
-      'from public, anon, authenticated',
-    );
+  it('keeps candidate and session functions service-role only', () => {
+    expect(migration).toContain('from public, anon, authenticated');
     expect(migration).toContain('to service_role');
-    expect(migration).not.toContain(
-      'grant execute on function public.dp_qb_create_practice_session',
+    expect(migration).not.toMatch(
+      /grant execute on function public\.dp_qb_(?:practice_candidates|create_practice_session)[\s\S]*?to authenticated/,
     );
   });
 
@@ -54,7 +52,9 @@ describe('Question Bank practice builder engine', () => {
     expect(migration).toContain(
       'Every practice item needs its primary block match',
     );
-    expect(migration).toContain('unique question');
+    expect(migration).toContain(
+      'Practice session positions and questions must be unique',
+    );
     expect(migration).toContain(
       'insert into public.dp_qb_practice_session_items',
     );
