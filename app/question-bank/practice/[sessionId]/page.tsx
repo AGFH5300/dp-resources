@@ -6,6 +6,7 @@ import { ArrowLeft, Layers3 } from 'lucide-react';
 import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
 import { QuestionPracticeFullscreenControl } from '@/components/question-bank/question-practice-fullscreen-control';
+import { PracticeSessionTracker } from '@/components/question-bank/practice-session-tracker';
 import { requireMember } from '@/lib/auth';
 import { getPracticeSession } from '@/lib/question-bank/practice-session-queries';
 
@@ -53,6 +54,10 @@ export default async function PracticeSessionPage({
         email={membership.email}
         userId={membership.id}
       />
+      <PracticeSessionTracker
+        sessionId={sessionId}
+        variantIds={data.questions.map((question) => question.variant_id)}
+      />
       <main className="mx-auto max-w-[1500px] px-4 py-6 pb-24 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -80,7 +85,9 @@ export default async function PracticeSessionPage({
               </h1>
               <p className="mt-2 text-sm text-slate-600">
                 {blockCount} selected concept block{blockCount === 1 ? '' : 's'}
-                {subjectCount ? ` across ${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : ''}
+                {subjectCount
+                  ? ` across ${subjectCount} subject${subjectCount === 1 ? '' : 's'}`
+                  : ''}
                 {' · '}duplicates removed before generation
               </p>
             </div>
@@ -88,7 +95,10 @@ export default async function PracticeSessionPage({
               <div className="rounded-xl bg-slate-50 p-3">
                 <dt className="text-slate-500">Ordering</dt>
                 <dd className="mt-1 font-semibold text-slate-800">
-                  {String(data.session.ordering_mode || 'interleaved').replaceAll('_', ' ')}
+                  {String(data.session.ordering_mode || 'interleaved').replaceAll(
+                    '_',
+                    ' ',
+                  )}
                 </dd>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
