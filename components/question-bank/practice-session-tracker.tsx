@@ -17,19 +17,10 @@ export function PracticeSessionTracker({
   }, [variantIds]);
 
   useEffect(() => {
-    const originalReplaceState = window.history.replaceState;
-    const notify = () => window.dispatchEvent(new Event('dp-location-change'));
-    const patchedReplaceState: History['replaceState'] = function (
-      data: unknown,
-      unused: string,
-      url?: string | URL | null,
-    ) {
-      originalReplaceState.call(window.history, data, unused, url);
-      notify();
-    };
-    window.history.replaceState = patchedReplaceState;
+    let disposed = false;
 
     const record = () => {
+      if (disposed) return;
       const variantId = new URL(window.location.href).searchParams.get('question');
       if (
         !variantId ||
@@ -48,14 +39,16 @@ export function PracticeSessionTracker({
       ).catch(() => undefined);
     };
 
-    window.addEventListener('dp-location-change', record);
-    window.addEventListener('popstate', record);
     record();
+    const interval = window.setInterval(record, 400);
+    window.addEventListener('popstate', record);
+    window.addEventListener('dp-question-change', record);
+
     return () => {
-      window.removeEventListener('dp-location-change', record);
+      disposed = true;
+      window.clearInterval(interval);
       window.removeEventListener('popstate', record);
-      if (window.history.replaceState === patchedReplaceState)
-        window.history.replaceState = originalReplaceState;
+      window.removeEventListener('dp-question-change', record);
     };
   }, [sessionId]);
 

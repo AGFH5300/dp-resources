@@ -1,7 +1,7 @@
 'use client';
 
 import { Maximize2, Minimize2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const OPEN_LAYOUT_SELECTOR = '.dp-qb-practice-layout.is-open';
@@ -12,31 +12,52 @@ export function QuestionPracticeFullscreenControl() {
   const [layout, setLayout] = useState<HTMLElement | null>(null);
   const [toolbarActions, setToolbarActions] = useState<HTMLElement | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const layoutRef = useRef<HTMLElement | null>(null);
+  const toolbarRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    let frame = 0;
     const sync = () => {
-      const nextLayout = document.querySelector<HTMLElement>(OPEN_LAYOUT_SELECTOR);
-      const nextToolbar = nextLayout?.querySelector<HTMLElement>(
-        TOOLBAR_ACTIONS_SELECTOR,
-      );
-      if (!nextLayout) document.documentElement.classList.remove(FULLSCREEN_ROOT_CLASS);
-      setLayout(nextLayout);
-      setToolbarActions(nextToolbar || null);
-      setFullscreen(
-        Boolean(nextLayout) &&
-          document.documentElement.classList.contains(FULLSCREEN_ROOT_CLASS),
-      );
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const nextLayout = document.querySelector<HTMLElement>(OPEN_LAYOUT_SELECTOR);
+        const nextToolbar = nextLayout?.querySelector<HTMLElement>(
+          TOOLBAR_ACTIONS_SELECTOR,
+        ) || null;
+
+        if (!nextLayout) {
+          document.documentElement.classList.remove(FULLSCREEN_ROOT_CLASS);
+        }
+        if (layoutRef.current !== nextLayout) {
+          layoutRef.current = nextLayout;
+          setLayout(nextLayout);
+        }
+        if (toolbarRef.current !== nextToolbar) {
+          toolbarRef.current = nextToolbar;
+          setToolbarActions(nextToolbar);
+        }
+        const nextFullscreen =
+          Boolean(nextLayout) &&
+          document.documentElement.classList.contains(FULLSCREEN_ROOT_CLASS);
+        setFullscreen((current) =>
+          current === nextFullscreen ? current : nextFullscreen,
+        );
+      });
     };
 
     sync();
     const observer = new MutationObserver(sync);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
+    observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
-    return () => observer.disconnect();
+    window.addEventListener('dp-question-change', sync);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('dp-question-change', sync);
+    };
   }, []);
 
   useEffect(() => {
