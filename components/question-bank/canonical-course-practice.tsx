@@ -39,12 +39,34 @@ export function CanonicalCoursePractice({
   questions: QuestionListRow[];
   initialVariantId: string | null;
 }) {
+  const selectedTopic = topics.find(
+    (topic) => filters.topicId && topic.ids.includes(filters.topicId),
+  );
+  const selectedSubtopic = selectedTopic?.subtopics.find(
+    (subtopic) =>
+      filters.subtopicId && subtopic.ids.includes(filters.subtopicId),
+  );
+  const filterTopics = topics.map((topic) => ({
+    id: topic.id,
+    slug: topic.canonicalKey,
+    name: topic.name,
+    subtopics: topic.subtopics.map((subtopic) => ({
+      id: subtopic.id,
+      name: subtopic.name,
+    })),
+  }));
+  const filterState = {
+    ...filters,
+    topicId: selectedTopic?.id || filters.topicId,
+    subtopicId: selectedSubtopic?.id || filters.subtopicId,
+  };
+
   return (
     <section className="min-w-0">
       <QuestionBankFilters
-        topics={topics}
+        topics={filterTopics}
         papers={papers}
-        filters={filters}
+        filters={filterState}
         filterOptions={filterOptions}
         resetHref={basePath}
       />
