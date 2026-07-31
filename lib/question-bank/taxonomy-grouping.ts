@@ -42,7 +42,7 @@ function canonicalLabel(value: unknown) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(
-      /^(?:(?:(?:topic|unit|chapter|theme|option)\s*)(?:\d+(?:\.\d+)*|[a-z](?:\.\d+)*|[ivxlcdm]+)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+(?:\.\d+)+|[a-z]\.\d+(?:\.\d+)*)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+|[a-z]|[ivxlcdm]+)\s*[:.)\]-]\s*)/i,
+      /^(?:(?:[a-d]\s+(?=(?:unity and diversity|form and function|interaction and interdependence|continuity and change)(?:\s|$)))|(?:(?:topic|unit|chapter|theme|option)\s+)(?:\d+(?:\.\d+)*|[a-z](?:\.\d+)*|[ivxlcdm]+)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+(?:\.\d+)+[a-z])\s+|(?:\d+(?:\.\d+)+|[a-z]\.\d+(?:\.\d+)*)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+|[a-z]|[ivxlcdm]+)\s*[:.)\]-]\s*)/i,
       '',
     )
     .replace(/&/g, ' and ')
