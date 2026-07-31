@@ -1,0 +1,185 @@
+.searchShell {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+  color: var(--dp-heading);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.searchShell:focus-within {
+  border-color: color-mix(in srgb, var(--dp-blue) 65%, var(--outline));
+  background: var(--dp-warm-surface);
+}
+
+.searchInput {
+  color: var(--dp-heading);
+}
+
+.searchInput::placeholder {
+  color: var(--dp-muted-text);
+}
+
+.conceptButton {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+  color: var(--dp-heading);
+  transition: border-color 150ms ease, background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.conceptButton:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--dp-blue) 72%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 10%, var(--dp-warm-surface));
+  transform: translateY(-1px);
+}
+
+.conceptButtonSelected,
+.conceptButtonSelected:disabled {
+  border-color: color-mix(in srgb, var(--dp-blue) 58%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 15%, var(--dp-warm-surface));
+  color: var(--dp-heading);
+  cursor: default;
+  opacity: 1 !important;
+}
+
+.conceptIcon {
+  background: color-mix(in srgb, var(--dp-blue) 12%, var(--dp-warm-surface));
+  color: var(--dp-blue);
+}
+
+.conceptButtonSelected .conceptIcon {
+  background: color-mix(in srgb, var(--dp-blue) 24%, var(--dp-warm-surface));
+  color: #93c5fd;
+}
+
+.courseOption {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+  color: var(--dp-heading);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.courseOption:hover {
+  border-color: color-mix(in srgb, var(--dp-blue) 55%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 7%, var(--dp-warm-surface));
+}
+
+.courseOptionSelected {
+  border-color: #3b82f6;
+  background: color-mix(in srgb, #2563eb 18%, var(--dp-warm-surface));
+}
+
+.deleteButton {
+  color: var(--dp-muted-text);
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.deleteButton:hover {
+  color: #fca5a5;
+  background: rgb(153 27 27 / 0.22);
+}
+
+.countInput {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+  color: var(--dp-heading);
+  appearance: textfield;
+}
+
+.countInput:focus {
+  border-color: color-mix(in srgb, var(--dp-blue) 70%, var(--outline));
+  background: var(--dp-warm-surface);
+}
+
+.countButton {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+  color: var(--dp-heading);
+  transition: border-color 150ms ease, background-color 150ms ease,
+    color 150ms ease;
+}
+
+.countButton:not(:disabled):hover {
+  border-color: #3b82f6;
+  background: color-mix(in srgb, #2563eb 18%, var(--dp-warm-surface));
+  color: #bfdbfe;
+}
+
+.countButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.orderSelect :global(.dp-select-trigger) {
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  padding-inline: 0.875rem;
+}
+
+.previewSuccess {
+  background: rgb(6 95 70 / 0.2);
+  color: #a7f3d0;
+}
+
+.previewWarning {
+  background: rgb(180 83 9 / 0.22);
+  color: #fde68a;
+}
+
+.summaryCard {
+  background: #2563eb;
+  color: white;
+}
+
+.summaryButton {
+  background: #0b1220;
+  color: white;
+}
+
+.summaryButton:not(:disabled):hover {
+  background: #172235;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conceptButton,
+  .courseOption,
+  .deleteButton,
+  .countButton {
+    transition: none;
+  }
+}
+
+:global(html[data-theme='dark']) .searchShell,
+:global(html[data-theme='dark']) .searchShell:focus-within,
+:global(html[data-theme='dark']) .conceptButton,
+:global(html[data-theme='dark']) .courseOption,
+:global(html[data-theme='dark']) .countInput,
+:global(html[data-theme='dark']) .countInput:focus,
+:global(html[data-theme='dark']) .countButton {
+  background: var(--dp-page);
+}
+
+:global(html[data-theme='dark']) .conceptButton:not(:disabled):hover {
+  background: #172b48;
+  border-color: #3b82f6;
+}
+
+:global(html[data-theme='dark']) .conceptButtonSelected,
+:global(html[data-theme='dark']) .conceptButtonSelected:disabled {
+  background: #1b3154;
+  border-color: #3b82f6;
+  opacity: 1 !important;
+}
+
+:global(html[data-theme='dark']) .courseOption:hover {
+  background: #172b48;
+}
+
+:global(html[data-theme='dark']) .courseOptionSelected {
+  background: #172f57;
+  border-color: #60a5fa;
+}
+
+:global(html[data-theme='dark']) .countButton:not(:disabled):hover {
+  background: #1b3154;
+  border-color: #60a5fa;
+}
