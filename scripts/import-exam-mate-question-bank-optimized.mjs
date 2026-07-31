@@ -28,8 +28,21 @@ import {
   resolveExamMateOptimizationAudit,
 } from './question-bank/exam-mate-optimization.mjs';
 
-const WRITE_MODES = new Set(['database', 'assets', 'all']);
-const MODES = new Set(['audit', 'dry-run', 'database', 'assets', 'all', 'verify']);
+const WRITE_MODES = new Set([
+  'database',
+  'database-verify',
+  'assets',
+  'all',
+]);
+const MODES = new Set([
+  'audit',
+  'dry-run',
+  'database',
+  'database-verify',
+  'assets',
+  'all',
+  'verify',
+]);
 
 const TABLES = [
   ['dp_qb_subjects', 'subjects', 'id'],
@@ -90,6 +103,9 @@ Modes:
   audit       Verify both pinned audits and the complete optimization mapping.
   dry-run     Resolve optimized rows against production without writing.
   database    Append missing Supabase rows (requires --confirm-production).
+  database-verify
+              Repair Supabase rows and run scoped production verification
+              without re-uploading already verified objects.
   assets      Upload/read-back verify selected local assets (requires --assets-root and --confirm-production).
   all         Database, selected asset upload and scoped production verification.
   verify      Read-only production verification.
@@ -401,11 +417,17 @@ async function createOrResumeBatch(
   mode,
   resumeBatchId = null,
 ) {
+  const batchMode =
+    mode === 'database-verify'
+      ? 'all'
+      : mode === 'dry-run'
+        ? 'dry_run'
+        : mode;
   const payload = {
     archive_identifier: normalized.archiveIdentifier,
     archive_sha256: normalized.archiveSha256,
     importer_version: normalized.importerVersion,
-    mode: mode === 'dry-run' ? 'dry_run' : mode,
+    mode: batchMode,
     status: 'importing',
     expected_counts: normalized.expectedCounts,
     actual_counts: normalized.actualCounts,
@@ -1396,10 +1418,17 @@ export async function verifyProduction(normalized, options) {
         row.storage_bucket === expectedBucket &&
         String(row.storage_key || '').startsWith('question-bank/assets/sha256/'),
     );
-  const r2Results = await verifyPrivateR2Assets(
-    databaseVerifiedAssets,
-    options.workers,
-  );
+  const r2Results = options.skipR2HeadVerification
+    ? databaseVerifiedAssets.map((asset) => ({
+        asset,
+        verified: true,
+        status: null,
+        skipped: true,
+      }))
+    : await verifyPrivateR2Assets(
+        databaseVerifiedAssets,
+        options.workers,
+      );
   const verifiedHashes = new Set(
     r2Results
       .filter((row) => row.verified)
@@ -1487,7 +1516,11 @@ export async function verifyProduction(normalized, options) {
     expectedVariantSources: expectedVariantKeys.length,
     verifiedSelectedAssets: expectedHashes.size - missingAssets.length,
     expectedSelectedAssets: expectedHashes.size,
-    r2ObjectsChecked: r2Results.length,
+    r2ObjectsChecked: options.skipR2HeadVerification
+      ? 0
+      : r2Results.length,
+    r2HeadVerificationSkipped:
+      options.skipR2HeadVerification === true,
     r2ObjectsVerified: verifiedHashes.size,
     r2ObjectsInvalid: r2Results.length - verifiedHashes.size,
     r2InventoryObjects: inventoryObjects.length,
@@ -1734,7 +1767,11 @@ async function main() {
       );
     }
 
-    if (options.mode === 'database' || options.mode === 'all') {
+    if (
+      options.mode === 'database' ||
+      options.mode === 'database-verify' ||
+      options.mode === 'all'
+    ) {
       const result = await importDatabase(normalized, { ...options, client });
       batchId = result.batchId;
       report.databaseImport = result;
@@ -1768,7 +1805,11 @@ async function main() {
       }
     }
 
-    if (options.mode === 'verify' || options.mode === 'all') {
+    if (
+      options.mode === 'verify' ||
+      options.mode === 'database-verify' ||
+      options.mode === 'all'
+    ) {
       try {
         report.productionVerification = await verifyProduction(normalized, {
           ...options,

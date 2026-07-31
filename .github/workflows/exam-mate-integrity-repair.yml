@@ -1,0 +1,337 @@
+name: One-time Exam-Mate integrity repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type REPAIR-EXAM-MATE-PRODUCTION-INTEGRITY
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-mate-production-import
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair, render-audit and verify Exam-Mate
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_QUESTION_BANK_BUCKET: ${{ secrets.R2_PDF_PREVIEW_BUCKET }}
+      R2_PDF_PREVIEW_BUCKET: ${{ secrets.R2_PDF_PREVIEW_BUCKET }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+
+    steps:
+      - name: Check out merged repair
+        uses: actions/checkout@v5
+
+      - name: Enforce one-time production guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirmation }}" = "REPAIR-EXAM-MATE-PRODUCTION-INTEGRITY"
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run importer regression tests
+        run: >-
+          npx vitest run
+          tests/exam-mate-importer.test.mjs
+          tests/exam-mate-optimization-importer.test.mjs
+          tests/exam-mate-production-recovery.test.mjs
+
+      - name: Run TypeScript validation
+        run: npm run typecheck
+
+      - name: Initialize private runner workspace
+        shell: bash
+        run: echo "ROOT=$RUNNER_TEMP/ExamMate-integrity-repair" >> "$GITHUB_ENV"
+
+      - name: Validate protected configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$R2_ACCOUNT_ID"
+          test -n "$R2_ACCESS_KEY_ID"
+          test -n "$R2_SECRET_ACCESS_KEY"
+          test -n "$R2_QUESTION_BANK_BUCKET"
+          test "$R2_QUESTION_BANK_BUCKET" = "$R2_PDF_PREVIEW_BUCKET"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          test -n "$GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+
+      - name: Download pinned private audits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/staging" "$ROOT/source-capture"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { google } from 'googleapis';
+
+          const files = {
+            'ExamMate-audit-bundle-20260729-234339.zip':
+              '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2',
+            'ExamMate-optimization-audit-20260730-153128.zip':
+              '1Dt7c_Bm1y8Alst0tyTjIZkPyxmrN6bEX',
+          };
+          let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
+          if (
+            (key.startsWith('"') && key.endsWith('"')) ||
+            (key.startsWith("'") && key.endsWith("'"))
+          ) {
+            key = key.slice(1, -1);
+          }
+          key = key.replace(/\\n/g, '\n').trim();
+          const auth = new google.auth.JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          });
+          const drive = google.drive({ version: 'v3', auth });
+          for (const [name, id] of Object.entries(files)) {
+            const target = path.join(process.env.ROOT, 'staging', name);
+            const response = await drive.files.get(
+              { fileId: id, alt: 'media', supportsAllDrives: true },
+              { responseType: 'stream' },
+            );
+            await new Promise((resolve, reject) => {
+              const output = fs.createWriteStream(target, { flags: 'wx' });
+              response.data.pipe(output);
+              output.on('finish', resolve);
+              output.on('error', reject);
+              response.data.on('error', reject);
+            });
+            console.log(`Downloaded and isolated ${name}.`);
+          }
+          NODE
+          echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  '"$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" | sha256sum -c -
+          echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  '"$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" | sha256sum -c -
+          unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
+          cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
+
+      - name: Run pinned production-aware dry run
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode dry-run \
+            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
+            --allow-shared-private-bucket \
+            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
+            --report "$ROOT/dry-run-report.json"
+
+      - name: Enforce exact repair plan
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(
+            fs.readFileSync(`${process.env.ROOT}/dry-run-report.json`, 'utf8'),
+          );
+          if (
+            report.verificationStatus !== 'passed' ||
+            report.productionWritePerformed !== false ||
+            (report.findingsBySeverity?.critical || 0) !== 0
+          ) {
+            throw new Error('Pinned read-only repair plan did not pass.');
+          }
+          const expected = {
+            sourceQuestions: 14199,
+            importableQuestions: 14128,
+            quarantinedQuestions: 71,
+            importablePhysicalAssets: 31231,
+            newQuestionCores: 5032,
+            reusedQuestionCores: 9096,
+            resolvedQuestionCores: 14128,
+            repairedQuestionSources: 5032,
+            repairedVariants: 14128,
+            repairedAssetSources: 10611,
+            resolvedQuestionSources: 14128,
+            resolvedVariantSources: 14128,
+            resolvedPhysicalAssets: 31231,
+            resolvedAssetSources: 32093,
+            resolvedVariantAssets: 32093,
+            recoveryDeletedVariants: 23,
+            recoveryDeletedPlacements: 0,
+            recoveryDeletedVariantAssets: 0,
+            recoveryDeletedVariantPapers: 0,
+            recoveryDeletedCoursePapers: 11,
+            recoveryDeletedPapers: 0,
+          };
+          for (const [key, value] of Object.entries(expected)) {
+            if (report.actualCounts?.[key] !== value) {
+              throw new Error(
+                `${key} mismatch: ${report.actualCounts?.[key]} !== ${value}`,
+              );
+            }
+          }
+          for (const [collection, result] of Object.entries(
+            report.actualCounts?.normalizedUniqueness || {},
+          )) {
+            if (result.duplicateKeys !== 0) {
+              throw new Error(`${collection} retains duplicate keys.`);
+            }
+          }
+          console.log('Exact Exam-Mate repair plan is pinned and unchanged.');
+          NODE
+
+      - name: Repair database and verify private object metadata
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode database-verify \
+            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
+            --allow-shared-private-bucket \
+            --workers 8 \
+            --confirm-production \
+            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
+            --report "$ROOT/repair-report.json"
+
+      - name: Enforce repaired production relationships
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(
+            fs.readFileSync(`${process.env.ROOT}/repair-report.json`, 'utf8'),
+          );
+          const verification = report.productionVerification;
+          if (
+            report.verificationStatus !== 'passed' ||
+            report.productionWritePerformed !== true ||
+            verification?.status !== 'passed'
+          ) {
+            throw new Error('Exam-Mate database repair verification failed.');
+          }
+          for (const key of [
+            'mismatchedQuestionSourceRelationships',
+            'mismatchedVariantSourceRelationships',
+            'mismatchedVariantRelationships',
+            'mismatchedQuestionCoreContent',
+            'mismatchedVariantDetails',
+            'nonReadyVariants',
+            'unexpectedExpectedPlacements',
+            'unexpectedExpectedVariantPapers',
+            'mismatchedAssetSourceRelationships',
+            'mismatchedVariantAssetRelationships',
+            'unexpectedExpectedVariantAssets',
+            'unexpectedBatchQuestions',
+            'unexpectedBatchVariants',
+            'unexpectedBatchPapers',
+            'unexpectedBatchCoursePapers',
+            'unexpectedBatchPlacements',
+            'unexpectedBatchVariantPapers',
+            'unexpectedBatchAssets',
+            'unexpectedBatchAssetSources',
+            'unexpectedBatchVariantAssets',
+            'criticalImportFindings',
+            'r2ObjectsInvalid',
+            'missingR2InventoryKeys',
+            'uploadedUnusedOptimizationPlanAssets',
+          ]) {
+            if (verification[key] !== 0) {
+              throw new Error(`${key} is ${verification[key]}, expected 0.`);
+            }
+          }
+          if (
+            verification.questionSources !== 14128 ||
+            verification.variantSources !== 14128 ||
+            verification.uniqueVariants !== 14128 ||
+            verification.nonReadyVariants !== 0 ||
+            verification.verifiedSelectedAssets !== 31231 ||
+            verification.r2ObjectsVerified !== 31231
+          ) {
+            throw new Error('Exam-Mate terminal count verification failed.');
+          }
+          console.log('Database relationships and private metadata passed.');
+          NODE
+
+      - name: Render every question and markscheme
+        env:
+          EXAM_MATE_FULL_RENDER_AUDIT: '1'
+          EXAM_MATE_RENDER_AUDIT_REPORT: ${{ env.ROOT }}/render-audit-report.json
+        run: >-
+          npx vitest run
+          tests/exam-mate-full-render-audit.test.tsx
+
+      - name: Download, hash and decode every private asset
+        run: |
+          node scripts/audit-exam-mate-production-integrity.mjs \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
+            --allow-shared-private-bucket \
+            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
+            --workers 8 \
+            --report "$ROOT/full-integrity-report.json"
+
+      - name: Enforce exhaustive final audit
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const root = process.env.ROOT;
+          const render = JSON.parse(
+            fs.readFileSync(`${root}/render-audit-report.json`, 'utf8'),
+          );
+          const integrity = JSON.parse(
+            fs.readFileSync(`${root}/full-integrity-report.json`, 'utf8'),
+          );
+          if (
+            render.verificationStatus !== 'passed' ||
+            render.sourceQuestions !== 14128 ||
+            render.uniqueVariants !== 14128 ||
+            render.distinctLinkedAssets !== 31231 ||
+            render.failedVariants !== 0
+          ) {
+            throw new Error('Full rendered-corpus audit failed.');
+          }
+          if (
+            integrity.verificationStatus !== 'passed' ||
+            integrity.pendingRecoveryOperations !== 0 ||
+            integrity.relationshipVerification?.status !== 'passed' ||
+            integrity.objectVerification?.status !== 'passed' ||
+            integrity.objectVerification?.objectsVerified !== 31231 ||
+            integrity.objectVerification?.bytesVerified !== 862344646 ||
+            integrity.objectVerification?.corruptOrUnreadableObjects !== 0
+          ) {
+            throw new Error('Full private-object integrity audit failed.');
+          }
+          console.log('Exhaustive Exam-Mate integrity audit passed.');
+          NODE
+
+      - name: Upload compact redacted reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-integrity-repair-reports
+          path: |
+            ${{ env.ROOT }}/dry-run-report.json
+            ${{ env.ROOT }}/repair-report.json
+            ${{ env.ROOT }}/render-audit-report.json
+            ${{ env.ROOT }}/full-integrity-report.json
+          if-no-files-found: warn
+          retention-days: 1
+

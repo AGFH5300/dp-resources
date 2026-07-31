@@ -50,6 +50,16 @@ describe('Exam-Mate Question Bank importer', () => {
     expect(() => parseArguments(['--mode', 'database'])).toThrow(
       '--confirm-production',
     );
+    expect(() => parseArguments(['--mode', 'database-verify'])).toThrow(
+      '--confirm-production',
+    );
+    expect(
+      parseArguments([
+        '--mode',
+        'database-verify',
+        '--confirm-production',
+      ]).mode,
+    ).toBe('database-verify');
     expect(() =>
       parseArguments(['--mode', 'assets', '--confirm-production']),
     ).toThrow('--assets-root');
