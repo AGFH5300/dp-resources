@@ -59,9 +59,11 @@ describe('physical Question Bank taxonomy consolidation', () => {
   });
 
   it('fails the migration if consolidation leaves duplicates or broken references', () => {
-    expect(migration).toContain("raise exception 'Taxonomy consolidation left % duplicate topic groups'");
-    expect(migration).toContain("raise exception 'Taxonomy consolidation left % duplicate subtopic groups'");
-    expect(migration).toContain("raise exception 'Variant/topic course mismatch after taxonomy consolidation'");
+    expect(migration).toContain('Taxonomy consolidation left % duplicate topic groups');
+    expect(migration).toContain('Taxonomy consolidation left % duplicate subtopic groups');
+    expect(migration).toContain(
+      "raise exception 'Variant/topic course mismatch after taxonomy consolidation'",
+    );
     expect(migration).toContain(
       "raise exception 'Placement/subtopic course mismatch after taxonomy consolidation'",
     );
