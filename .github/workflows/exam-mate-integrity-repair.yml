@@ -1,4 +1,4 @@
-name: One-time Exam-Mate integrity repair
+name: One-time Exam-Mate exhaustive integrity audit
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   repair:
-    name: Repair, render-audit and verify Exam-Mate
+    name: Render-audit and verify every Exam-Mate asset
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -133,145 +133,6 @@ jobs:
           unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
           cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
 
-      - name: Run pinned production-aware dry run
-        run: |
-          npm run question-bank:exam-mate -- \
-            --archive "$ROOT/source-capture" \
-            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
-            --mode dry-run \
-            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
-            --allow-shared-private-bucket \
-            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
-            --report "$ROOT/dry-run-report.json"
-
-      - name: Enforce exact repair plan
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const report = JSON.parse(
-            fs.readFileSync(`${process.env.ROOT}/dry-run-report.json`, 'utf8'),
-          );
-          if (
-            report.verificationStatus !== 'passed' ||
-            report.productionWritePerformed !== false ||
-            (report.findingsBySeverity?.critical || 0) !== 0
-          ) {
-            throw new Error('Pinned read-only repair plan did not pass.');
-          }
-          const expected = {
-            sourceQuestions: 14199,
-            importableQuestions: 14128,
-            quarantinedQuestions: 71,
-            importablePhysicalAssets: 31231,
-            newQuestionCores: 0,
-            reusedQuestionCores: 14128,
-            resolvedQuestionCores: 14128,
-            repairedQuestionSources: 0,
-            repairedVariants: 14128,
-            repairedAssetSources: 0,
-            resolvedQuestionSources: 14128,
-            resolvedVariantSources: 14128,
-            resolvedPhysicalAssets: 31231,
-            resolvedAssetSources: 32093,
-            resolvedVariantAssets: 32093,
-            recoveryDeletedVariants: 0,
-            recoveryDeletedPlacements: 0,
-            recoveryDeletedVariantAssets: 0,
-            recoveryDeletedVariantPapers: 0,
-            recoveryDeletedCoursePapers: 0,
-            recoveryDeletedPapers: 0,
-            newAssetRows: 0,
-            retargetedAssetRows: 0,
-            assetUploadCandidates: 0,
-          };
-          for (const [key, value] of Object.entries(expected)) {
-            if (report.actualCounts?.[key] !== value) {
-              throw new Error(
-                `${key} mismatch: ${report.actualCounts?.[key]} !== ${value}`,
-              );
-            }
-          }
-          for (const [collection, result] of Object.entries(
-            report.actualCounts?.normalizedUniqueness || {},
-          )) {
-            if (result.duplicateKeys !== 0) {
-              throw new Error(`${collection} retains duplicate keys.`);
-            }
-          }
-          console.log('Exact idempotent Exam-Mate post-repair plan is pinned.');
-          NODE
-
-      - name: Repair database and verify private object metadata
-        run: |
-          npm run question-bank:exam-mate -- \
-            --archive "$ROOT/source-capture" \
-            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
-            --mode database-verify \
-            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
-            --allow-shared-private-bucket \
-            --workers 8 \
-            --confirm-production \
-            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
-            --report "$ROOT/repair-report.json"
-
-      - name: Enforce repaired production relationships
-        run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const report = JSON.parse(
-            fs.readFileSync(`${process.env.ROOT}/repair-report.json`, 'utf8'),
-          );
-          const verification = report.productionVerification;
-          if (
-            report.verificationStatus !== 'passed' ||
-            report.productionWritePerformed !== true ||
-            verification?.status !== 'passed'
-          ) {
-            throw new Error('Exam-Mate database repair verification failed.');
-          }
-          for (const key of [
-            'mismatchedQuestionSourceRelationships',
-            'mismatchedVariantSourceRelationships',
-            'mismatchedVariantRelationships',
-            'mismatchedQuestionCoreContent',
-            'mismatchedVariantDetails',
-            'nonReadyVariants',
-            'unexpectedExpectedPlacements',
-            'unexpectedExpectedVariantPapers',
-            'mismatchedAssetSourceRelationships',
-            'mismatchedVariantAssetRelationships',
-            'unexpectedExpectedVariantAssets',
-            'unexpectedBatchQuestions',
-            'unexpectedBatchVariants',
-            'unexpectedBatchPapers',
-            'unexpectedBatchCoursePapers',
-            'unexpectedBatchPlacements',
-            'unexpectedBatchVariantPapers',
-            'unexpectedBatchAssets',
-            'unexpectedBatchAssetSources',
-            'unexpectedBatchVariantAssets',
-            'criticalImportFindings',
-            'r2ObjectsInvalid',
-            'missingR2InventoryKeys',
-            'uploadedUnusedOptimizationPlanAssets',
-          ]) {
-            if (verification[key] !== 0) {
-              throw new Error(`${key} is ${verification[key]}, expected 0.`);
-            }
-          }
-          if (
-            verification.questionSources !== 14128 ||
-            verification.variantSources !== 14128 ||
-            verification.uniqueVariants !== 14128 ||
-            verification.nonReadyVariants !== 0 ||
-            verification.verifiedSelectedAssets !== 31231 ||
-            verification.r2ObjectsVerified !== 31231
-          ) {
-            throw new Error('Exam-Mate terminal count verification failed.');
-          }
-          console.log('Database relationships and private metadata passed.');
-          NODE
-
       - name: Render every question and markscheme
         env:
           EXAM_MATE_FULL_RENDER_AUDIT: '1'
@@ -288,7 +149,7 @@ jobs:
             --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
             --allow-shared-private-bucket \
             --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
-            --workers 8 \
+            --workers 16 \
             --report "$ROOT/full-integrity-report.json"
 
       - name: Enforce exhaustive final audit
@@ -331,8 +192,6 @@ jobs:
         with:
           name: exam-mate-integrity-repair-reports
           path: |
-            ${{ env.ROOT }}/dry-run-report.json
-            ${{ env.ROOT }}/repair-report.json
             ${{ env.ROOT }}/render-audit-report.json
             ${{ env.ROOT }}/full-integrity-report.json
           if-no-files-found: warn
