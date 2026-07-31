@@ -27,11 +27,24 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-07-31': [
+    'Expanded the Question Bank with 14,128 verified Exam-Mate questions and 31,231 supporting assets, including markschemes, examiner reports, and diagrams.',
+    'Corrected legacy Mathematics option papers so Calculus, Discrete Mathematics, Sets, and Statistics questions remain distinct and link to the correct papers.',
+    'Reorganised Mathematics so current AA and AI courses are shown clearly, while older courses are grouped inside one Legacy Mathematics archive with live ready-question counts.',
+    'Consolidated duplicate and combined Question Bank topics and improved multi-topic classification so questions appear under every relevant filter.',
+    'Repaired the final damaged supporting image and verified that all imported Exam-Mate questions, markschemes, and protected assets render without unresolved references or stray text.',
+  ],
+  '2026-07-30': [
+    'Fixed malformed mathematical notation in Question Bank card previews.',
+    'Fixed long copyright and source notes so they wrap correctly instead of overflowing question cards.',
+    'Strengthened Question Bank privacy so protected diagrams and audio are not retained in browser caches.',
+  ],
   '2026-07-29': [
     'Improved homepage Question Bank button contrast and restored the compact question practice view with an optional fullscreen mode.',
     'Made the Question Bank reset dialog clearly show the selected reset option before confirmation.',
     'Restored instant single-answer checking, clarified correct and incorrect answer feedback, and made listening audio seekable.',
     'Fixed supporting Question Bank images so verified markscheme, examiner-report, and content-reference diagrams render correctly.',
+    'Reduced Question Bank image sizes with verified lossless versions so diagrams load faster without reducing visual quality.',
   ],
   '2026-07-28': [
     'Added quick search inside the current Library folder and all of its subfolders.',
