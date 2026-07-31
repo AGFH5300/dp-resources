@@ -79,6 +79,30 @@ describe('question-bank taxonomy grouping', () => {
     expect(groups[1].ids).toHaveLength(3);
   });
 
+  it('does not interpret ordinary words beginning with Unit as taxonomy prefixes', () => {
+    const groups = groupCourseTopics([
+      {
+        id: 'history-numbered',
+        name: '3.UNITED States Civil War Causes Course and Effects 1840 77',
+        sort_order: 1,
+      },
+      {
+        id: 'history-plain',
+        name: 'UNITED States Civil War Causes Course and Effects 1840 77',
+        sort_order: 2,
+      },
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      id: 'history-plain',
+      name: 'UNITED States Civil War Causes Course and Effects 1840 77',
+      canonicalKey: 'united states civil war causes course and effects 1840 77',
+      ids: expect.arrayContaining(['history-numbered', 'history-plain']),
+    });
+    expect(groups[0].name).not.toMatch(/^D States/);
+  });
+
   it('keeps syllabus-year topic groups separate', () => {
     const groups = groupCourseTopics([
       {
