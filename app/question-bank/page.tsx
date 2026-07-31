@@ -1,7 +1,14 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowRight, Bookmark, ChevronDown, Search } from 'lucide-react';
+import {
+  ArrowRight,
+  Bookmark,
+  BookOpenCheck,
+  ChevronDown,
+  Layers3,
+  Search,
+} from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
@@ -86,8 +93,8 @@ export default async function QuestionBankLanding() {
           <div>
             <h1>Question Bank</h1>
             <p>
-              Choose a course, practise by topic, reveal markschemes, and keep
-              your progress in one place.
+              Follow one course, or build a custom session across concepts,
+              courses and subjects.
             </p>
           </div>
           <form action="/question-bank/search" className="dp-qb-search-box">
@@ -103,7 +110,54 @@ export default async function QuestionBankLanding() {
           </form>
         </section>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+        <section className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Practice choices">
+          <Link
+            href="#courses"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[color:var(--dp-navy)] transition group-hover:bg-blue-50 group-hover:text-blue-700">
+                <BookOpenCheck className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-lg text-[color:var(--dp-navy)]">
+                  Practise a course
+                </strong>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Choose one IB course and work through its syllabus, topics and
+                  existing filters.
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700" />
+            </div>
+          </Link>
+
+          <Link
+            href="/question-bank/build"
+            className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white">
+                <Layers3 className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-lg text-[color:var(--dp-navy)]">
+                  Build a practice set
+                </strong>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Combine concepts across subjects and select different courses and
+                  question quotas for every concept.
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
+            </div>
+          </Link>
+        </section>
+
+        <div
+          id="courses"
+          className="mt-6 grid scroll-mt-24 gap-4 lg:grid-cols-[minmax(0,1fr)_310px]"
+        >
           <section>
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
@@ -266,7 +320,7 @@ export default async function QuestionBankLanding() {
                         </span>
                       </span>
                     </Link>
-                  ))
+                  ))}
                 ) : (
                   <p className="text-sm text-slate-600">
                     Open a question and it will appear here.
