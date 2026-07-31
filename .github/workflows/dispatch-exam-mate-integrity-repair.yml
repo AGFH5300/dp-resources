@@ -14,7 +14,7 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch guarded repair with pinned variant reconciliation
+      - name: Dispatch exhaustive read-only integrity audit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -21,6 +21,7 @@ import {
 } from '../scripts/import-exam-mate-question-bank-optimized.mjs';
 import { listPrivateR2Buckets } from '../scripts/r2-s3.mjs';
 import { selectedFileSignature } from '../scripts/verify-exam-mate-staging.mjs';
+import { countBlockingRecoveryOperations } from '../scripts/audit-exam-mate-production-integrity.mjs';
 
 const ORIGINAL_ENV = {
   questionBank: process.env.R2_QUESTION_BANK_BUCKET,
@@ -266,6 +267,24 @@ describe('Exam-Mate production recovery', () => {
 
     await expect(result).resolves.toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     expect(maximumActiveReads).toBe(1);
+  });
+
+  it('does not treat deterministic variant reconciliation as a pending repair', () => {
+    expect(
+      countBlockingRecoveryOperations({
+        questionSourceUpdates: 0,
+        variantUpdates: 14_128,
+        assetSourceUpdates: 0,
+        deleteVariants: 0,
+      }),
+    ).toBe(0);
+    expect(
+      countBlockingRecoveryOperations({
+        questionSourceUpdates: 1,
+        variantUpdates: 14_128,
+        deleteVariants: 2,
+      }),
+    ).toBe(3);
   });
 
   it('keeps the reviewed legacy paper parser correction in source', () => {

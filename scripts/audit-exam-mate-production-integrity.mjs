@@ -256,6 +256,14 @@ async function saveReport(filePath, report) {
   await writeFile(target, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 }
 
+export function countBlockingRecoveryOperations(recoveryCounts) {
+  return Object.entries(recoveryCounts).reduce(
+    (total, [name, count]) =>
+      total + (name === 'variantUpdates' ? 0 : count),
+    0,
+  );
+}
+
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   const sourceArchive = await resolveExamMateArchive(options.archive);
@@ -296,10 +304,8 @@ async function main() {
         rows.length,
       ]),
     );
-    const pendingRecoveryOperations = Object.values(recoveryCounts).reduce(
-      (total, count) => total + count,
-      0,
-    );
+    const pendingRecoveryOperations =
+      countBlockingRecoveryOperations(recoveryCounts);
     const relationshipVerification =
       normalized.verificationStatus === 'passed' &&
       pendingRecoveryOperations === 0
