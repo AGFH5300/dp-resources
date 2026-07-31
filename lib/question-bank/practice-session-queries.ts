@@ -41,40 +41,32 @@ export async function getPracticeSession(sessionId: string, userId: string) {
   const variantIds = sessionItems.map((item: any) => item.variant_id);
   const questionIds = sessionItems.map((item: any) => item.question_id);
 
-  const [variantsResult, placementsResult, progressResult, savedResult] =
-    await Promise.all([
-      variantIds.length
-        ? client
-            .from('dp_qb_question_variants')
-            .select(
-              'id,question_id,difficulty_value,difficulty_label,section_raw,calculator_allowed,source_index,question:dp_qb_questions!question_id(reference,content,maximum_mark),course:dp_qb_courses!course_id(id,slug,name,subject:dp_qb_subjects!subject_id(slug,name)),topic:dp_qb_topics!topic_id(id,name),paper:dp_qb_papers!paper_id(id,reference)',
-            )
-            .in('id', variantIds)
-        : Promise.resolve({ data: [], error: null }),
-      variantIds.length
-        ? client
-            .from('dp_qb_question_subtopics')
-            .select(
-              'variant_id,placement_order,subtopic:dp_qb_subtopics!subtopic_id(name)',
-            )
-            .in('variant_id', variantIds)
-            .order('placement_order')
-        : Promise.resolve({ data: [], error: null }),
-      questionIds.length
-        ? client
-            .from('dp_qb_user_progress')
-            .select('question_id,status')
-            .eq('user_id', userId)
-            .in('question_id', questionIds)
-        : Promise.resolve({ data: [], error: null }),
-      questionIds.length
-        ? client
-            .from('dp_qb_user_saved_questions')
-            .select('question_id')
-            .eq('user_id', userId)
-            .in('question_id', questionIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
+  const [variantsResult, placementsResult, savedResult] = await Promise.all([
+    variantIds.length
+      ? client
+          .from('dp_qb_question_variants')
+          .select(
+            'id,question_id,difficulty_value,difficulty_label,section_raw,calculator_allowed,source_index,question:dp_qb_questions!question_id(reference,content,maximum_mark),course:dp_qb_courses!course_id(id,slug,name,subject:dp_qb_subjects!subject_id(slug,name)),topic:dp_qb_topics!topic_id(id,name),paper:dp_qb_papers!paper_id(id,reference)',
+          )
+          .in('id', variantIds)
+      : Promise.resolve({ data: [], error: null }),
+    variantIds.length
+      ? client
+          .from('dp_qb_question_subtopics')
+          .select(
+            'variant_id,placement_order,subtopic:dp_qb_subtopics!subtopic_id(name)',
+          )
+          .in('variant_id', variantIds)
+          .order('placement_order')
+      : Promise.resolve({ data: [], error: null }),
+    questionIds.length
+      ? client
+          .from('dp_qb_user_saved_questions')
+          .select('question_id')
+          .eq('user_id', userId)
+          .in('question_id', questionIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
   const variants =
     requireData(variantsResult.data, variantsResult.error, 'Session variants') || [];
@@ -84,8 +76,6 @@ export async function getPracticeSession(sessionId: string, userId: string) {
       placementsResult.error,
       'Session subtopics',
     ) || [];
-  const progress =
-    requireData(progressResult.data, progressResult.error, 'Session progress') || [];
   const saved =
     requireData(savedResult.data, savedResult.error, 'Session saved state') || [];
 
@@ -97,9 +87,6 @@ export async function getPracticeSession(sessionId: string, userId: string) {
     if (name && !names.includes(name)) names.push(name);
     subtopicsByVariant.set(row.variant_id, names);
   }
-  const progressByQuestion = new Map(
-    (progress as any[]).map((row) => [row.question_id, row.status]),
-  );
   const savedQuestions = new Set((saved as any[]).map((row) => row.question_id));
 
   const questions = sessionItems.map((item: any): QuestionListRow => {
@@ -107,6 +94,12 @@ export async function getPracticeSession(sessionId: string, userId: string) {
     if (!variant?.question)
       throw new Error(`Practice session variant ${item.variant_id} is unavailable.`);
     const content = String(variant.question.content || '');
+    const progressStatus: QuestionListRow['progress_status'] =
+      item.status === 'completed'
+        ? 'completed'
+        : item.status === 'viewed'
+          ? 'in_progress'
+          : 'not_started';
     return {
       variant_id: variant.id,
       question_id: variant.question_id,
@@ -125,9 +118,7 @@ export async function getPracticeSession(sessionId: string, userId: string) {
       paper_id: variant.paper?.id || null,
       paper_reference: variant.paper?.reference || null,
       subtopic_names: subtopicsByVariant.get(variant.id) || [],
-      progress_status:
-        (progressByQuestion.get(variant.question_id) as QuestionListRow['progress_status']) ||
-        'not_started',
+      progress_status: progressStatus,
       is_saved: savedQuestions.has(variant.question_id),
       total_count: sessionItems.length,
     };
