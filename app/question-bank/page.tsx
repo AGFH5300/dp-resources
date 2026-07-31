@@ -30,6 +30,13 @@ type LandingCourse = {
   syllabus_label?: string | null;
 };
 
+type LandingSubject = {
+  id: string;
+  slug: string;
+  name: string;
+  courses: LandingCourse[];
+};
+
 function CourseLink({
   subjectSlug,
   course,
@@ -74,6 +81,112 @@ function CourseLink({
   );
 }
 
+function SubjectCourseLinks({
+  subject,
+  questionCounts,
+}: {
+  subject: LandingSubject;
+  questionCounts: Map<string, number>;
+}) {
+  if (subject.slug !== 'mathematics') {
+    return (
+      <>
+        {subject.courses.map((course) => (
+          <CourseLink
+            key={course.id}
+            subjectSlug={subject.slug}
+            course={course}
+            siblingCourses={subject.courses}
+            questionCounts={questionCounts}
+          />
+        ))}
+      </>
+    );
+  }
+
+  const mathematicsCourses = splitMathematicsCourses(subject.courses);
+  const legacyCourses = [
+    ...mathematicsCourses.standaloneLegacy,
+    ...mathematicsCourses.furtherMathematics,
+  ];
+  const legacyQuestionCount = legacyCourses.reduce(
+    (total, course) => total + (questionCounts.get(course.id) || 0),
+    0,
+  );
+
+  return (
+    <>
+      {mathematicsCourses.current.map((course) => (
+        <CourseLink
+          key={course.id}
+          subjectSlug={subject.slug}
+          course={course}
+          siblingCourses={subject.courses}
+          questionCounts={questionCounts}
+        />
+      ))}
+
+      {legacyCourses.length ? (
+        <details className="group overflow-hidden rounded-[0.6rem] border border-slate-200 bg-white">
+          <summary className="flex list-none items-center gap-3 px-3 py-3 text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm">Legacy Mathematics</strong>
+              <small className="mt-0.5 block text-xs text-slate-500">
+                {legacyQuestionCount.toLocaleString()} questions · 2009–2019 archive
+              </small>
+            </span>
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-2">
+            {mathematicsCourses.standaloneLegacy.map((course) => (
+              <CourseLink
+                key={course.id}
+                subjectSlug={subject.slug}
+                course={course}
+                siblingCourses={subject.courses}
+                questionCounts={questionCounts}
+              />
+            ))}
+
+            {mathematicsCourses.furtherMathematics.length ? (
+              <section className="rounded-[0.6rem] border border-slate-200 bg-white p-2.5">
+                <div className="mb-2">
+                  <strong className="block text-sm text-slate-700">
+                    Further Mathematics
+                  </strong>
+                  <small className="mt-0.5 block text-xs text-slate-500">
+                    {mathematicsCourses.furtherMathematics
+                      .reduce(
+                        (total, course) =>
+                          total + (questionCounts.get(course.id) || 0),
+                        0,
+                      )
+                      .toLocaleString()}{' '}
+                    questions across SL and HL
+                  </small>
+                </div>
+                <div className="space-y-2">
+                  {mathematicsCourses.furtherMathematics.map((course) => (
+                    <CourseLink
+                      key={course.id}
+                      subjectSlug={subject.slug}
+                      course={course}
+                      siblingCourses={subject.courses}
+                      questionCounts={questionCounts}
+                      displayName={course.level || course.name}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 export default async function QuestionBankLanding() {
   const { user, membership } = await requireMember();
   const [data, questionCounts] = await Promise.all([
@@ -110,7 +223,10 @@ export default async function QuestionBankLanding() {
           </form>
         </section>
 
-        <section className="mt-6 grid gap-4 md:grid-cols-2" aria-label="Practice choices">
+        <section
+          className="mt-6 grid gap-4 md:grid-cols-2"
+          aria-label="Practice choices"
+        >
           <Link
             href="#courses"
             className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
@@ -145,8 +261,8 @@ export default async function QuestionBankLanding() {
                   Build a practice set
                 </strong>
                 <span className="mt-1 block text-sm leading-6 text-slate-600">
-                  Combine concepts across subjects and select different courses and
-                  question quotas for every concept.
+                  Combine concepts across subjects and choose different courses
+                  and question quotas for every concept.
                 </span>
               </span>
               <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
@@ -170,116 +286,24 @@ export default async function QuestionBankLanding() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {data.subjects.map((subject: any) => {
-                const mathematicsCourses =
-                  subject.slug === 'mathematics'
-                    ? splitMathematicsCourses(subject.courses)
-                    : null;
-                const visibleCourses = mathematicsCourses
-                  ? mathematicsCourses.current
-                  : subject.courses;
-                const legacyCourses = mathematicsCourses
-                  ? [
-                      ...mathematicsCourses.standaloneLegacy,
-                      ...mathematicsCourses.furtherMathematics,
-                    ]
-                  : [];
-                const legacyQuestionCount = legacyCourses.reduce(
-                  (total, course) =>
-                    total + (questionCounts.get(course.id) || 0),
-                  0,
-                );
-
-                return (
-                  <article
-                    key={subject.id}
-                    id={`subject-${subject.slug}`}
-                    className="dp-qb-subject-card scroll-mt-24"
-                  >
-                    <div className="flex items-center gap-3">
-                      <SubjectIcon subjectSlug={subject.slug} />
-                      <h3>{subject.name}</h3>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {visibleCourses.map((course: LandingCourse) => (
-                        <CourseLink
-                          key={course.id}
-                          subjectSlug={subject.slug}
-                          course={course}
-                          siblingCourses={subject.courses}
-                          questionCounts={questionCounts}
-                        />
-                      ))}
-
-                      {mathematicsCourses && legacyCourses.length ? (
-                        <details className="group overflow-hidden rounded-[0.6rem] border border-slate-200 bg-white">
-                          <summary className="flex list-none items-center gap-3 px-3 py-3 text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                            <span className="min-w-0 flex-1">
-                              <strong className="block text-sm">
-                                Legacy Mathematics
-                              </strong>
-                              <small className="mt-0.5 block text-xs text-slate-500">
-                                {legacyQuestionCount.toLocaleString()} questions ·
-                                2009–2019 archive
-                              </small>
-                            </span>
-                            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                          </summary>
-
-                          <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-2">
-                            {mathematicsCourses.standaloneLegacy.map(
-                              (course: LandingCourse) => (
-                                <CourseLink
-                                  key={course.id}
-                                  subjectSlug={subject.slug}
-                                  course={course}
-                                  siblingCourses={subject.courses}
-                                  questionCounts={questionCounts}
-                                />
-                              ),
-                            )}
-
-                            {mathematicsCourses.furtherMathematics.length ? (
-                              <section className="rounded-[0.6rem] border border-slate-200 bg-white p-2.5">
-                                <div className="mb-2">
-                                  <strong className="block text-sm text-slate-700">
-                                    Further Mathematics
-                                  </strong>
-                                  <small className="mt-0.5 block text-xs text-slate-500">
-                                    {mathematicsCourses.furtherMathematics
-                                      .reduce(
-                                        (total, course) =>
-                                          total +
-                                          (questionCounts.get(course.id) || 0),
-                                        0,
-                                      )
-                                      .toLocaleString()}{' '}
-                                    questions across SL and HL
-                                  </small>
-                                </div>
-                                <div className="space-y-2">
-                                  {mathematicsCourses.furtherMathematics.map(
-                                    (course: LandingCourse) => (
-                                      <CourseLink
-                                        key={course.id}
-                                        subjectSlug={subject.slug}
-                                        course={course}
-                                        siblingCourses={subject.courses}
-                                        questionCounts={questionCounts}
-                                        displayName={course.level || course.name}
-                                      />
-                                    ),
-                                  )}
-                                </div>
-                              </section>
-                            ) : null}
-                          </div>
-                        </details>
-                      ) : null}
-                    </div>
-                  </article>
-                );
-              })}
+              {(data.subjects as LandingSubject[]).map((subject) => (
+                <article
+                  key={subject.id}
+                  id={`subject-${subject.slug}`}
+                  className="dp-qb-subject-card scroll-mt-24"
+                >
+                  <div className="flex items-center gap-3">
+                    <SubjectIcon subjectSlug={subject.slug} />
+                    <h3>{subject.name}</h3>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <SubjectCourseLinks
+                      subject={subject}
+                      questionCounts={questionCounts}
+                    />
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -320,7 +344,7 @@ export default async function QuestionBankLanding() {
                         </span>
                       </span>
                     </Link>
-                  ))}
+                  ))
                 ) : (
                   <p className="text-sm text-slate-600">
                     Open a question and it will appear here.
