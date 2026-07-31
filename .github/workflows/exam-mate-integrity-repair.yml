@@ -163,23 +163,26 @@ jobs:
             importableQuestions: 14128,
             quarantinedQuestions: 71,
             importablePhysicalAssets: 31231,
-            newQuestionCores: 5032,
-            reusedQuestionCores: 9096,
+            newQuestionCores: 0,
+            reusedQuestionCores: 14128,
             resolvedQuestionCores: 14128,
-            repairedQuestionSources: 5032,
-            repairedVariants: 14128,
-            repairedAssetSources: 10611,
+            repairedQuestionSources: 0,
+            repairedVariants: 0,
+            repairedAssetSources: 0,
             resolvedQuestionSources: 14128,
             resolvedVariantSources: 14128,
             resolvedPhysicalAssets: 31231,
             resolvedAssetSources: 32093,
             resolvedVariantAssets: 32093,
-            recoveryDeletedVariants: 23,
+            recoveryDeletedVariants: 0,
             recoveryDeletedPlacements: 0,
             recoveryDeletedVariantAssets: 0,
             recoveryDeletedVariantPapers: 0,
-            recoveryDeletedCoursePapers: 11,
+            recoveryDeletedCoursePapers: 0,
             recoveryDeletedPapers: 0,
+            newAssetRows: 0,
+            retargetedAssetRows: 0,
+            assetUploadCandidates: 0,
           };
           for (const [key, value] of Object.entries(expected)) {
             if (report.actualCounts?.[key] !== value) {
@@ -195,7 +198,7 @@ jobs:
               throw new Error(`${collection} retains duplicate keys.`);
             }
           }
-          console.log('Exact Exam-Mate repair plan is pinned and unchanged.');
+          console.log('Exact idempotent Exam-Mate post-repair plan is pinned.');
           NODE
 
       - name: Repair database and verify private object metadata
@@ -334,4 +337,3 @@ jobs:
             ${{ env.ROOT }}/full-integrity-report.json
           if-no-files-found: warn
           retention-days: 1
-

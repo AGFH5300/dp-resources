@@ -14,6 +14,7 @@ import {
   applyPartialBatchRecovery,
   deduplicateRowsForUpsert,
   parseArguments,
+  readSequentially,
   resolveQuestionBankBucket,
   validateBatchResume,
   verifyR2Head,
@@ -242,6 +243,28 @@ describe('Exam-Mate production recovery', () => {
     }
     await Promise.all(reads);
 
+    expect(maximumActiveReads).toBe(1);
+  });
+
+  it('serializes terminal verification reads to avoid statement-timeout contention', async () => {
+    let activeReads = 0;
+    let maximumActiveReads = 0;
+    const releases = [];
+    const reads = Array.from({ length: 8 }, (_, index) => async () => {
+      activeReads += 1;
+      maximumActiveReads = Math.max(maximumActiveReads, activeReads);
+      await new Promise((resolve) => releases.push(resolve));
+      activeReads -= 1;
+      return index;
+    });
+    const result = readSequentially(reads);
+
+    for (let index = 0; index < reads.length; index += 1) {
+      await vi.waitFor(() => expect(releases).toHaveLength(1));
+      releases.shift()();
+    }
+
+    await expect(result).resolves.toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     expect(maximumActiveReads).toBe(1);
   });
 

@@ -981,6 +981,14 @@ async function fetchPaged(client, table, columns, applyFilters = (query) => quer
   return output;
 }
 
+export async function readSequentially(operations) {
+  const output = [];
+  for (const operation of operations) {
+    output.push(await operation());
+  }
+  return output;
+}
+
 async function verifyPrivateR2Assets(assets, workers) {
   const results = new Array(assets.length);
   let cursor = 0;
@@ -1045,6 +1053,85 @@ export async function verifyProduction(normalized, options) {
   const expectedVariantKeys = normalized.productionExpectations.variantSourceKeys;
   const expectedHashes = new Set([...normalized.source.usedPhysicalHashes].map(String));
 
+  const verificationReads = [
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_question_sources',
+        'id,source_question_id,question_id,created_by_batch_id',
+        (query) => query.eq('provider', 'exam_mate'),
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_variant_sources',
+        'id,source_question_id,source_course,source_topic,variant_id,created_by_batch_id',
+        (query) => query.eq('provider', 'exam_mate'),
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_question_variants',
+        'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,render_status,render_issue_codes,created_by_batch_id',
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_questions',
+        'id,reference,content,mark_scheme,examiner_report,maximum_mark,content_hash,created_by_batch_id',
+      ),
+    () => fetchPaged(client, 'dp_qb_papers', 'id,created_by_batch_id'),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_question_subtopics',
+        'variant_id,subtopic_id,created_by_batch_id',
+      ),
+    () => fetchPaged(client, 'dp_qb_course_papers', 'course_id,paper_id'),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_variant_papers',
+        'variant_id,paper_id,created_by_batch_id',
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_assets',
+        'id,content_hash,content_type,byte_size,verification_status,storage_provider,storage_bucket,storage_key,created_by_batch_id',
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_asset_sources',
+        'id,asset_id,source_question_id,created_by_batch_id',
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_variant_assets',
+        'variant_id,asset_id,source_file_id,role,sort_order,alt_text,created_by_batch_id',
+      ),
+    () => fetchPaged(client, 'dp_qb_question_search', 'variant_id'),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_import_batches',
+        'id,archive_sha256,importer_version,mode,status,verification_status,operation_counts,actual_counts,completed_at',
+        (query) =>
+          query
+            .eq('archive_sha256', normalized.archiveSha256)
+            .eq('importer_version', normalized.importerVersion),
+      ),
+    () =>
+      fetchPaged(
+        client,
+        'dp_qb_import_findings',
+        'id,severity,batch_id',
+        (query) => query.eq('severity', 'critical'),
+      ),
+  ];
+  const verificationSnapshot = await readSequentially(verificationReads);
   const [
     questionSources,
     variantSources,
@@ -1060,73 +1147,7 @@ export async function verifyProduction(normalized, options) {
     searchDocuments,
     batches,
     importFindings,
-  ] = await Promise.all([
-    fetchPaged(
-      client,
-      'dp_qb_question_sources',
-      'id,source_question_id,question_id,created_by_batch_id',
-      (query) => query.eq('provider', 'exam_mate'),
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_variant_sources',
-      'id,source_question_id,source_course,source_topic,variant_id,created_by_batch_id',
-      (query) => query.eq('provider', 'exam_mate'),
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_question_variants',
-      'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,render_status,render_issue_codes,created_by_batch_id',
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_questions',
-      'id,reference,content,mark_scheme,examiner_report,maximum_mark,content_hash,created_by_batch_id',
-    ),
-    fetchPaged(client, 'dp_qb_papers', 'id,created_by_batch_id'),
-    fetchPaged(
-      client,
-      'dp_qb_question_subtopics',
-      'variant_id,subtopic_id,created_by_batch_id',
-    ),
-    fetchPaged(client, 'dp_qb_course_papers', 'course_id,paper_id'),
-    fetchPaged(
-      client,
-      'dp_qb_variant_papers',
-      'variant_id,paper_id,created_by_batch_id',
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_assets',
-      'id,content_hash,content_type,byte_size,verification_status,storage_provider,storage_bucket,storage_key,created_by_batch_id',
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_asset_sources',
-      'id,asset_id,source_question_id,created_by_batch_id',
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_variant_assets',
-      'variant_id,asset_id,source_file_id,role,sort_order,alt_text,created_by_batch_id',
-    ),
-    fetchPaged(client, 'dp_qb_question_search', 'variant_id'),
-    fetchPaged(
-      client,
-      'dp_qb_import_batches',
-      'id,archive_sha256,importer_version,mode,status,verification_status,operation_counts,actual_counts,completed_at',
-      (query) =>
-        query
-          .eq('archive_sha256', normalized.archiveSha256)
-          .eq('importer_version', normalized.importerVersion),
-    ),
-    fetchPaged(
-      client,
-      'dp_qb_import_findings',
-      'id,severity,batch_id',
-      (query) => query.eq('severity', 'critical'),
-    ),
-  ]);
+  ] = verificationSnapshot;
 
   const sourceSet = new Set(questionSources.map((row) => row.source_question_id));
   const variantSet = new Set(
