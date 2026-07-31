@@ -6,6 +6,7 @@ import {
   EXAM_MATE_OPTIMIZATION_EXPECTED,
   EXAM_MATE_OPTIMIZATION_PLAN_SHA256,
   EXAM_MATE_RETAINED_BMP_CORRECTION,
+  EXAM_MATE_TRUNCATED_PNG_REPAIR,
   EXAM_MATE_OPTIMIZATION_ROWS_SHA256,
   applyExamMateOptimizationPlan,
   selectedManifestRow,
@@ -69,6 +70,48 @@ describe('Exam-Mate local optimization import', () => {
       contentType: 'image/webp',
       optimized: true,
     });
+  });
+
+  it('replaces only the exact reviewed truncated PNG with the verified repaired asset', () => {
+    const repair = EXAM_MATE_TRUNCATED_PNG_REPAIR;
+    const original = {
+      url: repair.sourceUrl,
+      sha256: repair.originalHash,
+      path: repair.originalPath,
+      bytes: repair.originalBytes,
+      contentType: repair.contentType,
+      capturedAt: '2026-07-29T00:00:00.000Z',
+    };
+    const plan = {
+      originalSourceHash: repair.originalHash,
+      selectedHash: repair.originalHash,
+      selectedPath: repair.originalPath,
+      selectedBytes: repair.originalBytes,
+      selectedContentType: repair.contentType,
+      selectedFormat: repair.format,
+      optimized: false,
+      savingsBytes: 0,
+      savingsPercent: 0,
+      pixelVerification: { passed: true },
+    };
+
+    expect(selectedManifestRow(original, plan)).toMatchObject({
+      originalSha256: repair.originalHash,
+      sha256: repair.replacementHash,
+      path: repair.replacementPath,
+      bytes: repair.replacementBytes,
+      contentType: 'image/png',
+      repairedFromSha256: repair.originalHash,
+      repairVerificationMode: repair.verificationMode,
+    });
+    expect(() =>
+      selectedManifestRow(
+        { ...original, url: `${repair.sourceUrl}?unexpected=1` },
+        plan,
+      ),
+    ).toThrow(
+      'Pinned truncated-PNG repair no longer matches the reviewed source and optimization rows.',
+    );
   });
 
   it('corrects the exact retained BMP MIME type without changing its pinned path or hash', () => {

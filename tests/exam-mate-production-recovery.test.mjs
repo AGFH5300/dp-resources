@@ -21,7 +21,10 @@ import {
 } from '../scripts/import-exam-mate-question-bank-optimized.mjs';
 import { listPrivateR2Buckets } from '../scripts/r2-s3.mjs';
 import { selectedFileSignature } from '../scripts/verify-exam-mate-staging.mjs';
-import { countBlockingRecoveryOperations } from '../scripts/audit-exam-mate-production-integrity.mjs';
+import {
+  countBlockingRecoveryOperations,
+  readBmpMetadata,
+} from '../scripts/audit-exam-mate-production-integrity.mjs';
 
 const ORIGINAL_ENV = {
   questionBank: process.env.R2_QUESTION_BANK_BUCKET,
@@ -944,5 +947,28 @@ describe('Exam-Mate production recovery', () => {
     expect(selectedFileSignature(Buffer.from('not-an-image'), 'png')).toBe(
       false,
     );
+  });
+
+  it('validates the retained BMP without relying on Sharp BMP support', () => {
+    const bmp = Buffer.alloc(58);
+    bmp.write('BM', 0, 'ascii');
+    bmp.writeUInt32LE(bmp.byteLength, 2);
+    bmp.writeUInt32LE(54, 10);
+    bmp.writeUInt32LE(40, 14);
+    bmp.writeInt32LE(2, 18);
+    bmp.writeInt32LE(1, 22);
+    bmp.writeUInt16LE(1, 26);
+    bmp.writeUInt16LE(24, 28);
+    bmp.writeUInt32LE(0, 30);
+
+    expect(readBmpMetadata(bmp)).toEqual({
+      width: 2,
+      height: 1,
+      bitsPerPixel: 24,
+      compression: 0,
+    });
+    expect(() =>
+      readBmpMetadata(Buffer.from(bmp.subarray(0, bmp.length - 1))),
+    ).toThrow('Invalid or unsupported BMP metadata.');
   });
 });

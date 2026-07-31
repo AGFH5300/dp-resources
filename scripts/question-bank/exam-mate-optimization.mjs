@@ -33,6 +33,27 @@ export const EXAM_MATE_RETAINED_BMP_CORRECTION = Object.freeze({
   contentType: 'image/bmp',
   verificationMode: 'optimizer-error-original-retained-by-exact-sha256',
 });
+export const EXAM_MATE_TRUNCATED_PNG_REPAIR = Object.freeze({
+  sourceQuestionId: '59266',
+  sourceUrl:
+    'https://www.exam-mate.com/questions/21239/61113/21239_q_61113_40_1.png',
+  originalHash:
+    '06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46',
+  originalPath:
+    'assets/sha256/06/06ea097e54087326a75b01babb5e3894ed7e54e225ba84d657bb042569cebe46.png',
+  originalBytes: 2_583_171,
+  replacementHash:
+    '1074a94ff484b36426e13d251ea79bb1b66f999379ad6a2964bb9fa8acfb6bc4',
+  replacementPath:
+    'assets/sha256/10/1074a94ff484b36426e13d251ea79bb1b66f999379ad6a2964bb9fa8acfb6bc4.png',
+  replacementBytes: 2_617_164,
+  contentType: 'image/png',
+  format: 'png',
+  width: 4_200,
+  height: 4_121,
+  verificationMode:
+    'exact-lossless-source-rows-plus-browser-verified-uniform-truncated-tail',
+});
 export const EXAM_MATE_OPTIMIZATION_EXPECTED = Object.freeze({
   totalAssets: 31_336,
   optimizedWebp: 31_328,
@@ -403,7 +424,7 @@ function optimizationFinding(severity, code, details) {
 }
 
 export function selectedManifestRow(originalRow, planRow) {
-  return {
+  const selected = {
     ...originalRow,
     originalSha256: originalRow.sha256,
     originalPath: originalRow.path,
@@ -418,6 +439,34 @@ export function selectedManifestRow(originalRow, planRow) {
     savingsPercent: Number(planRow.savingsPercent || 0),
     optimizationAuditSha256: EXAM_MATE_OPTIMIZATION_AUDIT_SHA256,
     pixelVerification: planRow.pixelVerification,
+  };
+  const repair = EXAM_MATE_TRUNCATED_PNG_REPAIR;
+  if (String(originalRow.sha256 || '') !== repair.originalHash) {
+    return selected;
+  }
+  if (
+    originalRow.url !== repair.sourceUrl ||
+    originalRow.path !== repair.originalPath ||
+    Number(originalRow.bytes) !== repair.originalBytes ||
+    planRow.selectedHash !== repair.originalHash ||
+    planRow.selectedPath !== repair.originalPath ||
+    Number(planRow.selectedBytes) !== repair.originalBytes ||
+    planRow.selectedContentType !== repair.contentType ||
+    planRow.selectedFormat !== repair.format
+  ) {
+    throw new Error(
+      'Pinned truncated-PNG repair no longer matches the reviewed source and optimization rows.',
+    );
+  }
+  return {
+    ...selected,
+    sha256: repair.replacementHash,
+    path: repair.replacementPath,
+    bytes: repair.replacementBytes,
+    contentType: repair.contentType,
+    selectedFormat: repair.format,
+    repairedFromSha256: repair.originalHash,
+    repairVerificationMode: repair.verificationMode,
   };
 }
 
