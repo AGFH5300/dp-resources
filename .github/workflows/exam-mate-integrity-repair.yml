@@ -167,7 +167,7 @@ jobs:
             reusedQuestionCores: 14128,
             resolvedQuestionCores: 14128,
             repairedQuestionSources: 0,
-            repairedVariants: 0,
+            repairedVariants: 14128,
             repairedAssetSources: 0,
             resolvedQuestionSources: 14128,
             resolvedVariantSources: 14128,
