@@ -61,7 +61,10 @@ function databaseRow(row, batchId, table) {
   const output = { ...row };
   delete output.local_path;
   delete output.filePath;
-  if ('created_by_batch_id' in row || !['dp_qb_course_papers', 'dp_qb_question_search'].includes(table)) {
+  if (
+    'created_by_batch_id' in row ||
+    !['dp_qb_course_papers', 'dp_qb_question_search'].includes(table)
+  ) {
     output.created_by_batch_id = batchId;
   }
   if (!['dp_qb_course_papers', 'dp_qb_question_search'].includes(table)) {
@@ -376,11 +379,11 @@ const VERIFY_TABLES = {
   subjects: 'dp_qb_subjects',
   courses: 'dp_qb_courses',
   datasets: 'dp_qb_datasets',
-  topics: 'dp_qb_topics',
-  subtopics: 'dp_qb_subtopics',
+  topics: 'dp_qb_topic_sources',
+  subtopics: 'dp_qb_subtopic_sources',
   questionCores: 'dp_qb_questions',
   variants: 'dp_qb_question_variants',
-  storedPlacementRows: 'dp_qb_question_subtopics',
+  storedPlacementRows: 'dp_qb_import_placement_sources',
   contentDeduplicatedAssets: 'dp_qb_assets',
   vimeoUrls: 'dp_qb_solution_videos',
 };
@@ -437,21 +440,39 @@ async function existingKeysByIn(
 export async function verifyImportRows(normalized, options = {}) {
   const client = options.client || createImportClient();
   const checks = [
-    ['dp_qb_subjects', 'subjects', 'id', 'id'],
-    ['dp_qb_courses', 'courses', 'id', 'id'],
-    ['dp_qb_datasets', 'datasets', 'id', 'id'],
-    ['dp_qb_topics', 'topics', 'id', 'id'],
-    ['dp_qb_subtopics', 'subtopics', 'id', 'id'],
-    ['dp_qb_papers', 'papers', 'id', 'id'],
-    ['dp_qb_questions', 'questions', 'id', 'id'],
-    ['dp_qb_question_variants', 'variants', 'id', 'id'],
-    ['dp_qb_asset_sources', 'assetSources', 'id', 'id'],
-    ['dp_qb_question_search', 'searchDocuments', 'variant_id', 'variant_id'],
+    ['dp_qb_subjects', 'subjects', 'id', 'id', 'id'],
+    ['dp_qb_courses', 'courses', 'id', 'id', 'id'],
+    ['dp_qb_datasets', 'datasets', 'id', 'id', 'id'],
+    [
+      'dp_qb_topic_sources',
+      'topics',
+      'id',
+      'source_topic_id',
+      'source_topic_id',
+    ],
+    [
+      'dp_qb_subtopic_sources',
+      'subtopics',
+      'id',
+      'source_subtopic_id',
+      'source_subtopic_id',
+    ],
+    ['dp_qb_papers', 'papers', 'id', 'id', 'id'],
+    ['dp_qb_questions', 'questions', 'id', 'id', 'id'],
+    ['dp_qb_question_variants', 'variants', 'id', 'id', 'id'],
+    ['dp_qb_asset_sources', 'assetSources', 'id', 'id', 'id'],
+    [
+      'dp_qb_question_search',
+      'searchDocuments',
+      'variant_id',
+      'variant_id',
+      'variant_id',
+    ],
   ];
   const results = {};
 
-  for (const [table, rowKey, filterField, select] of checks) {
-    const expected = new Set(normalized.rows[rowKey].map((row) => row[filterField]));
+  for (const [table, rowKey, inputField, filterField, select] of checks) {
+    const expected = new Set(normalized.rows[rowKey].map((row) => row[inputField]));
     const found = await existingKeysByIn(
       client,
       table,
@@ -476,11 +497,12 @@ export async function verifyImportRows(normalized, options = {}) {
       key: (row) => `${row.course_id}:${row.paper_id}`,
     },
     {
-      table: 'dp_qb_question_subtopics',
+      table: 'dp_qb_import_placement_sources',
       rowKey: 'placements',
       filterField: 'variant_id',
-      select: 'variant_id,subtopic_id',
-      key: (row) => `${row.variant_id}:${row.subtopic_id}`,
+      select: 'variant_id,source_subtopic_id',
+      key: (row) =>
+        `${row.variant_id}:${row.subtopic_id || row.source_subtopic_id}`,
     },
     {
       table: 'dp_qb_variant_assets',
