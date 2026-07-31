@@ -1,7 +1,14 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowRight, Bookmark, ChevronDown, Search } from 'lucide-react';
+import {
+  ArrowRight,
+  Bookmark,
+  BookOpenCheck,
+  ChevronDown,
+  Layers3,
+  Search,
+} from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
@@ -21,6 +28,13 @@ type LandingCourse = {
   name: string;
   level?: string | null;
   syllabus_label?: string | null;
+};
+
+type LandingSubject = {
+  id: string;
+  slug: string;
+  name: string;
+  courses: LandingCourse[];
 };
 
 function CourseLink({
@@ -67,6 +81,112 @@ function CourseLink({
   );
 }
 
+function SubjectCourseLinks({
+  subject,
+  questionCounts,
+}: {
+  subject: LandingSubject;
+  questionCounts: Map<string, number>;
+}) {
+  if (subject.slug !== 'mathematics') {
+    return (
+      <>
+        {subject.courses.map((course) => (
+          <CourseLink
+            key={course.id}
+            subjectSlug={subject.slug}
+            course={course}
+            siblingCourses={subject.courses}
+            questionCounts={questionCounts}
+          />
+        ))}
+      </>
+    );
+  }
+
+  const mathematicsCourses = splitMathematicsCourses(subject.courses);
+  const legacyCourses = [
+    ...mathematicsCourses.standaloneLegacy,
+    ...mathematicsCourses.furtherMathematics,
+  ];
+  const legacyQuestionCount = legacyCourses.reduce(
+    (total, course) => total + (questionCounts.get(course.id) || 0),
+    0,
+  );
+
+  return (
+    <>
+      {mathematicsCourses.current.map((course) => (
+        <CourseLink
+          key={course.id}
+          subjectSlug={subject.slug}
+          course={course}
+          siblingCourses={subject.courses}
+          questionCounts={questionCounts}
+        />
+      ))}
+
+      {legacyCourses.length ? (
+        <details className="group overflow-hidden rounded-[0.6rem] border border-slate-200 bg-white">
+          <summary className="flex list-none items-center gap-3 px-3 py-3 text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm">Legacy Mathematics</strong>
+              <small className="mt-0.5 block text-xs text-slate-500">
+                {legacyQuestionCount.toLocaleString()} questions · 2009–2019 archive
+              </small>
+            </span>
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-2">
+            {mathematicsCourses.standaloneLegacy.map((course) => (
+              <CourseLink
+                key={course.id}
+                subjectSlug={subject.slug}
+                course={course}
+                siblingCourses={subject.courses}
+                questionCounts={questionCounts}
+              />
+            ))}
+
+            {mathematicsCourses.furtherMathematics.length ? (
+              <section className="rounded-[0.6rem] border border-slate-200 bg-white p-2.5">
+                <div className="mb-2">
+                  <strong className="block text-sm text-slate-700">
+                    Further Mathematics
+                  </strong>
+                  <small className="mt-0.5 block text-xs text-slate-500">
+                    {mathematicsCourses.furtherMathematics
+                      .reduce(
+                        (total, course) =>
+                          total + (questionCounts.get(course.id) || 0),
+                        0,
+                      )
+                      .toLocaleString()}{' '}
+                    questions across SL and HL
+                  </small>
+                </div>
+                <div className="space-y-2">
+                  {mathematicsCourses.furtherMathematics.map((course) => (
+                    <CourseLink
+                      key={course.id}
+                      subjectSlug={subject.slug}
+                      course={course}
+                      siblingCourses={subject.courses}
+                      questionCounts={questionCounts}
+                      displayName={course.level || course.name}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 export default async function QuestionBankLanding() {
   const { user, membership } = await requireMember();
   const [data, questionCounts] = await Promise.all([
@@ -86,8 +206,8 @@ export default async function QuestionBankLanding() {
           <div>
             <h1>Question Bank</h1>
             <p>
-              Choose a course, practise by topic, reveal markschemes, and keep
-              your progress in one place.
+              Follow one course, or build a custom session across concepts,
+              courses and subjects.
             </p>
           </div>
           <form action="/question-bank/search" className="dp-qb-search-box">
@@ -103,7 +223,57 @@ export default async function QuestionBankLanding() {
           </form>
         </section>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+        <section
+          className="mt-6 grid gap-4 md:grid-cols-2"
+          aria-label="Practice choices"
+        >
+          <Link
+            href="#courses"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[color:var(--dp-navy)] transition group-hover:bg-blue-50 group-hover:text-blue-700">
+                <BookOpenCheck className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-lg text-[color:var(--dp-navy)]">
+                  Practise a course
+                </strong>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Choose one IB course and work through its syllabus, topics and
+                  existing filters.
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700" />
+            </div>
+          </Link>
+
+          <Link
+            href="/question-bank/build"
+            className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white">
+                <Layers3 className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-lg text-[color:var(--dp-navy)]">
+                  Build a practice set
+                </strong>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Combine concepts across subjects and choose different courses
+                  and question quotas for every concept.
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
+            </div>
+          </Link>
+        </section>
+
+        <div
+          id="courses"
+          className="mt-6 grid scroll-mt-24 gap-4 lg:grid-cols-[minmax(0,1fr)_310px]"
+        >
           <section>
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
@@ -116,116 +286,24 @@ export default async function QuestionBankLanding() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {data.subjects.map((subject: any) => {
-                const mathematicsCourses =
-                  subject.slug === 'mathematics'
-                    ? splitMathematicsCourses(subject.courses)
-                    : null;
-                const visibleCourses = mathematicsCourses
-                  ? mathematicsCourses.current
-                  : subject.courses;
-                const legacyCourses = mathematicsCourses
-                  ? [
-                      ...mathematicsCourses.standaloneLegacy,
-                      ...mathematicsCourses.furtherMathematics,
-                    ]
-                  : [];
-                const legacyQuestionCount = legacyCourses.reduce(
-                  (total, course) =>
-                    total + (questionCounts.get(course.id) || 0),
-                  0,
-                );
-
-                return (
-                  <article
-                    key={subject.id}
-                    id={`subject-${subject.slug}`}
-                    className="dp-qb-subject-card scroll-mt-24"
-                  >
-                    <div className="flex items-center gap-3">
-                      <SubjectIcon subjectSlug={subject.slug} />
-                      <h3>{subject.name}</h3>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {visibleCourses.map((course: LandingCourse) => (
-                        <CourseLink
-                          key={course.id}
-                          subjectSlug={subject.slug}
-                          course={course}
-                          siblingCourses={subject.courses}
-                          questionCounts={questionCounts}
-                        />
-                      ))}
-
-                      {mathematicsCourses && legacyCourses.length ? (
-                        <details className="group overflow-hidden rounded-[0.6rem] border border-slate-200 bg-white">
-                          <summary className="flex list-none items-center gap-3 px-3 py-3 text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                            <span className="min-w-0 flex-1">
-                              <strong className="block text-sm">
-                                Legacy Mathematics
-                              </strong>
-                              <small className="mt-0.5 block text-xs text-slate-500">
-                                {legacyQuestionCount.toLocaleString()} questions ·
-                                2009–2019 archive
-                              </small>
-                            </span>
-                            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                          </summary>
-
-                          <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-2">
-                            {mathematicsCourses.standaloneLegacy.map(
-                              (course: LandingCourse) => (
-                                <CourseLink
-                                  key={course.id}
-                                  subjectSlug={subject.slug}
-                                  course={course}
-                                  siblingCourses={subject.courses}
-                                  questionCounts={questionCounts}
-                                />
-                              ),
-                            )}
-
-                            {mathematicsCourses.furtherMathematics.length ? (
-                              <section className="rounded-[0.6rem] border border-slate-200 bg-white p-2.5">
-                                <div className="mb-2">
-                                  <strong className="block text-sm text-slate-700">
-                                    Further Mathematics
-                                  </strong>
-                                  <small className="mt-0.5 block text-xs text-slate-500">
-                                    {mathematicsCourses.furtherMathematics
-                                      .reduce(
-                                        (total, course) =>
-                                          total +
-                                          (questionCounts.get(course.id) || 0),
-                                        0,
-                                      )
-                                      .toLocaleString()}{' '}
-                                    questions across SL and HL
-                                  </small>
-                                </div>
-                                <div className="space-y-2">
-                                  {mathematicsCourses.furtherMathematics.map(
-                                    (course: LandingCourse) => (
-                                      <CourseLink
-                                        key={course.id}
-                                        subjectSlug={subject.slug}
-                                        course={course}
-                                        siblingCourses={subject.courses}
-                                        questionCounts={questionCounts}
-                                        displayName={course.level || course.name}
-                                      />
-                                    ),
-                                  )}
-                                </div>
-                              </section>
-                            ) : null}
-                          </div>
-                        </details>
-                      ) : null}
-                    </div>
-                  </article>
-                );
-              })}
+              {(data.subjects as LandingSubject[]).map((subject) => (
+                <article
+                  key={subject.id}
+                  id={`subject-${subject.slug}`}
+                  className="dp-qb-subject-card scroll-mt-24"
+                >
+                  <div className="flex items-center gap-3">
+                    <SubjectIcon subjectSlug={subject.slug} />
+                    <h3>{subject.name}</h3>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <SubjectCourseLinks
+                      subject={subject}
+                      questionCounts={questionCounts}
+                    />
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
 

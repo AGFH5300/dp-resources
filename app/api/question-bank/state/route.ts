@@ -1,4 +1,8 @@
 import { requireMember } from '@/lib/auth';
+import {
+  practiceSessionIdFromRequest,
+  updatePracticeSessionItem,
+} from '@/lib/question-bank/practice-session-state';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 import { createClient } from '@/lib/supabase-server';
 
@@ -97,6 +101,26 @@ export async function PATCH(request: Request) {
     );
     if (error)
       return noStore({ error: 'Unable to update progress.' }, { status: 500 });
+
+    const sessionId = practiceSessionIdFromRequest(request);
+    if (sessionId) {
+      await updatePracticeSessionItem({
+        userId: user.id,
+        sessionId,
+        variantId,
+        status: status === 'completed' ? 'completed' : 'viewed',
+      }).catch((sessionError) => {
+        console.error('Unable to mirror question progress into practice session.', {
+          userId: user.id,
+          sessionId,
+          variantId,
+          message:
+            sessionError instanceof Error
+              ? sessionError.message
+              : String(sessionError),
+        });
+      });
+    }
   }
 
   return noStore({ ok: true });
