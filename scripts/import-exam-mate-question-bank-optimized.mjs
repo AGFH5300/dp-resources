@@ -20,6 +20,7 @@ import {
   publicExamMateReport,
   resolveExamMateArchive,
   resolveExamMateForProduction,
+  strictQuestionSignature,
 } from './question-bank/exam-mate.mjs';
 import {
   applyExamMateOptimizationPlan,
@@ -186,7 +187,7 @@ function requiredEnvironment(name) {
   return value;
 }
 
-function createImportClient() {
+export function createImportClient() {
   return createClient(
     requiredEnvironment('NEXT_PUBLIC_SUPABASE_URL'),
     requiredEnvironment('SUPABASE_SERVICE_ROLE_KEY'),
@@ -515,6 +516,16 @@ export async function applyPartialBatchRecovery(
   batchSize,
 ) {
   const plan = normalized.recoveryPlan || {};
+  const result = { updates: {}, deletes: {} };
+  result.deletes.dp_qb_question_variants = await deleteExactRecoveryRows(
+    client,
+    'dp_qb_question_variants',
+    plan.deleteVariants || [],
+    ['id'],
+    batchId,
+    true,
+  );
+
   const updates = [
     [
       'dp_qb_question_sources',
@@ -536,8 +547,12 @@ export async function applyPartialBatchRecovery(
       plan.assetSourceUpdates || [],
       'id',
     ],
+    [
+      'dp_qb_variant_assets',
+      plan.variantAssetUpdates || [],
+      'variant_id,asset_id,role',
+    ],
   ];
-  const result = { updates: {}, deletes: {} };
   for (const [table, rows, conflict] of updates) {
     result.updates[table] = await upsertRows(
       client,
@@ -551,6 +566,12 @@ export async function applyPartialBatchRecovery(
   }
 
   const deletes = [
+    [
+      'dp_qb_question_subtopics',
+      plan.deletePlacements || [],
+      ['variant_id', 'subtopic_id'],
+      true,
+    ],
     [
       'dp_qb_variant_assets',
       plan.deleteVariantAssets || [],
@@ -948,24 +969,33 @@ async function verifyPrivateR2Assets(assets, workers) {
       const index = cursor++;
       if (index >= assets.length) return;
       const asset = assets[index];
-      try {
-        const response = await headPrivateR2Object({
-          bucket: asset.storage_bucket,
-          key: asset.storage_key,
-          signal: AbortSignal.timeout(45_000),
-        });
-        results[index] = {
-          asset,
-          verified: verifyR2Head(asset, response),
-          status: response.status,
-        };
-      } catch (error) {
-        results[index] = {
-          asset,
-          verified: false,
-          status: Number(error.statusCode || 0),
-          error: String(error.message || error),
-        };
+      for (let attempt = 1; attempt <= 4; attempt += 1) {
+        try {
+          const response = await headPrivateR2Object({
+            bucket: asset.storage_bucket,
+            key: asset.storage_key,
+            signal: AbortSignal.timeout(45_000),
+          });
+          results[index] = {
+            asset,
+            verified: verifyR2Head(asset, response),
+            status: response.status,
+          };
+          break;
+        } catch (error) {
+          if (attempt === 4) {
+            results[index] = {
+              asset,
+              verified: false,
+              status: Number(error.statusCode || 0),
+              error: String(error.message || error),
+            };
+            break;
+          }
+          await new Promise((resolve) =>
+            setTimeout(resolve, attempt * 500),
+          );
+        }
       }
       completed += 1;
       if (completed % 500 === 0 || completed === assets.length) {
@@ -981,7 +1011,7 @@ async function verifyPrivateR2Assets(assets, workers) {
   return results;
 }
 
-async function verifyProduction(normalized, options) {
+export async function verifyProduction(normalized, options) {
   const client = options.client;
   const expectations = normalized.productionExpectations;
   if (!expectations) {
@@ -1024,12 +1054,12 @@ async function verifyProduction(normalized, options) {
     fetchPaged(
       client,
       'dp_qb_question_variants',
-      'id,question_id,paper_id,created_by_batch_id',
+      'id,question_id,dataset_id,course_id,topic_id,paper_id,source_index,source_occurrence,canonical_source_subtopic_id,render_status,render_issue_codes,created_by_batch_id',
     ),
     fetchPaged(
       client,
       'dp_qb_questions',
-      'id,created_by_batch_id',
+      'id,reference,content,mark_scheme,examiner_report,maximum_mark,content_hash,created_by_batch_id',
     ),
     fetchPaged(client, 'dp_qb_papers', 'id,created_by_batch_id'),
     fetchPaged(
@@ -1056,7 +1086,7 @@ async function verifyProduction(normalized, options) {
     fetchPaged(
       client,
       'dp_qb_variant_assets',
-      'variant_id,asset_id,role,created_by_batch_id',
+      'variant_id,asset_id,source_file_id,role,sort_order,alt_text,created_by_batch_id',
     ),
     fetchPaged(client, 'dp_qb_question_search', 'variant_id'),
     fetchPaged(
@@ -1101,6 +1131,11 @@ async function verifyProduction(normalized, options) {
   const expectedAssetSourceQuestionIds =
     expectations.assetSourceQuestionIds || {};
   const expectedVariantAssetKeys = new Set(expectations.variantAssetKeys);
+  const expectedQuestionCoreContentHashes =
+    expectations.questionCoreContentHashes || {};
+  const expectedVariantDetails = expectations.variantDetails || {};
+  const expectedVariantAssetDetails =
+    expectations.variantAssetDetails || {};
 
   const questionSourceRowIds = new Set(questionSources.map((row) => row.id));
   const questionSourceById = new Map(
@@ -1111,6 +1146,7 @@ async function verifyProduction(normalized, options) {
     variantSources.map((row) => [row.id, row]),
   );
   const variantById = new Map(variants.map((row) => [row.id, row]));
+  const questionById = new Map(questions.map((row) => [row.id, row]));
   const variantIds = new Set(variants.map((row) => row.id));
   const paperIds = new Set(papers.map((row) => row.id));
   const placementKeys = new Set(
@@ -1131,6 +1167,12 @@ async function verifyProduction(normalized, options) {
     variantAssets.map(
       (row) => `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
     ),
+  );
+  const variantAssetByKey = new Map(
+    variantAssets.map((row) => [
+      `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
+      row,
+    ]),
   );
   const searchVariantIds = new Set(
     searchDocuments.map((row) => row.variant_id),
@@ -1175,17 +1217,67 @@ async function verifyProduction(normalized, options) {
       !variant ||
       variant.question_id !== questionId ||
       (variant.paper_id || null) !==
-        (expectedVariantPaperIds[id] || null)
+      (expectedVariantPaperIds[id] || null)
+    );
+  });
+  const mismatchedQuestionCores = Object.entries(
+    expectedQuestionCoreContentHashes,
+  ).filter(([id, expectedHash]) => {
+    const question = questionById.get(id);
+    return (
+      !question ||
+      question.content_hash !== expectedHash ||
+      strictQuestionSignature(question) !== expectedHash
+    );
+  });
+  const mismatchedVariantDetails = Object.entries(
+    expectedVariantDetails,
+  ).filter(([id, expected]) => {
+    const variant = variantById.get(id);
+    return (
+      !variant ||
+      variant.question_id !== expected.questionId ||
+      variant.dataset_id !== expected.datasetId ||
+      variant.course_id !== expected.courseId ||
+      variant.topic_id !== expected.topicId ||
+      (variant.paper_id || null) !== (expected.paperId || null) ||
+      Number(variant.source_index) !== expected.sourceIndex ||
+      Number(variant.source_occurrence || 0) !==
+        expected.sourceOccurrence ||
+      (variant.canonical_source_subtopic_id || null) !==
+        (expected.canonicalSourceSubtopicId || null)
+    );
+  });
+  const nonReadyVariants = [...expectedVariantIds].filter((id) => {
+    const variant = variantById.get(id);
+    return (
+      !variant ||
+      variant.render_status !== 'ready' ||
+      (variant.render_issue_codes || []).length !== 0
     );
   });
   const missingPlacements = [...expectedPlacementKeys].filter(
     (key) => !placementKeys.has(key),
+  );
+  const unexpectedExpectedPlacements = placements.filter(
+    (row) =>
+      expectedVariantIds.has(row.variant_id) &&
+      !expectedPlacementKeys.has(
+        `${row.variant_id}\u0000${row.subtopic_id}`,
+      ),
   );
   const missingCoursePapers = [...expectedCoursePaperKeys].filter(
     (key) => !coursePaperKeys.has(key),
   );
   const missingVariantPapers = [...expectedVariantPaperKeys].filter(
     (key) => !variantPaperKeys.has(key),
+  );
+  const unexpectedExpectedVariantPapers = variantPapers.filter(
+    (row) =>
+      expectedVariantIds.has(row.variant_id) &&
+      !expectedVariantPaperKeys.has(
+        `${row.variant_id}\u0000${row.paper_id}`,
+      ),
   );
   const missingAssetRows = [...expectedAssetIds].filter(
     (id) => !assetIds.has(id),
@@ -1201,6 +1293,24 @@ async function verifyProduction(normalized, options) {
   );
   const missingVariantAssets = [...expectedVariantAssetKeys].filter(
     (key) => !variantAssetKeys.has(key),
+  );
+  const mismatchedVariantAssets = Object.entries(
+    expectedVariantAssetDetails,
+  ).filter(([key, expected]) => {
+    const row = variantAssetByKey.get(key);
+    return (
+      !row ||
+      row.source_file_id !== expected.sourceFileId ||
+      Number(row.sort_order) !== expected.sortOrder ||
+      String(row.alt_text || '').trim() !== expected.altText
+    );
+  });
+  const unexpectedExpectedVariantAssets = variantAssets.filter(
+    (row) =>
+      expectedVariantIds.has(row.variant_id) &&
+      !expectedVariantAssetKeys.has(
+        `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
+      ),
   );
   const missingSearchDocuments = [...expectedVariantIds].filter(
     (id) => !searchVariantIds.has(id),
@@ -1341,14 +1451,21 @@ async function verifyProduction(normalized, options) {
     mismatchedQuestionSources.length === 0 &&
     mismatchedVariantSources.length === 0 &&
     mismatchedVariants.length === 0 &&
+    mismatchedQuestionCores.length === 0 &&
+    mismatchedVariantDetails.length === 0 &&
+    nonReadyVariants.length === 0 &&
     missingPlacements.length === 0 &&
+    unexpectedExpectedPlacements.length === 0 &&
     missingCoursePapers.length === 0 &&
     missingVariantPapers.length === 0 &&
+    unexpectedExpectedVariantPapers.length === 0 &&
     missingPapers.length === 0 &&
     missingAssetRows.length === 0 &&
     missingAssetSources.length === 0 &&
     mismatchedAssetSources.length === 0 &&
     missingVariantAssets.length === 0 &&
+    mismatchedVariantAssets.length === 0 &&
+    unexpectedExpectedVariantAssets.length === 0 &&
     missingSearchDocuments.length === 0 &&
     unexpectedSearchDocuments.length === 0 &&
     unexpectedQuestions.length === 0 &&
@@ -1409,8 +1526,21 @@ async function verifyProduction(normalized, options) {
     mismatchedVariantSourceRelationships:
       mismatchedVariantSources.length,
     mismatchedVariantRelationships: mismatchedVariants.length,
+    mismatchedQuestionCoreContent:
+      mismatchedQuestionCores.length,
+    mismatchedVariantDetails:
+      mismatchedVariantDetails.length,
+    nonReadyVariants: nonReadyVariants.length,
+    unexpectedExpectedPlacements:
+      unexpectedExpectedPlacements.length,
+    unexpectedExpectedVariantPapers:
+      unexpectedExpectedVariantPapers.length,
     mismatchedAssetSourceRelationships:
       mismatchedAssetSources.length,
+    mismatchedVariantAssetRelationships:
+      mismatchedVariantAssets.length,
+    unexpectedExpectedVariantAssets:
+      unexpectedExpectedVariantAssets.length,
     unexpectedBatchQuestions: unexpectedQuestions.length,
     unexpectedBatchVariants: unexpectedVariants.length,
     unexpectedBatchPapers: unexpectedPapers.length,
@@ -1433,18 +1563,36 @@ async function verifyProduction(normalized, options) {
       .filter((row) => !row.verified)
       .slice(0, 20)
       .map((row) => ({
-        id: row.asset.id,
+        assetIdHash: crypto
+          .createHash('sha256')
+          .update(row.asset.id)
+          .digest('hex'),
         contentHash: row.asset.content_hash,
-        storageKey: row.asset.storage_key,
+        storageKeyHash: crypto
+          .createHash('sha256')
+          .update(row.asset.storage_key)
+          .digest('hex'),
         status: row.status,
         error: row.error || null,
       })),
-    missingQuestionSources: missingQuestionSources.slice(0, 20),
-    missingVariantSources: missingVariantSources.slice(0, 20),
+    missingQuestionSourceHashes: missingQuestionSources
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    missingVariantSourceHashes: missingVariantSources
+      .slice(0, 20)
+      .map((key) =>
+        crypto.createHash('sha256').update(key).digest('hex'),
+      ),
     missingAssets: missingAssets.slice(0, 20),
-    missingQuestionSourceRows: missingQuestionSourceRows.slice(0, 20),
-    missingVariantSourceRows: missingVariantSourceRows.slice(0, 20),
-    missingVariants: missingVariants.slice(0, 20),
+    missingQuestionSourceRowHashes: missingQuestionSourceRows
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    missingVariantSourceRowHashes: missingVariantSourceRows
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    missingVariantHashes: missingVariants
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
     missingPlacements: missingPlacements
       .slice(0, 20)
       .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
@@ -1454,13 +1602,35 @@ async function verifyProduction(normalized, options) {
     missingVariantPapers: missingVariantPapers
       .slice(0, 20)
       .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
-    missingPapers: missingPapers.slice(0, 20),
-    missingAssetRows: missingAssetRows.slice(0, 20),
-    missingAssetSources: missingAssetSources.slice(0, 20),
+    missingPaperHashes: missingPapers
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    missingAssetRowHashes: missingAssetRows
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    missingAssetSourceHashes: missingAssetSources
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
     missingVariantAssets: missingVariantAssets
       .slice(0, 20)
       .map((key) => crypto.createHash('sha256').update(key).digest('hex')),
-    missingSearchDocuments: missingSearchDocuments.slice(0, 20),
+    missingSearchDocumentHashes: missingSearchDocuments
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    mismatchedQuestionCoreHashes: mismatchedQuestionCores
+      .slice(0, 20)
+      .map(([id]) => crypto.createHash('sha256').update(id).digest('hex')),
+    mismatchedVariantDetailHashes: mismatchedVariantDetails
+      .slice(0, 20)
+      .map(([id]) => crypto.createHash('sha256').update(id).digest('hex')),
+    nonReadyVariantHashes: nonReadyVariants
+      .slice(0, 20)
+      .map((id) => crypto.createHash('sha256').update(id).digest('hex')),
+    mismatchedVariantAssetHashes: mismatchedVariantAssets
+      .slice(0, 20)
+      .map(([key]) =>
+        crypto.createHash('sha256').update(key).digest('hex'),
+      ),
     batches,
   };
 }

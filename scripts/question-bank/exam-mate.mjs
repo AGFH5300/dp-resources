@@ -524,13 +524,13 @@ export function courseDescriptor(subjectName, level) {
   };
 }
 
-function sourceFileId(question, role, ordinal, url) {
+export function sourceFileId(question, role, ordinal, url) {
   return deterministicUuid(
     `exam-mate:source-file:${question.sourceQuestionId}:${role}:${ordinal}:${url}`,
   );
 }
 
-function questionMarkdown(question) {
+export function questionMarkdown(question) {
   const blocks = [];
   if (cleanText(question.questionText)) blocks.push(cleanText(question.questionText));
   for (const [index, url] of (question.questionImages || []).entries()) {
@@ -540,7 +540,7 @@ function questionMarkdown(question) {
   return blocks.join('\n\n');
 }
 
-function answerMarkdown(question) {
+export function answerMarkdown(question) {
   const blocks = [];
   if (cleanText(question.answerText)) blocks.push(cleanText(question.answerText));
   for (const [index, url] of (question.answerImages || []).entries()) {
@@ -550,7 +550,7 @@ function answerMarkdown(question) {
   return blocks.join('\n\n');
 }
 
-function strictQuestionSignature(question) {
+export function strictQuestionSignature(question) {
   return sha256(
     JSON.stringify({
       reference: cleanText(question.reference),
@@ -561,7 +561,7 @@ function strictQuestionSignature(question) {
   );
 }
 
-function sourceQuestionSignature(question) {
+export function sourceQuestionSignature(question) {
   return strictQuestionSignature({
     reference: question.reference,
     content: questionMarkdown(question),
@@ -1025,7 +1025,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
     fetchAll(
       client,
       'dp_qb_variant_assets',
-      'variant_id,asset_id,role,created_by_batch_id,last_seen_batch_id',
+      'variant_id,asset_id,source_file_id,role,sort_order,alt_text,created_by_batch_id,last_seen_batch_id',
       ['variant_id', 'asset_id', 'role'],
     ),
   ]);
@@ -1056,6 +1056,9 @@ export async function resolveExamMateForProduction(normalized, client, options =
     variantUpdates: [],
     variantSourceUpdates: [],
     assetSourceUpdates: [],
+    variantAssetUpdates: [],
+    deleteVariants: [],
+    deletePlacements: [],
     deleteVariantAssets: [],
     deleteVariantPapers: [],
     deleteCoursePapers: [],
@@ -1070,7 +1073,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const subtopicByTopicSlug = mapBy(existingSubtopics, (row) => `${row.topic_id}\u0000${row.slug}`);
   const existingQuestionById = mapBy(existingQuestions, (row) => row.id);
   const existingQuestionsByHash = groupBy(existingQuestions, (row) => row.content_hash);
-  const existingQuestionsByReference = groupBy(existingQuestions, (row) => cleanText(row.reference));
+  const existingVariantById = mapBy(existingVariants, (row) => row.id);
   const existingVariantByQuestionCourseTopic = groupBy(
     existingVariants,
     (row) => `${row.question_id}\u0000${row.course_id}\u0000${row.topic_id}`,
@@ -1106,32 +1109,15 @@ export async function resolveExamMateForProduction(normalized, client, options =
     existingAssetSources,
     (row) => row.source_key,
   );
-  const existingVariantAssetKeys = new Set(
-    existingVariantAssets.map(
-      (row) => `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
-    ),
+  const existingVariantAssetByKey = mapBy(
+    existingVariantAssets,
+    (row) => `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
   );
   const examMateAssetIds = new Set(
     existingAssetSources
       .filter((row) => String(row.source_key || '').startsWith('exam-mate:'))
       .map((row) => row.asset_id),
   );
-
-  const existingExamKeyMapsBySubject = new Map();
-  function examKeyMapForSubject(subject) {
-    if (existingExamKeyMapsBySubject.has(subject)) {
-      return existingExamKeyMapsBySubject.get(subject);
-    }
-    const result = new Map();
-    for (const question of existingQuestions) {
-      const key = canonicalExamKey(subject, question.reference);
-      if (!key) continue;
-      if (!result.has(key)) result.set(key, []);
-      result.get(key).push(question);
-    }
-    existingExamKeyMapsBySubject.set(subject, result);
-    return result;
-  }
 
   function ensureSubject(descriptor) {
     let subject = subjectById.get(descriptor.subject.id);
@@ -1216,10 +1202,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const sourceQuestionData = new Map();
   const resolvedQuestionSourceIds = new Set();
   const resolvedQuestionSourceQuestionIds = new Map();
+  const expectedQuestionCoreHashes = new Map();
   for (const sourceQuestion of normalized.source.importableQuestions) {
     const sourceId = String(sourceQuestion.sourceQuestionId);
     const sourceKey = `exam_mate\u0000${sourceId}`;
-    const sourceAlreadyImported = questionSourceByKey.has(sourceKey);
     const parts = referenceParts(sourceQuestion);
     const descriptor = courseDescriptor(sourceQuestion.subject, parts.level);
     const content = questionMarkdown(sourceQuestion);
@@ -1248,58 +1234,56 @@ export async function resolveExamMateForProduction(normalized, client, options =
     const exact = existingQuestionsByHash.get(candidate.content_hash) || [];
     if (exact.length) {
       canonical = [...exact].sort((a, b) => a.id.localeCompare(b.id))[0];
-      if (!sourceAlreadyImported) {
+    }
+
+    if (!canonical) {
+      const idCollision = existingQuestionById.get(candidate.id);
+      if (idCollision) {
         findings.push(
-          finding('info', 'exam_mate_question_reused_exact_content', {
+          finding(
+            'critical',
+            'exam_mate_question_id_content_conflict',
+            {
+              sourceQuestionId: sourceQuestion.sourceQuestionId,
+              candidateQuestionId: candidate.id,
+              candidateContentHash: candidate.content_hash,
+              existingContentHash: idCollision.content_hash,
+            },
+            sourceQuestion,
+          ),
+        );
+        canonical = idCollision;
+      } else {
+        canonical = candidate;
+        rows.questions.push(candidate);
+        existingQuestionById.set(candidate.id, candidate);
+        if (!existingQuestionsByHash.has(candidate.content_hash)) {
+          existingQuestionsByHash.set(candidate.content_hash, []);
+        }
+        existingQuestionsByHash.get(candidate.content_hash).push(candidate);
+      }
+    }
+
+    const priorExpectedHash = expectedQuestionCoreHashes.get(canonical.id);
+    if (
+      priorExpectedHash &&
+      priorExpectedHash !== candidate.content_hash
+    ) {
+      findings.push(
+        finding(
+          'critical',
+          'exam_mate_question_core_has_divergent_source_content',
+          {
             sourceQuestionId: sourceQuestion.sourceQuestionId,
             canonicalQuestionId: canonical.id,
-          }, sourceQuestion),
-        );
-      }
+            priorExpectedHash,
+            candidateContentHash: candidate.content_hash,
+          },
+          sourceQuestion,
+        ),
+      );
     }
-
-    if (!canonical) {
-      const sameReference = existingQuestionsByReference.get(candidate.reference) || [];
-      if (sameReference.length === 1) canonical = sameReference[0];
-    }
-
-    if (!canonical) {
-      const examKey = canonicalExamKey(sourceQuestion.subject, sourceQuestion);
-      const matches = examKey
-        ? examKeyMapForSubject(sourceQuestion.subject).get(examKey) || []
-        : [];
-      if (matches.length) {
-        canonical = [...matches].sort((a, b) => {
-          const readyA = /_ready$/.test(a.source_status || '') ? 0 : 1;
-          const readyB = /_ready$/.test(b.source_status || '') ? 0 : 1;
-          return readyA - readyB || a.id.localeCompare(b.id);
-        })[0];
-        if (!sourceAlreadyImported) {
-          findings.push(
-            finding(matches.length > 1 ? 'warning' : 'info', 'exam_mate_question_reused_exam_reference', {
-              examKey,
-              matchCount: matches.length,
-              canonicalQuestionId: canonical.id,
-            }, sourceQuestion),
-          );
-        }
-      }
-    }
-
-    if (!canonical) {
-      canonical = candidate;
-      rows.questions.push(candidate);
-      existingQuestionById.set(candidate.id, candidate);
-      if (!existingQuestionsByHash.has(candidate.content_hash)) {
-        existingQuestionsByHash.set(candidate.content_hash, []);
-      }
-      existingQuestionsByHash.get(candidate.content_hash).push(candidate);
-      if (!existingQuestionsByReference.has(candidate.reference)) {
-        existingQuestionsByReference.set(candidate.reference, []);
-      }
-      existingQuestionsByReference.get(candidate.reference).push(candidate);
-    }
-
+    expectedQuestionCoreHashes.set(canonical.id, candidate.content_hash);
     canonicalQuestionBySourceId.set(sourceId, canonical.id);
     sourceQuestionData.set(sourceId, { sourceQuestion, descriptor, content, markScheme });
 
@@ -1392,9 +1376,94 @@ export async function resolveExamMateForProduction(normalized, client, options =
     const paper = paperDescriptor(data.sourceQuestion);
     const canonicalPaper = paper ? paperByReference.get(paper.reference) : null;
     const variantKey = `${canonicalQuestionId}\u0000${course.id}\u0000${topic.id}`;
+    const variantSourceKey = `exam_mate\u0000${sourceId}\u0000${course.source_key}\u0000${topic.slug}`;
+    const existingVariantSource = variantSourceByKey.get(variantSourceKey);
+    const sourceBoundVariant = existingVariantSource
+      ? existingVariantById.get(existingVariantSource.variant_id)
+      : null;
+    if (existingVariantSource && !sourceBoundVariant) {
+      findings.push(
+        finding(
+          'critical',
+          'exam_mate_variant_source_points_to_missing_variant',
+          {
+            sourceQuestionId: sourceId,
+            variantSourceId: existingVariantSource.id,
+            missingVariantId: existingVariantSource.variant_id,
+          },
+          data.sourceQuestion,
+        ),
+      );
+    }
     const existing = existingVariantByQuestionCourseTopic.get(variantKey) || [];
     let variant;
-    if (existing.length) {
+    if (sourceBoundVariant) {
+      const desired = {
+        ...sourceBoundVariant,
+        question_id: canonicalQuestionId,
+        dataset_id: topic.dataset_id,
+        course_id: course.id,
+        topic_id: topic.id,
+        paper_id: canonicalPaper?.id || null,
+        source_index: sourceIndex,
+        canonical_source_subtopic_id: subtopic.id,
+        difficulty_value: null,
+        difficulty_label: null,
+        section_raw: null,
+        section_normalized: null,
+        calculator_allowed: null,
+        source_metadata: {
+          provider: 'Exam-Mate',
+          sourceQuestionId: sourceId,
+          sourceTopic: topicName,
+          sourceCourse: course.source_key,
+        },
+      };
+      const materialColumns = [
+        'question_id',
+        'dataset_id',
+        'course_id',
+        'topic_id',
+        'paper_id',
+        'source_index',
+        'canonical_source_subtopic_id',
+        'difficulty_value',
+        'difficulty_label',
+        'section_raw',
+        'section_normalized',
+        'calculator_allowed',
+      ];
+      const needsRepair =
+        materialColumns.some(
+          (column) => sourceBoundVariant[column] !== desired[column],
+        ) ||
+        JSON.stringify(sourceBoundVariant.source_metadata || {}) !==
+          JSON.stringify(desired.source_metadata);
+      if (needsRepair) {
+        if (!canRepairExamMatePartialRow(sourceBoundVariant, recoveryBatchId)) {
+          findings.push(
+            finding(
+              'critical',
+              'exam_mate_source_bound_variant_repair_not_owned_by_failed_batch',
+              {
+                sourceQuestionId: sourceId,
+                variantId: sourceBoundVariant.id,
+                currentQuestionId: sourceBoundVariant.question_id,
+                expectedQuestionId: canonicalQuestionId,
+              },
+              data.sourceQuestion,
+            ),
+          );
+          variant = sourceBoundVariant;
+        } else {
+          variant = desired;
+          recoveryPlan.variantUpdates.push(desired);
+          existingVariantById.set(desired.id, desired);
+        }
+      } else {
+        variant = sourceBoundVariant;
+      }
+    } else if (existing.length) {
       variant = [...existing].sort((a, b) => a.id.localeCompare(b.id))[0];
       if (
         variant.paper_id !== (canonicalPaper?.id || null) ||
@@ -1461,7 +1530,6 @@ export async function resolveExamMateForProduction(normalized, client, options =
     }
     variantBySourceQuestion.set(sourceId, variant);
 
-    const variantSourceKey = `exam_mate\u0000${sourceId}\u0000${course.source_key}\u0000${topic.slug}`;
     resolvedVariantSourceKeys.add(
       `${sourceId}:${course.source_key}:${topic.slug}`,
     );
@@ -1480,7 +1548,6 @@ export async function resolveExamMateForProduction(normalized, client, options =
         sourceUrl: data.sourceQuestion.sourceUrl,
       },
     };
-    const existingVariantSource = variantSourceByKey.get(variantSourceKey);
     if (!existingVariantSource) {
       rows.variantSources.push(desiredVariantSource);
       variantSourceByKey.set(variantSourceKey, desiredVariantSource);
@@ -1729,10 +1796,11 @@ export async function resolveExamMateForProduction(normalized, client, options =
   }
 
   const assetSourceByKey = new Map(existingAssetSourceByKey);
-  const variantAssetKeys = new Set(existingVariantAssetKeys);
+  const variantAssetByKey = new Map(existingVariantAssetByKey);
   const resolvedAssetSourceIds = new Set();
   const resolvedAssetSourceQuestionIds = new Map();
   const resolvedVariantAssetKeys = new Set();
+  const expectedVariantAssetDetails = new Map();
   for (const [sourceId, data] of sourceQuestionData) {
     const variant = variantBySourceQuestion.get(sourceId);
     const canonicalQuestionId = canonicalQuestionBySourceId.get(sourceId);
@@ -1809,16 +1877,59 @@ export async function resolveExamMateForProduction(normalized, client, options =
         );
         const variantAssetKey = `${variant.id}\u0000${asset.id}\u0000${role}`;
         resolvedVariantAssetKeys.add(variantAssetKey);
-        if (!variantAssetKeys.has(variantAssetKey)) {
-          variantAssetKeys.add(variantAssetKey);
-          rows.variantAssets.push({
-            variant_id: variant.id,
-            asset_id: asset.id,
-            source_file_id: fileId,
-            role,
-            sort_order: ordinal,
-            alt_text: role === 'question' ? 'Question image' : 'Markscheme image',
-          });
+        const desiredVariantAsset = {
+          variant_id: variant.id,
+          asset_id: asset.id,
+          source_file_id: fileId,
+          role,
+          sort_order: ordinal,
+          alt_text:
+            role === 'question' ? 'Question image' : 'Markscheme image',
+        };
+        expectedVariantAssetDetails.set(variantAssetKey, {
+          sourceFileId: fileId,
+          sortOrder: ordinal,
+          altText: desiredVariantAsset.alt_text,
+        });
+        const existingVariantAsset = variantAssetByKey.get(variantAssetKey);
+        if (!existingVariantAsset) {
+          variantAssetByKey.set(variantAssetKey, desiredVariantAsset);
+          rows.variantAssets.push(desiredVariantAsset);
+        } else if (
+          existingVariantAsset.source_file_id !== fileId ||
+          Number(existingVariantAsset.sort_order) !== ordinal ||
+          cleanText(existingVariantAsset.alt_text) !==
+            desiredVariantAsset.alt_text
+        ) {
+          if (
+            !canRepairExamMatePartialRow(
+              existingVariantAsset,
+              recoveryBatchId,
+            )
+          ) {
+            findings.push(
+              finding(
+                'critical',
+                'exam_mate_variant_asset_repair_not_owned_by_failed_batch',
+                {
+                  sourceQuestionId: sourceId,
+                  variantId: variant.id,
+                  assetId: asset.id,
+                  role,
+                  ordinal,
+                },
+                data.sourceQuestion,
+              ),
+            );
+          } else {
+            const repair = {
+              ...desiredVariantAsset,
+              created_by_batch_id:
+                existingVariantAsset.created_by_batch_id,
+            };
+            recoveryPlan.variantAssetUpdates.push(repair);
+            variantAssetByKey.set(variantAssetKey, repair);
+          }
         }
       }
     }
@@ -1827,9 +1938,44 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const expectedPaperIds = new Set(
     [...paperByReference.values()].map((row) => row.id),
   );
+  const resolvedVariantIds = new Set(
+    [...variantBySourceQuestion.values()].map((row) => row.id),
+  );
   const repairedVariantIds = new Set(
     recoveryPlan.variantUpdates.map((row) => row.id),
   );
+  const nonExamMateVariantIds = new Set(
+    existingVariantSources
+      .filter((row) => row.provider !== 'exam_mate')
+      .map((row) => row.variant_id),
+  );
+  const blockedStaleVariants = existingVariants.filter(
+    (row) =>
+      canRepairExamMatePartialRow(row, recoveryBatchId) &&
+      !resolvedVariantIds.has(row.id) &&
+      nonExamMateVariantIds.has(row.id),
+  );
+  const staleVariants = existingVariants.filter(
+    (row) =>
+      canRepairExamMatePartialRow(row, recoveryBatchId) &&
+      !resolvedVariantIds.has(row.id) &&
+      !nonExamMateVariantIds.has(row.id),
+  );
+  const staleVariantIds = new Set(staleVariants.map((row) => row.id));
+  if (blockedStaleVariants.length) {
+    findings.push(
+      finding('critical', 'exam_mate_stale_variant_has_external_provenance', {
+        staleVariantCount: staleVariants.length,
+        blockingVariantCount: blockedStaleVariants.length,
+      }),
+    );
+  } else {
+    recoveryPlan.deleteVariants = staleVariants.map((row) => ({
+      id: row.id,
+      created_by_batch_id: row.created_by_batch_id,
+    }));
+  }
+
   const stalePapers = existingPapers.filter(
     (row) =>
       canRepairExamMatePartialRow(row, recoveryBatchId) &&
@@ -1839,28 +1985,67 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const blockedStalePaperVariants = existingVariants.filter(
     (row) =>
       stalePaperIds.has(row.paper_id) &&
-      !repairedVariantIds.has(row.id),
+      !repairedVariantIds.has(row.id) &&
+      !staleVariantIds.has(row.id),
   );
   const blockedStaleVariantPapers = existingVariantPapers.filter(
     (row) =>
       stalePaperIds.has(row.paper_id) &&
+      !staleVariantIds.has(row.variant_id) &&
       !canRepairExamMatePartialRow(row, recoveryBatchId),
+  );
+  const batchPaperIds = new Set(
+    existingPapers
+      .filter((row) => canRepairExamMatePartialRow(row, recoveryBatchId))
+      .map((row) => row.id),
+  );
+  const unexpectedCoursePapers = existingCoursePapers.filter(
+    (row) =>
+      batchPaperIds.has(row.paper_id) &&
+      !resolvedCoursePaperKeys.has(`${row.course_id}\u0000${row.paper_id}`),
+  );
+  const blockedUnexpectedCoursePapers = unexpectedCoursePapers.filter(
+    (row) =>
+      existingVariants.some(
+        (variant) =>
+          !staleVariantIds.has(variant.id) &&
+          !repairedVariantIds.has(variant.id) &&
+          variant.course_id === row.course_id &&
+          variant.paper_id === row.paper_id,
+      ),
   );
   if (
     blockedStalePaperVariants.length ||
-    blockedStaleVariantPapers.length
+    blockedStaleVariantPapers.length ||
+    blockedUnexpectedCoursePapers.length
   ) {
     findings.push(
       finding('critical', 'exam_mate_stale_paper_has_unowned_references', {
         stalePaperCount: stalePapers.length,
         blockingVariantCount: blockedStalePaperVariants.length,
         blockingVariantPaperCount: blockedStaleVariantPapers.length,
+        blockingCoursePaperCount: blockedUnexpectedCoursePapers.length,
       }),
     );
   } else {
+    recoveryPlan.deletePlacements = existingPlacements
+      .filter(
+        (row) =>
+          !staleVariantIds.has(row.variant_id) &&
+          canRepairExamMatePartialRow(row, recoveryBatchId) &&
+          !resolvedPlacementKeys.has(
+            `${row.variant_id}\u0000${row.subtopic_id}`,
+          ),
+      )
+      .map((row) => ({
+        variant_id: row.variant_id,
+        subtopic_id: row.subtopic_id,
+        created_by_batch_id: row.created_by_batch_id,
+      }));
     recoveryPlan.deleteVariantAssets = existingVariantAssets
       .filter(
         (row) =>
+          !staleVariantIds.has(row.variant_id) &&
           canRepairExamMatePartialRow(row, recoveryBatchId) &&
           !resolvedVariantAssetKeys.has(
             `${row.variant_id}\u0000${row.asset_id}\u0000${row.role}`,
@@ -1875,6 +2060,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
     recoveryPlan.deleteVariantPapers = existingVariantPapers
       .filter(
         (row) =>
+          !staleVariantIds.has(row.variant_id) &&
           canRepairExamMatePartialRow(row, recoveryBatchId) &&
           !resolvedVariantPaperKeys.has(
             `${row.variant_id}\u0000${row.paper_id}`,
@@ -1886,7 +2072,15 @@ export async function resolveExamMateForProduction(normalized, client, options =
         created_by_batch_id: row.created_by_batch_id,
       }));
     recoveryPlan.deleteCoursePapers = existingCoursePapers
-      .filter((row) => stalePaperIds.has(row.paper_id))
+      .filter(
+        (row) =>
+          stalePaperIds.has(row.paper_id) ||
+          unexpectedCoursePapers.some(
+            (unexpected) =>
+              unexpected.course_id === row.course_id &&
+              unexpected.paper_id === row.paper_id,
+          ),
+      )
       .map((row) => ({
         course_id: row.course_id,
         paper_id: row.paper_id,
@@ -1909,6 +2103,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
         variantUpdates: recoveryPlan.variantUpdates.length,
         variantSourceUpdates: recoveryPlan.variantSourceUpdates.length,
         assetSourceUpdates: recoveryPlan.assetSourceUpdates.length,
+        variantAssetUpdates:
+          recoveryPlan.variantAssetUpdates.length,
+        deleteVariants: recoveryPlan.deleteVariants.length,
+        deletePlacements: recoveryPlan.deletePlacements.length,
         deleteVariantAssets:
           recoveryPlan.deleteVariantAssets.length,
         deleteVariantPapers:
@@ -1923,9 +2121,6 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const uniqueness = normalizedRowUniqueness(rows);
   findings.push(...uniqueness.findings);
   const resolvedQuestionIds = new Set(canonicalQuestionBySourceId.values());
-  const resolvedVariantIds = new Set(
-    [...variantBySourceQuestion.values()].map((row) => row.id),
-  );
 
   const actualCounts = {
     ...normalized.actualCounts,
@@ -1962,6 +2157,8 @@ export async function resolveExamMateForProduction(normalized, client, options =
       resolvedAssetSourceIds.size - rows.assetSources.length,
     resolvedAssetSources: resolvedAssetSourceIds.size,
     variantAssets: rows.variantAssets.length,
+    repairedVariantAssets:
+      recoveryPlan.variantAssetUpdates.length,
     existingVariantAssets:
       resolvedVariantAssetKeys.size - rows.variantAssets.length,
     resolvedVariantAssets: resolvedVariantAssetKeys.size,
@@ -1976,6 +2173,10 @@ export async function resolveExamMateForProduction(normalized, client, options =
       normalizedSearchDocuments.counts.mergedSearchCandidates,
     searchDocumentMateriallyDivergentGroups:
       normalizedSearchDocuments.counts.materiallyDivergentGroups,
+    recoveryDeletedVariants:
+      recoveryPlan.deleteVariants.length,
+    recoveryDeletedPlacements:
+      recoveryPlan.deletePlacements.length,
     recoveryDeletedVariantAssets:
       recoveryPlan.deleteVariantAssets.length,
     recoveryDeletedVariantPapers:
@@ -1999,6 +2200,11 @@ export async function resolveExamMateForProduction(normalized, client, options =
       questionSourceIds: [...resolvedQuestionSourceIds].sort(),
       questionSourceQuestionIds: Object.fromEntries(
         [...resolvedQuestionSourceQuestionIds.entries()].sort(
+          ([left], [right]) => left.localeCompare(right),
+        ),
+      ),
+      questionCoreContentHashes: Object.fromEntries(
+        [...expectedQuestionCoreHashes.entries()].sort(
           ([left], [right]) => left.localeCompare(right),
         ),
       ),
@@ -2030,6 +2236,24 @@ export async function resolveExamMateForProduction(normalized, client, options =
           left.localeCompare(right),
         ),
       ),
+      variantDetails: Object.fromEntries(
+        [...variantBySourceQuestion.values()]
+          .map((row) => [
+            row.id,
+            {
+              questionId: row.question_id,
+              datasetId: row.dataset_id,
+              courseId: row.course_id,
+              topicId: row.topic_id,
+              paperId: row.paper_id || null,
+              sourceIndex: Number(row.source_index),
+              sourceOccurrence: Number(row.source_occurrence || 0),
+              canonicalSourceSubtopicId:
+                row.canonical_source_subtopic_id || null,
+            },
+          ])
+          .sort(([left], [right]) => left.localeCompare(right)),
+      ),
       placementKeys: [...resolvedPlacementKeys].sort(),
       coursePaperKeys: [...resolvedCoursePaperKeys].sort(),
       variantPaperKeys: [...resolvedVariantPaperKeys].sort(),
@@ -2044,6 +2268,11 @@ export async function resolveExamMateForProduction(normalized, client, options =
         ),
       ),
       variantAssetKeys: [...resolvedVariantAssetKeys].sort(),
+      variantAssetDetails: Object.fromEntries(
+        [...expectedVariantAssetDetails.entries()].sort(
+          ([left], [right]) => left.localeCompare(right),
+        ),
+      ),
     },
   };
 }

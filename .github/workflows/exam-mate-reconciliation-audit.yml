@@ -1,0 +1,175 @@
+name: Exam-Mate reconciliation audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/exam-mate-reconciliation-audit.yml
+      - scripts/import-exam-mate-question-bank-optimized.mjs
+      - scripts/question-bank/exam-mate.mjs
+      - tests/exam-mate-production-recovery.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exam-mate-reconciliation-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Read-only source and production reconciliation
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_PDF_PREVIEW_BUCKET: ${{ secrets.R2_PDF_PREVIEW_BUCKET }}
+      GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+      GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}
+
+    steps:
+      - name: Check out audited source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run focused regression checks
+        run: >-
+          npx vitest run
+          tests/exam-mate-importer.test.mjs
+          tests/exam-mate-optimization-importer.test.mjs
+          tests/exam-mate-production-recovery.test.mjs
+
+      - name: Run TypeScript validation
+        run: npm run typecheck
+
+      - name: Initialize private runner workspace
+        shell: bash
+        run: echo "ROOT=$RUNNER_TEMP/ExamMate-reconciliation-audit" >> "$GITHUB_ENV"
+
+      - name: Download pinned private audits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/staging" "$ROOT/source-capture"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { google } from 'googleapis';
+
+          const files = {
+            'ExamMate-audit-bundle-20260729-234339.zip':
+              '196ro9mwcpUrNEV-7kcI-pYLl9o3JW7u2',
+            'ExamMate-optimization-audit-20260730-153128.zip':
+              '1Dt7c_Bm1y8Alst0tyTjIZkPyxmrN6bEX',
+          };
+          let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.trim();
+          if (
+            (key.startsWith('"') && key.endsWith('"')) ||
+            (key.startsWith("'") && key.endsWith("'"))
+          ) {
+            key = key.slice(1, -1);
+          }
+          key = key.replace(/\\n/g, '\n').trim();
+          const auth = new google.auth.JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          });
+          const drive = google.drive({ version: 'v3', auth });
+          for (const [name, id] of Object.entries(files)) {
+            const target = path.join(process.env.ROOT, 'staging', name);
+            const response = await drive.files.get(
+              { fileId: id, alt: 'media', supportsAllDrives: true },
+              { responseType: 'stream' },
+            );
+            await new Promise((resolve, reject) => {
+              const output = fs.createWriteStream(target, { flags: 'wx' });
+              response.data.pipe(output);
+              output.on('finish', resolve);
+              output.on('error', reject);
+              response.data.on('error', reject);
+            });
+            console.log(`Downloaded and isolated ${name}.`);
+          }
+          NODE
+          echo '0ba6835f8046af116c589a6545af7f02d472e059cdb8488d7eb4fcd4dd65fa4f  '"$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" | sha256sum -c -
+          echo 'e9f5ef0767d2404caabf6d8b328e7b16361cc308841fd964fa99b513b2f3a4b8  '"$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" | sha256sum -c -
+          unzip -q "$ROOT/staging/ExamMate-audit-bundle-20260729-234339.zip" -d "$ROOT/source-capture"
+          cp "$ROOT/source-capture/index/jobs.json" "$ROOT/source-capture/source/discovered-jobs.json"
+
+      - name: Resolve exact production repair without writes
+        run: |
+          npm run question-bank:exam-mate -- \
+            --archive "$ROOT/source-capture" \
+            --optimization-audit "$ROOT/staging/ExamMate-optimization-audit-20260730-153128.zip" \
+            --mode dry-run \
+            --storage-bucket "$R2_PDF_PREVIEW_BUCKET" \
+            --allow-shared-private-bucket \
+            --resume-batch-id 27462015-2a25-41bf-93b0-c4efd24d9a3a \
+            --report "$ROOT/reconciliation-report.json"
+
+      - name: Enforce read-only audit gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report = JSON.parse(
+            fs.readFileSync(
+              `${process.env.ROOT}/reconciliation-report.json`,
+              'utf8',
+            ),
+          );
+          if (report.productionWritePerformed !== false) {
+            throw new Error('Reconciliation audit unexpectedly wrote to production.');
+          }
+          if (report.verificationStatus !== 'passed') {
+            throw new Error('Reconciliation audit did not pass source validation.');
+          }
+          if ((report.findingsBySeverity?.critical || 0) !== 0) {
+            throw new Error('Reconciliation audit contains critical findings.');
+          }
+          for (const [key, value] of Object.entries({
+            sourceQuestions: 14199,
+            importableQuestions: 14128,
+            quarantinedQuestions: 71,
+            importablePhysicalAssets: 31231,
+            resolvedQuestionSources: 14128,
+            resolvedVariantSources: 14128,
+            resolvedPhysicalAssets: 31231,
+          })) {
+            if (report.actualCounts?.[key] !== value) {
+              throw new Error(
+                `${key} mismatch: ${report.actualCounts?.[key]} !== ${value}`,
+              );
+            }
+          }
+          console.log(
+            JSON.stringify(
+              {
+                verificationStatus: report.verificationStatus,
+                actualCounts: report.actualCounts,
+                findingsBySeverity: report.findingsBySeverity,
+              },
+              null,
+              2,
+            ),
+          );
+          NODE
+
+      - name: Upload compact redacted audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-mate-reconciliation-audit
+          path: ${{ env.ROOT }}/reconciliation-report.json
+          if-no-files-found: error
+          retention-days: 1

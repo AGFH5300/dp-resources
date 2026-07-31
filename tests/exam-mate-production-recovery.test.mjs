@@ -7,6 +7,8 @@ import {
   fetchAll,
   normalizeExamMateSearchDocuments,
   normalizedRowUniqueness,
+  resolveExamMateForProduction,
+  strictQuestionSignature,
 } from '../scripts/question-bank/exam-mate.mjs';
 import {
   applyPartialBatchRecovery,
@@ -28,6 +30,51 @@ const ORIGINAL_ENV = {
   secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
 };
 const ORIGINAL_FETCH = globalThis.fetch;
+
+function snapshotClient(tables) {
+  return {
+    from(table) {
+      const rows = tables[table] || [];
+      let cursor = null;
+      const query = {
+        select() {
+          return query;
+        },
+        order() {
+          return query;
+        },
+        gt(_column, value) {
+          cursor = value;
+          return query;
+        },
+        async range(start, end) {
+          const available =
+            cursor === null
+              ? rows
+              : rows.filter((row) => String(row.id) > String(cursor));
+          return { data: available.slice(start, end + 1), error: null };
+        },
+      };
+      return query;
+    },
+  };
+}
+
+function normalizedQuestion(sourceQuestion) {
+  return {
+    verificationStatus: 'passed',
+    findings: [],
+    actualCounts: {},
+    source: {
+      importableQuestions: [sourceQuestion],
+      usedAssetUrls: new Set(),
+      usedPhysicalHashes: new Set(),
+      verifiedAssetByUrl: new Map(),
+      assetRoot: '/redacted',
+      optimizationAudit: { planRows: [] },
+    },
+  };
+}
 
 afterEach(() => {
   if (ORIGINAL_ENV.questionBank == null)
@@ -556,6 +603,123 @@ describe('Exam-Mate production recovery', () => {
     expect(canRepairExamMatePartialRow({}, batchId)).toBe(false);
   });
 
+  it('never reuses a same-reference question when its audited content differs', async () => {
+    const batchId = '27462015-2a25-41bf-93b0-c4efd24d9a3a';
+    const sourceQuestion = {
+      sourceQuestionId: 'exam-mate-source-1',
+      subjectId: 'biology',
+      subject: 'Biology',
+      curriculum: 'IB Diploma',
+      reference: 'BIOLO/30_HL_Winter_2019_Q23',
+      referenceParts: {
+        sourceCourseCode: 'BIOLO',
+        sourcePaperCode: '30',
+        level: 'HL',
+        season: 'Winter',
+        year: 2019,
+        questionNumber: '23',
+      },
+      topicsRaw: 'Cell biology',
+      questionText: 'Audited Exam-Mate question text.',
+      answerText: 'Audited Exam-Mate markscheme text.',
+      questionImages: [],
+      answerImages: [],
+      sourceUrl: 'https://example.invalid/redacted',
+      page: 1,
+      eventKey: 'redacted',
+    };
+    const reusedByTheOldImporter = {
+      id: '11111111-1111-4111-8111-111111111111',
+      reference: sourceQuestion.reference,
+      content: 'Different PESTLE question text.',
+      mark_scheme: 'Different PESTLE markscheme text.',
+      examiner_report: '',
+      maximum_mark: 4,
+      source_status: 'pestle_import_ready',
+      source_metadata: { provider: 'PESTLE' },
+    };
+    reusedByTheOldImporter.content_hash =
+      strictQuestionSignature(reusedByTheOldImporter);
+    const oldVariant = {
+      id: '22222222-2222-4222-8222-222222222222',
+      question_id: reusedByTheOldImporter.id,
+      dataset_id: '33333333-3333-4333-8333-333333333333',
+      course_id: '44444444-4444-4444-8444-444444444444',
+      topic_id: '55555555-5555-4555-8555-555555555555',
+      paper_id: null,
+      source_index: 999,
+      source_occurrence: 0,
+      canonical_source_subtopic_id:
+        '66666666-6666-4666-8666-666666666666',
+      difficulty_value: null,
+      difficulty_label: null,
+      section_raw: null,
+      section_normalized: null,
+      calculator_allowed: null,
+      source_metadata: { provider: 'PESTLE' },
+      created_by_batch_id: batchId,
+      last_seen_batch_id: batchId,
+    };
+    const tables = {
+      dp_qb_questions: [reusedByTheOldImporter],
+      dp_qb_question_sources: [
+        {
+          id: '77777777-7777-4777-8777-777777777777',
+          provider: 'exam_mate',
+          source_question_id: sourceQuestion.sourceQuestionId,
+          question_id: reusedByTheOldImporter.id,
+          created_by_batch_id: batchId,
+          last_seen_batch_id: batchId,
+        },
+      ],
+      dp_qb_question_variants: [oldVariant],
+      dp_qb_variant_sources: [
+        {
+          id: '88888888-8888-4888-8888-888888888888',
+          provider: 'exam_mate',
+          source_question_id: sourceQuestion.sourceQuestionId,
+          source_course: 'biology:hl',
+          source_topic: 'cell-biology',
+          variant_id: oldVariant.id,
+          created_by_batch_id: batchId,
+          last_seen_batch_id: batchId,
+        },
+      ],
+    };
+
+    const resolved = await resolveExamMateForProduction(
+      normalizedQuestion(sourceQuestion),
+      snapshotClient(tables),
+      {
+        storageProvider: 'r2',
+        storageBucket: 'private-question-bank',
+        recoveryBatchId: batchId,
+      },
+    );
+
+    expect(resolved.verificationStatus).toBe('passed');
+    expect(resolved.rows.questions).toHaveLength(1);
+    const exactQuestion = resolved.rows.questions[0];
+    expect(exactQuestion.id).not.toBe(reusedByTheOldImporter.id);
+    expect(exactQuestion.content).toBe(sourceQuestion.questionText);
+    expect(exactQuestion.mark_scheme).toBe(sourceQuestion.answerText);
+    expect(resolved.recoveryPlan.questionSourceUpdates).toEqual([
+      expect.objectContaining({ question_id: exactQuestion.id }),
+    ]);
+    expect(resolved.recoveryPlan.variantUpdates).toEqual([
+      expect.objectContaining({
+        id: oldVariant.id,
+        question_id: exactQuestion.id,
+      }),
+    ]);
+    expect(resolved.recoveryPlan.deleteVariants).toEqual([]);
+    expect(
+      resolved.productionExpectations.questionCoreContentHashes[
+        exactQuestion.id
+      ],
+    ).toBe(exactQuestion.content_hash);
+  });
+
   it('applies only the exact deterministic partial-batch recovery plan', async () => {
     const batchId = '27462015-2a25-41bf-93b0-c4efd24d9a3a';
     const calls = [];
@@ -639,8 +803,10 @@ describe('Exam-Mate production recovery', () => {
 
     expect(result.updates.dp_qb_question_sources.processedRows).toBe(1);
     expect(result.deletes).toEqual({
+      dp_qb_question_variants: 0,
       dp_qb_variant_assets: 1,
       dp_qb_variant_papers: 1,
+      dp_qb_question_subtopics: 0,
       dp_qb_course_papers: 1,
       dp_qb_papers: 1,
     });
