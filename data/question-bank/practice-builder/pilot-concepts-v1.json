@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "description": "Reviewed cross-subject acceptance mappings for the first practice-builder release slice.",
+  "groups": [
+    {
+      "subjectSlug": "physics",
+      "slug": "mechanics",
+      "name": "Mechanics"
+    },
+    {
+      "subjectSlug": "mathematics",
+      "slug": "calculus",
+      "name": "Calculus"
+    },
+    {
+      "subjectSlug": "chemistry",
+      "slug": "quantitative-chemistry",
+      "name": "Quantitative Chemistry"
+    }
+  ],
+  "concepts": [
+    {
+      "subjectSlug": "physics",
+      "groupSlug": "mechanics",
+      "slug": "kinematics",
+      "name": "Kinematics",
+      "aliases": ["Motion"],
+      "mappings": [
+        { "courseSlug": "sl-2025", "topicKey": "space time and motion", "subtopicKey": "kinematics" },
+        { "courseSlug": "sl-2025", "topicKey": "a space time and motion", "subtopicKey": "kinematics" },
+        { "courseSlug": "hl-2025", "topicKey": "space time and motion", "subtopicKey": "kinematics" },
+        { "courseSlug": "hl-2025", "topicKey": "a space time and motion", "subtopicKey": "kinematics" },
+        { "courseSlug": "sl", "topicKey": "mechanics", "subtopicKey": "motion" },
+        { "courseSlug": "hl", "topicKey": "mechanics", "subtopicKey": "motion" }
+      ]
+    },
+    {
+      "subjectSlug": "physics",
+      "groupSlug": "mechanics",
+      "slug": "forces-and-momentum",
+      "name": "Forces and Momentum",
+      "aliases": ["Forces", "Momentum"],
+      "mappings": [
+        { "courseSlug": "sl-2025", "topicKey": "space time and motion", "subtopicKey": "forces and momentum" },
+        { "courseSlug": "sl-2025", "topicKey": "a space time and motion", "subtopicKey": "forces and momentum" },
+        { "courseSlug": "hl-2025", "topicKey": "space time and motion", "subtopicKey": "forces and momentum" },
+        { "courseSlug": "hl-2025", "topicKey": "a space time and motion", "subtopicKey": "forces and momentum" }
+      ]
+    },
+    {
+      "subjectSlug": "mathematics",
+      "groupSlug": "calculus",
+      "slug": "integration",
+      "name": "Integration",
+      "aliases": ["Integral Calculus"],
+      "mappings": [
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "integral calculus" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "sl 5 5 integration introduction areas between curve and x axis" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "sl 5 10 indefinite integration reverse chain by substitution" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "sl 5 11 definite integrals areas under curve onto x axis and areas between curves" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "ahl 5 15 further derivatives and indefinite integration of these partial fractions" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "ahl 5 16 integration by substitution parts and repeated parts" },
+        { "courseSlug": "analysis-and-approaches-hl", "topicKey": "calculus", "subtopicKey": "ahl 5 17 areas under curve onto y axis volume of revolution about x and y axes" }
+      ]
+    },
+    {
+      "subjectSlug": "chemistry",
+      "groupSlug": "quantitative-chemistry",
+      "slug": "stoichiometry",
+      "name": "Stoichiometry",
+      "aliases": ["The Mole", "Stoichiometric Relationships"],
+      "mappings": [
+        { "courseSlug": "sl-2025", "topicKey": "models of the particulate nature of matter", "subtopicKey": "the mole" },
+        { "courseSlug": "sl-2025", "topicKey": "structure 1 models of the particulate nature of matter", "subtopicKey": "structure 1 4 counting particles by mass the mole" },
+        { "courseSlug": "sl-2025", "topicKey": "reactivity 2 how much how fast and how far", "subtopicKey": "reactivity 2 1 how much the amount of chemical change" },
+        { "courseSlug": "hl-2025", "topicKey": "models of the particulate nature of matter", "subtopicKey": "the mole" },
+        { "courseSlug": "hl-2025", "topicKey": "structure 1 models of the particulate nature of matter", "subtopicKey": "structure 1 4 counting particles by mass the mole" },
+        { "courseSlug": "hl-2025", "topicKey": "reactivity 2 how much how fast and how far", "subtopicKey": "reactivity 2 1 how much the amount of chemical change" },
+        { "courseSlug": "sl", "topicKey": "stoichiometric relationship", "subtopicKey": "stoichiometric relationship" },
+        { "courseSlug": "hl", "topicKey": "stoichiometric relationship", "subtopicKey": "stoichiometric relationship" }
+      ]
+    }
+  ]
+}
