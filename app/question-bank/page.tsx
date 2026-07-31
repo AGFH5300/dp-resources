@@ -344,7 +344,7 @@ export default async function QuestionBankLanding() {
                         </span>
                       </span>
                     </Link>
-                  ))}
+                  ))
                 ) : (
                   <p className="text-sm text-slate-600">
                     Open a question and it will appear here.
