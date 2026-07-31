@@ -22,15 +22,17 @@ import {
   getCourseQuestionBank,
   parseQuestionFilters,
 } from '@/lib/question-bank/queries';
+import {
+  groupCourseTopics,
+  type GroupedSubtopic,
+  type TaxonomyTopic,
+} from '@/lib/question-bank/taxonomy-grouping';
 
 import styles from './course-question-bank.module.css';
 
 const QUESTION_PAGE_SIZE = 24;
 
-type TopicRecord = {
-  id: string;
-  name: string;
-  subtopics?: Array<{ id: string; name: string }>;
+type TopicRecord = TaxonomyTopic & {
   [key: string]: unknown;
 };
 
@@ -39,6 +41,7 @@ type TopicGroup = {
   displayName: string;
   primary: TopicRecord;
   topics: TopicRecord[];
+  subtopics: GroupedSubtopic[];
 };
 
 function cleanTopicLabel(value: unknown) {
@@ -50,47 +53,22 @@ function cleanTopicLabel(value: unknown) {
 }
 
 function groupTopicsForSidebar(topics: TopicRecord[]) {
-  const groups = new Map<string, TopicGroup>();
-  for (const topic of topics) {
-    const displayName = cleanTopicLabel(topic.name);
-    const key = displayName.toLocaleLowerCase();
-    const existing = groups.get(key);
-    if (!existing) {
-      groups.set(key, {
-        key,
-        displayName,
-        primary: topic,
-        topics: [topic],
-      });
-      continue;
-    }
-    existing.topics.push(topic);
-    const existingSubtopics = existing.primary.subtopics?.length || 0;
-    const candidateSubtopics = topic.subtopics?.length || 0;
-    if (candidateSubtopics > existingSubtopics) existing.primary = topic;
-  }
-  return Array.from(groups.values());
+  return groupCourseTopics(topics).map(
+    (group): TopicGroup => ({
+      key: group.canonicalKey,
+      displayName: cleanTopicLabel(group.name),
+      primary: group.topics[0] as TopicRecord,
+      topics: group.topics as TopicRecord[],
+      subtopics: group.subtopics,
+    }),
+  );
 }
 
-function groupedSubtopics(group: TopicGroup, selectedTopicId: string | null) {
-  const selected = group.topics.find((topic) => topic.id === selectedTopicId);
-  const orderedTopics = selected
-    ? [selected, ...group.topics.filter((topic) => topic.id !== selected.id)]
-    : group.topics;
-  const seen = new Set<string>();
-  const rows: Array<{
-    topicId: string;
-    subtopic: { id: string; name: string };
-  }> = [];
-  for (const topic of orderedTopics) {
-    for (const subtopic of topic.subtopics || []) {
-      const key = String(subtopic.name || subtopic.id).trim().toLocaleLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push({ topicId: topic.id, subtopic });
-    }
-  }
-  return rows;
+function groupedSubtopics(group: TopicGroup) {
+  return group.subtopics.map((subtopic) => ({
+    topicId: group.primary.id,
+    subtopic,
+  }));
 }
 
 function pageHref(params: URLSearchParams, page: number) {
@@ -140,6 +118,39 @@ export default async function CourseQuestionBank({
     data.papers as Array<{ id: string; reference: string }>,
   );
   const sidebarTopicGroups = groupTopicsForSidebar(topics);
+  const selectedTopicGroup = sidebarTopicGroups.find(
+    (group) =>
+      Boolean(
+        filters.topicId &&
+          group.topics.some((topic) => topic.id === filters.topicId),
+      ) ||
+      Boolean(
+        filters.subtopicId &&
+          group.subtopics.some((subtopic) =>
+            subtopic.ids.includes(filters.subtopicId as string),
+          ),
+      ),
+  );
+  const selectedSubtopicGroup = selectedTopicGroup?.subtopics.find(
+    (subtopic) =>
+      Boolean(
+        filters.subtopicId && subtopic.ids.includes(filters.subtopicId),
+      ),
+  );
+  const filterTopics = sidebarTopicGroups.map((group) => ({
+    id: group.primary.id,
+    slug: group.key,
+    name: group.displayName,
+    subtopics: group.subtopics.map((subtopic) => ({
+      id: subtopic.id,
+      name: subtopic.name,
+    })),
+  }));
+  const canonicalFilters = {
+    ...filters,
+    topicId: selectedTopicGroup?.primary.id || filters.topicId,
+    subtopicId: selectedSubtopicGroup?.id || filters.subtopicId,
+  };
   const initialVariantId = selectedQuestion(rawParams.question);
   const oldCourse = isOldCourse(data.course, data.siblingCourses);
   const finalAssessmentYear = oldCourse
@@ -217,10 +228,14 @@ export default async function CourseQuestionBank({
               const activeTopic = group.topics.find(
                 (topic) => topic.id === filters.topicId,
               );
-              const isActive = Boolean(activeTopic);
-              const subtopics = isActive
-                ? groupedSubtopics(group, filters.topicId)
-                : [];
+              const isActive = Boolean(
+                activeTopic ||
+                  (filters.subtopicId &&
+                    group.subtopics.some((subtopic) =>
+                      subtopic.ids.includes(filters.subtopicId as string),
+                    )),
+              );
+              const subtopics = isActive ? groupedSubtopics(group) : [];
               return (
                 <div key={group.key} className="mt-3">
                   <Link
@@ -233,10 +248,13 @@ export default async function CourseQuestionBank({
                     <div className="dp-qb-sidebar-subtopics">
                       {subtopics.map(({ topicId, subtopic }) => (
                         <Link
-                          key={`${topicId}-${subtopic.id}`}
-                          href={`?topic=${topicId}&subtopic=${subtopic.id}`}
+                          key={`${group.key}-${subtopic.canonicalKey}`}
+                          href={`?topic=${activeTopic?.id || topicId}&subtopic=${subtopic.id}`}
                           className={
-                            filters.subtopicId === subtopic.id ? 'is-active' : ''
+                            filters.subtopicId &&
+                            subtopic.ids.includes(filters.subtopicId)
+                              ? 'is-active'
+                              : ''
                           }
                         >
                           {subtopic.name}
@@ -251,9 +269,9 @@ export default async function CourseQuestionBank({
 
           <section className="min-w-0">
             <QuestionBankFilters
-              topics={topics}
+              topics={filterTopics}
               papers={paperOptions}
-              filters={filters}
+              filters={canonicalFilters}
               filterOptions={data.filterOptions}
               resetHref={basePath}
             />
