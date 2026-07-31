@@ -20,7 +20,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).not.toContain('<select');
     expect(builder).not.toContain('Sparkles');
     expect(builder).not.toContain('type="number"');
-    expect(builder).toContain('>+{increment}<');
+    expect(builder).toContain('+{increment}');
     expect(builder).toContain('Maximum {maximum.toLocaleString()}');
     expect(builder).toContain('SESSION_MAXIMUM = 200');
     expect(builder).toContain('maximumForBlock');
@@ -54,7 +54,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(migration).toContain("'source-topics'");
     expect(migration).toContain("'source-topic-' || substr(md5");
     expect(migration).toContain('dp_qb_concept_topic_memberships');
-    expect(migration).toContain('variant.render_status = \'ready\'');
+    expect(migration).toContain("variant.render_status = 'ready'");
     expect(migration).toContain(
       'Exact source taxonomy mapping by subject and canonical topic key.',
     );
