@@ -1,21 +1,79 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowRight, Bookmark, Search } from 'lucide-react';
+import { ArrowRight, Bookmark, ChevronDown, Search } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { requireMember } from '@/lib/auth';
+import { getQuestionBankCourseCounts } from '@/lib/question-bank/course-counts';
+import { splitMathematicsCourses } from '@/lib/question-bank/mathematics-courses';
 import {
   isOldCourse,
   oldCourseFinalAssessmentYear,
 } from '@/lib/question-bank/presentation';
 import { getQuestionBankLanding } from '@/lib/question-bank/queries';
 
+type LandingCourse = {
+  id: string;
+  slug: string;
+  name: string;
+  level?: string | null;
+  syllabus_label?: string | null;
+};
+
+function CourseLink({
+  subjectSlug,
+  course,
+  siblingCourses,
+  questionCounts,
+  displayName,
+}: {
+  subjectSlug: string;
+  course: LandingCourse;
+  siblingCourses: LandingCourse[];
+  questionCounts: Map<string, number>;
+  displayName?: string;
+}) {
+  const oldCourse = isOldCourse(course, siblingCourses);
+  const questionCount = questionCounts.get(course.id) || 0;
+
+  return (
+    <Link
+      href={`/question-bank/${subjectSlug}/${course.slug}`}
+      className="dp-qb-course-link"
+    >
+      <span>
+        <strong>{displayName || course.name}</strong>
+        <small>
+          {questionCount.toLocaleString()} questions
+          {oldCourse ? (
+            <>
+              {' '}
+              ·{' '}
+              <OldCourseBadge
+                finalAssessmentYear={oldCourseFinalAssessmentYear(
+                  course,
+                  siblingCourses,
+                )}
+              />
+            </>
+          ) : null}
+        </small>
+      </span>
+      <ArrowRight className="size-4" />
+    </Link>
+  );
+}
+
 export default async function QuestionBankLanding() {
   const { user, membership } = await requireMember();
-  const data = await getQuestionBankLanding(user.id);
+  const [data, questionCounts] = await Promise.all([
+    getQuestionBankLanding(user.id),
+    getQuestionBankCourseCounts(),
+  ]);
+
   return (
     <>
       <Nav
@@ -58,50 +116,117 @@ export default async function QuestionBankLanding() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {data.subjects.map((subject: any) => (
-                <article
-                  key={subject.id}
-                  id={`subject-${subject.slug}`}
-                  className="dp-qb-subject-card scroll-mt-24"
-                >
-                  <div className="flex items-center gap-3">
-                    <SubjectIcon subjectSlug={subject.slug} />
-                    <h3>{subject.name}</h3>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {subject.courses.map((course: any) => {
-                      const oldCourse = isOldCourse(course, subject.courses);
-                      return (
-                        <Link
+              {data.subjects.map((subject: any) => {
+                const mathematicsCourses =
+                  subject.slug === 'mathematics'
+                    ? splitMathematicsCourses(subject.courses)
+                    : null;
+                const visibleCourses = mathematicsCourses
+                  ? mathematicsCourses.current
+                  : subject.courses;
+                const legacyCourses = mathematicsCourses
+                  ? [
+                      ...mathematicsCourses.standaloneLegacy,
+                      ...mathematicsCourses.furtherMathematics,
+                    ]
+                  : [];
+                const legacyQuestionCount = legacyCourses.reduce(
+                  (total, course) =>
+                    total + (questionCounts.get(course.id || '') || 0),
+                  0,
+                );
+
+                return (
+                  <article
+                    key={subject.id}
+                    id={`subject-${subject.slug}`}
+                    className="dp-qb-subject-card scroll-mt-24"
+                  >
+                    <div className="flex items-center gap-3">
+                      <SubjectIcon subjectSlug={subject.slug} />
+                      <h3>{subject.name}</h3>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {visibleCourses.map((course: LandingCourse) => (
+                        <CourseLink
                           key={course.id}
-                          href={`/question-bank/${subject.slug}/${course.slug}`}
-                          className="dp-qb-course-link"
-                        >
-                          <span>
-                            <strong>{course.name}</strong>
-                            <small>
-                              {course.questions.toLocaleString()} questions
-                              {oldCourse ? (
-                                <>
-                                  {' '}
-                                  ·{' '}
-                                  <OldCourseBadge
-                                    finalAssessmentYear={oldCourseFinalAssessmentYear(
-                                      course,
-                                      subject.courses,
-                                    )}
-                                  />
-                                </>
-                              ) : null}
-                            </small>
-                          </span>
-                          <ArrowRight className="size-4" />
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </article>
-              ))}
+                          subjectSlug={subject.slug}
+                          course={course}
+                          siblingCourses={subject.courses}
+                          questionCounts={questionCounts}
+                        />
+                      ))}
+
+                      {mathematicsCourses && legacyCourses.length ? (
+                        <details className="group overflow-hidden rounded-[0.6rem] border border-slate-200 bg-white">
+                          <summary className="flex list-none items-center gap-3 px-3 py-3 text-slate-700 transition hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                            <span className="min-w-0 flex-1">
+                              <strong className="block text-sm">
+                                Legacy Mathematics
+                              </strong>
+                              <small className="mt-0.5 block text-xs text-slate-500">
+                                {legacyQuestionCount.toLocaleString()} questions ·
+                                2009–2019 archive
+                              </small>
+                            </span>
+                            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                          </summary>
+
+                          <div className="space-y-2 border-t border-slate-200 bg-slate-50/70 p-2">
+                            {mathematicsCourses.standaloneLegacy.map(
+                              (course: LandingCourse) => (
+                                <CourseLink
+                                  key={course.id}
+                                  subjectSlug={subject.slug}
+                                  course={course}
+                                  siblingCourses={subject.courses}
+                                  questionCounts={questionCounts}
+                                />
+                              ),
+                            )}
+
+                            {mathematicsCourses.furtherMathematics.length ? (
+                              <section className="rounded-[0.6rem] border border-slate-200 bg-white p-2.5">
+                                <div className="mb-2">
+                                  <strong className="block text-sm text-slate-700">
+                                    Further Mathematics
+                                  </strong>
+                                  <small className="mt-0.5 block text-xs text-slate-500">
+                                    {mathematicsCourses.furtherMathematics
+                                      .reduce(
+                                        (total, course) =>
+                                          total +
+                                          (questionCounts.get(course.id || '') ||
+                                            0),
+                                        0,
+                                      )
+                                      .toLocaleString()}{' '}
+                                    questions across SL and HL
+                                  </small>
+                                </div>
+                                <div className="space-y-2">
+                                  {mathematicsCourses.furtherMathematics.map(
+                                    (course: LandingCourse) => (
+                                      <CourseLink
+                                        key={course.id}
+                                        subjectSlug={subject.slug}
+                                        course={course}
+                                        siblingCourses={subject.courses}
+                                        questionCounts={questionCounts}
+                                        displayName={course.level || course.name}
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              </section>
+                            ) : null}
+                          </div>
+                        </details>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
 
