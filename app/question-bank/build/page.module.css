@@ -1,0 +1,23 @@
+.hero {
+  border-color: color-mix(in srgb, var(--dp-blue) 24%, var(--outline));
+  background:
+    radial-gradient(circle at top left, rgb(37 99 235 / 0.12), transparent 42%),
+    var(--dp-warm-surface);
+}
+
+.heroNote {
+  border-color: color-mix(in srgb, var(--dp-blue) 18%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 6%, var(--dp-warm-surface));
+}
+
+:global(html[data-theme='dark']) .hero {
+  border-color: #24456f;
+  background:
+    radial-gradient(circle at top left, rgb(37 99 235 / 0.2), transparent 45%),
+    var(--dp-page);
+}
+
+:global(html[data-theme='dark']) .heroNote {
+  border-color: #29486f;
+  background: #14243a;
+}
