@@ -307,6 +307,7 @@ async function main() {
             ...options,
             client,
             storageBucket: resolveQuestionBankBucket(options),
+            skipR2HeadVerification: true,
           })
         : {
             status: 'blocked',
