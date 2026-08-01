@@ -6,16 +6,20 @@ import { toast } from 'sonner';
 
 import type { PracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 
+type ShareButtonAppearance = 'default' | 'summary';
+
 export function PracticeShareDialog({
   configuration,
   sessionId,
   disabled = false,
   buttonLabel = 'Share set',
+  appearance = 'default',
 }: {
   configuration: PracticeConfiguration | null;
   sessionId?: string | null;
   disabled?: boolean;
   buttonLabel?: string;
+  appearance?: ShareButtonAppearance;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -28,6 +32,10 @@ export function PracticeShareDialog({
       (total, block) => total + block.requestedCount,
       0,
     ) || 0;
+  const buttonClass =
+    appearance === 'summary'
+      ? 'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/55 bg-white/12 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white hover:bg-white/22 disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-white/5 disabled:text-blue-200/55'
+      : 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-600 dark:hover:bg-blue-900/50';
 
   function close() {
     if (loading) return;
@@ -87,7 +95,7 @@ export function PracticeShareDialog({
         type="button"
         disabled={disabled || !configuration}
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-600 dark:hover:bg-blue-900/50"
+        className={buttonClass}
       >
         <Share2 className="size-4" />
         {buttonLabel}
