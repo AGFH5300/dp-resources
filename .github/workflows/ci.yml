@@ -25,10 +25,10 @@ jobs:
           node-version: 24
           cache: npm
       - name: Apply guarded Question Bank blocker patch
-        if: github.head_ref == 'fix/question-bank-session-blockers' && hashFiles('scripts/apply-question-bank-session-blockers.mjs') != ''
-        run: node scripts/apply-question-bank-session-blockers.mjs
+        if: github.head_ref == 'fix/question-bank-session-blockers' && hashFiles('scripts/apply-question-bank-session-blockers.py') != ''
+        run: python3 scripts/apply-question-bank-session-blockers.py
       - name: Commit guarded patch to the pull-request branch
-        if: github.head_ref == 'fix/question-bank-session-blockers' && hashFiles('scripts/apply-question-bank-session-blockers.mjs') == ''
+        if: github.head_ref == 'fix/question-bank-session-blockers' && hashFiles('scripts/apply-question-bank-session-blockers.py') == ''
         run: |
           git checkout origin/main -- .github/workflows/ci.yml
           git diff --check
