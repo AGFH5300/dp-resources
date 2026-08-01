@@ -1,0 +1,27 @@
+.shell {
+  --practice-code-background: #ffffff;
+  --practice-code-text: #0f172a;
+  background: var(--practice-code-background);
+}
+
+.input,
+.input:focus,
+.input:active {
+  background: transparent !important;
+  color: var(--practice-code-text);
+}
+
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--practice-code-background) inset !important;
+  -webkit-text-fill-color: var(--practice-code-text) !important;
+  caret-color: var(--practice-code-text);
+  transition: background-color 9999s ease-out 0s;
+}
+
+:global(html[data-theme='dark']) .shell {
+  --practice-code-background: #020617;
+  --practice-code-text: #f1f5f9;
+}

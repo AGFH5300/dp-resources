@@ -6,12 +6,12 @@ import {
   Bookmark,
   BookOpenCheck,
   ChevronDown,
-  KeyRound,
   Layers3,
   Search,
 } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
+import { QuestionBankJoinModal } from '@/components/question-bank/question-bank-join-modal';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { requireMember } from '@/lib/auth';
@@ -269,26 +269,7 @@ export default async function QuestionBankLanding() {
             </div>
           </Link>
 
-          <Link
-            href="/question-bank/join"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
-          >
-            <div className="flex items-start gap-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-200 dark:group-hover:bg-blue-900/55">
-                <KeyRound className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <strong className="text-lg text-[color:var(--dp-navy)]">
-                  Join with a code
-                </strong>
-                <span className="mt-1 block text-sm leading-6 text-slate-600">
-                  Load a permanent shared configuration, then use exact questions or
-                  customize it for your own progress.
-                </span>
-              </span>
-              <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
-            </div>
-          </Link>
+          <QuestionBankJoinModal />
         </section>
 
         <div

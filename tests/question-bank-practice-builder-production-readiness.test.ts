@@ -74,7 +74,10 @@ describe('Question Bank practice builder production readiness', () => {
 
   it('validates join codes before navigation and displays invalid codes in-app', () => {
     const entry = read('components/question-bank/practice-code-entry.tsx');
-    const joinModal = read('app/question-bank/join/page.tsx');
+    const joinModal = read(
+      'components/question-bank/question-bank-join-modal.tsx',
+    );
+    const joinRoute = read('app/question-bank/join/page.tsx');
     const sharedPage = read('app/question-bank/join/[code]/page.tsx');
     const validationRoute = read(
       'app/api/question-bank/practice-shares/[code]/route.ts',
@@ -85,6 +88,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(entry).toContain('That practice-set code is invalid.');
     expect(joinModal).toContain('role="dialog"');
     expect(joinModal).toContain('aria-modal="true"');
+    expect(joinRoute).toContain("redirect('/question-bank?join=1')");
     expect(sharedPage).toContain('Invalid practice-set code');
     expect(sharedPage).not.toContain('notFound()');
     expect(validationRoute).toContain('getPracticeShare');

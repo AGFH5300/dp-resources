@@ -4,6 +4,8 @@ import { ArrowRight, KeyRound, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
+import styles from './practice-code-entry.module.css';
+
 function formatCode(value: string) {
   const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
   return compact.length > 4
@@ -54,7 +56,7 @@ export function PracticeCodeEntry({
         </span>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row">
           <div
-            className={`flex min-h-12 flex-1 items-center gap-3 rounded-xl border bg-white px-4 transition focus-within:ring-2 dark:bg-slate-950 ${
+            className={`${styles.shell} flex min-h-12 flex-1 items-center gap-3 rounded-xl border px-4 transition focus-within:ring-2 ${
               error
                 ? 'border-red-400 focus-within:border-red-500 focus-within:ring-red-500/20 dark:border-red-700'
                 : 'border-slate-300 focus-within:border-blue-500 focus-within:ring-blue-500/20 dark:border-slate-700'
@@ -70,7 +72,7 @@ export function PracticeCodeEntry({
               placeholder="ABCD-EFGH"
               autoComplete="off"
               spellCheck={false}
-              className="min-w-0 flex-1 border-0 bg-transparent py-3 font-mono text-lg font-semibold uppercase tracking-[0.12em] text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
+              className={`${styles.input} min-w-0 flex-1 border-0 py-3 font-mono text-lg font-semibold uppercase tracking-[0.12em] outline-none placeholder:text-slate-400`}
               aria-label="Practice-set code"
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'practice-code-error' : undefined}

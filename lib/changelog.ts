@@ -31,6 +31,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Added reusable practice-set codes so students can share named Question Bank configurations and choose exact questions, progress-based questions, or full customization.',
     'Expanded the Practice Builder with subject-wide topic selection, fair maximum question allocation, large resumable queues, and independently scrolling panels.',
     'Cleaned duplicated Biology topic labels, improved availability speed, fixed fullscreen practice, and added clearer shared-code validation.',
+    'Fixed practice-set creation blockers by stabilizing question amounts, adding all-course controls, improving Join as an in-page modal, and cleaning imported language score labels.',
   ],
   '2026-07-31': [
     'Expanded the Question Bank with 14,128 verified Exam-Mate questions and 31,231 supporting assets, including markschemes, examiner reports, and diagrams.',
