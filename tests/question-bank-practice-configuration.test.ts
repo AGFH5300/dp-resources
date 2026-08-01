@@ -75,7 +75,18 @@ describe('Question Bank practice configuration', () => {
     ]);
   });
 
-  it('rejects duplicate block keys, missing courses and oversized sessions', () => {
+  it('accepts configurations well beyond 200 questions', () => {
+    const large = configuration();
+    large.blocks[0].requestedCount = 1_250;
+    large.blocks[1].requestedCount = 875;
+
+    const parsed = parsePracticeConfiguration(large);
+    expect(
+      parsed.blocks.reduce((total, block) => total + block.requestedCount, 0),
+    ).toBe(2_125);
+  });
+
+  it('rejects duplicate block keys and missing courses', () => {
     const duplicate = configuration();
     duplicate.blocks[1].key = duplicate.blocks[0].key;
     expect(() => parsePracticeConfiguration(duplicate)).toThrow(
@@ -87,19 +98,18 @@ describe('Question Bank practice configuration', () => {
     expect(() => parsePracticeConfiguration(noCourses)).toThrow(
       'courseIds cannot be empty',
     );
-
-    const tooLarge = configuration();
-    tooLarge.blocks[0].requestedCount = 200;
-    tooLarge.blocks[1].requestedCount = 1;
-    expect(() => parsePracticeConfiguration(tooLarge)).toThrow(
-      'at most 200 questions',
-    );
   });
 
-  it('rejects malformed identifiers and unsupported filter values', () => {
+  it('rejects malformed identifiers, invalid counts and unsupported filters', () => {
     const invalidId = configuration();
     invalidId.blocks[0].conceptId = 'not-a-uuid';
     expect(() => parsePracticeConfiguration(invalidId)).toThrow('valid UUID');
+
+    const invalidCount = configuration();
+    invalidCount.blocks[0].requestedCount = 0;
+    expect(() => parsePracticeConfiguration(invalidCount)).toThrow(
+      'positive whole number',
+    );
 
     const invalidDifficulty = configuration();
     invalidDifficulty.filters.difficulties = ['impossible'];
