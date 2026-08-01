@@ -62,7 +62,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(migration).toContain('composite_concepts');
     expect(migration).toContain("'all questions'");
     expect(migration).toContain("'database'");
-    expect(migration).toContain("concept.status = 'archived'");
+    expect(migration).toContain("set status = 'archived'");
     expect(migration).toContain('row_number() over');
     expect(migration).toContain('partition by filtered.block_key, filtered.question_id');
     expect(migration).toContain('ranked.representative_rank = 1');
