@@ -29,6 +29,8 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain("'/api/question-bank/practice-builder/maximize'");
     expect(builder).toContain('xl:h-[calc(100dvh-7.5rem)]');
     expect(builder).toContain('appearance="summary"');
+    expect(builder).toContain('catalog.subjects.find');
+    expect(builder).toContain('selectAllSubject(fullSubject)');
     expect(builder).not.toContain('SESSION_MAXIMUM');
     expect(builder).not.toContain('BLOCK_MAXIMUM');
     expect(styles).toContain(":global(html[data-theme='dark']) .conceptButton");
