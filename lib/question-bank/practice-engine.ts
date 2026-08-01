@@ -16,15 +16,19 @@ import {
 } from './practice-configuration';
 import { maximizePracticeBlockCounts } from './practice-maximization';
 
-type CandidateRow = {
-  block_key: string;
-  question_id: string;
-  variant_id: string;
-  course_id: string;
-  course_priority: number | string | null;
-  variant_priority: number | string | null;
-  difficulty_rank: number | string | null;
-  stable_order: number | string | null;
+type CandidateTuple = [
+  blockKey: string,
+  questionId: string,
+  variantId: string,
+  courseId: string,
+  coursePriority: number | string | null,
+  variantPriority: number | string | null,
+  difficultyRank: number | string | null,
+  stableOrder: number | string | null,
+];
+
+type CandidatePayloadRow = {
+  payload: CandidateTuple[] | null;
 };
 
 export type PracticePreviewBlock = {
@@ -74,24 +78,46 @@ async function loadCandidates(
   configuration: PracticeConfiguration,
 ) {
   const client = createSupabaseAdminClient();
-  const { data, error } = await client.rpc('dp_qb_practice_candidates', {
+  const { data, error } = await client.rpc('dp_qb_practice_candidate_payload', {
     p_user_id: userId,
     p_configuration: configuration,
   });
   if (error) throw new Error(`Unable to resolve practice candidates: ${error.message}`);
 
-  return ((data || []) as CandidateRow[]).map(
-    (row): PracticeCandidate => ({
-      blockId: row.block_key,
-      questionId: row.question_id,
-      variantId: row.variant_id,
-      courseId: row.course_id,
-      coursePriority: number(row.course_priority, Number.MAX_SAFE_INTEGER),
-      variantPriority: number(row.variant_priority, Number.MAX_SAFE_INTEGER),
-      difficultyRank: number(row.difficulty_rank, Number.MAX_SAFE_INTEGER),
-      stableOrder: number(row.stable_order, Number.MAX_SAFE_INTEGER),
-    }),
-  );
+  const payload = ((data || []) as CandidatePayloadRow[])[0]?.payload || [];
+  if (!Array.isArray(payload))
+    throw new Error('Unable to resolve practice candidates: invalid payload.');
+
+  return payload.map((row, index): PracticeCandidate => {
+    if (!Array.isArray(row) || row.length !== 8)
+      throw new Error(
+        `Unable to resolve practice candidates: invalid row ${index + 1}.`,
+      );
+    const [
+      blockKey,
+      questionId,
+      variantId,
+      courseId,
+      coursePriority,
+      variantPriority,
+      difficultyRank,
+      stableOrder,
+    ] = row;
+    if (!blockKey || !questionId || !variantId || !courseId)
+      throw new Error(
+        `Unable to resolve practice candidates: incomplete row ${index + 1}.`,
+      );
+    return {
+      blockId: blockKey,
+      questionId,
+      variantId,
+      courseId,
+      coursePriority: number(coursePriority, Number.MAX_SAFE_INTEGER),
+      variantPriority: number(variantPriority, Number.MAX_SAFE_INTEGER),
+      difficultyRank: number(difficultyRank, Number.MAX_SAFE_INTEGER),
+      stableOrder: number(stableOrder, Number.MAX_SAFE_INTEGER),
+    };
+  });
 }
 
 function blockSnapshot(block: PracticeConfigurationBlock) {
