@@ -27,6 +27,11 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-08-01': [
+    'Added reusable practice-set codes so students can share named Question Bank configurations and choose exact questions, progress-based questions, or full customization.',
+    'Expanded the Practice Builder with subject-wide topic selection, fair maximum question allocation, large resumable queues, and independently scrolling panels.',
+    'Cleaned duplicated Biology topic labels, improved availability speed, fixed fullscreen practice, and added clearer shared-code validation.',
+  ],
   '2026-07-31': [
     'Expanded the Question Bank with 14,128 verified Exam-Mate questions and 31,231 supporting assets, including markschemes, examiner reports, and diagrams.',
     'Corrected legacy Mathematics option papers so Calculus, Discrete Mathematics, Sets, and Statistics questions remain distinct and link to the correct papers.',
