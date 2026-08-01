@@ -1,0 +1,70 @@
+.control {
+  display: inline-flex;
+}
+
+:global(.dp-qb-practice-pane:fullscreen):has(.control),
+:global(.dp-qb-practice-pane:-webkit-full-screen):has(.control) {
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--dp-page) !important;
+  color: var(--dp-heading);
+}
+
+:global(.dp-qb-practice-pane:fullscreen):has(.control)
+  :global(.dp-qb-practice-content),
+:global(.dp-qb-practice-pane:-webkit-full-screen):has(.control)
+  :global(.dp-qb-practice-content) {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  padding-bottom: 5rem;
+}
+
+:global(.dp-qb-practice-pane:fullscreen):has(.control)
+  :global(.dp-qb-practice-toolbar),
+:global(.dp-qb-practice-pane:-webkit-full-screen):has(.control)
+  :global(.dp-qb-practice-toolbar) {
+  padding-inline: max(0.75rem, calc((100vw - 1100px) / 2));
+}
+
+:global(html.dp-qb-practice-fullscreen):has(.control)
+  :global(.dp-qb-practice-layout.is-open) {
+  display: block;
+}
+
+:global(html.dp-qb-practice-fullscreen):has(.control)
+  :global(.dp-qb-practice-layout.is-open > section[aria-label='Question results']) {
+  display: none;
+}
+
+:global(html.dp-qb-practice-fullscreen):has(.control)
+  :global(.dp-qb-practice-layout.is-open .dp-qb-practice-pane) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 120 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--dp-page) !important;
+  box-shadow: none !important;
+}
+
+:global(html.dp-qb-practice-fullscreen):has(.control)
+  :global(.dp-qb-practice-layout.is-open .dp-qb-practice-content) {
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  padding-bottom: 5rem;
+}
+
+:global(html.dp-qb-practice-fullscreen):has(.control)
+  :global(.dp-qb-practice-layout.is-open .dp-qb-practice-toolbar) {
+  padding-inline: max(0.75rem, calc((100vw - 1100px) / 2));
+}

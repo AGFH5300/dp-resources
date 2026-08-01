@@ -7,13 +7,14 @@ import {
   Bookmark,
   CheckCircle2,
   Circle,
+  CircleAlert,
   Clock3,
   KeyRound,
   Settings2,
 } from 'lucide-react';
-import { notFound } from 'next/navigation';
 
 import { Nav } from '@/components/nav';
+import { PracticeCodeEntry } from '@/components/question-bank/practice-code-entry';
 import { PracticeShareExactButton } from '@/components/question-bank/practice-share-exact-button';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
@@ -40,12 +41,42 @@ export default async function SharedPracticeSetPage({
 }) {
   const { membership } = await requireMember();
   const { code } = await params;
-  const [share, catalog] = await Promise.all([
-    getPracticeShare(code),
-    getPracticeBuilderCatalog(),
-  ]);
-  if (!share) notFound();
+  const share = await getPracticeShare(code);
 
+  if (!share) {
+    return (
+      <>
+        <Nav
+          admin={membership.role === 'admin'}
+          email={membership.email}
+          userId={membership.id}
+        />
+        <main className="mx-auto max-w-2xl px-4 py-8 pb-24 sm:px-6 lg:px-8">
+          <section className="rounded-3xl border border-red-200 bg-white p-6 shadow-sm dark:border-red-900 dark:bg-slate-900 sm:p-8">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-200">
+              <CircleAlert className="size-6" />
+            </div>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+              Invalid practice-set code
+            </h1>
+            <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+              That code does not match a shared practice configuration. Check the
+              characters and try again.
+            </p>
+            <PracticeCodeEntry autoFocus={false} />
+            <Link
+              href="/question-bank"
+              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300"
+            >
+              <ArrowLeft className="size-4" /> Return to Question Bank
+            </Link>
+          </section>
+        </main>
+      </>
+    );
+  }
+
+  const catalog = await getPracticeBuilderCatalog();
   const { concepts, courses } = buildCatalogIndexes(catalog);
   const blocks = share.configuration.blocks
     .filter((block) => block.selectionType === 'concept')

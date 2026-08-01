@@ -5,7 +5,7 @@ import { ArrowLeft, Layers3 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { Nav } from '@/components/nav';
-import { PracticeSetBuilderV3 } from '@/components/question-bank/practice-set-builder-v3';
+import { PracticeSetBuilderV4 } from '@/components/question-bank/practice-set-builder-v4';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
 import {
@@ -63,8 +63,7 @@ export default async function BuildPracticeSetPage({
               <p className="mt-3 text-base leading-7 text-slate-600">
                 Combine topics across subjects, choose different courses for every
                 selection, remove duplicate question cores automatically, and generate
-                one fixed practice queue you can resume. You can use every eligible
-                unique question—there is no 200-question product limit.
+                one fixed practice queue you can leave and resume.
               </p>
             </div>
             <div
@@ -79,7 +78,7 @@ export default async function BuildPracticeSetPage({
         </section>
 
         {catalog.subjects.length ? (
-          <PracticeSetBuilderV3
+          <PracticeSetBuilderV4
             catalog={catalog as any}
             initialConfiguration={initialConfiguration}
             sharedSource={

@@ -5,8 +5,16 @@ const coursePage = readFileSync(
   'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
   'utf8',
 );
+const customSessionPage = readFileSync(
+  'app/question-bank/practice/[sessionId]/page.tsx',
+  'utf8',
+);
 const courseStyles = readFileSync(
   'app/question-bank/[subjectSlug]/[courseSlug]/course-question-bank.module.css',
+  'utf8',
+);
+const sharedStyles = readFileSync(
+  'components/question-bank/question-practice-fullscreen-control.module.css',
   'utf8',
 );
 const fullscreenControl = readFileSync(
@@ -59,19 +67,22 @@ describe('Question Bank practice layout', () => {
     );
   });
 
-  it('offers an explicit fullscreen action from the compact view', () => {
+  it('offers fullscreen from both course and custom practice routes', () => {
     expect(coursePage).toContain('<QuestionPracticeFullscreenControl />');
+    expect(customSessionPage).toContain('<QuestionPracticeFullscreenControl />');
     expect(fullscreenControl).toContain('Maximize2');
     expect(fullscreenControl).toContain('Minimize2');
+    expect(fullscreenControl).toContain('pane.requestFullscreen');
+    expect(fullscreenControl).toContain("document.addEventListener('fullscreenchange'");
     expect(fullscreenControl).toContain('FULLSCREEN_ROOT_CLASS');
-    expect(fullscreenControl).toContain('document.documentElement.classList.toggle');
     expect(fullscreenControl).toContain('Exit fullscreen question view');
   });
 
-  it('only applies the fullscreen overlay after the user chooses it', () => {
-    expect(courseStyles).toContain('html.dp-qb-practice-fullscreen');
-    expect(courseStyles).toContain('position: fixed !important');
-    expect(courseStyles).toContain('height: 100dvh');
-    expect(courseStyles).toContain('@media (max-width: 1279px)');
+  it('provides native and in-page fullscreen styles without course-page scoping', () => {
+    expect(sharedStyles).toContain('.dp-qb-practice-pane:fullscreen');
+    expect(sharedStyles).toContain('html.dp-qb-practice-fullscreen');
+    expect(sharedStyles).toContain('position: fixed !important');
+    expect(sharedStyles).toContain('height: 100dvh !important');
+    expect(sharedStyles).not.toContain('.coursePage');
   });
 });
