@@ -7,6 +7,7 @@ import type { QuestionListRow } from '@/lib/question-bank/types';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const PRACTICE_SESSION_PAGE_SIZE = 50;
 
 function requireData<T>(
   data: T | null,
@@ -17,7 +18,15 @@ function requireData<T>(
   return data;
 }
 
-export async function getPracticeSession(sessionId: string, userId: string) {
+export async function getPracticeSession(
+  sessionId: string,
+  userId: string,
+  options: {
+    page?: number | null;
+    requestedVariantId?: string | null;
+    pageSize?: number;
+  } = {},
+) {
   if (!UUID.test(sessionId)) notFound();
   const client = createSupabaseAdminClient();
   const { data: session, error: sessionError } = await client
@@ -31,13 +40,74 @@ export async function getPracticeSession(sessionId: string, userId: string) {
   requireData(session, sessionError, 'Practice session');
   if (!session) notFound();
 
-  const { data: items, error: itemsError } = await client
-    .from('dp_qb_practice_session_items')
-    .select('id,position,status,question_id,variant_id,primary_block_snapshot')
-    .eq('session_id', sessionId)
-    .order('position');
+  const pageSize = Math.min(Math.max(Number(options.pageSize || PRACTICE_SESSION_PAGE_SIZE), 10), 100);
+  const total = Number(session.generated_count || 0);
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  let targetPosition: number | null = null;
+
+  if (options.requestedVariantId && UUID.test(options.requestedVariantId)) {
+    const { data: requestedItem, error: requestedError } = await client
+      .from('dp_qb_practice_session_items')
+      .select('position')
+      .eq('session_id', sessionId)
+      .eq('variant_id', options.requestedVariantId)
+      .maybeSingle();
+    requireData(requestedItem, requestedError, 'Requested session question');
+    if (requestedItem) targetPosition = Number(requestedItem.position);
+  }
+
+  const requestedPage = Number(options.page || 0);
+  const currentPage = Math.min(
+    pages,
+    Math.max(
+      1,
+      targetPosition !== null
+        ? Math.floor(targetPosition / pageSize) + 1
+        : Number.isInteger(requestedPage) && requestedPage > 0
+          ? requestedPage
+          : Math.floor(Number(session.current_position || 0) / pageSize) + 1,
+    ),
+  );
+  const offset = (currentPage - 1) * pageSize;
+  const lastPosition = Math.min(total - 1, offset + pageSize - 1);
+
+  const [itemsResult, previousBoundaryResult, nextBoundaryResult] = await Promise.all([
+    client
+      .from('dp_qb_practice_session_items')
+      .select('id,position,status,question_id,variant_id,primary_block_snapshot')
+      .eq('session_id', sessionId)
+      .order('position')
+      .range(offset, Math.max(offset, lastPosition)),
+    offset > 0
+      ? client
+          .from('dp_qb_practice_session_items')
+          .select('variant_id,position')
+          .eq('session_id', sessionId)
+          .eq('position', offset - 1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    lastPosition + 1 < total
+      ? client
+          .from('dp_qb_practice_session_items')
+          .select('variant_id,position')
+          .eq('session_id', sessionId)
+          .eq('position', lastPosition + 1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
   const sessionItems =
-    requireData(items, itemsError, 'Practice session items') || [];
+    requireData(itemsResult.data, itemsResult.error, 'Practice session items') || [];
+  const previousBoundary = requireData(
+    previousBoundaryResult.data,
+    previousBoundaryResult.error,
+    'Previous session boundary',
+  );
+  const nextBoundary = requireData(
+    nextBoundaryResult.data,
+    nextBoundaryResult.error,
+    'Next session boundary',
+  );
   const variantIds = sessionItems.map((item: any) => item.variant_id);
   const questionIds = sessionItems.map((item: any) => item.question_id);
 
@@ -120,7 +190,7 @@ export async function getPracticeSession(sessionId: string, userId: string) {
       subtopic_names: subtopicsByVariant.get(variant.id) || [],
       progress_status: progressStatus,
       is_saved: savedQuestions.has(variant.question_id),
-      total_count: sessionItems.length,
+      total_count: total,
     };
   });
 
@@ -128,5 +198,11 @@ export async function getPracticeSession(sessionId: string, userId: string) {
     session,
     items: sessionItems,
     questions,
+    currentPage,
+    pages,
+    pageSize,
+    offset,
+    previousBoundaryVariantId: previousBoundary?.variant_id || null,
+    nextBoundaryVariantId: nextBoundary?.variant_id || null,
   };
 }
