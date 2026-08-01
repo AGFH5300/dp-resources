@@ -52,6 +52,7 @@ const ORDERING_MODES = new Set<PracticeOrderingMode>([
   'easier_to_harder',
   'source_order',
 ]);
+const POSTGRES_INTEGER_MAXIMUM = 2_147_483_647;
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -73,8 +74,12 @@ function key(value: unknown, label: string) {
 
 function count(value: unknown, label: string) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 200)
-    throw new Error(`${label} must be between 1 and 200.`);
+  if (
+    !Number.isInteger(parsed) ||
+    parsed < 1 ||
+    parsed > POSTGRES_INTEGER_MAXIMUM
+  )
+    throw new Error(`${label} must be a positive whole number.`);
   return parsed;
 }
 
@@ -156,8 +161,6 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
 
   if (!Array.isArray(root.blocks) || !root.blocks.length)
     throw new Error('At least one practice block is required.');
-  if (root.blocks.length > 20)
-    throw new Error('A practice set can contain at most 20 blocks.');
 
   const blockKeys = new Set<string>();
   let requestedTotal = 0;
@@ -172,6 +175,8 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
       `blocks[${index}].requestedCount`,
     );
     requestedTotal += requestedCount;
+    if (requestedTotal > POSTGRES_INTEGER_MAXIMUM)
+      throw new Error('The requested practice total is too large to store.');
     const selectionType = String(row.selectionType || '');
     const blockFilters = parseFilters(
       row.filters,
@@ -184,9 +189,13 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
         throw new Error(`blocks[${index}].courseIds cannot be empty.`);
       if (row.courseIds.length > 10)
         throw new Error('A concept block can select at most 10 courses.');
-      const courseIds = [...new Set(row.courseIds.map((item, courseIndex) =>
-        uuid(item, `blocks[${index}].courseIds[${courseIndex}]`),
-      ))];
+      const courseIds = [
+        ...new Set(
+          row.courseIds.map((item, courseIndex) =>
+            uuid(item, `blocks[${index}].courseIds[${courseIndex}]`),
+          ),
+        ),
+      ];
       return {
         key: blockKey,
         selectionType,
@@ -209,9 +218,6 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
 
     throw new Error(`blocks[${index}].selectionType is invalid.`);
   });
-
-  if (requestedTotal > 200)
-    throw new Error('A practice session can contain at most 200 questions.');
 
   return {
     schemaVersion: 1,
