@@ -4,7 +4,7 @@ import { Maximize2, Minimize2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import './question-practice-fullscreen-control.module.css';
+import fullscreenStyles from './question-practice-fullscreen-control.module.css';
 
 const OPEN_LAYOUT_SELECTOR = '.dp-qb-practice-layout.is-open';
 const PRACTICE_PANE_SELECTOR = '.dp-qb-practice-pane';
@@ -121,7 +121,7 @@ export function QuestionPracticeFullscreenControl() {
   return createPortal(
     <button
       type="button"
-      className="dp-qb-fullscreen-toggle"
+      className={`${fullscreenStyles.control} dp-qb-fullscreen-toggle`}
       onClick={() => void toggleFullscreen()}
       aria-label={fullscreen ? 'Exit fullscreen question view' : 'Open fullscreen question view'}
       aria-pressed={fullscreen}
