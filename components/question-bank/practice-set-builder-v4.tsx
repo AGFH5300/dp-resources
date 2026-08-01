@@ -6,7 +6,6 @@ import {
   Check,
   CheckSquare2,
   ChevronDown,
-  Layers3,
   ListChecks,
   Loader2,
   Plus,
@@ -559,7 +558,12 @@ export function PracticeSetBuilderV4({
 
           <div className="mt-4 space-y-3 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
             {filteredSubjects.map((subject) => {
-              const concepts = subject.groups.flatMap((group) => group.concepts);
+              const fullSubject =
+                catalog.subjects.find((candidate) => candidate.id === subject.id) ||
+                subject;
+              const concepts = fullSubject.groups.flatMap(
+                (group) => group.concepts,
+              );
               const selectedInSubject = concepts.filter((concept) =>
                 selectedConceptIds.has(concept.id),
               ).length;
@@ -578,7 +582,7 @@ export function PracticeSetBuilderV4({
                       <button
                         type="button"
                         disabled={allSelected}
-                        onClick={() => selectAllSubject(subject)}
+                        onClick={() => selectAllSubject(fullSubject)}
                         className={`${styles.countButton} inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold`}
                       >
                         <CheckSquare2 className="size-4" />
@@ -608,7 +612,7 @@ export function PracticeSetBuilderV4({
                                 key={concept.id}
                                 type="button"
                                 disabled={selected}
-                                onClick={() => addConcept(subject, group.name, concept)}
+                                onClick={() => addConcept(fullSubject, group.name, concept)}
                                 className={`${styles.conceptButton} ${
                                   selected ? styles.conceptButtonSelected : ''
                                 } flex w-full items-center gap-3 rounded-xl border p-3 text-left`}
