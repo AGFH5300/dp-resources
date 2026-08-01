@@ -1,3 +1,7 @@
+.control {
+  display: inline-flex;
+}
+
 :global(.dp-qb-practice-pane:fullscreen),
 :global(.dp-qb-practice-pane:-webkit-full-screen) {
   width: 100vw !important;
