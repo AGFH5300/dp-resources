@@ -241,6 +241,7 @@ export function CoursePracticeWorkspace({
     if (variantId) url.searchParams.set('question', variantId);
     else url.searchParams.delete('question');
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    window.dispatchEvent(new Event('dp-question-change'));
   }
 
   function applyQuestionState(

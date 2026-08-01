@@ -40,7 +40,7 @@ describe('Question Bank session blocker fixes', () => {
     expect(styles).toContain('background: transparent !important');
   });
 
-  it('keeps preview read-only and guarantees Max all never writes zero', () => {
+  it('keeps preview read-only and makes Max all skip impossible filtered topics', () => {
     const builder = read(
       'components/question-bank/practice-set-builder-v4.tsx',
     );
@@ -48,8 +48,11 @@ describe('Question Bank session blocker fixes', () => {
     expect(builder).not.toContain('requestedCount: row.candidateCount');
     expect(builder).toContain('Use all courses');
     expect(builder).toContain('useAllCoursesForAllBlocks');
-    expect(builder).toContain('zeroAllocationKeys');
+    expect(builder).toContain('skippedKeys');
     expect(builder).toContain('result.recommendedCount < 1');
+    expect(builder).toContain('with no matching unique question');
+    expect(builder).toContain('block.requestedCount === 0');
+    expect(builder).toContain('activeBlocks.map');
     expect(builder).toContain('if (isMaximizing || !blocks.length) return;');
   });
 });

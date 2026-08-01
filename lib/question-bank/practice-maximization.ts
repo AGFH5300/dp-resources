@@ -102,7 +102,9 @@ function allocationsByBlock(
 
 /**
  * Finds the largest jointly feasible set of unique question cores while
- * guaranteeing that every non-empty selected block receives at least one.
+ * giving every selected block at least one whenever that is jointly possible.
+ * Empty or irreconcilably overlapping blocks are returned with zero so the
+ * builder can retain them visibly while omitting them from the generated set.
  *
  * The allocation runs in three deterministic maximum-flow stages:
  * 1. reserve one unique question for every block;
@@ -124,45 +126,54 @@ export function maximizePracticeBlockCounts(
     throw new Error('Practice block IDs must be unique.');
 
   const originalCandidateCounts = uniqueCandidateCounts(blocks, candidates);
+  const nonEmptyBlocks = blocks.filter(
+    (block) => (originalCandidateCounts.get(block.blockId) || 0) > 0,
+  );
+  if (!nonEmptyBlocks.length) {
+    return {
+      totalUniqueAllocated: 0,
+      blocks: blocks.map((block) => ({
+        blockId: block.blockId,
+        candidateCount: 0,
+        recommendedCount: 0,
+      })),
+    };
+  }
+  const nonEmptyBlockIds = new Set(nonEmptyBlocks.map((block) => block.blockId));
   const baseline = allocatePracticeQuestions(
-    blocks.map((block) => ({
+    nonEmptyBlocks.map((block) => ({
       blockId: block.blockId,
       requestedCount: 1,
       sortOrder: block.sortOrder,
     })),
-    candidates,
+    candidates.filter((candidate) => nonEmptyBlockIds.has(candidate.blockId)),
   );
   const baselineCounts = allocationsByBlock(blocks, baseline.allocations);
-
-  // A block with no possible unique assignment is reported explicitly. The UI
-  // must not claim that Max all succeeded with a hidden zero-count selection.
-  if (baseline.shortages.length) {
-    return {
-      totalUniqueAllocated: baseline.allocatedCount,
-      blocks: blocks.map((block) => ({
-        blockId: block.blockId,
-        candidateCount: originalCandidateCounts.get(block.blockId) || 0,
-        recommendedCount: baselineCounts.get(block.blockId) || 0,
-      })),
-    };
-  }
+  const allocatedBlockIds = new Set(
+    baseline.allocations.map((allocation) => allocation.blockId),
+  );
+  const allocatableBlocks = blocks.filter((block) =>
+    allocatedBlockIds.has(block.blockId),
+  );
 
   const reservedQuestions = new Set(
     baseline.allocations.map((allocation) => allocation.questionId),
   );
   const afterBaseline = candidates.filter(
-    (candidate) => !reservedQuestions.has(candidate.questionId),
+    (candidate) =>
+      allocatedBlockIds.has(candidate.blockId) &&
+      !reservedQuestions.has(candidate.questionId),
   );
-  const afterBaselineCounts = uniqueCandidateCounts(blocks, afterBaseline);
+  const afterBaselineCounts = uniqueCandidateCounts(allocatableBlocks, afterBaseline);
   const remainingUnique = new Set(
     afterBaseline.map((candidate) => candidate.questionId),
   ).size;
   const balancedCapacities = fairCapacities(
-    blocks,
+    allocatableBlocks,
     afterBaselineCounts,
     remainingUnique,
   );
-  const balancedBlocks = blocks
+  const balancedBlocks = allocatableBlocks
     .filter((block) => (balancedCapacities.get(block.blockId) || 0) > 0)
     .map((block) => ({
       blockId: block.blockId,
@@ -195,7 +206,7 @@ export function maximizePracticeBlockCounts(
     (candidate) => !usedQuestions.has(candidate.questionId),
   );
   const leftoverCounts = uniqueCandidateCounts(blocks, leftovers);
-  const overflowBlocks = blocks
+  const overflowBlocks = allocatableBlocks
     .filter((block) => (leftoverCounts.get(block.blockId) || 0) > 0)
     .map((block) => ({
       blockId: block.blockId,

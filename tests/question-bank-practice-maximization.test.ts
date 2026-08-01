@@ -116,4 +116,33 @@ describe('Question Bank Max all allocation', () => {
       { blockId: 'empty', candidateCount: 0, recommendedCount: 0 },
     ]);
   });
+
+  it('still maximizes every eligible question when 9 of 24 filtered topics are empty', () => {
+    const blocks = Array.from({ length: 24 }, (_, index) => ({
+      blockId: `biology-${index + 1}`,
+      sortOrder: index,
+    }));
+    const candidates = Array.from({ length: 140 }, (_, index) => {
+      const questionId = `hard-${index + 1}`;
+      const primaryBlock = blocks[index % 15].blockId;
+      const rows = [candidate(primaryBlock, questionId)];
+      if (index < 73)
+        rows.push(candidate(blocks[(index + 1) % 15].blockId, questionId));
+      return rows;
+    }).flat();
+
+    expect(candidates).toHaveLength(213);
+    const result = maximizePracticeBlockCounts(blocks, candidates);
+
+    expect(result.totalUniqueAllocated).toBe(140);
+    expect(
+      result.blocks.reduce((total, block) => total + block.recommendedCount, 0),
+    ).toBe(140);
+    expect(result.blocks.slice(0, 15).every((block) => block.recommendedCount > 0)).toBe(
+      true,
+    );
+    expect(result.blocks.slice(15).every((block) => block.recommendedCount === 0)).toBe(
+      true,
+    );
+  });
 });

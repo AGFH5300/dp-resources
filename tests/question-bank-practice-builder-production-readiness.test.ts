@@ -51,9 +51,10 @@ describe('Question Bank practice builder production readiness', () => {
     expect(fullscreen).toContain('observer.observe(document.body');
     expect(fullscreen).toContain('childList: true');
     expect(fullscreen).not.toContain('attributes: true');
-    expect(fullscreen).toContain('paneRef.current !== nextPane');
+    expect(fullscreen).toContain('layoutRef.current !== layout');
     expect(fullscreen).toContain('toolbarRef.current !== nextToolbar');
-    expect(fullscreen).toContain('pane.requestFullscreen');
+    expect(fullscreen).not.toContain('requestFullscreen');
+    expect(fullscreen).toContain('Show question full width');
   });
 
   it('cleans polluted source topics and optimizes representative candidates', () => {

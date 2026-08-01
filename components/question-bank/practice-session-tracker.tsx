@@ -35,6 +35,7 @@ export function PracticeSessionTracker({
           method: 'PATCH',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ variantId, status: 'viewed' }),
+          keepalive: true,
         },
       ).catch(() => undefined);
     };
