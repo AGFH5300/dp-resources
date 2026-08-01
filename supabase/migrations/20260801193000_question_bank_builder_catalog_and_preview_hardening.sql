@@ -45,11 +45,21 @@ set status = 'archived',
 where concept.id in (select id from composite_concepts)
    or (
      concept.slug like 'source-topic-%'
-     and lower(btrim(concept.name)) in (
-       'all questions',
-       'database',
-       'uncategorized',
-       'unassigned'
+     and (
+       lower(btrim(concept.name)) in (
+         'all questions',
+         'uncategorized',
+         'unassigned'
+       )
+       or (
+         lower(btrim(concept.name)) = 'database'
+         and exists (
+           select 1
+           from public.dp_qb_subjects subject
+           where subject.id = concept.subject_id
+             and subject.name = 'Biology'
+         )
+       )
      )
    );
 
@@ -359,26 +369,58 @@ begin
     from public.dp_qb_concepts concept
     where concept.status = 'approved'
       and concept.slug like 'source-topic-%'
-      and lower(btrim(concept.name)) in (
-        'all questions', 'database', 'uncategorized', 'unassigned'
+      and (
+        lower(btrim(concept.name)) in (
+          'all questions', 'uncategorized', 'unassigned'
+        )
+        or (
+          lower(btrim(concept.name)) = 'database'
+          and exists (
+            select 1
+            from public.dp_qb_subjects subject
+            where subject.id = concept.subject_id
+              and subject.name = 'Biology'
+          )
+        )
       )
   ) then
     raise exception 'Generic source-topic concepts remain approved';
   end if;
 
   if exists (
+    with source_concepts as (
+      select concept.id, concept.subject_id, concept.name
+      from public.dp_qb_concepts concept
+      where concept.slug like 'source-topic-%'
+        and concept.status = 'approved'
+    ), split_parts as (
+      select
+        concept.id,
+        concept.subject_id,
+        concept.name,
+        btrim(part) as part
+      from source_concepts concept
+      cross join lateral regexp_split_to_table(
+        concept.name,
+        ',[[:space:]]+'
+      ) part
+      where concept.name ~ ',[[:space:]]+'
+    )
     select 1
-    from public.dp_qb_concepts concept
-    where concept.status = 'approved'
-      and concept.slug like 'source-topic-%'
-      and concept.name ~ ',[[:space:]]+'
-      and exists (
-        select 1
-        from regexp_split_to_table(concept.name, ',[[:space:]]+') part
-        where nullif(btrim(part), '') is null
-      )
+    from split_parts part
+    group by part.id, part.subject_id, part.name
+    having count(*) >= 2
+       and count(*) = count(*) filter (
+         where exists (
+           select 1
+           from source_concepts separate
+           where separate.subject_id = part.subject_id
+             and separate.id <> part.id
+             and lower(btrim(separate.name)) = lower(part.part)
+         )
+       )
   ) then
-    raise exception 'Malformed approved source-topic name detected';
+    raise exception 'Composite source-topic concepts remain approved';
   end if;
 end;
 $$;
