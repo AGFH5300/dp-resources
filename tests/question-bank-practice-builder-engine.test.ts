@@ -16,8 +16,14 @@ const sharingMigration = file(
 const candidateMigration = file(
   'supabase/migrations/20260801170500_question_bank_large_candidate_sets.sql',
 );
+const hardeningMigration = file(
+  'supabase/migrations/20260801193000_question_bank_builder_catalog_and_preview_hardening.sql',
+);
 const previewRoute = file(
   'app/api/question-bank/practice-builder/preview/route.ts',
+);
+const maximizeRoute = file(
+  'app/api/question-bank/practice-builder/maximize/route.ts',
 );
 const sessionRoute = file(
   'app/api/question-bank/practice-builder/sessions/route.ts',
@@ -26,6 +32,9 @@ const sessionStateRoute = file(
   'app/api/question-bank/practice-builder/sessions/[sessionId]/state/route.ts',
 );
 const shareRoute = file('app/api/question-bank/practice-shares/route.ts');
+const shareValidationRoute = file(
+  'app/api/question-bank/practice-shares/[code]/route.ts',
+);
 const exactShareRoute = file(
   'app/api/question-bank/practice-shares/[code]/exact-session/route.ts',
 );
@@ -35,8 +44,12 @@ const joinPage = file('app/question-bank/join/[code]/page.tsx');
 const sessionPage = file('app/question-bank/practice/[sessionId]/page.tsx');
 
 describe('Question Bank practice builder engine', () => {
-  it('uses one database candidate function for preview and generation', () => {
+  it('uses one database candidate function for preview, maximize and generation', () => {
     expect(originalMigration).toContain('public.dp_qb_practice_candidates');
+    expect(hardeningMigration).toContain(
+      'create or replace function public.dp_qb_practice_candidates',
+    );
+    expect(hardeningMigration).toContain('ranked.representative_rank = 1');
     expect(sharingMigration).toContain(
       'Generated practice item is not eligible for its primary block',
     );
@@ -49,14 +62,18 @@ describe('Question Bank practice builder engine', () => {
   });
 
   it('keeps candidate, session and share mutation functions service-role only', () => {
-    for (const migration of [sharingMigration, candidateMigration]) {
+    for (const migration of [
+      sharingMigration,
+      candidateMigration,
+      hardeningMigration,
+    ]) {
       expect(migration).toContain('from public, anon, authenticated');
       expect(migration).toContain('to service_role');
     }
     expect(sharingMigration).not.toMatch(
       /grant execute on function public\.dp_qb_(?:create_practice_session|create_practice_share|clone_practice_share)[\s\S]*?to authenticated/,
     );
-    expect(candidateMigration).not.toMatch(
+    expect(hardeningMigration).not.toMatch(
       /grant execute on function public\.dp_qb_practice_candidates[\s\S]*?to authenticated/,
     );
   });
@@ -98,9 +115,10 @@ describe('Question Bank practice builder engine', () => {
     );
   });
 
-  it('protects every write API with membership and same-origin validation', () => {
+  it('protects write APIs with membership and same-origin validation', () => {
     for (const route of [
       previewRoute,
+      maximizeRoute,
       sessionRoute,
       sessionStateRoute,
       shareRoute,
@@ -110,19 +128,23 @@ describe('Question Bank practice builder engine', () => {
       expect(route).toContain('requireMember');
       expect(route).toContain('no-store');
     }
+    expect(shareValidationRoute).toContain('requireMember');
+    expect(shareValidationRoute).toContain('no-store');
     expect(previewRoute).toContain('parsePracticeConfiguration');
+    expect(maximizeRoute).toContain('maximizePracticeConfiguration');
     expect(sessionRoute).toContain('PracticeConfigurationShortageError');
     expect(sessionStateRoute).toContain('updatePracticeSessionItem');
   });
 
-  it('adds course, builder and join-by-code entry points', () => {
+  it('adds course, final builder and join-by-code entry points', () => {
     expect(landing).toContain('Practise a course');
     expect(landing).toContain('Build a practice set');
     expect(landing).toContain('Join with a code');
     expect(landing).toContain('href="/question-bank/join"');
-    expect(builderPage).toContain('PracticeSetBuilderV3');
+    expect(builderPage).toContain('PracticeSetBuilderV4');
     expect(joinPage).toContain('Use the creator\'s exact queue');
     expect(joinPage).toContain('Fully customize');
+    expect(joinPage).toContain('Invalid practice-set code');
     expect(sessionPage).toContain('CoursePracticeWorkspace');
     expect(sessionPage).toContain('PracticeSessionTracker');
     expect(sessionPage).toContain('Share this session');
