@@ -40,6 +40,9 @@ const exactShareRoute = file(
 );
 const landing = file('app/question-bank/page.tsx');
 const builderPage = file('app/question-bank/build/page.tsx');
+const builder = file(
+  'components/question-bank/practice-set-builder-v4.tsx',
+);
 const joinModal = file(
   'components/question-bank/question-bank-join-modal.tsx',
 );
@@ -138,6 +141,19 @@ describe('Question Bank practice builder engine', () => {
     expect(maximizeRoute).toContain('maximizePracticeConfiguration');
     expect(sessionRoute).toContain('PracticeConfigurationShortageError');
     expect(sessionStateRoute).toContain('updatePracticeSessionItem');
+  });
+
+  it('does not abort stale POST streams and consumes bodies before auth', () => {
+    expect(builder).not.toContain('new AbortController');
+    expect(builder).not.toContain('signal: controller.signal');
+    expect(builder).toContain('[configuration, isMaximizing]');
+    expect(builder).toContain('if (!configuration || isMaximizing)');
+    expect(previewRoute.indexOf('await request.json()')).toBeLessThan(
+      previewRoute.indexOf('await requireMember()'),
+    );
+    expect(maximizeRoute.indexOf('await request.json()')).toBeLessThan(
+      maximizeRoute.indexOf('await requireMember()'),
+    );
   });
 
   it('adds course, final builder and join-by-code entry points', () => {
