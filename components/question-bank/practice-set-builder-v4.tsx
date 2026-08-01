@@ -372,19 +372,6 @@ export function PracticeSetBuilderV4({
     };
   }, [configuration]);
 
-  useEffect(() => {
-    if (!preview) return;
-    setBlocks((current) => {
-      let changed = false;
-      const next = current.map((block) => {
-        const row = preview.blocks.find((item) => item.key === block.key);
-        if (!row || block.requestedCount <= row.candidateCount) return block;
-        changed = true;
-        return { ...block, requestedCount: row.candidateCount };
-      });
-      return changed ? next : current;
-    });
-  }, [preview]);
 
   function updateBlock(key: string, patch: Partial<BuilderBlock>) {
     setBlocks((current) =>
@@ -419,6 +406,38 @@ export function PracticeSetBuilderV4({
     );
   }
 
+  function useAllCourses(block: BuilderBlock) {
+    const courseIds = block.concept.courses.map((course) => course.id);
+    const upper = block.concept.courses.reduce(
+      (total, course) => total + course.questionCount,
+      0,
+    );
+    updateBlock(block.key, {
+      courseIds,
+      requestedCount: Math.max(1, Math.min(block.requestedCount || 1, upper || 1)),
+    });
+  }
+
+  function useAllCoursesForAllBlocks() {
+    setBlocks((current) =>
+      current.map((block) => {
+        const courseIds = block.concept.courses.map((course) => course.id);
+        const upper = block.concept.courses.reduce(
+          (total, course) => total + course.questionCount,
+          0,
+        );
+        return {
+          ...block,
+          courseIds,
+          requestedCount: Math.max(
+            1,
+            Math.min(block.requestedCount || 1, upper || 1),
+          ),
+        };
+      }),
+    );
+  }
+
   function toggleCourse(block: BuilderBlock, courseId: string) {
     const nextCourseIds = block.courseIds.includes(courseId)
       ? block.courseIds.filter((id) => id !== courseId)
@@ -430,7 +449,7 @@ export function PracticeSetBuilderV4({
       courseIds: nextCourseIds,
       requestedCount: nextCourseIds.length
         ? Math.max(1, Math.min(block.requestedCount, upper || block.requestedCount))
-        : 0,
+        : Math.max(1, block.requestedCount),
     });
   }
 
@@ -441,7 +460,7 @@ export function PracticeSetBuilderV4({
   ) {
     const maximum = maximumForBlock(block, previewBlock);
     updateBlock(block.key, {
-      requestedCount: Math.max(0, Math.min(maximum, Math.floor(requested || 0))),
+      requestedCount: Math.max(maximum > 0 ? 1 : 0, Math.min(maximum, Math.floor(requested || 0))),
     });
   }
 
@@ -458,34 +477,105 @@ export function PracticeSetBuilderV4({
   }
 
   async function maximizeAll() {
-    if (!configuration || isMaximizing) return;
+    if (isMaximizing || !blocks.length) return;
     setIsMaximizing(true);
-    try {
+
+    const filters: PracticeFilters = {
+      difficulties:
+        difficulties as PracticeConfiguration['filters']['difficulties'],
+      statuses: statuses as PracticeConfiguration['filters']['statuses'],
+      saved,
+      calculator,
+    };
+
+    function configurationFor(nextBlocks: BuilderBlock[]): PracticeConfiguration {
+      return {
+        schemaVersion: 1,
+        orderingMode,
+        filters,
+        blocks: nextBlocks.map((block) => ({
+          key: block.key,
+          selectionType: 'concept' as const,
+          conceptId: block.concept.id,
+          courseIds: [...block.courseIds],
+          requestedCount: Math.max(1, block.requestedCount),
+          filters: { ...filters },
+        })),
+      };
+    }
+
+    async function requestMaximum(nextConfiguration: PracticeConfiguration) {
       const response = await fetch('/api/question-bank/practice-builder/maximize', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ configuration }),
+        body: JSON.stringify({ configuration: nextConfiguration }),
       });
       const payload = await response.json();
       if (!response.ok)
         throw new Error(payload.error || 'Unable to calculate the maximum.');
-      const maximum = payload.maximum as PracticeMaximumPreview;
-      const byKey = new Map(maximum.blocks.map((block) => [block.key, block]));
-      setBlocks((current) =>
-        current.map((block) => {
+      return payload.maximum as PracticeMaximumPreview;
+    }
+
+    try {
+      let workingBlocks = blocks.map((block) =>
+        block.courseIds.length
+          ? { ...block, requestedCount: Math.max(1, block.requestedCount) }
+          : {
+              ...block,
+              courseIds: block.concept.courses.map((course) => course.id),
+              requestedCount: Math.max(1, block.requestedCount),
+            },
+      );
+      let maximum = await requestMaximum(configurationFor(workingBlocks));
+      const zeroAllocationKeys = new Set(
+        maximum.blocks
+          .filter(
+            (result) =>
+              result.candidateCount < 1 || result.recommendedCount < 1,
+          )
+          .map((result) => result.key),
+      );
+
+      if (zeroAllocationKeys.size) {
+        workingBlocks = workingBlocks.map((block) =>
+          zeroAllocationKeys.has(block.key)
+            ? {
+                ...block,
+                courseIds: block.concept.courses.map((course) => course.id),
+                requestedCount: Math.max(1, block.requestedCount),
+              }
+            : block,
+        );
+        maximum = await requestMaximum(configurationFor(workingBlocks));
+      }
+
+      const unresolved = maximum.blocks.filter(
+        (result) => result.candidateCount < 1 || result.recommendedCount < 1,
+      );
+      if (unresolved.length)
+        throw new Error(
+          unresolved.length +
+            ' selected topic' +
+            (unresolved.length === 1 ? '' : 's') +
+            ' could not supply a unique question. Try clearing restrictive filters.',
+        );
+
+      const byKey = new Map(maximum.blocks.map((result) => [result.key, result]));
+      setBlocks(
+        workingBlocks.map((block) => {
           const result = byKey.get(block.key);
-          if (!result) return block;
-          return {
-            ...block,
-            requestedCount:
-              result.candidateCount > 0
-                ? Math.max(1, result.recommendedCount)
-                : 0,
-          };
+          return result
+            ? { ...block, requestedCount: result.recommendedCount }
+            : block;
         }),
       );
       toast.success(
-        `Maximized to ${maximum.totalUniqueAllocated.toLocaleString()} unique questions across the selected topics.`,
+        'Maximized to ' +
+          maximum.totalUniqueAllocated.toLocaleString() +
+          ' unique questions across the selected topics.' +
+          (zeroAllocationKeys.size
+            ? ' Topics with zero allocation were expanded to all available courses.'
+            : ''),
       );
     } catch (error) {
       toast.error(
@@ -668,7 +758,19 @@ export function PracticeSetBuilderV4({
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  disabled={!configuration || isMaximizing}
+                  disabled={blocks.every(
+                    (block) =>
+                      block.courseIds.length === block.concept.courses.length,
+                  )}
+                  onClick={useAllCoursesForAllBlocks}
+                  className={`${styles.countButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
+                >
+                  <CheckSquare2 className="size-4" />
+                  Use all courses
+                </button>
+                <button
+                  type="button"
+                  disabled={isMaximizing}
                   onClick={() => void maximizeAll()}
                   className={`${styles.countButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
                 >
@@ -694,6 +796,8 @@ export function PracticeSetBuilderV4({
             {blocks.map((block, blockIndex) => {
               const blockPreview = preview?.blocks.find((row) => row.key === block.key);
               const maximum = maximumForBlock(block, blockPreview);
+              const allCoursesSelected =
+                block.courseIds.length === block.concept.courses.length;
               return (
                 <article key={block.key} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                   <header className="flex items-start gap-3">
@@ -723,9 +827,19 @@ export function PracticeSetBuilderV4({
                   </header>
 
                   <fieldset className="mt-4">
-                    <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      Courses for this topic
-                    </legend>
+                    <div className="flex items-center justify-between gap-3">
+                      <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        Courses for this topic
+                      </legend>
+                      <button
+                        type="button"
+                        disabled={allCoursesSelected}
+                        onClick={() => useAllCourses(block)}
+                        className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
+                      >
+                        {allCoursesSelected ? 'All courses selected' : 'Use all courses'}
+                      </button>
+                    </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {block.concept.courses.map((course) => {
                         const selected = block.courseIds.includes(course.id);

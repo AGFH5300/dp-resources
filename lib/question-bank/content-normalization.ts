@@ -5,7 +5,7 @@ const TABLE_OPTIONS_DIRECTIVE = /:::tableoptions\s*\{[^}\n]*\}/gi;
 const IMPORTED_TABLE_ATTRIBUTE =
   /\b(?:col|row)\d+\s*=\s*(?:\\?["'][^"'\n]*\\?["']|[^\s,;}\]]+)/gi;
 const MAXIMUM_MARK_LINE =
-  /^\s*\\*\[\s*maximum\s+marks?\s*:\s*\d+\s*\\*\]\s*\\*\s*$/i;
+  /^\s*\\*\[\s*(?:maximum\s+marks?|puntaje\s+m[aá]ximo|puntuaci[oó]n\s+m[aá]xima|nota\s+m[aá]xima)\s*:\s*\d+\s*\\*\]\s*\\*\s*$/iu;
 const STANDALONE_MATH_DELIMITER = /^\s*\$\s*$/;
 const LIST_MATH_OPEN = /^(\s*[-*]\s+)\$\s*$/;
 const AUDIO_DIRECTIVE = /:audio\{[^}]*\}/gi;

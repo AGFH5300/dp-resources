@@ -40,6 +40,10 @@ const exactShareRoute = file(
 );
 const landing = file('app/question-bank/page.tsx');
 const builderPage = file('app/question-bank/build/page.tsx');
+const joinModal = file(
+  'components/question-bank/question-bank-join-modal.tsx',
+);
+const joinRoute = file('app/question-bank/join/page.tsx');
 const joinPage = file('app/question-bank/join/[code]/page.tsx');
 const sessionPage = file('app/question-bank/practice/[sessionId]/page.tsx');
 
@@ -139,8 +143,11 @@ describe('Question Bank practice builder engine', () => {
   it('adds course, final builder and join-by-code entry points', () => {
     expect(landing).toContain('Practise a course');
     expect(landing).toContain('Build a practice set');
-    expect(landing).toContain('Join with a code');
-    expect(landing).toContain('href="/question-bank/join"');
+    expect(landing).toContain('QuestionBankJoinModal');
+    expect(landing).not.toContain('href="/question-bank/join"');
+    expect(joinModal).toContain('Join with a code');
+    expect(joinModal).toContain('aria-modal="true"');
+    expect(joinRoute).toContain("redirect('/question-bank?join=1')");
     expect(builderPage).toContain('PracticeSetBuilderV4');
     expect(joinPage).toContain('Use the creator\'s exact queue');
     expect(joinPage).toContain('Fully customize');
