@@ -5,16 +5,16 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('Question Bank practice builder production readiness', () => {
-  it('uses the rebuilt dark-safe builder and custom site select', () => {
+  it('uses the dark-safe builder, custom site selects and no product question ceiling', () => {
     const page = read('app/question-bank/build/page.tsx');
     const builder = read(
-      'components/question-bank/practice-set-builder-v2.tsx',
+      'components/question-bank/practice-set-builder-v3.tsx',
     );
     const styles = read(
       'components/question-bank/practice-set-builder-v2.module.css',
     );
 
-    expect(page).toContain('<PracticeSetBuilderV2');
+    expect(page).toContain('<PracticeSetBuilderV3');
     expect(builder).toContain("import { AppSelect } from '@/components/ui/app-select'");
     expect(builder).toContain('<AppSelect');
     expect(builder).not.toContain('<select');
@@ -22,8 +22,11 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).not.toContain('type="number"');
     expect(builder).toContain('+{increment}');
     expect(builder).toContain('Maximum {maximum.toLocaleString()}');
-    expect(builder).toContain('SESSION_MAXIMUM = 200');
-    expect(builder).toContain('maximumForBlock');
+    expect(builder).not.toContain('SESSION_MAXIMUM');
+    expect(builder).not.toContain('BLOCK_MAXIMUM');
+    expect(builder).toContain('<PracticeShareDialog');
+    expect(builder).toContain('Saved status');
+    expect(builder).toContain('Calculator');
     expect(styles).toContain(":global(html[data-theme='dark']) .conceptButton");
     expect(styles).toContain('.conceptButtonSelected:disabled');
     expect(styles).toContain('.deleteButton:hover');
@@ -59,5 +62,17 @@ describe('Question Bank practice builder production readiness', () => {
       'Exact source taxonomy mapping by subject and canonical topic key.',
     );
     expect(migration).toContain('Cross-subject source-topic mapping detected');
+  });
+
+  it('paginates fixed queues instead of loading every shared question at once', () => {
+    const queries = read('lib/question-bank/practice-session-queries.ts');
+    const sessionPage = read(
+      'app/question-bank/practice/[sessionId]/page.tsx',
+    );
+
+    expect(queries).toContain('PRACTICE_SESSION_PAGE_SIZE = 50');
+    expect(queries).toContain('.range(offset, Math.max(offset, lastPosition))');
+    expect(sessionPage).toContain('Queue page');
+    expect(sessionPage).toContain('only this page of the fixed queue is');
   });
 });

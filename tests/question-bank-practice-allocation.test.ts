@@ -25,7 +25,7 @@ function candidate(
 }
 
 describe('Question Bank practice allocation', () => {
-  it('uses augmenting paths so broad blocks cannot starve constrained blocks', () => {
+  it('uses maximum-cardinality matching so broad blocks cannot starve constrained blocks', () => {
     const result = allocatePracticeQuestions(
       [
         { blockId: 'broad', requestedCount: 1, sortOrder: 0 },
@@ -190,14 +190,32 @@ describe('Question Bank practice allocation', () => {
     ).toEqual(['physics', 'maths', 'physics', 'maths']);
   });
 
-  it('rejects configurations above the initial safety limits', () => {
-    expect(() =>
-      allocatePracticeQuestions(
-        [{ blockId: 'too-large', requestedCount: 201 }],
-        [],
-      ),
-    ).toThrow('at most 200 questions');
+  it('allocates thousands of questions without a product ceiling', () => {
+    const questions = Array.from({ length: 1_500 }, (_, index) => `q${index + 1}`);
+    const result = allocatePracticeQuestions(
+      [
+        { blockId: 'large-a', requestedCount: 700, sortOrder: 0 },
+        { blockId: 'large-b', requestedCount: 700, sortOrder: 1 },
+      ],
+      [
+        ...questions.slice(0, 1_000).map((questionId) =>
+          candidate('large-a', questionId),
+        ),
+        ...questions.slice(500).map((questionId) =>
+          candidate('large-b', questionId),
+        ),
+      ],
+    );
 
+    expect(result.requestedCount).toBe(1_400);
+    expect(result.allocatedCount).toBe(1_400);
+    expect(result.shortages).toEqual([]);
+    expect(new Set(result.allocations.map((row) => row.questionId)).size).toBe(
+      1_400,
+    );
+  });
+
+  it('still rejects duplicate block identities', () => {
     expect(() =>
       allocatePracticeQuestions(
         [

@@ -6,6 +6,7 @@ import {
   Bookmark,
   BookOpenCheck,
   ChevronDown,
+  KeyRound,
   Layers3,
   Search,
 } from 'lucide-react';
@@ -64,8 +65,7 @@ function CourseLink({
           {questionCount.toLocaleString()} questions
           {oldCourse ? (
             <>
-              {' '}
-              ·{' '}
+              {' '}·{' '}
               <OldCourseBadge
                 finalAssessmentYear={oldCourseFinalAssessmentYear(
                   course,
@@ -206,8 +206,8 @@ export default async function QuestionBankLanding() {
           <div>
             <h1>Question Bank</h1>
             <p>
-              Follow one course, or build a custom session across concepts,
-              courses and subjects.
+              Follow one course, build a custom session, or load a configuration
+              shared by another student.
             </p>
           </div>
           <form action="/question-bank/search" className="dp-qb-search-box">
@@ -224,7 +224,7 @@ export default async function QuestionBankLanding() {
         </section>
 
         <section
-          className="mt-6 grid gap-4 md:grid-cols-2"
+          className="mt-6 grid gap-4 md:grid-cols-3"
           aria-label="Practice choices"
         >
           <Link
@@ -261,8 +261,29 @@ export default async function QuestionBankLanding() {
                   Build a practice set
                 </strong>
                 <span className="mt-1 block text-sm leading-6 text-slate-600">
-                  Combine concepts across subjects and choose different courses
-                  and question quotas for every concept.
+                  Combine topics across subjects and choose different courses and
+                  question quotas for every selection.
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
+            </div>
+          </Link>
+
+          <Link
+            href="/question-bank/join"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-200 dark:group-hover:bg-blue-900/55">
+                <KeyRound className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong className="text-lg text-[color:var(--dp-navy)]">
+                  Join with a code
+                </strong>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Load a permanent shared configuration, then use exact questions or
+                  customize it for your own progress.
                 </span>
               </span>
               <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />

@@ -2,17 +2,35 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { ArrowLeft, Layers3 } from 'lucide-react';
+import { notFound } from 'next/navigation';
 
 import { Nav } from '@/components/nav';
-import { PracticeSetBuilderV2 } from '@/components/question-bank/practice-set-builder-v2';
+import { PracticeSetBuilderV3 } from '@/components/question-bank/practice-set-builder-v3';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
+import {
+  applyPracticeSharePreset,
+  getPracticeShare,
+} from '@/lib/question-bank/practice-share';
 
 import styles from './page.module.css';
 
-export default async function BuildPracticeSetPage() {
+export default async function BuildPracticeSetPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { membership } = await requireMember();
-  const catalog = await getPracticeBuilderCatalog();
+  const query = await searchParams;
+  const [catalog, shared] = await Promise.all([
+    getPracticeBuilderCatalog(),
+    query.code ? getPracticeShare(query.code) : Promise.resolve(null),
+  ]);
+  if (query.code && !shared) notFound();
+
+  const initialConfiguration = shared
+    ? applyPracticeSharePreset(shared.configuration, query.preset)
+    : null;
 
   return (
     <>
@@ -45,7 +63,8 @@ export default async function BuildPracticeSetPage() {
               <p className="mt-3 text-base leading-7 text-slate-600">
                 Combine topics across subjects, choose different courses for every
                 selection, remove duplicate question cores automatically, and generate
-                one fixed practice queue you can resume.
+                one fixed practice queue you can resume. You can use every eligible
+                unique question—there is no 200-question product limit.
               </p>
             </div>
             <div
@@ -60,7 +79,19 @@ export default async function BuildPracticeSetPage() {
         </section>
 
         {catalog.subjects.length ? (
-          <PracticeSetBuilderV2 catalog={catalog as any} />
+          <PracticeSetBuilderV3
+            catalog={catalog as any}
+            initialConfiguration={initialConfiguration}
+            sharedSource={
+              shared
+                ? {
+                    code: shared.code,
+                    name: shared.name,
+                    creatorLabel: shared.creatorLabel,
+                  }
+                : null
+            }
+          />
         ) : (
           <section className="mt-6 rounded-2xl border border-dashed border-slate-300 p-8 text-center">
             <h2 className="font-semibold text-slate-800">

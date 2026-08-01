@@ -5,9 +5,11 @@ import { ArrowLeft, Layers3 } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 import { CoursePracticeWorkspace } from '@/components/question-bank/course-practice-workspace';
+import { PracticeShareDialog } from '@/components/question-bank/practice-share-dialog';
 import { QuestionPracticeFullscreenControl } from '@/components/question-bank/question-practice-fullscreen-control';
 import { PracticeSessionTracker } from '@/components/question-bank/practice-session-tracker';
 import { requireMember } from '@/lib/auth';
+import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import { getPracticeSession } from '@/lib/question-bank/practice-session-queries';
 
 const UUID =
@@ -15,6 +17,11 @@ const UUID =
 
 function selectedQuestion(value: string | undefined) {
   return value && UUID.test(value) ? value : null;
+}
+
+function selectedPage(value: string | undefined) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export default async function PracticeSessionPage({
@@ -27,25 +34,32 @@ export default async function PracticeSessionPage({
   const { user, membership } = await requireMember();
   const { sessionId } = await params;
   const query = await searchParams;
-  const data = await getPracticeSession(sessionId, user.id);
   const requestedVariant = selectedQuestion(query.question);
+  const data = await getPracticeSession(sessionId, user.id, {
+    page: selectedPage(query.page),
+    requestedVariantId: requestedVariant,
+  });
   const currentPosition = Math.min(
     Math.max(Number(data.session.current_position || 0), 0),
-    Math.max(data.questions.length - 1, 0),
+    Math.max(Number(data.session.generated_count || 1) - 1, 0),
   );
+  const currentLocalIndex = currentPosition - data.offset;
   const initialVariantId =
     requestedVariant &&
     data.questions.some((question) => question.variant_id === requestedVariant)
       ? requestedVariant
-      : data.questions[currentPosition]?.variant_id || null;
-  const snapshot = data.session.configuration_snapshot as any;
-  const blockCount = Array.isArray(snapshot?.blocks) ? snapshot.blocks.length : 0;
-  const subjectCount = new Set(
-    (Array.isArray(snapshot?.blocks) ? snapshot.blocks : [])
-      .map((block: any) => block.subjectSlug || block.subjectName)
-      .filter(Boolean),
-  ).size;
+      : currentLocalIndex >= 0 && currentLocalIndex < data.questions.length
+        ? data.questions[currentLocalIndex]?.variant_id || null
+        : data.questions[0]?.variant_id || null;
+  const configuration = parsePracticeConfiguration(
+    data.session.configuration_snapshot,
+  );
+  const blockCount = configuration.blocks.length;
   const basePath = `/question-bank/practice/${sessionId}`;
+  const previousPageHref =
+    data.currentPage > 1 ? `${basePath}?page=${data.currentPage - 1}` : null;
+  const nextPageHref =
+    data.currentPage < data.pages ? `${basePath}?page=${data.currentPage + 1}` : null;
 
   return (
     <>
@@ -66,9 +80,17 @@ export default async function PracticeSessionPage({
           >
             <ArrowLeft className="size-4" /> Practice Builder
           </Link>
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-            Fixed session · {data.questions.length} unique questions
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
+              Fixed session · {Number(data.session.generated_count).toLocaleString()} unique
+              questions
+            </span>
+            <PracticeShareDialog
+              configuration={configuration}
+              sessionId={sessionId}
+              buttonLabel="Share this session"
+            />
+          </div>
         </div>
 
         <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -84,11 +106,9 @@ export default async function PracticeSessionPage({
                 Your custom question queue
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                {blockCount} selected concept block{blockCount === 1 ? '' : 's'}
-                {subjectCount
-                  ? ` across ${subjectCount} subject${subjectCount === 1 ? '' : 's'}`
-                  : ''}
-                {' · '}duplicates removed before generation
+                {blockCount} selected block{blockCount === 1 ? '' : 's'} · duplicates
+                removed before generation · only this page of the fixed queue is
+                loaded in the browser
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-64">
@@ -102,9 +122,9 @@ export default async function PracticeSessionPage({
                 </dd>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
-                <dt className="text-slate-500">Status</dt>
+                <dt className="text-slate-500">Queue page</dt>
                 <dd className="mt-1 font-semibold text-slate-800">
-                  {String(data.session.status || 'generated').replaceAll('_', ' ')}
+                  {data.currentPage} of {data.pages}
                 </dd>
               </div>
             </dl>
@@ -114,11 +134,11 @@ export default async function PracticeSessionPage({
         <section className="mt-5">
           <CoursePracticeWorkspace
             questions={data.questions}
-            total={data.questions.length}
-            currentPage={1}
-            pages={1}
-            previousHref={null}
-            nextHref={null}
+            total={Number(data.session.generated_count)}
+            currentPage={data.currentPage}
+            pages={data.pages}
+            previousHref={previousPageHref}
+            nextHref={nextPageHref}
             initialVariantId={initialVariantId}
             coursePath={basePath}
           />
