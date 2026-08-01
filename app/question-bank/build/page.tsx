@@ -80,6 +80,7 @@ export default async function BuildPracticeSetPage({
         {catalog.subjects.length ? (
           <PracticeSetBuilderV4
             catalog={catalog as any}
+            userId={membership.id}
             initialConfiguration={initialConfiguration}
             sharedSource={
               shared

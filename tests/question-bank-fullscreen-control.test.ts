@@ -22,49 +22,10 @@ const fullscreenControl = readFileSync(
   'utf8',
 );
 
-function selectorsContaining(styles: string, fragment: string) {
-  const withoutComments = styles.replace(/\/\*[\s\S]*?\*\//g, '');
-  const selectors: string[] = [];
-  let boundary = 0;
-  for (let index = 0; index < withoutComments.length; index += 1) {
-    const character = withoutComments[index];
-    if (character === '{') {
-      const ruleHeader = withoutComments.slice(boundary, index).trim();
-      if (!ruleHeader.startsWith('@')) {
-        selectors.push(
-          ...ruleHeader
-            .split(',')
-            .map((selector) => selector.trim())
-            .filter((selector) => selector.includes(fragment)),
-        );
-      }
-      boundary = index + 1;
-    } else if (character === '}' || character === ';') {
-      boundary = index + 1;
-    }
-  }
-  return selectors;
-}
-
 describe('Question Bank practice layout', () => {
-  it('keeps the normal selected-question view compact', () => {
-    const guardedRoot = ':global(html.dp-qb-practice-fullscreen)';
-    const compactOverrides = selectorsContaining(
-      courseStyles,
-      ':global(.dp-qb-practice-layout.is-open)',
-    );
-    const resultOverrides = selectorsContaining(
-      courseStyles,
-      ":global(.dp-qb-practice-layout.is-open > section[aria-label='Question results'])",
-    );
-    expect(compactOverrides).not.toHaveLength(0);
-    expect(resultOverrides).not.toHaveLength(0);
-    expect(compactOverrides.every((selector) => selector.includes(guardedRoot))).toBe(
-      true,
-    );
-    expect(resultOverrides.every((selector) => selector.includes(guardedRoot))).toBe(
-      true,
-    );
+  it('keeps route-specific styles out of the shared full-width mode', () => {
+    expect(courseStyles).not.toContain('dp-qb-practice-fullscreen');
+    expect(courseStyles).not.toContain('is-question-focus');
   });
 
   it('offers fullscreen from both course and custom practice routes', () => {
@@ -72,17 +33,20 @@ describe('Question Bank practice layout', () => {
     expect(customSessionPage).toContain('<QuestionPracticeFullscreenControl />');
     expect(fullscreenControl).toContain('Maximize2');
     expect(fullscreenControl).toContain('Minimize2');
-    expect(fullscreenControl).toContain('pane.requestFullscreen');
-    expect(fullscreenControl).toContain("document.addEventListener('fullscreenchange'");
-    expect(fullscreenControl).toContain('FULLSCREEN_ROOT_CLASS');
-    expect(fullscreenControl).toContain('Exit fullscreen question view');
+    expect(fullscreenControl).toContain('QUESTION_FOCUS_CLASS');
+    expect(fullscreenControl).toContain("'is-question-focus'");
+    expect(fullscreenControl).not.toContain('requestFullscreen');
+    expect(fullscreenControl).toContain('Restore question list');
+    expect(fullscreenControl).toContain('Show question full width');
   });
 
-  it('provides native and in-page fullscreen styles without course-page scoping', () => {
-    expect(sharedStyles).toContain('.dp-qb-practice-pane:fullscreen');
-    expect(sharedStyles).toContain('html.dp-qb-practice-fullscreen');
-    expect(sharedStyles).toContain('position: fixed !important');
-    expect(sharedStyles).toContain('height: 100dvh !important');
+  it('expands the question within the page and hides only the result list', () => {
+    expect(sharedStyles).toContain('is-question-focus');
+    expect(sharedStyles).toContain("section[aria-label='Question results']");
+    expect(sharedStyles).toContain('width: 100%');
+    expect(sharedStyles).toContain('max-width: none');
+    expect(sharedStyles).not.toContain(':fullscreen');
+    expect(sharedStyles).not.toContain('100vw');
     expect(sharedStyles).not.toContain('.coursePage');
   });
 });

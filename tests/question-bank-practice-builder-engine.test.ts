@@ -146,8 +146,10 @@ describe('Question Bank practice builder engine', () => {
   it('does not abort stale POST streams and consumes bodies before auth', () => {
     expect(builder).not.toContain('new AbortController');
     expect(builder).not.toContain('signal: controller.signal');
-    expect(builder).toContain('[configuration, isMaximizing]');
-    expect(builder).toContain('if (!configuration || isMaximizing)');
+    expect(builder).toContain('[configuration, draftReady, isMaximizing]');
+    expect(builder).toContain(
+      'if (!draftReady || !configuration || isMaximizing)',
+    );
     expect(previewRoute.indexOf('await request.json()')).toBeLessThan(
       previewRoute.indexOf('await requireMember()'),
     );
@@ -171,5 +173,20 @@ describe('Question Bank practice builder engine', () => {
     expect(sessionPage).toContain('CoursePracticeWorkspace');
     expect(sessionPage).toContain('PracticeSessionTracker');
     expect(sessionPage).toContain('Share this session');
+  });
+
+  it('saves builder and session position changes before users navigate back', () => {
+    const workspace = file(
+      'components/question-bank/course-practice-workspace.tsx',
+    );
+    const tracker = file(
+      'components/question-bank/practice-session-tracker.tsx',
+    );
+
+    expect(builderPage).toContain('userId={membership.id}');
+    expect(builder).toContain('readPracticeBuilderDraft(userId)');
+    expect(builder).toContain('savePracticeBuilderDraft(userId, draft)');
+    expect(workspace).toContain("new Event('dp-question-change')");
+    expect(tracker).toContain('keepalive: true');
   });
 });

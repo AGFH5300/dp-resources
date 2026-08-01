@@ -18,6 +18,11 @@ import { toast } from 'sonner';
 import { PracticeShareDialog } from '@/components/question-bank/practice-share-dialog';
 import { AppSelect } from '@/components/ui/app-select';
 import type { PracticeOrderingMode } from '@/lib/question-bank/practice-allocation';
+import {
+  readPracticeBuilderDraft,
+  savePracticeBuilderDraft,
+  type PracticeBuilderDraft,
+} from '@/lib/question-bank/practice-builder-draft-storage';
 import type {
   PracticeConfiguration,
   PracticeFilters,
@@ -129,6 +134,7 @@ function maximumForBlock(
   block: BuilderBlock,
   previewBlock?: PracticePreviewBlock,
 ) {
+  if (!previewBlock && block.requestedCount === 0) return 0;
   return Math.max(
     0,
     previewBlock?.candidateCount ?? selectedCourseUpperBound(block),
@@ -187,6 +193,26 @@ function initialBlocks(
   return blocks;
 }
 
+function draftBlocks(catalog: Catalog, draft: PracticeBuilderDraft) {
+  const index = catalogConceptIndex(catalog);
+  return draft.blocks.flatMap((block): BuilderBlock[] => {
+    const match = index.get(block.conceptId);
+    if (!match) return [];
+    const validCourses = new Set(match.concept.courses.map((course) => course.id));
+    return [
+      {
+        key: block.key,
+        subjectId: match.subjectId,
+        subjectName: match.subjectName,
+        groupName: match.groupName,
+        concept: match.concept,
+        courseIds: block.courseIds.filter((courseId) => validCourses.has(courseId)),
+        requestedCount: block.requestedCount,
+      },
+    ];
+  });
+}
+
 function savedOption(value: boolean | null) {
   return value === true ? 'saved' : value === false ? 'not_saved' : 'any';
 }
@@ -223,10 +249,12 @@ function makeBlock(
 
 export function PracticeSetBuilderV4({
   catalog,
+  userId,
   initialConfiguration,
   sharedSource,
 }: {
   catalog: Catalog;
+  userId: string;
   initialConfiguration?: PracticeConfiguration | null;
   sharedSource?: SharedBuilderSource | null;
 }) {
@@ -264,6 +292,7 @@ export function PracticeSetBuilderV4({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [isMaximizing, setIsMaximizing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
   const previewRequest = useRef(0);
 
   const selectedConceptIds = useMemo(
@@ -299,11 +328,11 @@ export function PracticeSetBuilderV4({
     .filter((subject) => subject.groups.length);
 
   const configuration = useMemo<PracticeConfiguration | null>(() => {
+    const activeBlocks = blocks.filter((block) => block.requestedCount > 0);
     if (
       !blocks.length ||
-      blocks.some(
-        (block) => !block.courseIds.length || block.requestedCount < 1,
-      )
+      !activeBlocks.length ||
+      blocks.some((block) => !block.courseIds.length)
     )
       return null;
     const filters: PracticeFilters = {
@@ -317,7 +346,7 @@ export function PracticeSetBuilderV4({
       schemaVersion: 1,
       orderingMode,
       filters,
-      blocks: blocks.map((block) => ({
+      blocks: activeBlocks.map((block) => ({
         key: block.key,
         selectionType: 'concept' as const,
         conceptId: block.concept.id,
@@ -328,13 +357,58 @@ export function PracticeSetBuilderV4({
     };
   }, [blocks, calculator, difficulties, orderingMode, saved, statuses]);
 
+  const draft = useMemo<PracticeBuilderDraft>(
+    () => ({
+      schemaVersion: 1,
+      orderingMode,
+      filters: {
+        difficulties:
+          difficulties as PracticeConfiguration['filters']['difficulties'],
+        statuses: statuses as PracticeConfiguration['filters']['statuses'],
+        saved,
+        calculator,
+      },
+      blocks: blocks.map((block) => ({
+        key: block.key,
+        conceptId: block.concept.id,
+        courseIds: [...block.courseIds],
+        requestedCount: block.requestedCount,
+      })),
+    }),
+    [blocks, calculator, difficulties, orderingMode, saved, statuses],
+  );
+
+  useEffect(() => {
+    if (!initialConfiguration) {
+      const restored = readPracticeBuilderDraft(userId);
+      if (restored) {
+        setBlocks(draftBlocks(catalog, restored));
+        setDifficulties(restored.filters.difficulties);
+        setStatuses(restored.filters.statuses);
+        setSaved(restored.filters.saved);
+        setCalculator(restored.filters.calculator);
+        setOrderingMode(restored.orderingMode);
+      }
+    }
+    setDraftReady(true);
+  }, [catalog, initialConfiguration, userId]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      savePracticeBuilderDraft(userId, draft);
+    } catch {
+      // Browser storage can be unavailable or full. The live builder remains usable.
+    }
+  }, [draft, draftReady, userId]);
+
   useEffect(() => {
     setPreview(null);
     setPreviewError('');
     const requestId = previewRequest.current + 1;
     previewRequest.current = requestId;
 
-    if (!configuration || isMaximizing) {
+    if (!draftReady || !configuration || isMaximizing) {
       setPreviewLoading(false);
       return;
     }
@@ -374,7 +448,7 @@ export function PracticeSetBuilderV4({
       disposed = true;
       window.clearTimeout(debounce);
     };
-  }, [configuration, isMaximizing]);
+  }, [configuration, draftReady, isMaximizing]);
 
 
   function updateBlock(key: string, patch: Partial<BuilderBlock>) {
@@ -521,7 +595,7 @@ export function PracticeSetBuilderV4({
     }
 
     try {
-      let workingBlocks = blocks.map((block) =>
+      const workingBlocks = blocks.map((block) =>
         block.courseIds.length
           ? { ...block, requestedCount: Math.max(1, block.requestedCount) }
           : {
@@ -530,8 +604,8 @@ export function PracticeSetBuilderV4({
               requestedCount: Math.max(1, block.requestedCount),
             },
       );
-      let maximum = await requestMaximum(configurationFor(workingBlocks));
-      const zeroAllocationKeys = new Set(
+      const maximum = await requestMaximum(configurationFor(workingBlocks));
+      const skippedKeys = new Set(
         maximum.blocks
           .filter(
             (result) =>
@@ -540,29 +614,8 @@ export function PracticeSetBuilderV4({
           .map((result) => result.key),
       );
 
-      if (zeroAllocationKeys.size) {
-        workingBlocks = workingBlocks.map((block) =>
-          zeroAllocationKeys.has(block.key)
-            ? {
-                ...block,
-                courseIds: block.concept.courses.map((course) => course.id),
-                requestedCount: Math.max(1, block.requestedCount),
-              }
-            : block,
-        );
-        maximum = await requestMaximum(configurationFor(workingBlocks));
-      }
-
-      const unresolved = maximum.blocks.filter(
-        (result) => result.candidateCount < 1 || result.recommendedCount < 1,
-      );
-      if (unresolved.length)
-        throw new Error(
-          unresolved.length +
-            ' selected topic' +
-            (unresolved.length === 1 ? '' : 's') +
-            ' could not supply a unique question. Try clearing restrictive filters.',
-        );
+      if (skippedKeys.size === workingBlocks.length)
+        throw new Error('No questions match the selected courses and filters.');
 
       const byKey = new Map(maximum.blocks.map((result) => [result.key, result]));
       setBlocks(
@@ -577,8 +630,8 @@ export function PracticeSetBuilderV4({
         'Maximized to ' +
           maximum.totalUniqueAllocated.toLocaleString() +
           ' unique questions across the selected topics.' +
-          (zeroAllocationKeys.size
-            ? ' Topics with zero allocation were expanded to all available courses.'
+          (skippedKeys.size
+            ? ` ${skippedKeys.size} topic${skippedKeys.size === 1 ? '' : 's'} with no matching unique question${skippedKeys.size === 1 ? ' was' : 's were'} left at zero and skipped for this session.`
             : ''),
       );
     } catch (error) {
@@ -950,6 +1003,12 @@ export function PracticeSetBuilderV4({
                       {blockPreview.overlapQuestionCount
                         ? ` · ${blockPreview.overlapQuestionCount.toLocaleString()} also match another selection`
                         : ''}
+                    </div>
+                  ) : block.requestedCount === 0 ? (
+                    <div className={`${styles.previewWarning} mt-4 rounded-xl px-3 py-2 text-sm`}>
+                      No questions match the current courses and filters. This topic
+                      stays selected but is skipped until Max all finds an eligible
+                      question after your settings change.
                     </div>
                   ) : null}
                 </article>
