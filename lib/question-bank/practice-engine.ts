@@ -14,6 +14,7 @@ import {
   type PracticeConfiguration,
   type PracticeConfigurationBlock,
 } from './practice-configuration';
+import { maximizePracticeBlockCounts } from './practice-maximization';
 
 type CandidateRow = {
   block_key: string;
@@ -42,6 +43,15 @@ export type PracticePreview = {
   overlappingQuestionCount: number;
   feasible: boolean;
   blocks: PracticePreviewBlock[];
+};
+
+export type PracticeMaximumPreview = {
+  totalUniqueAllocated: number;
+  blocks: Array<{
+    key: string;
+    candidateCount: number;
+    recommendedCount: number;
+  }>;
 };
 
 export class PracticeConfigurationShortageError extends Error {
@@ -165,6 +175,30 @@ export async function previewPracticeConfiguration(
 ) {
   const candidates = await loadCandidates(userId, configuration);
   return createPreview(configuration, candidates).preview;
+}
+
+export async function maximizePracticeConfiguration(
+  userId: string,
+  configuration: PracticeConfiguration,
+): Promise<PracticeMaximumPreview> {
+  const normalized = stablePracticeConfiguration(configuration);
+  const candidates = await loadCandidates(userId, normalized);
+  const maximum = maximizePracticeBlockCounts(
+    normalized.blocks.map((block, index) => ({
+      blockId: block.key,
+      sortOrder: index,
+    })),
+    candidates,
+  );
+
+  return {
+    totalUniqueAllocated: maximum.totalUniqueAllocated,
+    blocks: maximum.blocks.map((block) => ({
+      key: block.blockId,
+      candidateCount: block.candidateCount,
+      recommendedCount: block.recommendedCount,
+    })),
+  };
 }
 
 export async function generatePracticeSession(
