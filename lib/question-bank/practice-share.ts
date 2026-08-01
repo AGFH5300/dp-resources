@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import {
   parsePracticeConfiguration,
   type PracticeConfiguration,
+  type PracticeProgressStatus,
 } from './practice-configuration';
 
 const UUID =
@@ -55,10 +56,10 @@ export function applyPracticeSharePreset(
   if (!['not_started', 'in_progress', 'completed', 'saved', 'all'].includes(normalized))
     return configuration;
 
-  const statuses =
+  const statuses: PracticeProgressStatus[] =
     normalized === 'all' || normalized === 'saved'
-      ? (['not_started', 'in_progress', 'completed'] as const)
-      : ([normalized] as const);
+      ? ['not_started', 'in_progress', 'completed']
+      : [normalized];
   const saved = normalized === 'saved' ? true : null;
 
   return {
