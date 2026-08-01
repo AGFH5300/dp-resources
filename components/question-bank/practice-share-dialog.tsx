@@ -23,6 +23,11 @@ export function PracticeShareDialog({
   const [code, setCode] = useState('');
   const [exactQuestionCount, setExactQuestionCount] = useState(0);
   const [copied, setCopied] = useState(false);
+  const configuredQuestionCount =
+    configuration?.blocks.reduce(
+      (total, block) => total + block.requestedCount,
+      0,
+    ) || 0;
 
   function close() {
     if (loading) return;
@@ -148,11 +153,9 @@ export function PracticeShareDialog({
                 </p>
                 {sessionId ? (
                   <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
-                    This code will also offer the exact {configuration.blocks.reduce(
-                      (total, block) => total + block.requestedCount,
-                      0,
-                    ).toLocaleString()}-question queue and order. Recipients still get
-                    their own independent copy.
+                    This code will also offer the exact{' '}
+                    {configuredQuestionCount.toLocaleString()}-question queue and
+                    order. Recipients still get their own independent copy.
                   </p>
                 ) : null}
                 <button
@@ -185,10 +188,10 @@ export function PracticeShareDialog({
                 </button>
                 <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                   Recipients can choose their own progress filters, edit every topic,
-                  course and quantity, or
+                  course and quantity, or{' '}
                   {exactQuestionCount
-                    ? ` copy the same ${exactQuestionCount.toLocaleString()} questions and order.`
-                    : ' generate a fresh queue from this setup.'}
+                    ? `copy the same ${exactQuestionCount.toLocaleString()} questions and order.`
+                    : 'generate a fresh queue from this setup.'}
                 </p>
                 <button
                   type="button"
