@@ -1,0 +1,34 @@
+name: Apply Question Bank max request fix
+
+on:
+  push:
+    branches:
+      - fix/question-bank-max-all-and-request-aborts
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/question-bank-max-all-and-request-aborts
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply guarded source patch
+        run: python scripts/apply-qb-max-request-fix.py
+      - name: Remove one-time patch files
+        run: rm scripts/apply-qb-max-request-fix.py .github/workflows/apply-qb-max-request-fix.yml
+      - name: Commit product-only changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Prevent aborted Question Bank preview requests"
+          git push origin HEAD:fix/question-bank-max-all-and-request-aborts
