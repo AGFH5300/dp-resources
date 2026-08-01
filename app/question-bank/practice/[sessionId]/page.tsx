@@ -55,22 +55,11 @@ export default async function PracticeSessionPage({
     data.session.configuration_snapshot,
   );
   const blockCount = configuration.blocks.length;
-  const subjectCount = new Set(
-    configuration.blocks
-      .map((block: any) => block.subjectSlug || block.subjectName)
-      .filter(Boolean),
-  ).size;
   const basePath = `/question-bank/practice/${sessionId}`;
   const previousPageHref =
     data.currentPage > 1 ? `${basePath}?page=${data.currentPage - 1}` : null;
   const nextPageHref =
     data.currentPage < data.pages ? `${basePath}?page=${data.currentPage + 1}` : null;
-  const previousQuestionHref = data.previousBoundaryVariantId
-    ? `${basePath}?page=${data.currentPage - 1}&question=${data.previousBoundaryVariantId}`
-    : null;
-  const nextQuestionHref = data.nextBoundaryVariantId
-    ? `${basePath}?page=${data.currentPage + 1}&question=${data.nextBoundaryVariantId}`
-    : null;
 
   return (
     <>
@@ -117,11 +106,9 @@ export default async function PracticeSessionPage({
                 Your custom question queue
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                {blockCount} selected block{blockCount === 1 ? '' : 's'}
-                {subjectCount
-                  ? ` across ${subjectCount} subject${subjectCount === 1 ? '' : 's'}`
-                  : ''}
-                {' · '}duplicates removed before generation
+                {blockCount} selected block{blockCount === 1 ? '' : 's'} · duplicates
+                removed before generation · only this page of the fixed queue is
+                loaded in the browser
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-64">
@@ -152,8 +139,6 @@ export default async function PracticeSessionPage({
             pages={data.pages}
             previousHref={previousPageHref}
             nextHref={nextPageHref}
-            previousQuestionHref={previousQuestionHref}
-            nextQuestionHref={nextQuestionHref}
             initialVariantId={initialVariantId}
             coursePath={basePath}
           />
