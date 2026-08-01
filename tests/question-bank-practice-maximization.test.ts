@@ -80,4 +80,40 @@ describe('Question Bank Max all allocation', () => {
     );
     expect(result.blocks.every((block) => block.recommendedCount > 0)).toBe(true);
   });
+
+  it('keeps every one of 24 heavily overlapping subject topics above zero', () => {
+    const blocks = Array.from({ length: 24 }, (_, index) => ({
+      blockId: `biology-${index + 1}`,
+      sortOrder: index,
+    }));
+    const shared = Array.from({ length: 100 }, (_, index) => `shared-${index + 1}`);
+    const candidates = blocks.flatMap((block, index) => [
+      ...shared.map((questionId) => candidate(block.blockId, questionId)),
+      candidate(block.blockId, `topic-specific-${index + 1}`),
+    ]);
+
+    const result = maximizePracticeBlockCounts(blocks, candidates);
+
+    expect(result.totalUniqueAllocated).toBe(124);
+    expect(
+      result.blocks.reduce((total, block) => total + block.recommendedCount, 0),
+    ).toBe(124);
+    expect(result.blocks.every((block) => block.recommendedCount > 0)).toBe(true);
+  });
+
+  it('reports a genuinely empty topic instead of claiming Max all succeeded', () => {
+    const result = maximizePracticeBlockCounts(
+      [
+        { blockId: 'available', sortOrder: 0 },
+        { blockId: 'empty', sortOrder: 1 },
+      ],
+      [candidate('available', 'q1')],
+    );
+
+    expect(result.totalUniqueAllocated).toBe(1);
+    expect(result.blocks).toEqual([
+      { blockId: 'available', candidateCount: 1, recommendedCount: 1 },
+      { blockId: 'empty', candidateCount: 0, recommendedCount: 0 },
+    ]);
+  });
 });

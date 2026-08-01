@@ -14,11 +14,15 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function POST(request: Request) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
+
+  // Consume the POST stream before authentication performs any asynchronous
+  // work. This avoids Node/Next attempting to adapt a body that the browser has
+  // already cancelled while a newer Max/preview request replaces it.
   const body = await request.json().catch(() => null);
   if (!isPlainObject(body))
     return noStore({ error: 'Expected a JSON request body.' }, { status: 400 });
 
+  const { user } = await requireMember();
   let configuration;
   try {
     configuration = parsePracticeConfiguration(body.configuration);

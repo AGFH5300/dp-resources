@@ -14,11 +14,15 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function POST(request: Request) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
+
+  // Read the POST stream immediately. The builder can replace stale previews
+  // rapidly, and leaving the body unread while authentication performs network
+  // work allows Node/Next to observe a cancelled, disturbed stream.
   const body = await request.json().catch(() => null);
   if (!isPlainObject(body))
     return noStore({ error: 'Expected a JSON request body.' }, { status: 400 });
 
+  const { user } = await requireMember();
   let configuration;
   try {
     configuration = parsePracticeConfiguration(body.configuration);

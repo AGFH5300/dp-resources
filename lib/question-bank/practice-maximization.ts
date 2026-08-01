@@ -1,4 +1,7 @@
-import type { PracticeCandidate } from './practice-allocation';
+import {
+  allocatePracticeQuestions,
+  type PracticeCandidate,
+} from './practice-allocation';
 
 export type PracticeMaximumBlock = {
   blockId: string;
@@ -16,132 +19,213 @@ export type PracticeMaximumResult = {
   blocks: PracticeMaximumBlockResult[];
 };
 
-function finiteNumber(value: number | null | undefined, fallback: number) {
-  return Number.isFinite(value) ? Number(value) : fallback;
-}
-
 function compareText(left: string, right: string) {
   return left.localeCompare(right);
 }
 
-function compareCandidates(left: PracticeCandidate, right: PracticeCandidate) {
-  return (
-    finiteNumber(left.coursePriority, Number.MAX_SAFE_INTEGER) -
-      finiteNumber(right.coursePriority, Number.MAX_SAFE_INTEGER) ||
-    finiteNumber(left.variantPriority, Number.MAX_SAFE_INTEGER) -
-      finiteNumber(right.variantPriority, Number.MAX_SAFE_INTEGER) ||
-    finiteNumber(left.stableOrder, Number.MAX_SAFE_INTEGER) -
-      finiteNumber(right.stableOrder, Number.MAX_SAFE_INTEGER) ||
-    compareText(left.variantId, right.variantId)
+function uniqueCandidateCounts(
+  blocks: PracticeMaximumBlock[],
+  candidates: PracticeCandidate[],
+) {
+  const questionsByBlock = new Map(
+    blocks.map((block) => [block.blockId, new Set<string>()]),
+  );
+  for (const candidate of candidates) {
+    const questions = questionsByBlock.get(candidate.blockId);
+    if (!questions)
+      throw new Error(`Candidate references unknown block ${candidate.blockId}.`);
+    questions.add(candidate.questionId);
+  }
+  return new Map(
+    blocks.map((block) => [
+      block.blockId,
+      questionsByBlock.get(block.blockId)?.size || 0,
+    ]),
   );
 }
 
+function fairCapacities(
+  blocks: PracticeMaximumBlock[],
+  candidateCounts: Map<string, number>,
+  requestedTotal: number,
+) {
+  const capacities = new Map(blocks.map((block) => [block.blockId, 0]));
+  let remaining = requestedTotal;
+
+  while (remaining > 0) {
+    const active = blocks
+      .filter(
+        (block) =>
+          (capacities.get(block.blockId) || 0) <
+          (candidateCounts.get(block.blockId) || 0),
+      )
+      .sort(
+        (left, right) =>
+          (capacities.get(left.blockId) || 0) -
+            (capacities.get(right.blockId) || 0) ||
+          (candidateCounts.get(left.blockId) || 0) -
+            (candidateCounts.get(right.blockId) || 0) ||
+          (left.sortOrder ?? Number.MAX_SAFE_INTEGER) -
+            (right.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+          compareText(left.blockId, right.blockId),
+      );
+    if (!active.length) break;
+
+    const batch = Math.max(1, Math.floor(remaining / active.length));
+    let progressed = false;
+    for (const block of active) {
+      if (remaining < 1) break;
+      const current = capacities.get(block.blockId) || 0;
+      const available = candidateCounts.get(block.blockId) || 0;
+      const added = Math.min(batch, available - current, remaining);
+      if (added < 1) continue;
+      capacities.set(block.blockId, current + added);
+      remaining -= added;
+      progressed = true;
+    }
+    if (!progressed) break;
+  }
+
+  return capacities;
+}
+
+function allocationsByBlock(
+  blocks: PracticeMaximumBlock[],
+  allocations: Array<{ blockId: string }>,
+) {
+  const counts = new Map(blocks.map((block) => [block.blockId, 0]));
+  for (const allocation of allocations) {
+    counts.set(allocation.blockId, (counts.get(allocation.blockId) || 0) + 1);
+  }
+  return counts;
+}
+
 /**
- * Finds a fair maximum-cardinality set of unique question cores.
+ * Finds the largest jointly feasible set of unique question cores while
+ * guaranteeing that every non-empty selected block receives at least one.
  *
- * Every round gives each block one opportunity to gain a question. The
- * augmenting-path search can move already assigned questions between blocks,
- * so a broad block cannot permanently consume a question needed by a narrower
- * block. The resulting per-block counts are guaranteed to be jointly feasible
- * and can safely be copied back into the normal practice configuration.
+ * The allocation runs in three deterministic maximum-flow stages:
+ * 1. reserve one unique question for every block;
+ * 2. distribute the remaining pool using balanced water-filled capacities;
+ * 3. assign any overlap-constrained leftovers without sacrificing cardinality.
+ *
+ * Reserving the first question prevents broad, highly overlapping topics from
+ * consuming the entire pool and leaving later topics at zero. The final stage
+ * still assigns every remaining unique question, so fairness does not reduce
+ * the size of the maximized practice set.
  */
 export function maximizePracticeBlockCounts(
   blocks: PracticeMaximumBlock[],
   candidates: PracticeCandidate[],
 ): PracticeMaximumResult {
   if (!blocks.length) throw new Error('At least one practice block is required.');
-
-  const blockById = new Map(blocks.map((block) => [block.blockId, block]));
-  if (blockById.size !== blocks.length)
+  const blockIds = new Set(blocks.map((block) => block.blockId));
+  if (blockIds.size !== blocks.length)
     throw new Error('Practice block IDs must be unique.');
 
-  const choicesByBlock = new Map<string, Map<string, PracticeCandidate>>();
-  for (const candidate of candidates) {
-    if (!blockById.has(candidate.blockId))
-      throw new Error(`Candidate references unknown block ${candidate.blockId}.`);
-    const choices = choicesByBlock.get(candidate.blockId) || new Map();
-    const current = choices.get(candidate.questionId);
-    if (!current || compareCandidates(candidate, current) < 0)
-      choices.set(candidate.questionId, candidate);
-    choicesByBlock.set(candidate.blockId, choices);
-  }
-
-  const orderedChoices = new Map(
-    blocks.map((block) => [
-      block.blockId,
-      [...(choicesByBlock.get(block.blockId)?.values() || [])].sort(
-        compareCandidates,
-      ),
-    ]),
+  const originalCandidateCounts = uniqueCandidateCounts(blocks, candidates);
+  const baseline = allocatePracticeQuestions(
+    blocks.map((block) => ({
+      blockId: block.blockId,
+      requestedCount: 1,
+      sortOrder: block.sortOrder,
+    })),
+    candidates,
   );
-  const questionOwner = new Map<string, string>();
-  const questionsByBlock = new Map(
-    blocks.map((block) => [block.blockId, new Set<string>()]),
+  const baselineCounts = allocationsByBlock(blocks, baseline.allocations);
+
+  // A block with no possible unique assignment is reported explicitly. The UI
+  // must not claim that Max all succeeded with a hidden zero-count selection.
+  if (baseline.shortages.length) {
+    return {
+      totalUniqueAllocated: baseline.allocatedCount,
+      blocks: blocks.map((block) => ({
+        blockId: block.blockId,
+        candidateCount: originalCandidateCounts.get(block.blockId) || 0,
+        recommendedCount: baselineCounts.get(block.blockId) || 0,
+      })),
+    };
+  }
+
+  const reservedQuestions = new Set(
+    baseline.allocations.map((allocation) => allocation.questionId),
   );
+  const afterBaseline = candidates.filter(
+    (candidate) => !reservedQuestions.has(candidate.questionId),
+  );
+  const afterBaselineCounts = uniqueCandidateCounts(blocks, afterBaseline);
+  const remainingUnique = new Set(
+    afterBaseline.map((candidate) => candidate.questionId),
+  ).size;
+  const balancedCapacities = fairCapacities(
+    blocks,
+    afterBaselineCounts,
+    remainingUnique,
+  );
+  const balancedBlocks = blocks
+    .filter((block) => (balancedCapacities.get(block.blockId) || 0) > 0)
+    .map((block) => ({
+      blockId: block.blockId,
+      requestedCount: balancedCapacities.get(block.blockId) || 1,
+      sortOrder: block.sortOrder,
+    }));
+  const balancedBlockIds = new Set(
+    balancedBlocks.map((block) => block.blockId),
+  );
+  const balanced = balancedBlocks.length
+    ? allocatePracticeQuestions(
+        balancedBlocks,
+        afterBaseline.filter((candidate) =>
+          balancedBlockIds.has(candidate.blockId),
+        ),
+      )
+    : {
+        allocatedCount: 0,
+        allocations: [] as ReturnType<
+          typeof allocatePracticeQuestions
+        >['allocations'],
+      };
+  const balancedCounts = allocationsByBlock(blocks, balanced.allocations);
 
-  function augment(
-    blockId: string,
-    visitedBlocks: Set<string>,
-    visitedQuestions: Set<string>,
-  ): boolean {
-    if (visitedBlocks.has(blockId)) return false;
-    visitedBlocks.add(blockId);
-
-    for (const candidate of orderedChoices.get(blockId) || []) {
-      const questionId = candidate.questionId;
-      if (visitedQuestions.has(questionId)) continue;
-      visitedQuestions.add(questionId);
-
-      const owner = questionOwner.get(questionId);
-      if (!owner) {
-        questionOwner.set(questionId, blockId);
-        questionsByBlock.get(blockId)!.add(questionId);
-        return true;
-      }
-      if (owner === blockId) continue;
-
-      if (augment(owner, visitedBlocks, visitedQuestions)) {
-        questionsByBlock.get(owner)!.delete(questionId);
-        questionsByBlock.get(blockId)!.add(questionId);
-        questionOwner.set(questionId, blockId);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  while (true) {
-    let gainedThisRound = false;
-    const roundOrder = [...blocks].sort((left, right) => {
-      const leftAllocated = questionsByBlock.get(left.blockId)!.size;
-      const rightAllocated = questionsByBlock.get(right.blockId)!.size;
-      const leftCandidates = orderedChoices.get(left.blockId)?.length || 0;
-      const rightCandidates = orderedChoices.get(right.blockId)?.length || 0;
-      return (
-        leftAllocated - rightAllocated ||
-        leftCandidates - rightCandidates ||
-        finiteNumber(left.sortOrder, Number.MAX_SAFE_INTEGER) -
-          finiteNumber(right.sortOrder, Number.MAX_SAFE_INTEGER) ||
-        compareText(left.blockId, right.blockId)
-      );
-    });
-
-    for (const block of roundOrder) {
-      const allocated = questionsByBlock.get(block.blockId)!.size;
-      const candidateCount = orderedChoices.get(block.blockId)?.length || 0;
-      if (allocated >= candidateCount) continue;
-      if (augment(block.blockId, new Set(), new Set())) gainedThisRound = true;
-    }
-
-    if (!gainedThisRound) break;
-  }
+  const usedQuestions = new Set([
+    ...reservedQuestions,
+    ...balanced.allocations.map((allocation) => allocation.questionId),
+  ]);
+  const leftovers = candidates.filter(
+    (candidate) => !usedQuestions.has(candidate.questionId),
+  );
+  const leftoverCounts = uniqueCandidateCounts(blocks, leftovers);
+  const overflowBlocks = blocks
+    .filter((block) => (leftoverCounts.get(block.blockId) || 0) > 0)
+    .map((block) => ({
+      blockId: block.blockId,
+      requestedCount: leftoverCounts.get(block.blockId) || 1,
+      sortOrder: block.sortOrder,
+    }));
+  const overflowBlockIds = new Set(overflowBlocks.map((block) => block.blockId));
+  const overflow = overflowBlocks.length
+    ? allocatePracticeQuestions(
+        overflowBlocks,
+        leftovers.filter((candidate) => overflowBlockIds.has(candidate.blockId)),
+      )
+    : {
+        allocatedCount: 0,
+        allocations: [] as ReturnType<
+          typeof allocatePracticeQuestions
+        >['allocations'],
+      };
+  const overflowCounts = allocationsByBlock(blocks, overflow.allocations);
 
   return {
-    totalUniqueAllocated: questionOwner.size,
+    totalUniqueAllocated:
+      baseline.allocatedCount + balanced.allocatedCount + overflow.allocatedCount,
     blocks: blocks.map((block) => ({
       blockId: block.blockId,
-      candidateCount: orderedChoices.get(block.blockId)?.length || 0,
-      recommendedCount: questionsByBlock.get(block.blockId)?.size || 0,
+      candidateCount: originalCandidateCounts.get(block.blockId) || 0,
+      recommendedCount:
+        (baselineCounts.get(block.blockId) || 0) +
+        (balancedCounts.get(block.blockId) || 0) +
+        (overflowCounts.get(block.blockId) || 0),
     })),
   };
 }

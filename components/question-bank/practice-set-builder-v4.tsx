@@ -331,20 +331,21 @@ export function PracticeSetBuilderV4({
   useEffect(() => {
     setPreview(null);
     setPreviewError('');
-    if (!configuration) {
+    const requestId = previewRequest.current + 1;
+    previewRequest.current = requestId;
+
+    if (!configuration || isMaximizing) {
       setPreviewLoading(false);
       return;
     }
-    const requestId = previewRequest.current + 1;
-    previewRequest.current = requestId;
-    const controller = new AbortController();
+
+    let disposed = false;
     const debounce = window.setTimeout(() => {
       setPreviewLoading(true);
       fetch('/api/question-bank/practice-builder/preview', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ configuration }),
-        signal: controller.signal,
       })
         .then(async (response) => {
           const payload = await response.json();
@@ -353,24 +354,27 @@ export function PracticeSetBuilderV4({
           return payload.preview as PracticePreview;
         })
         .then((nextPreview) => {
-          if (previewRequest.current === requestId) setPreview(nextPreview);
+          if (!disposed && previewRequest.current === requestId)
+            setPreview(nextPreview);
         })
         .catch((error) => {
-          if (error?.name !== 'AbortError' && previewRequest.current === requestId) {
+          if (!disposed && previewRequest.current === requestId) {
             setPreviewError(
               error instanceof Error ? error.message : 'Unable to preview this set.',
             );
           }
         })
         .finally(() => {
-          if (previewRequest.current === requestId) setPreviewLoading(false);
+          if (!disposed && previewRequest.current === requestId)
+            setPreviewLoading(false);
         });
     }, 500);
+
     return () => {
+      disposed = true;
       window.clearTimeout(debounce);
-      controller.abort();
     };
-  }, [configuration]);
+  }, [configuration, isMaximizing]);
 
 
   function updateBlock(key: string, patch: Partial<BuilderBlock>) {
