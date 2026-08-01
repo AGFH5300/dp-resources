@@ -44,11 +44,17 @@ export type PracticeOrderingMode =
   | 'easier_to_harder'
   | 'source_order';
 
-type Slot = {
-  index: number;
+type FlowEdge = {
+  to: number;
+  reverseIndex: number;
+  capacity: number;
+};
+
+type AssignmentEdge = {
   blockId: string;
-  blockSlotIndex: number;
-  blockSortOrder: number;
+  questionId: string;
+  candidate: PracticeCandidate;
+  edge: FlowEdge;
 };
 
 function compareText(left: string, right: string) {
@@ -76,11 +82,8 @@ function assertInputs(
   candidates: PracticeCandidate[],
 ) {
   if (!blocks.length) throw new Error('At least one practice block is required.');
-  if (blocks.length > 20)
-    throw new Error('A practice set can contain at most 20 blocks.');
 
   const seenBlocks = new Set<string>();
-  let requestedTotal = 0;
   for (const block of blocks) {
     if (!block.blockId) throw new Error('Every practice block needs an ID.');
     if (seenBlocks.has(block.blockId))
@@ -88,21 +91,13 @@ function assertInputs(
     seenBlocks.add(block.blockId);
     if (!Number.isInteger(block.requestedCount) || block.requestedCount < 1)
       throw new Error(`Invalid requested count for block ${block.blockId}.`);
-    requestedTotal += block.requestedCount;
   }
-  if (requestedTotal > 200)
-    throw new Error('A practice session can contain at most 200 questions.');
 
   for (const candidate of candidates) {
     if (!seenBlocks.has(candidate.blockId))
       throw new Error(`Candidate references unknown block ${candidate.blockId}.`);
-    if (
-      !candidate.questionId ||
-      !candidate.variantId ||
-      !candidate.courseId
-    ) {
+    if (!candidate.questionId || !candidate.variantId || !candidate.courseId)
       throw new Error('Every candidate needs question, variant and course IDs.');
-    }
   }
 }
 
@@ -113,8 +108,6 @@ function scarcityCompare(
 ) {
   const leftCandidates = candidateCounts.get(left.blockId) || 0;
   const rightCandidates = candidateCounts.get(right.blockId) || 0;
-
-  // Compare candidate/request ratios without floating-point ordering changes.
   const ratioDifference =
     leftCandidates * right.requestedCount -
     rightCandidates * left.requestedCount;
@@ -127,13 +120,31 @@ function scarcityCompare(
   );
 }
 
+function addFlowEdge(graph: FlowEdge[][], from: number, to: number, capacity: number) {
+  const forward: FlowEdge = {
+    to,
+    reverseIndex: graph[to].length,
+    capacity,
+  };
+  const reverse: FlowEdge = {
+    to: from,
+    reverseIndex: graph[from].length,
+    capacity: 0,
+  };
+  graph[from].push(forward);
+  graph[to].push(reverse);
+  return forward;
+}
+
 /**
  * Allocates unique question cores across independently configured blocks.
  *
- * This is deterministic maximum-cardinality bipartite matching. Each requested
- * block quota becomes a slot; each question core can occupy at most one slot.
- * Augmenting paths can move an earlier allocation so a constrained later slot
- * is not starved by a greedy choice.
+ * The original first-release allocator expanded every requested question into a
+ * separate slot. That was exact but became expensive for queues above a few
+ * hundred questions. This implementation models each block as one capacitated
+ * node and each unique question as one unit-capacity node, then runs Dinic's
+ * maximum-flow algorithm. It remains deterministic, overlap-safe and maximum
+ * cardinality while scaling to thousands of requested questions.
  */
 export function allocatePracticeQuestions(
   blocks: PracticeBlockRequest[],
@@ -167,107 +178,148 @@ export function allocatePracticeQuestions(
   const scarcityOrderedBlocks = [...blocks].sort((left, right) =>
     scarcityCompare(left, right, candidateCounts),
   );
+  const questionIds = [...matchedBlocksByQuestion.keys()].sort(compareText);
 
-  const slots: Slot[] = [];
+  const source = 0;
+  const firstBlockNode = 1;
+  const firstQuestionNode = firstBlockNode + scarcityOrderedBlocks.length;
+  const sink = firstQuestionNode + questionIds.length;
+  const graph: FlowEdge[][] = Array.from({ length: sink + 1 }, () => []);
+  const blockNodeById = new Map<string, number>();
+  const questionNodeById = new Map<string, number>();
+
+  scarcityOrderedBlocks.forEach((block, index) => {
+    const node = firstBlockNode + index;
+    blockNodeById.set(block.blockId, node);
+    addFlowEdge(graph, source, node, block.requestedCount);
+  });
+  questionIds.forEach((questionId, index) => {
+    const node = firstQuestionNode + index;
+    questionNodeById.set(questionId, node);
+    addFlowEdge(graph, node, sink, 1);
+  });
+
+  const assignmentEdges: AssignmentEdge[] = [];
   for (const block of scarcityOrderedBlocks) {
-    for (let blockSlotIndex = 0; blockSlotIndex < block.requestedCount; blockSlotIndex += 1) {
-      slots.push({
-        index: slots.length,
+    const blockNode = blockNodeById.get(block.blockId)!;
+    const choices = [...(choicesByBlock.get(block.blockId)?.values() || [])].sort(
+      compareCandidates,
+    );
+    for (const candidate of choices) {
+      const edge = addFlowEdge(
+        graph,
+        blockNode,
+        questionNodeById.get(candidate.questionId)!,
+        1,
+      );
+      assignmentEdges.push({
         blockId: block.blockId,
-        blockSlotIndex,
-        blockSortOrder: finiteNumber(block.sortOrder, 0),
+        questionId: candidate.questionId,
+        candidate,
+        edge,
       });
     }
   }
 
-  const questionToSlot = new Map<string, number>();
-  const slotToCandidate = new Map<number, PracticeCandidate>();
+  const levels = new Int32Array(graph.length);
+  const nextEdge = new Int32Array(graph.length);
 
-  function tryAssign(
-    slotIndex: number,
-    visitedQuestions: Set<string>,
-    visitedSlots: Set<number>,
-  ): boolean {
-    if (visitedSlots.has(slotIndex)) return false;
-    visitedSlots.add(slotIndex);
-
-    const slot = slots[slotIndex];
-    const choices = [...(choicesByBlock.get(slot.blockId)?.values() || [])].sort(
-      compareCandidates,
-    );
-
-    for (const choice of choices) {
-      if (visitedQuestions.has(choice.questionId)) continue;
-      visitedQuestions.add(choice.questionId);
-      const occupiedSlot = questionToSlot.get(choice.questionId);
-
-      if (
-        occupiedSlot === undefined ||
-        tryAssign(occupiedSlot, visitedQuestions, visitedSlots)
-      ) {
-        questionToSlot.set(choice.questionId, slotIndex);
-        slotToCandidate.set(slotIndex, choice);
-        return true;
+  function buildLevels() {
+    levels.fill(-1);
+    levels[source] = 0;
+    const queue = new Int32Array(graph.length);
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = source;
+    while (head < tail) {
+      const node = queue[head++];
+      for (const edge of graph[node]) {
+        if (edge.capacity <= 0 || levels[edge.to] >= 0) continue;
+        levels[edge.to] = levels[node] + 1;
+        queue[tail++] = edge.to;
       }
     }
-    return false;
+    return levels[sink] >= 0;
   }
 
-  for (const slot of slots) {
-    tryAssign(slot.index, new Set<string>(), new Set<number>());
+  function sendFlow(node: number, incoming: number): number {
+    if (node === sink) return incoming;
+    for (
+      let index = nextEdge[node];
+      index < graph[node].length;
+      index += 1, nextEdge[node] = index
+    ) {
+      const edge = graph[node][index];
+      if (edge.capacity <= 0 || levels[edge.to] !== levels[node] + 1) continue;
+      const sent = sendFlow(edge.to, Math.min(incoming, edge.capacity));
+      if (sent <= 0) continue;
+      edge.capacity -= sent;
+      graph[edge.to][edge.reverseIndex].capacity += sent;
+      return sent;
+    }
+    return 0;
+  }
+
+  let allocatedCount = 0;
+  while (buildLevels()) {
+    nextEdge.fill(0);
+    while (true) {
+      const sent = sendFlow(source, Number.MAX_SAFE_INTEGER);
+      if (!sent) break;
+      allocatedCount += sent;
+    }
+  }
+
+  const selectedByBlock = new Map<string, PracticeCandidate[]>();
+  for (const assignment of assignmentEdges) {
+    if (assignment.edge.capacity !== 0) continue;
+    const selected = selectedByBlock.get(assignment.blockId) || [];
+    selected.push(assignment.candidate);
+    selectedByBlock.set(assignment.blockId, selected);
   }
 
   const allocations: PracticeAllocation[] = [];
-  for (const slot of slots) {
-    const candidate = slotToCandidate.get(slot.index);
-    if (!candidate) continue;
-    allocations.push({
-      ...candidate,
-      slotIndex: slot.index,
-      blockSlotIndex: slot.blockSlotIndex,
-      blockSortOrder: slot.blockSortOrder,
-      matchedBlockIds: [
-        ...(matchedBlocksByQuestion.get(candidate.questionId) || []),
-      ].sort(compareText),
+  const originalOrder = [...blocks].sort(
+    (left, right) =>
+      finiteNumber(left.sortOrder, 0) - finiteNumber(right.sortOrder, 0) ||
+      compareText(left.blockId, right.blockId),
+  );
+  for (const block of originalOrder) {
+    const selected = [...(selectedByBlock.get(block.blockId) || [])].sort(
+      compareCandidates,
+    );
+    selected.forEach((candidate, blockSlotIndex) => {
+      allocations.push({
+        ...candidate,
+        slotIndex: allocations.length,
+        blockSlotIndex,
+        blockSortOrder: finiteNumber(block.sortOrder, 0),
+        matchedBlockIds: [
+          ...(matchedBlocksByQuestion.get(candidate.questionId) || []),
+        ].sort(compareText),
+      });
     });
   }
 
-  const allocatedByBlock = new Map<string, number>();
-  for (const allocation of allocations) {
-    allocatedByBlock.set(
-      allocation.blockId,
-      (allocatedByBlock.get(allocation.blockId) || 0) + 1,
-    );
-  }
-
-  const shortages = blocks
+  const shortages = originalOrder
     .map((block): PracticeBlockShortage => {
-      const allocatedCount = allocatedByBlock.get(block.blockId) || 0;
+      const blockAllocated = selectedByBlock.get(block.blockId)?.length || 0;
       return {
         blockId: block.blockId,
         requestedCount: block.requestedCount,
-        allocatedCount,
-        shortage: block.requestedCount - allocatedCount,
+        allocatedCount: blockAllocated,
+        shortage: block.requestedCount - blockAllocated,
         candidateCount: candidateCounts.get(block.blockId) || 0,
       };
     })
-    .filter((shortage) => shortage.shortage > 0)
-    .sort((left, right) => {
-      const leftBlock = blockById.get(left.blockId)!;
-      const rightBlock = blockById.get(right.blockId)!;
-      return (
-        finiteNumber(leftBlock.sortOrder, 0) -
-          finiteNumber(rightBlock.sortOrder, 0) ||
-        compareText(left.blockId, right.blockId)
-      );
-    });
+    .filter((shortage) => shortage.shortage > 0);
 
   return {
     requestedCount: blocks.reduce(
       (total, block) => total + block.requestedCount,
       0,
     ),
-    allocatedCount: allocations.length,
+    allocatedCount,
     allocations,
     shortages,
   };
