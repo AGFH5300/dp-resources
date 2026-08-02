@@ -37,8 +37,11 @@
   border-color: color-mix(in srgb, var(--dp-blue) 58%, var(--outline));
   background: color-mix(in srgb, var(--dp-blue) 15%, var(--dp-warm-surface));
   color: var(--dp-heading);
-  cursor: default;
   opacity: 1 !important;
+}
+
+.conceptButtonSelected:disabled {
+  cursor: default;
 }
 
 .conceptIcon {
@@ -75,8 +78,140 @@
 }
 
 .selectedSubjectGroup[open] > summary .detailsChevron,
+.pickerSubject[open] > summary .detailsChevron,
 .selectedTopicRow details[open] > summary .detailsChevron {
   transform: rotate(180deg);
+}
+
+.selectionPanel,
+.settingsCard,
+.contentPickerDialog {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+}
+
+.selectionPanel {
+  background:
+    radial-gradient(circle at 100% 0, rgb(37 99 235 / 0.08), transparent 28rem),
+    var(--dp-warm-surface);
+}
+
+.addContentBar {
+  border-color: color-mix(in srgb, #2563eb 35%, var(--outline));
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, #2563eb 11%, var(--dp-warm-surface)),
+    color-mix(in srgb, #7c3aed 7%, var(--dp-warm-surface))
+  );
+}
+
+.addContentIcon {
+  background: color-mix(in srgb, #2563eb 16%, var(--dp-warm-surface));
+  color: #2563eb;
+}
+
+.primaryAction {
+  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: white;
+  box-shadow: 0 8px 18px rgb(37 99 235 / 0.2);
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.primaryAction:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgb(37 99 235 / 0.28);
+}
+
+.courseBulkButton,
+.maxBulkButton {
+  transition: border-color 150ms ease, background-color 150ms ease,
+    color 150ms ease;
+}
+
+.courseBulkButton {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.courseBulkButton:not(:disabled):hover {
+  border-color: #22c55e;
+  background: #dcfce7;
+}
+
+.maxBulkButton {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.maxBulkButton:not(:disabled):hover {
+  border-color: #8b5cf6;
+  background: #ede9fe;
+}
+
+.courseBulkButton:disabled,
+.maxBulkButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.courseCountPill {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.questionCountPill {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.settingsCard {
+  background:
+    radial-gradient(circle at 100% 0, rgb(245 158 11 / 0.1), transparent 18rem),
+    var(--dp-warm-surface);
+}
+
+.settingsHeader,
+.contentPickerHeader,
+.contentPickerToolbar,
+.contentPickerFooter {
+  border-color: var(--outline);
+}
+
+.settingsHeader,
+.contentPickerHeader,
+.contentPickerFooter {
+  background: color-mix(in srgb, var(--dp-warm-surface) 94%, transparent);
+}
+
+.settingsIcon {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.emptySelection {
+  border-color: color-mix(in srgb, #2563eb 40%, var(--outline));
+  background: color-mix(in srgb, #2563eb 5%, var(--dp-warm-surface));
+}
+
+.contentPickerToolbar {
+  background: color-mix(in srgb, #2563eb 4%, var(--dp-warm-surface));
+}
+
+.pickerSubject {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+}
+
+.pickerSubject:hover {
+  border-color: color-mix(in srgb, #2563eb 38%, var(--outline));
+}
+
+.selectionCounter {
+  background: color-mix(in srgb, #2563eb 11%, var(--dp-warm-surface));
+  color: #1d4ed8;
 }
 
 .detailsChevron {
@@ -244,4 +379,93 @@
 :global(html[data-theme='dark']) .countButton:not(:disabled):hover {
   background: #1b3154;
   border-color: #60a5fa;
+}
+
+:global(html[data-theme='dark']) .selectionPanel,
+:global(html[data-theme='dark']) .settingsCard,
+:global(html[data-theme='dark']) .contentPickerDialog,
+:global(html[data-theme='dark']) .pickerSubject {
+  border-color: #334155;
+  background-color: #111c2d;
+}
+
+:global(html[data-theme='dark']) .selectionPanel {
+  background:
+    radial-gradient(circle at 100% 0, rgb(37 99 235 / 0.18), transparent 28rem),
+    #111c2d;
+}
+
+:global(html[data-theme='dark']) .addContentBar {
+  border-color: #315d98;
+  background: linear-gradient(120deg, #142b4a, #211d45);
+}
+
+:global(html[data-theme='dark']) .addContentIcon {
+  background: #19365d;
+  color: #93c5fd;
+}
+
+:global(html[data-theme='dark']) .courseBulkButton {
+  border-color: #166534;
+  background: #123325;
+  color: #86efac;
+}
+
+:global(html[data-theme='dark']) .courseBulkButton:not(:disabled):hover {
+  border-color: #22c55e;
+  background: #164e36;
+}
+
+:global(html[data-theme='dark']) .maxBulkButton {
+  border-color: #5b3ca5;
+  background: #2c2050;
+  color: #c4b5fd;
+}
+
+:global(html[data-theme='dark']) .maxBulkButton:not(:disabled):hover {
+  border-color: #8b5cf6;
+  background: #3b2667;
+}
+
+:global(html[data-theme='dark']) .courseCountPill {
+  background: #352461;
+  color: #ddd6fe;
+}
+
+:global(html[data-theme='dark']) .questionCountPill {
+  background: #124332;
+  color: #a7f3d0;
+}
+
+:global(html[data-theme='dark']) .settingsCard {
+  background:
+    radial-gradient(circle at 100% 0, rgb(245 158 11 / 0.14), transparent 18rem),
+    #111c2d;
+}
+
+:global(html[data-theme='dark']) .settingsHeader,
+:global(html[data-theme='dark']) .contentPickerHeader,
+:global(html[data-theme='dark']) .contentPickerFooter {
+  border-color: #334155;
+  background: #111c2d;
+}
+
+:global(html[data-theme='dark']) .contentPickerToolbar {
+  border-color: #334155;
+  background: #13233a;
+}
+
+:global(html[data-theme='dark']) .settingsIcon {
+  background: #422006;
+  color: #fcd34d;
+}
+
+:global(html[data-theme='dark']) .emptySelection {
+  border-color: #315d98;
+  background: #13233a;
+}
+
+:global(html[data-theme='dark']) .selectionCounter {
+  background: #19365d;
+  color: #bfdbfe;
 }

@@ -26,11 +26,25 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('Select all topics');
     expect(builder).toContain('Max all');
     expect(builder).toContain('Clear all');
+    expect(builder).toContain('Add subjects or topics');
+    expect(builder).toContain('Save content selection');
+    expect(builder).toContain('Changes are applied only when you save.');
+    expect(builder).not.toContain('1 · Add content');
+    expect(builder).toContain('1 · Configure selections');
+    expect(builder).toContain('2 · Session settings');
     expect(builder).toContain("'/api/question-bank/practice-builder/maximize'");
     expect(builder).toContain('xl:h-[calc(100dvh-7.5rem)]');
+    expect(builder).toContain('xl:grid-cols-[minmax(0,1fr)_380px]');
     expect(builder).toContain('appearance="summary"');
     expect(builder).toContain('catalog.subjects.find');
-    expect(builder).toContain('selectAllSubject(fullSubject)');
+    expect(builder).toContain('selectStagedSubject(fullSubject)');
+    expect(builder).toContain('clearStagedSubject(fullSubject)');
+    expect(builder).toContain('toggleStagedConcept(concept.id)');
+    expect(builder).toContain('setBlocks([...keptBlocks, ...additions])');
+    expect(builder).toContain('aria-labelledby="practice-content-picker-title"');
+    expect(builder).toContain('courses selected');
+    expect(builder).toContain('eligible questions selected');
+    expect(builder).toContain('Course choices');
     expect(builder).toContain('aria-label="Expand session settings"');
     expect(builder).toContain('Every filter and ordering option is visible here.');
     expect(builder).toContain('Find among ${blocks.length.toLocaleString()} selected topics');
@@ -47,6 +61,9 @@ describe('Question Bank practice builder production readiness', () => {
     expect(styles).toContain('.conceptButtonSelected:disabled');
     expect(styles).toContain('.deleteButton:hover');
     expect(styles).toContain('.expandedSettingsGrid');
+    expect(styles).toContain('.primaryAction');
+    expect(styles).toContain('.courseCountPill');
+    expect(styles).toContain('.questionCountPill');
   });
 
   it('keeps practice APIs out of request-mutating middleware and returns JSON auth failures', () => {
