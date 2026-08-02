@@ -19,6 +19,9 @@ const candidateMigration = file(
 const hardeningMigration = file(
   'supabase/migrations/20260801193000_question_bank_builder_catalog_and_preview_hardening.sql',
 );
+const scaleReliabilityMigration = file(
+  'supabase/migrations/20260802111846_question_bank_builder_scale_reliability.sql',
+);
 const previewRoute = file(
   'app/api/question-bank/practice-builder/preview/route.ts',
 );
@@ -73,6 +76,7 @@ describe('Question Bank practice builder engine', () => {
       sharingMigration,
       candidateMigration,
       hardeningMigration,
+      scaleReliabilityMigration,
     ]) {
       expect(migration).toContain('from public, anon, authenticated');
       expect(migration).toContain('to service_role');
@@ -81,6 +85,9 @@ describe('Question Bank practice builder engine', () => {
       /grant execute on function public\.dp_qb_(?:create_practice_session|create_practice_share|clone_practice_share)[\s\S]*?to authenticated/,
     );
     expect(hardeningMigration).not.toMatch(
+      /grant execute on function public\.dp_qb_practice_candidates[\s\S]*?to authenticated/,
+    );
+    expect(scaleReliabilityMigration).not.toMatch(
       /grant execute on function public\.dp_qb_practice_candidates[\s\S]*?to authenticated/,
     );
   });

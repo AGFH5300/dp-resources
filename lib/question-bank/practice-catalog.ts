@@ -2,6 +2,11 @@ import 'server-only';
 
 import { createClient } from '@/lib/supabase-server';
 
+import {
+  consolidatePracticeCatalogGroups,
+  type PracticeCatalogGroupRow,
+} from './practice-catalog-presentation';
+
 type AvailabilityRow = {
   concept_id: string;
   course_id: string;
@@ -19,6 +24,19 @@ function requireData<T>(
 
 export async function getPracticeBuilderCatalog() {
   const client = await createClient();
+  async function loadAvailability(attempt = 0): Promise<AvailabilityRow[]> {
+    const result = await client.rpc('dp_qb_practice_concept_availability');
+    if (!result.error) return (result.data || []) as AvailabilityRow[];
+    if (
+      attempt < 1 &&
+      /statement timeout|57014/i.test(
+        `${result.error.code || ''} ${result.error.message || ''}`,
+      )
+    )
+      return loadAvailability(attempt + 1);
+    throw new Error(`Practice concept availability: ${result.error.message}`);
+  }
+
   const [subjectsResult, groupsResult, conceptsResult, availabilityResult] =
     await Promise.all([
       client
@@ -40,7 +58,7 @@ export async function getPracticeBuilderCatalog() {
         .eq('status', 'approved')
         .order('sort_order')
         .order('name'),
-      client.rpc('dp_qb_practice_concept_availability'),
+      loadAvailability(),
     ]);
 
   const subjects =
@@ -49,12 +67,7 @@ export async function getPracticeBuilderCatalog() {
     requireData(groupsResult.data, groupsResult.error, 'Practice concept groups') || [];
   const concepts =
     requireData(conceptsResult.data, conceptsResult.error, 'Practice concepts') || [];
-  const availability =
-    (requireData(
-      availabilityResult.data,
-      availabilityResult.error,
-      'Practice concept availability',
-    ) || []) as AvailabilityRow[];
+  const availability = availabilityResult;
 
   const courseIds = [...new Set(availability.map((row) => row.course_id))];
   let courses: any[] = [];
@@ -82,7 +95,8 @@ export async function getPracticeBuilderCatalog() {
         id: subject.id,
         slug: subject.slug,
         name: subject.name,
-        groups: (groups as any[])
+        groups: consolidatePracticeCatalogGroups(
+          (groups as any[])
           .filter((group) => group.subject_id === subject.id)
           .map((group) => ({
             id: group.id,
@@ -119,7 +133,8 @@ export async function getPracticeBuilderCatalog() {
               })
               .filter((concept) => concept.courses.length),
           }))
-          .filter((group) => group.concepts.length),
+          .filter((group) => group.concepts.length) as PracticeCatalogGroupRow[],
+        ),
       }))
       .filter((subject) => subject.groups.length),
   };

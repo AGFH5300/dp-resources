@@ -1580,7 +1580,12 @@ html[data-theme='dark'] :is(.dp-wordmark-dark, .dp-logo-dark) {
   background-color: var(--dp-surface-muted);
 }
 .dp-select-content {
+  width: min(32rem, calc(100vw - 1.5rem));
   max-height: min(24rem, calc(100dvh - 1.5rem));
+  max-width: min(
+    calc(100vw - 1.5rem),
+    var(--radix-select-content-available-width)
+  );
   border-color: var(--dp-theme-border);
   background-color: var(--dp-page);
   color: var(--dp-heading);

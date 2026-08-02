@@ -482,7 +482,8 @@ describe('question filters and production security expectations', () => {
     expect(filters).not.toContain('Apply filters');
     expect(select).toContain('searchable?: boolean');
     expect(select).toContain('side="bottom"');
-    expect(select).toContain('avoidCollisions={false}');
+    expect(select).not.toContain('avoidCollisions={false}');
+    expect(select).toContain('collisionPadding={12}');
     expect(select).toContain('dp-select-viewport');
     expect(queries).toContain("client.rpc('dp_qb_course_filter_options'");
     expect(migration).toContain('private.dp_qb_has_access()');

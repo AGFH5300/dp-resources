@@ -27,6 +27,8 @@ function buildCatalogIndexes(catalog: any) {
     for (const group of subject.groups || []) {
       for (const concept of group.concepts || []) {
         concepts.set(concept.id, { subject, group, concept });
+        for (const sourceConceptId of concept.sourceConceptIds || [])
+          concepts.set(sourceConceptId, { subject, group, concept });
         for (const course of concept.courses || []) courses.set(course.id, course);
       }
     }
