@@ -10,7 +10,9 @@ import {
   Loader2,
   Maximize2,
   Plus,
+  Save,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
@@ -18,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { PracticeShareDialog } from '@/components/question-bank/practice-share-dialog';
+import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { AppSelect } from '@/components/ui/app-select';
 import type { PracticeOrderingMode } from '@/lib/question-bank/practice-allocation';
 import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
@@ -75,6 +78,7 @@ type Catalog = { subjects: CatalogSubject[] };
 type BuilderBlock = {
   key: string;
   subjectId: string;
+  subjectSlug: string;
   subjectName: string;
   groupName: string;
   concept: CatalogConcept;
@@ -173,6 +177,7 @@ function catalogConceptIndex(catalog: Catalog) {
     string,
     {
       subjectId: string;
+      subjectSlug: string;
       subjectName: string;
       groupName: string;
       concept: CatalogConcept;
@@ -183,6 +188,7 @@ function catalogConceptIndex(catalog: Catalog) {
       for (const concept of group.concepts) {
         const match = {
           subjectId: subject.id,
+          subjectSlug: subject.slug,
           subjectName: subject.name,
           groupName: group.name,
           concept,
@@ -213,6 +219,7 @@ function initialBlocks(
     blocks.push({
       key: block.key,
       subjectId: match.subjectId,
+      subjectSlug: match.subjectSlug,
       subjectName: match.subjectName,
       groupName: match.groupName,
       concept: match.concept,
@@ -233,6 +240,7 @@ function draftBlocks(catalog: Catalog, draft: PracticeBuilderDraft) {
       {
         key: block.key,
         subjectId: match.subjectId,
+        subjectSlug: match.subjectSlug,
         subjectName: match.subjectName,
         groupName: match.groupName,
         concept: match.concept,
@@ -379,6 +387,7 @@ function makeBlock(
   return {
     key: `block-${crypto.randomUUID()}`,
     subjectId: subject.id,
+    subjectSlug: subject.slug,
     subjectName: subject.name,
     groupName,
     concept,
@@ -434,6 +443,10 @@ export function PracticeSetBuilderV4({
   const [isMaximizing, setIsMaximizing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
+  const [contentPickerOpen, setContentPickerOpen] = useState(false);
+  const [stagedConceptIds, setStagedConceptIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [settingsExpanded, setSettingsExpanded] = useState(false);
   const previewRequest = useRef(0);
   const previewPending = useRef<{
@@ -442,12 +455,20 @@ export function PracticeSetBuilderV4({
   } | null>(null);
   const previewInFlight = useRef<Promise<void> | null>(null);
 
-  const selectedConceptIds = useMemo(
-    () => new Set(blocks.map((block) => block.concept.id)),
-    [blocks],
-  );
   const totalRequested = useMemo(
     () => blocks.reduce((total, block) => total + block.requestedCount, 0),
+    [blocks],
+  );
+  const selectedCourseCount = useMemo(
+    () => blocks.reduce((total, block) => total + block.courseIds.length, 0),
+    [blocks],
+  );
+  const availableCourseCount = useMemo(
+    () =>
+      blocks.reduce(
+        (total, block) => total + block.concept.courses.length,
+        0,
+      ),
     [blocks],
   );
   const normalizedSearch = search.trim().toLocaleLowerCase();
@@ -465,6 +486,11 @@ export function PracticeSetBuilderV4({
               concept.name,
               concept.description,
               ...concept.aliases,
+              ...concept.courses.flatMap((course) => [
+                course.name,
+                course.level || '',
+                course.syllabusLabel || '',
+              ]),
             ].some((value) =>
               String(value).toLocaleLowerCase().includes(normalizedSearch),
             );
@@ -477,7 +503,12 @@ export function PracticeSetBuilderV4({
     const query = selectionSearch.trim().toLocaleLowerCase();
     const grouped = new Map<
       string,
-      { subjectId: string; subjectName: string; blocks: BuilderBlock[] }
+      {
+        subjectId: string;
+        subjectSlug: string;
+        subjectName: string;
+        blocks: BuilderBlock[];
+      }
     >();
     for (const block of blocks) {
       const searchable = [
@@ -491,6 +522,7 @@ export function PracticeSetBuilderV4({
       if (query && !searchable.includes(query)) continue;
       const group = grouped.get(block.subjectId) || {
         subjectId: block.subjectId,
+        subjectSlug: block.subjectSlug,
         subjectName: block.subjectName,
         blocks: [],
       };
@@ -622,18 +654,20 @@ export function PracticeSetBuilderV4({
   }, [draft, draftReady, userId]);
 
   useEffect(() => {
-    if (!settingsExpanded) return;
+    if (!settingsExpanded && !contentPickerOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSettingsExpanded(false);
+      if (event.key !== 'Escape') return;
+      if (contentPickerOpen) setContentPickerOpen(false);
+      else setSettingsExpanded(false);
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', closeOnEscape);
     };
-  }, [settingsExpanded]);
+  }, [contentPickerOpen, settingsExpanded]);
 
   useEffect(() => {
     setPreview(null);
@@ -665,31 +699,62 @@ export function PracticeSetBuilderV4({
     );
   }
 
-  function addConcept(
-    subject: CatalogSubject,
-    groupName: string,
-    concept: CatalogConcept,
-  ) {
-    if (selectedConceptIds.has(concept.id)) return;
-    setBlocks((current) => [...current, makeBlock(subject, groupName, concept)]);
+  function openContentPicker() {
+    setSearch('');
+    setStagedConceptIds(new Set(blocks.map((block) => block.concept.id)));
+    setContentPickerOpen(true);
   }
 
-  function selectAllSubject(subject: CatalogSubject) {
-    setBlocks((current) => {
-      const selected = new Set(current.map((block) => block.concept.id));
-      const additions = subject.groups.flatMap((group) =>
-        group.concepts
-          .filter((concept) => !selected.has(concept.id))
-          .map((concept) => makeBlock(subject, group.name, concept)),
-      );
-      return additions.length ? [...current, ...additions] : current;
+  function toggleStagedConcept(conceptId: string) {
+    setStagedConceptIds((current) => {
+      const next = new Set(current);
+      if (next.has(conceptId)) next.delete(conceptId);
+      else next.add(conceptId);
+      return next;
     });
   }
 
-  function removeSubject(subjectId: string) {
-    setBlocks((current) =>
-      current.filter((block) => block.subjectId !== subjectId),
+  function selectStagedSubject(subject: CatalogSubject) {
+    setStagedConceptIds((current) => {
+      const next = new Set(current);
+      for (const group of subject.groups)
+        for (const concept of group.concepts) next.add(concept.id);
+      return next;
+    });
+  }
+
+  function clearStagedSubject(subject: CatalogSubject) {
+    setStagedConceptIds((current) => {
+      const next = new Set(current);
+      for (const group of subject.groups)
+        for (const concept of group.concepts) next.delete(concept.id);
+      return next;
+    });
+  }
+
+  function saveContentSelection() {
+    const keptBlocks = blocks.filter((block) =>
+      stagedConceptIds.has(block.concept.id),
     );
+    const existingIds = new Set(
+      keptBlocks.map((block) => block.concept.id),
+    );
+    const additions: BuilderBlock[] = [];
+    for (const subject of catalog.subjects) {
+      for (const group of subject.groups) {
+        for (const concept of group.concepts) {
+          if (
+            stagedConceptIds.has(concept.id) &&
+            !existingIds.has(concept.id)
+          ) {
+            additions.push(makeBlock(subject, group.name, concept));
+            existingIds.add(concept.id);
+          }
+        }
+      }
+    }
+    setBlocks([...keptBlocks, ...additions]);
+    setContentPickerOpen(false);
   }
 
   function useAllCourses(block: BuilderBlock) {
@@ -891,147 +956,51 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(300px,0.85fr)_minmax(460px,1.3fr)_360px] xl:items-stretch">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex xl:min-h-0 xl:flex-col">
+      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(0,1fr)_380px] xl:items-stretch">
+        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col`}>
           <div className="shrink-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-              1 · Add content
-            </p>
-            <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
-              Subjects and topics
-            </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Add one topic, a complete subject, or selections from several subjects.
-            </p>
-            <label
-              className={`${styles.searchShell} mt-4 flex items-center gap-2 rounded-xl border px-3 py-2`}
-            >
-              <Search className="size-4 text-slate-500" />
-              <span className="sr-only">Search topics and concepts</span>
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search subjects or topics"
-                className={`${styles.searchInput} min-w-0 flex-1 border-0 bg-transparent text-sm outline-none`}
-              />
-            </label>
-          </div>
-
-          <div className="mt-4 space-y-3 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            {filteredSubjects.map((subject) => {
-              const fullSubject =
-                catalog.subjects.find((candidate) => candidate.id === subject.id) ||
-                subject;
-              const concepts = fullSubject.groups.flatMap(
-                (group) => group.concepts,
-              );
-              const selectedInSubject = concepts.filter((concept) =>
-                selectedConceptIds.has(concept.id),
-              ).length;
-              const allSelected = selectedInSubject === concepts.length;
-              return (
-                <details key={subject.id} className="rounded-xl border border-slate-200 dark:border-slate-800">
-                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-3 font-semibold text-slate-800 dark:text-slate-100 [&::-webkit-details-marker]:hidden">
-                    <ChevronDown className="size-4" />
-                    {subject.name}
-                    <span className="ml-auto text-xs font-normal text-slate-500 dark:text-slate-400">
-                      {selectedInSubject ? `${selectedInSubject}/` : ''}{concepts.length}
-                    </span>
-                  </summary>
-                  <div className="space-y-4 border-t border-slate-200 p-3 dark:border-slate-800">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={allSelected}
-                        onClick={() => selectAllSubject(fullSubject)}
-                        className={`${styles.countButton} inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold`}
-                      >
-                        <CheckSquare2 className="size-4" />
-                        {allSelected ? 'All topics selected' : 'Select all topics'}
-                      </button>
-                      {selectedInSubject ? (
-                        <button
-                          type="button"
-                          onClick={() => removeSubject(subject.id)}
-                          className={`${styles.deleteButton} rounded-lg px-3 py-2 text-xs font-semibold`}
-                        >
-                          Remove subject selections
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {subject.groups.map((group) => (
-                      <section key={group.id}>
-                        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                          {group.name}
-                        </h3>
-                        <div className="mt-2 space-y-2">
-                          {group.concepts.map((concept) => {
-                            const selected = selectedConceptIds.has(concept.id);
-                            return (
-                              <button
-                                key={concept.id}
-                                type="button"
-                                disabled={selected}
-                                onClick={() => addConcept(fullSubject, group.name, concept)}
-                                className={`${styles.conceptButton} ${
-                                  selected ? styles.conceptButtonSelected : ''
-                                } flex w-full items-center gap-3 rounded-xl border p-3 text-left`}
-                              >
-                                <span
-                                  className={`${styles.conceptIcon} flex size-8 shrink-0 items-center justify-center rounded-lg`}
-                                >
-                                  {selected ? (
-                                    <Check className="size-4" />
-                                  ) : (
-                                    <Plus className="size-4" />
-                                  )}
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <strong className="block text-sm">{concept.name}</strong>
-                                  <small className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                                    {concept.courses
-                                      .slice(0, 2)
-                                      .map((course) => course.name)
-                                      .join(', ')}
-                                    {concept.courses.length > 2
-                                      ? ` +${concept.courses.length - 2} more`
-                                      : ''}
-                                  </small>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </details>
-              );
-            })}
-            {!filteredSubjects.length ? (
-              <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                No topics match that search.
-              </p>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex xl:min-h-0 xl:flex-col">
-          <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-                2 · Configure selections
+                1 · Configure selections
               </p>
               <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
                 Your selected content
               </h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                Every topic can use its own courses and question amount.
+                Add the subjects and topics you need, then give every topic its
+                own courses and question amount.
               </p>
             </div>
+
+            <div className={`${styles.addContentBar} mt-4 flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between`}>
+              <div className="flex items-start gap-3">
+                <span className={`${styles.addContentIcon} flex size-10 shrink-0 items-center justify-center rounded-xl`}>
+                  <Plus className="size-5" />
+                </span>
+                <div>
+                  <strong className="block text-sm text-slate-900 dark:text-white">
+                    Choose subjects and topics
+                  </strong>
+                  <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">
+                    Search all courses, select complete subjects, or change your
+                    {blocks.length
+                      ? ` ${blocks.length.toLocaleString()} current topic${blocks.length === 1 ? '' : 's'}.`
+                      : ' content before configuring it.'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={openContentPicker}
+                className={`${styles.primaryAction} inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold`}
+              >
+                <Plus className="size-4" />
+                Add subjects or topics
+              </button>
+            </div>
+
             {blocks.length ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={blocks.every(
@@ -1039,7 +1008,7 @@ export function PracticeSetBuilderV4({
                       block.courseIds.length === block.concept.courses.length,
                   )}
                   onClick={useAllCoursesForAllBlocks}
-                  className={`${styles.countButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
+                  className={`${styles.courseBulkButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
                 >
                   <CheckSquare2 className="size-4" />
                   Use all courses
@@ -1048,7 +1017,7 @@ export function PracticeSetBuilderV4({
                   type="button"
                   disabled={isMaximizing}
                   onClick={() => void maximizeAll()}
-                  className={`${styles.countButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
+                  className={`${styles.maxBulkButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
                 >
                   {isMaximizing ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -1089,6 +1058,27 @@ export function PracticeSetBuilderV4({
                 (total, block) => total + block.requestedCount,
                 0,
               );
+              const subjectCoursesSelected = subjectGroup.blocks.reduce(
+                (total, block) => total + block.courseIds.length,
+                0,
+              );
+              const subjectCoursesAvailable = subjectGroup.blocks.reduce(
+                (total, block) => total + block.concept.courses.length,
+                0,
+              );
+              const subjectPreviewBlocks = subjectGroup.blocks
+                .map((block) =>
+                  preview?.blocks.find((row) => row.key === block.key),
+                )
+                .filter((row): row is PracticePreviewBlock => Boolean(row));
+              const subjectEligible = subjectPreviewBlocks.reduce(
+                (total, row) => total + row.candidateCount,
+                0,
+              );
+              const subjectAllocated = subjectPreviewBlocks.reduce(
+                (total, row) => total + row.allocatedCount,
+                0,
+              );
               return (
                 <details
                   key={`${subjectGroup.subjectId}:${selectionSearch ? 'filtered' : 'all'}`}
@@ -1097,13 +1087,24 @@ export function PracticeSetBuilderV4({
                 >
                   <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
                     <ChevronDown className={`${styles.detailsChevron} size-4 shrink-0`} />
+                    <SubjectIcon subjectSlug={subjectGroup.subjectSlug} compact />
                     <strong className="min-w-0 flex-1 text-sm text-slate-900 dark:text-slate-50">
                       {subjectGroup.subjectName}
                     </strong>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {subjectGroup.blocks.length} topic
-                      {subjectGroup.blocks.length === 1 ? '' : 's'} ·{' '}
-                      {subjectRequested.toLocaleString()} questions
+                    <span className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-right text-xs text-slate-500 dark:text-slate-400">
+                      <span>
+                        {subjectGroup.blocks.length} topic
+                        {subjectGroup.blocks.length === 1 ? '' : 's'}
+                      </span>
+                      <span>
+                        {subjectCoursesSelected.toLocaleString()}/
+                        {subjectCoursesAvailable.toLocaleString()} courses
+                      </span>
+                      <span>
+                        {subjectPreviewBlocks.length === subjectGroup.blocks.length
+                          ? `${subjectAllocated.toLocaleString()}/${subjectEligible.toLocaleString()} eligible questions selected`
+                          : `${subjectRequested.toLocaleString()} questions selected`}
+                      </span>
                     </span>
                   </summary>
                   <div className="space-y-2 border-t border-slate-200 p-2 dark:border-slate-800">
@@ -1130,7 +1131,7 @@ export function PracticeSetBuilderV4({
                             open={blocks.length <= 6 || Boolean(selectionSearch) || undefined}
                             className="min-w-0 flex-1"
                           >
-                            <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                            <summary className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
                               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--dp-navy)] text-xs font-semibold text-white">
                                 {blockIndex + 1}
                               </span>
@@ -1148,13 +1149,16 @@ export function PracticeSetBuilderV4({
                                   {courseSummary || 'No course selected'}
                                 </small>
                               </span>
-                              <span className="shrink-0 text-right">
-                                <strong className="block text-sm text-slate-800 dark:text-slate-100">
-                                  {block.requestedCount.toLocaleString()}
-                                </strong>
-                                <small className="block text-[0.7rem] text-slate-500 dark:text-slate-400">
-                                  questions
-                                </small>
+                              <span className="col-span-2 flex flex-wrap justify-end gap-1.5 sm:col-span-1">
+                                <span className={`${styles.courseCountPill} rounded-full px-2.5 py-1 text-[0.7rem] font-semibold`}>
+                                  {block.courseIds.length.toLocaleString()}/
+                                  {block.concept.courses.length.toLocaleString()} courses selected
+                                </span>
+                                <span className={`${styles.questionCountPill} rounded-full px-2.5 py-1 text-[0.7rem] font-semibold`}>
+                                  {blockPreview
+                                    ? `${blockPreview.allocatedCount.toLocaleString()}/${blockPreview.candidateCount.toLocaleString()} eligible questions selected`
+                                    : `${block.requestedCount.toLocaleString()} questions selected`}
+                                </span>
                               </span>
                               <ChevronDown
                                 className={`${styles.detailsChevron} size-4 shrink-0 text-slate-400`}
@@ -1331,29 +1335,44 @@ export function PracticeSetBuilderV4({
             ) : null}
 
             {!blocks.length ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
-                <BookOpenCheck className="mx-auto size-9 text-slate-400" />
+              <div className={`${styles.emptySelection} rounded-2xl border border-dashed p-8 text-center`}>
+                <span className={`${styles.addContentIcon} mx-auto flex size-12 items-center justify-center rounded-2xl`}>
+                  <BookOpenCheck className="size-6" />
+                </span>
                 <h3 className="mt-3 font-semibold text-slate-800 dark:text-slate-100">
                   Add your first topic
                 </h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                   Select one topic, a whole subject, or a mixture of subjects.
                 </p>
+                <button
+                  type="button"
+                  onClick={openContentPicker}
+                  className={`${styles.primaryAction} mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold`}
+                >
+                  <Plus className="size-4" />
+                  Add subjects or topics
+                </button>
               </div>
             ) : null}
           </div>
         </section>
 
         <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:space-y-0">
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-h-[28rem] xl:flex-1 xl:overflow-hidden">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
-              <div>
+          <section className={`${styles.settingsCard} rounded-2xl border shadow-sm xl:min-h-[28rem] xl:flex-1 xl:overflow-hidden`}>
+            <div className={`${styles.settingsHeader} flex items-start justify-between gap-3 border-b p-4`}>
+              <div className="flex items-start gap-3">
+                <span className={`${styles.settingsIcon} flex size-10 shrink-0 items-center justify-center rounded-xl`}>
+                  <SlidersHorizontal className="size-5" />
+                </span>
+                <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-                  3 · Session settings
+                  2 · Session settings
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
                   Mix and filters
                 </h2>
+                </div>
               </div>
               <button
                 type="button"
@@ -1392,9 +1411,18 @@ export function PracticeSetBuilderV4({
             </div>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <dt className="text-blue-100">Requested</dt>
+                <dt className="text-blue-100">Eligible selected</dt>
                 <dd className="mt-0.5 text-xl font-semibold">
-                  {totalRequested.toLocaleString()}
+                  {preview
+                    ? `${preview.allocatedCount.toLocaleString()}/${preview.totalUniqueAvailable.toLocaleString()}`
+                    : `${totalRequested.toLocaleString()}/—`}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-blue-100">Course choices</dt>
+                <dd className="mt-0.5 text-xl font-semibold">
+                  {selectedCourseCount.toLocaleString()}/
+                  {availableCourseCount.toLocaleString()}
                 </dd>
               </div>
               <div>
@@ -1404,14 +1432,8 @@ export function PracticeSetBuilderV4({
                 </dd>
               </div>
               <div>
-                <dt className="text-blue-100">Selections</dt>
+                <dt className="text-blue-100">Topics</dt>
                 <dd className="mt-0.5 text-xl font-semibold">{blocks.length}</dd>
-              </div>
-              <div>
-                <dt className="text-blue-100">Unique available</dt>
-                <dd className="mt-0.5 text-xl font-semibold">
-                  {preview?.totalUniqueAvailable.toLocaleString() || '—'}
-                </dd>
               </div>
             </dl>
             {totalRequested > 500 ? (
@@ -1469,6 +1491,206 @@ export function PracticeSetBuilderV4({
           </section>
         </aside>
       </div>
+
+      {contentPickerOpen ? (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-5"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setContentPickerOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="practice-content-picker-title"
+            className={`${styles.contentPickerDialog} flex max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border shadow-2xl sm:max-h-[calc(100dvh-2.5rem)]`}
+          >
+            <header className={`${styles.contentPickerHeader} flex shrink-0 items-start justify-between gap-4 border-b p-5 sm:p-6`}>
+              <div className="flex items-start gap-3">
+                <span className={`${styles.addContentIcon} flex size-11 shrink-0 items-center justify-center rounded-xl`}>
+                  <Plus className="size-5" />
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+                    Add content
+                  </p>
+                  <h2
+                    id="practice-content-picker-title"
+                    className="mt-1 text-2xl font-semibold text-[color:var(--dp-navy)]"
+                  >
+                    Choose subjects and topics
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    Your existing course choices and question amounts are preserved
+                    for every topic you keep selected.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setContentPickerOpen(false)}
+                className={`${styles.countButton} inline-flex size-10 shrink-0 items-center justify-center rounded-xl border`}
+                aria-label="Close content picker"
+              >
+                <X className="size-5" />
+              </button>
+            </header>
+
+            <div className={`${styles.contentPickerToolbar} shrink-0 border-b px-5 py-4 sm:px-6`}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label
+                  className={`${styles.searchShell} flex min-h-11 flex-1 items-center gap-2 rounded-xl border px-3 py-2`}
+                >
+                  <Search className="size-4 text-slate-500" />
+                  <span className="sr-only">Search subjects, topics, or courses</span>
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search subjects, topics, or courses"
+                    className={`${styles.searchInput} min-w-0 flex-1 border-0 bg-transparent text-sm outline-none`}
+                    autoFocus
+                  />
+                </label>
+                <span className={`${styles.selectionCounter} inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold`}>
+                  {stagedConceptIds.size.toLocaleString()} topics selected
+                </span>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+              {filteredSubjects.map((subject) => {
+                const fullSubject =
+                  catalog.subjects.find(
+                    (candidate) => candidate.id === subject.id,
+                  ) || subject;
+                const concepts = fullSubject.groups.flatMap(
+                  (group) => group.concepts,
+                );
+                const selectedInSubject = concepts.filter((concept) =>
+                  stagedConceptIds.has(concept.id),
+                ).length;
+                const allSelected = selectedInSubject === concepts.length;
+                return (
+                  <details
+                    key={subject.id}
+                    open={Boolean(search) || undefined}
+                    className={`${styles.pickerSubject} rounded-2xl border`}
+                  >
+                    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                      <ChevronDown className={`${styles.detailsChevron} size-4 shrink-0`} />
+                      <SubjectIcon subjectSlug={subject.slug} compact />
+                      <strong className="min-w-0 flex-1 text-sm text-slate-900 dark:text-slate-50">
+                        {subject.name}
+                      </strong>
+                      <span className={`${styles.selectionCounter} rounded-full px-2.5 py-1 text-xs font-semibold`}>
+                        {selectedInSubject.toLocaleString()}/{concepts.length.toLocaleString()} topics
+                      </span>
+                    </summary>
+                    <div className="space-y-5 border-t border-slate-200 p-4 dark:border-slate-800">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={allSelected}
+                          onClick={() => selectStagedSubject(fullSubject)}
+                          className={`${styles.courseBulkButton} inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold`}
+                        >
+                          <CheckSquare2 className="size-4" />
+                          {allSelected ? 'All topics selected' : 'Select all topics'}
+                        </button>
+                        {selectedInSubject ? (
+                          <button
+                            type="button"
+                            onClick={() => clearStagedSubject(fullSubject)}
+                            className={`${styles.deleteButton} rounded-lg px-3 py-2 text-xs font-semibold`}
+                          >
+                            Clear this subject
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {subject.groups.map((group) => (
+                        <section key={group.id}>
+                          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            {group.name}
+                          </h3>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            {group.concepts.map((concept) => {
+                              const selected = stagedConceptIds.has(concept.id);
+                              return (
+                                <button
+                                  key={concept.id}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() => toggleStagedConcept(concept.id)}
+                                  className={`${styles.conceptButton} ${
+                                    selected ? styles.conceptButtonSelected : ''
+                                  } flex w-full items-center gap-3 rounded-xl border p-3 text-left`}
+                                >
+                                  <span
+                                    className={`${styles.conceptIcon} flex size-8 shrink-0 items-center justify-center rounded-lg`}
+                                  >
+                                    {selected ? (
+                                      <Check className="size-4" />
+                                    ) : (
+                                      <Plus className="size-4" />
+                                    )}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <strong className="block text-sm">
+                                      {concept.name}
+                                    </strong>
+                                    <small className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                      {concept.courses
+                                        .map((course) => course.name)
+                                        .join(', ')}
+                                    </small>
+                                  </span>
+                                  <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    {concept.courses.length} course
+                                    {concept.courses.length === 1 ? '' : 's'}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+              {!filteredSubjects.length ? (
+                <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                  No subjects, topics, or courses match that search.
+                </p>
+              ) : null}
+            </div>
+
+            <footer className={`${styles.contentPickerFooter} flex shrink-0 flex-col-reverse gap-2 border-t p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6`}>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Changes are applied only when you save.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setContentPickerOpen(false)}
+                  className={`${styles.countButton} min-h-11 flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold sm:flex-none`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveContentSelection}
+                  className={`${styles.primaryAction} inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold sm:flex-none`}
+                >
+                  <Save className="size-4" />
+                  Save content selection
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       {settingsExpanded ? (
         <div

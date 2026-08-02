@@ -44,10 +44,10 @@ export function QuestionBankJoinModal() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+        className="group w-full rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md dark:border-amber-900/70 dark:from-amber-950/45 dark:via-slate-900 dark:to-orange-950/30"
       >
         <span className="flex items-start gap-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-200 dark:group-hover:bg-blue-900/55">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm transition group-hover:bg-amber-600">
             <KeyRound className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
@@ -59,7 +59,7 @@ export function QuestionBankJoinModal() {
               customize it for your own progress.
             </span>
           </span>
-          <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
+          <ArrowRight className="mt-1 size-5 text-amber-600 transition group-hover:translate-x-1 group-hover:text-amber-800 dark:text-amber-300" />
         </span>
       </button>
 

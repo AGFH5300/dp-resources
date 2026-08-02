@@ -229,10 +229,10 @@ export default async function QuestionBankLanding() {
         >
           <Link
             href="#courses"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+            className="group rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md dark:border-emerald-900/70 dark:from-emerald-950/45 dark:via-slate-900 dark:to-teal-950/30"
           >
             <div className="flex items-start gap-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[color:var(--dp-navy)] transition group-hover:bg-blue-50 group-hover:text-blue-700">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition group-hover:bg-emerald-700">
                 <BookOpenCheck className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -244,16 +244,16 @@ export default async function QuestionBankLanding() {
                   existing filters.
                 </span>
               </span>
-              <ArrowRight className="mt-1 size-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700" />
+              <ArrowRight className="mt-1 size-5 text-emerald-600 transition group-hover:translate-x-1 group-hover:text-emerald-800 dark:text-emerald-300" />
             </div>
           </Link>
 
           <Link
             href="/question-bank/build"
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md"
+            className="group rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md dark:border-indigo-900/70 dark:from-indigo-950/45 dark:via-slate-900 dark:to-violet-950/30"
           >
             <div className="flex items-start gap-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm">
                 <Layers3 className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -265,7 +265,7 @@ export default async function QuestionBankLanding() {
                   question quotas for every selection.
                 </span>
               </span>
-              <ArrowRight className="mt-1 size-5 text-blue-500 transition group-hover:translate-x-1 group-hover:text-blue-800" />
+              <ArrowRight className="mt-1 size-5 text-indigo-600 transition group-hover:translate-x-1 group-hover:text-indigo-800 dark:text-indigo-300" />
             </div>
           </Link>
 
