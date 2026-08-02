@@ -31,11 +31,42 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('appearance="summary"');
     expect(builder).toContain('catalog.subjects.find');
     expect(builder).toContain('selectAllSubject(fullSubject)');
+    expect(builder).toContain('More settings below: saved, calculator and order');
+    expect(builder).toContain('Rotate between topics');
+    expect(builder).toContain('Shuffle all questions');
+    expect(builder).toContain('Finish one topic at a time');
+    expect(builder).toContain('Original source order');
+    expect(builder).toContain('readPracticeApiJson');
+    expect(builder).not.toContain('await response.json()');
     expect(builder).not.toContain('SESSION_MAXIMUM');
     expect(builder).not.toContain('BLOCK_MAXIMUM');
     expect(styles).toContain(":global(html[data-theme='dark']) .conceptButton");
     expect(styles).toContain('.conceptButtonSelected:disabled');
     expect(styles).toContain('.deleteButton:hover');
+  });
+
+  it('keeps practice APIs out of request-mutating middleware and returns JSON auth failures', () => {
+    const middleware = read('middleware.ts');
+    const auth = read('lib/auth.ts');
+    const routes = [
+      'app/api/question-bank/practice-builder/preview/route.ts',
+      'app/api/question-bank/practice-builder/maximize/route.ts',
+      'app/api/question-bank/practice-builder/sessions/route.ts',
+      'app/api/question-bank/practice-shares/route.ts',
+    ].map(read);
+
+    expect(middleware).toContain(
+      "pathname.startsWith('/api/question-bank/practice-builder/')",
+    );
+    expect(middleware).toContain(
+      "pathname.startsWith('/api/question-bank/practice-shares/')",
+    );
+    expect(auth).toContain('export async function requireApiMember()');
+    expect(auth).toContain("'Cache-Control', 'private, no-store, max-age=0'");
+    for (const route of routes) {
+      expect(route).toContain('requireApiMember');
+      expect(route).not.toContain('requireMember');
+    }
   });
 
   it('does not monkey-patch history or observe every attribute mutation', () => {

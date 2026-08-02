@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
+
 export function PracticeShareExactButton({
   code,
   questionCount,
@@ -23,9 +25,10 @@ export function PracticeShareExactButton({
         `/api/question-bank/practice-shares/${encodeURIComponent(code)}/exact-session`,
         { method: 'POST' },
       );
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || 'Unable to copy the exact question queue.');
+      const payload = await readPracticeApiJson<{ sessionId: string }>(
+        response,
+        'Unable to copy the exact question queue.',
+      );
       toast.success('The exact shared queue was copied to your account.');
       router.push(`/question-bank/practice/${payload.sessionId}`);
     } catch (error) {

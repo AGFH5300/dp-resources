@@ -3,7 +3,11 @@ import * as Select from '@radix-ui/react-select';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-export type SelectOption = { value: string; label: string };
+export type SelectOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
 
 export function AppSelect({
   name,
@@ -34,7 +38,9 @@ export function AppSelect({
     const normalized = query.trim().toLocaleLowerCase();
     if (!searchable || !normalized) return options;
     return options.filter((option) =>
-      option.label.toLocaleLowerCase().includes(normalized),
+      [option.label, option.description || ''].some((value) =>
+        value.toLocaleLowerCase().includes(normalized),
+      ),
     );
   }, [options, query, searchable]);
 
@@ -99,7 +105,14 @@ export function AppSelect({
                 <Select.ItemIndicator className="dp-select-indicator absolute left-2 top-2.5">
                   <Check className="size-4" />
                 </Select.ItemIndicator>
-                <Select.ItemText>{o.label}</Select.ItemText>
+                <span className="block min-w-0">
+                  <Select.ItemText>{o.label}</Select.ItemText>
+                  {o.description ? (
+                    <span className="mt-0.5 block max-w-md whitespace-normal text-xs leading-4 text-slate-500 dark:text-slate-400">
+                      {o.description}
+                    </span>
+                  ) : null}
+                </span>
               </Select.Item>
             ))}
             {!filteredOptions.length ? (

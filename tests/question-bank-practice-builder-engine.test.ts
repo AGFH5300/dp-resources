@@ -132,10 +132,10 @@ describe('Question Bank practice builder engine', () => {
       exactShareRoute,
     ]) {
       expect(route).toContain('sameOriginOrForbidden');
-      expect(route).toContain('requireMember');
+      expect(route).toContain('requireApiMember');
       expect(route).toContain('no-store');
     }
-    expect(shareValidationRoute).toContain('requireMember');
+    expect(shareValidationRoute).toContain('requireApiMember');
     expect(shareValidationRoute).toContain('no-store');
     expect(previewRoute).toContain('parsePracticeConfiguration');
     expect(maximizeRoute).toContain('maximizePracticeConfiguration');
@@ -146,16 +146,24 @@ describe('Question Bank practice builder engine', () => {
   it('does not abort stale POST streams and consumes bodies before auth', () => {
     expect(builder).not.toContain('new AbortController');
     expect(builder).not.toContain('signal: controller.signal');
-    expect(builder).toContain('[configuration, draftReady, isMaximizing]');
+    expect(builder).toContain(
+      '[configuration, draftReady, drainPreviewQueue, isMaximizing]',
+    );
     expect(builder).toContain(
       'if (!draftReady || !configuration || isMaximizing)',
     );
     expect(previewRoute.indexOf('await request.json()')).toBeLessThan(
-      previewRoute.indexOf('await requireMember()'),
+      previewRoute.indexOf('await requireApiMember()'),
     );
     expect(maximizeRoute.indexOf('await request.json()')).toBeLessThan(
-      maximizeRoute.indexOf('await requireMember()'),
+      maximizeRoute.indexOf('await requireApiMember()'),
     );
+    expect(sessionRoute.indexOf('await request.json()')).toBeLessThan(
+      sessionRoute.indexOf('await requireApiMember()'),
+    );
+    expect(builder).toContain('previewInFlight');
+    expect(builder).toContain('previewPending');
+    expect(builder).toContain('drainPreviewQueue');
   });
 
   it('adds course, final builder and join-by-code entry points', () => {

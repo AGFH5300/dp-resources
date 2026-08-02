@@ -28,6 +28,11 @@ describe('middleware auth route bypasses', () => {
       '/auth/callback',
       '/api/auth/start-signup',
       '/api/auth/availability',
+      '/api/question-bank/practice-builder/preview',
+      '/api/question-bank/practice-builder/maximize',
+      '/api/question-bank/practice-builder/sessions',
+      '/api/question-bank/practice-shares',
+      '/api/question-bank/practice-shares/ABCD-EFGH',
     ];
 
     for (const route of bypassedRoutes) {
@@ -36,6 +41,7 @@ describe('middleware auth route bypasses', () => {
 
     expect(shouldBypassSupabaseMiddleware('/library')).toBe(false);
     expect(shouldBypassSupabaseMiddleware('/admin')).toBe(false);
+    expect(shouldBypassSupabaseMiddleware('/api/question-bank/state')).toBe(false);
   });
 });
 

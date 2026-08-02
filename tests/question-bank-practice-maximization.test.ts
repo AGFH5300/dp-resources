@@ -145,4 +145,33 @@ describe('Question Bank Max all allocation', () => {
       true,
     );
   });
+
+  it('handles the four-subject Hard-only production stress shape', () => {
+    const blocks = Array.from({ length: 168 }, (_, index) => ({
+      blockId: `topic-${index + 1}`,
+      sortOrder: index,
+    }));
+    const candidates = Array.from({ length: 794 }, (_, index) => {
+      const questionId = `hard-${index + 1}`;
+      const primary = index % 66;
+      const rows = [candidate(blocks[primary].blockId, questionId)];
+      if (index < 331)
+        rows.push(candidate(blocks[(primary + 1) % 66].blockId, questionId));
+      return rows;
+    }).flat();
+
+    expect(candidates).toHaveLength(1125);
+    const result = maximizePracticeBlockCounts(blocks, candidates);
+
+    expect(result.totalUniqueAllocated).toBe(794);
+    expect(
+      result.blocks.reduce((total, block) => total + block.recommendedCount, 0),
+    ).toBe(794);
+    expect(result.blocks.slice(0, 66).every((block) => block.recommendedCount > 0)).toBe(
+      true,
+    );
+    expect(result.blocks.slice(66).every((block) => block.recommendedCount === 0)).toBe(
+      true,
+    );
+  });
 });

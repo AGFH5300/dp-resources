@@ -4,6 +4,7 @@ import { Check, Copy, Loader2, Share2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
 import type { PracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 
 type ShareButtonAppearance = 'default' | 'summary';
@@ -61,9 +62,10 @@ export function PracticeShareDialog({
           sessionId: sessionId || null,
         }),
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || 'Unable to create a practice-set code.');
+      const payload = await readPracticeApiJson<{
+        code?: string;
+        exactQuestionCount?: number;
+      }>(response, 'Unable to create a practice-set code.');
       setCode(String(payload.code || ''));
       setExactQuestionCount(Number(payload.exactQuestionCount || 0));
       toast.success('Permanent practice-set code created.');
