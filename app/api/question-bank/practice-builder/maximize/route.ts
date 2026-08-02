@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import { maximizePracticeConfiguration } from '@/lib/question-bank/practice-engine';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
@@ -22,7 +22,9 @@ export async function POST(request: Request) {
   if (!isPlainObject(body))
     return noStore({ error: 'Expected a JSON request body.' }, { status: 400 });
 
-  const { user } = await requireMember();
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
   let configuration;
   try {
     configuration = parsePracticeConfiguration(body.configuration);

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowDown,
   BookOpenCheck,
   Check,
   CheckSquare2,
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 import { PracticeShareDialog } from '@/components/question-bank/practice-share-dialog';
 import { AppSelect } from '@/components/ui/app-select';
 import type { PracticeOrderingMode } from '@/lib/question-bank/practice-allocation';
+import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
 import {
   readPracticeBuilderDraft,
   savePracticeBuilderDraft,
@@ -88,11 +90,34 @@ const DIFFICULTIES = ['easy', 'medium', 'hard', 'unrated'] as const;
 const STATUSES = ['not_started', 'in_progress', 'completed'] as const;
 
 const ORDER_OPTIONS = [
-  { value: 'interleaved', label: 'Interleave selected topics' },
-  { value: 'mixed', label: 'Mix randomly' },
-  { value: 'grouped', label: 'Group by topic' },
-  { value: 'easier_to_harder', label: 'Easier to harder' },
-  { value: 'source_order', label: 'Source order' },
+  {
+    value: 'interleaved',
+    label: 'Rotate between topics',
+    description:
+      'Takes one question from each selected topic in turn, then repeats.',
+  },
+  {
+    value: 'mixed',
+    label: 'Shuffle all questions',
+    description: 'Mixes every selected question into one random order.',
+  },
+  {
+    value: 'grouped',
+    label: 'Finish one topic at a time',
+    description: 'Keeps each topic together before moving to the next topic.',
+  },
+  {
+    value: 'easier_to_harder',
+    label: 'Easier questions first',
+    description:
+      'Orders the selected questions by difficulty, from easier to harder.',
+  },
+  {
+    value: 'source_order',
+    label: 'Original source order',
+    description:
+      'Follows the questions’ original paper or source sequence where available.',
+  },
 ];
 
 const SAVED_OPTIONS = [
@@ -293,7 +318,14 @@ export function PracticeSetBuilderV4({
   const [isMaximizing, setIsMaximizing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
+  const [settingsHaveMore, setSettingsHaveMore] = useState(false);
   const previewRequest = useRef(0);
+  const previewPending = useRef<{
+    requestId: number;
+    configuration: PracticeConfiguration;
+  } | null>(null);
+  const previewInFlight = useRef<Promise<void> | null>(null);
+  const settingsScroll = useRef<HTMLDivElement | null>(null);
 
   const selectedConceptIds = useMemo(
     () => new Set(blocks.map((block) => block.concept.id)),
@@ -302,6 +334,9 @@ export function PracticeSetBuilderV4({
   const totalRequested = useMemo(
     () => blocks.reduce((total, block) => total + block.requestedCount, 0),
     [blocks],
+  );
+  const selectedOrderOption = ORDER_OPTIONS.find(
+    (option) => option.value === orderingMode,
   );
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredSubjects = catalog.subjects
@@ -378,6 +413,59 @@ export function PracticeSetBuilderV4({
     [blocks, calculator, difficulties, orderingMode, saved, statuses],
   );
 
+  const drainPreviewQueue = useCallback(() => {
+    if (previewInFlight.current) return previewInFlight.current;
+
+    const running = (async () => {
+      while (previewPending.current) {
+        const task = previewPending.current;
+        previewPending.current = null;
+        try {
+          const response = await fetch(
+            '/api/question-bank/practice-builder/preview',
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ configuration: task.configuration }),
+            },
+          );
+          const payload = await readPracticeApiJson<{
+            preview: PracticePreview;
+          }>(response, 'Unable to preview this set.');
+          if (previewRequest.current === task.requestId) {
+            setPreview(payload.preview);
+            setPreviewError('');
+          }
+        } catch (error) {
+          if (previewRequest.current === task.requestId) {
+            setPreviewError(
+              error instanceof Error
+                ? error.message
+                : 'Unable to preview this set.',
+            );
+          }
+        } finally {
+          if (previewRequest.current === task.requestId) {
+            setPreviewLoading(false);
+          }
+        }
+      }
+    })().finally(() => {
+      previewInFlight.current = null;
+    });
+
+    previewInFlight.current = running;
+    return running;
+  }, []);
+
+  const updateSettingsScrollCue = useCallback(() => {
+    const node = settingsScroll.current;
+    if (!node) return;
+    setSettingsHaveMore(
+      node.scrollHeight - node.scrollTop - node.clientHeight > 12,
+    );
+  }, []);
+
   useEffect(() => {
     if (!initialConfiguration) {
       const restored = readPracticeBuilderDraft(userId);
@@ -403,52 +491,36 @@ export function PracticeSetBuilderV4({
   }, [draft, draftReady, userId]);
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(updateSettingsScrollCue);
+    window.addEventListener('resize', updateSettingsScrollCue);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updateSettingsScrollCue);
+    };
+  }, [updateSettingsScrollCue]);
+
+  useEffect(() => {
     setPreview(null);
     setPreviewError('');
     const requestId = previewRequest.current + 1;
     previewRequest.current = requestId;
+    previewPending.current = null;
 
     if (!draftReady || !configuration || isMaximizing) {
       setPreviewLoading(false);
       return;
     }
 
-    let disposed = false;
     const debounce = window.setTimeout(() => {
       setPreviewLoading(true);
-      fetch('/api/question-bank/practice-builder/preview', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ configuration }),
-      })
-        .then(async (response) => {
-          const payload = await response.json();
-          if (!response.ok)
-            throw new Error(payload.error || 'Unable to preview this set.');
-          return payload.preview as PracticePreview;
-        })
-        .then((nextPreview) => {
-          if (!disposed && previewRequest.current === requestId)
-            setPreview(nextPreview);
-        })
-        .catch((error) => {
-          if (!disposed && previewRequest.current === requestId) {
-            setPreviewError(
-              error instanceof Error ? error.message : 'Unable to preview this set.',
-            );
-          }
-        })
-        .finally(() => {
-          if (!disposed && previewRequest.current === requestId)
-            setPreviewLoading(false);
-        });
+      previewPending.current = { requestId, configuration };
+      void drainPreviewQueue();
     }, 500);
 
     return () => {
-      disposed = true;
       window.clearTimeout(debounce);
     };
-  }, [configuration, draftReady, isMaximizing]);
+  }, [configuration, draftReady, drainPreviewQueue, isMaximizing]);
 
 
   function updateBlock(key: string, patch: Partial<BuilderBlock>) {
@@ -556,7 +628,10 @@ export function PracticeSetBuilderV4({
 
   async function maximizeAll() {
     if (isMaximizing || !blocks.length) return;
+    previewRequest.current += 1;
+    previewPending.current = null;
     setIsMaximizing(true);
+    setPreviewLoading(false);
 
     const filters: PracticeFilters = {
       difficulties:
@@ -583,15 +658,16 @@ export function PracticeSetBuilderV4({
     }
 
     async function requestMaximum(nextConfiguration: PracticeConfiguration) {
+      await previewInFlight.current;
       const response = await fetch('/api/question-bank/practice-builder/maximize', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ configuration: nextConfiguration }),
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || 'Unable to calculate the maximum.');
-      return payload.maximum as PracticeMaximumPreview;
+      const payload = await readPracticeApiJson<{
+        maximum: PracticeMaximumPreview;
+      }>(response, 'Unable to calculate the maximum.');
+      return payload.maximum;
     }
 
     try {
@@ -654,9 +730,10 @@ export function PracticeSetBuilderV4({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ configuration }),
       });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(payload.error || 'Unable to create this session.');
+      const payload = await readPracticeApiJson<{ sessionId: string }>(
+        response,
+        'Unable to create this session.',
+      );
       toast.success('Your practice session is ready.');
       router.push(`/question-bank/practice/${payload.sessionId}`);
     } catch (error) {
@@ -1030,85 +1107,115 @@ export function PracticeSetBuilderV4({
         </section>
 
         <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:space-y-0">
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-              3 · Session settings
-            </p>
-            <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
-              Mix and filters
-            </h2>
+          <section className="relative rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+            <div
+              ref={settingsScroll}
+              onScroll={updateSettingsScrollCue}
+              className="p-4 xl:h-full xl:overflow-y-auto xl:pb-20"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+                3 · Session settings
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
+                Mix and filters
+              </h2>
 
-            <fieldset className="mt-4">
-              <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">Difficulty</legend>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {DIFFICULTIES.map((value) => (
-                  <label key={value} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={difficulties.includes(value)}
-                      onChange={() =>
-                        toggleListValue(value, difficulties, setDifficulties)
-                      }
-                    />
-                    {human(value)}
-                  </label>
-                ))}
+              <fieldset className="mt-4">
+                <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Difficulty
+                </legend>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {DIFFICULTIES.map((value) => (
+                    <label key={value} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={difficulties.includes(value)}
+                        onChange={() =>
+                          toggleListValue(value, difficulties, setDifficulties)
+                        }
+                      />
+                      {human(value)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="mt-4">
+                <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Progress
+                </legend>
+                <div className="mt-2 space-y-2">
+                  {STATUSES.map((value) => (
+                    <label key={value} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={statuses.includes(value)}
+                        onChange={() =>
+                          toggleListValue(value, statuses, setStatuses)
+                        }
+                      />
+                      {human(value)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className={`${styles.orderSelect} mt-4`}>
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Saved status
+                </span>
+                <AppSelect
+                  value={savedOption(saved)}
+                  onValueChange={(value) => setSaved(optionBoolean(value))}
+                  options={SAVED_OPTIONS}
+                  placeholder="Choose saved status"
+                />
               </div>
-            </fieldset>
 
-            <fieldset className="mt-4">
-              <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">Progress</legend>
-              <div className="mt-2 space-y-2">
-                {STATUSES.map((value) => (
-                  <label key={value} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={statuses.includes(value)}
-                      onChange={() => toggleListValue(value, statuses, setStatuses)}
-                    />
-                    {human(value)}
-                  </label>
-                ))}
+              <div className={`${styles.orderSelect} mt-4`}>
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Calculator
+                </span>
+                <AppSelect
+                  value={calculatorOption(calculator)}
+                  onValueChange={(value) => setCalculator(optionBoolean(value))}
+                  options={CALCULATOR_OPTIONS}
+                  placeholder="Choose calculator status"
+                />
               </div>
-            </fieldset>
 
-            <div className={`${styles.orderSelect} mt-4`}>
-              <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Saved status
-              </span>
-              <AppSelect
-                value={savedOption(saved)}
-                onValueChange={(value) => setSaved(optionBoolean(value))}
-                options={SAVED_OPTIONS}
-                placeholder="Choose saved status"
-              />
+              <div className={`${styles.orderSelect} mt-4`}>
+                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Question order
+                </span>
+                <AppSelect
+                  value={orderingMode}
+                  onValueChange={(value) =>
+                    setOrderingMode(value as PracticeOrderingMode)
+                  }
+                  options={ORDER_OPTIONS}
+                  placeholder="Choose question order"
+                />
+                <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {selectedOrderOption?.description}
+                </p>
+              </div>
             </div>
-
-            <div className={`${styles.orderSelect} mt-4`}>
-              <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Calculator
-              </span>
-              <AppSelect
-                value={calculatorOption(calculator)}
-                onValueChange={(value) => setCalculator(optionBoolean(value))}
-                options={CALCULATOR_OPTIONS}
-                placeholder="Choose calculator status"
-              />
-            </div>
-
-            <div className={`${styles.orderSelect} mt-4`}>
-              <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                Question order
-              </span>
-              <AppSelect
-                value={orderingMode}
-                onValueChange={(value) =>
-                  setOrderingMode(value as PracticeOrderingMode)
+            {settingsHaveMore ? (
+              <button
+                type="button"
+                onClick={() =>
+                  settingsScroll.current?.scrollBy({
+                    top: Math.max(settingsScroll.current.clientHeight * 0.7, 180),
+                    behavior: 'smooth',
+                  })
                 }
-                options={ORDER_OPTIONS}
-                placeholder="Choose question order"
-              />
-            </div>
+                className={`${styles.moreSettingsButton} absolute inset-x-4 bottom-3 hidden min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg xl:flex`}
+              >
+                More settings below: saved, calculator and order
+                <ArrowDown className="size-4 shrink-0" />
+              </button>
+            ) : null}
           </section>
 
           <section className={`${styles.summaryCard} rounded-2xl p-4 shadow-lg xl:mt-4 xl:shrink-0`}>

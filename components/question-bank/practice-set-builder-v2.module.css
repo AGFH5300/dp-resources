@@ -115,6 +115,18 @@
   padding-inline: 0.875rem;
 }
 
+.moreSettingsButton {
+  border-color: color-mix(in srgb, var(--dp-blue) 50%, var(--outline));
+  background: color-mix(in srgb, var(--dp-page) 92%, transparent);
+  color: var(--dp-heading);
+  backdrop-filter: blur(12px);
+}
+
+.moreSettingsButton:hover {
+  border-color: #3b82f6;
+  background: color-mix(in srgb, var(--dp-blue) 15%, var(--dp-page));
+}
+
 .previewSuccess {
   background: rgb(6 95 70 / 0.2);
   color: #a7f3d0;

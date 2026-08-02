@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-08-02': [
+    'Made multi-subject practice-set previews reliable, clarified every question-order option, and added a visible prompt when more filters are available below.',
+  ],
   '2026-08-01': [
     'Made custom practice questions expand to the full page width, preserved each member’s in-progress builder configuration, and fixed Max all when restrictive filters leave some topics empty.',
     'Added reusable practice-set codes so students can share named Question Bank configurations and choose exact questions, progress-based questions, or full customization.',

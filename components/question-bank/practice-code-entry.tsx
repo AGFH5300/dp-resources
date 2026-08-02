@@ -4,6 +4,8 @@ import { ArrowRight, KeyRound, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 
+import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
+
 import styles from './practice-code-entry.module.css';
 
 function formatCode(value: string) {
@@ -34,8 +36,12 @@ export function PracticeCodeEntry({
         `/api/question-bank/practice-shares/${encodeURIComponent(code)}`,
         { headers: { accept: 'application/json' } },
       );
-      const payload = await response.json();
-      if (!response.ok || !payload.valid)
+      const payload = await readPracticeApiJson<{
+        valid?: boolean;
+        code?: string;
+        error?: string;
+      }>(response, 'That practice-set code could not be checked.');
+      if (!payload.valid)
         throw new Error(payload.error || 'That practice-set code is invalid.');
       router.push(`/question-bank/join/${encodeURIComponent(payload.code || code)}`);
     } catch (reason) {

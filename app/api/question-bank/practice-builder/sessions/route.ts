@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import {
   generatePracticeSession,
@@ -17,10 +17,13 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function POST(request: Request) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
   const body = await request.json().catch(() => null);
   if (!isPlainObject(body))
     return noStore({ error: 'Expected a JSON request body.' }, { status: 400 });
+
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   let configuration;
   try {

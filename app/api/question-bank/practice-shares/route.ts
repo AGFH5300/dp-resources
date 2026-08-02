@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import { createPracticeShare } from '@/lib/question-bank/practice-share';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
@@ -14,10 +14,13 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function POST(request: Request) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
   const body = await request.json().catch(() => null);
   if (!isPlainObject(body))
     return noStore({ error: 'Expected a JSON request body.' }, { status: 400 });
+
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (name.length < 3 || name.length > 120)

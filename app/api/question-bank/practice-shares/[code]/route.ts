@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { getPracticeShare } from '@/lib/question-bank/practice-share';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
-  await requireMember();
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
   const { code } = await params;
 
   try {

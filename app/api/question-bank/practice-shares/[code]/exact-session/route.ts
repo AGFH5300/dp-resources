@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { cloneExactPracticeShare } from '@/lib/question-bank/practice-share';
 import { sameOriginOrForbidden } from '@/lib/request-security';
 
@@ -16,7 +16,9 @@ export async function POST(
 ) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
   const { code } = await params;
 
   try {

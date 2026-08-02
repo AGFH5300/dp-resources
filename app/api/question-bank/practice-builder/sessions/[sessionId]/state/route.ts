@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireApiMember } from '@/lib/auth';
 import { updatePracticeSessionItem } from '@/lib/question-bank/practice-session-state';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 
@@ -20,7 +20,6 @@ export async function PATCH(
 ) {
   const forbidden = sameOriginOrForbidden(request);
   if (forbidden) return forbidden;
-  const { user } = await requireMember();
   const { sessionId } = await params;
   const body = await request.json().catch(() => null);
   if (!UUID.test(sessionId) || !isPlainObject(body))
@@ -29,6 +28,10 @@ export async function PATCH(
   const status = typeof body.status === 'string' ? body.status : '';
   if (!UUID.test(variantId) || !STATUSES.has(status))
     return noStore({ error: 'Invalid practice session item state.' }, { status: 400 });
+
+  const auth = await requireApiMember();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   try {
     const updated = await updatePracticeSessionItem({

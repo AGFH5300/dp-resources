@@ -28,7 +28,13 @@ function getSupabasePublicConfig() {
 }
 
 export function shouldBypassSupabaseMiddleware(pathname: string) {
-  return PUBLIC_AUTH_PATHS.has(pathname) || pathname.startsWith('/api/auth/');
+  return (
+    PUBLIC_AUTH_PATHS.has(pathname) ||
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/question-bank/practice-builder/') ||
+    pathname === '/api/question-bank/practice-shares' ||
+    pathname.startsWith('/api/question-bank/practice-shares/')
+  );
 }
 
 export function getSupabaseAuthCookiePrefix(supabaseUrl: string) {
