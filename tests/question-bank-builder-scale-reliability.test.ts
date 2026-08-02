@@ -33,8 +33,8 @@ describe('Question Bank builder scale reliability', () => {
   it('keeps select menus collision-aware and viewport-bounded', () => {
     expect(select).toContain('collisionPadding={12}');
     expect(select).not.toContain('avoidCollisions={false}');
+    expect(select).toContain('z-[140]');
     expect(globals).toContain('var(--radix-select-content-available-width)');
     expect(globals).toContain('calc(100vw - 1.5rem)');
   });
 });
-

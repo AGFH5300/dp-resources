@@ -97,10 +97,15 @@ export function consolidatePracticeCatalogGroups(
   >();
 
   for (const row of rows) {
-    const key =
-      row.candidates.find((candidate) => (candidateFrequency.get(candidate) || 0) > 1) ||
-      row.candidates[0] ||
-      row.concept.id;
+    const repeatedCandidates = row.candidates
+      .filter((candidate) => (candidateFrequency.get(candidate) || 0) > 1)
+      .sort((left, right) => {
+        const frequencyDifference =
+          (candidateFrequency.get(right) || 0) -
+          (candidateFrequency.get(left) || 0);
+        return frequencyDifference || left.length - right.length;
+      });
+    const key = repeatedCandidates[0] || row.candidates[0] || row.concept.id;
     let target = consolidated.get(key);
     if (!target) {
       target = {
@@ -117,6 +122,17 @@ export function consolidatePracticeCatalogGroups(
       };
       consolidated.set(key, target);
       continue;
+    }
+
+    // When both scaffolded and clean labels exist, retain the clean label as
+    // the representative even if a scaffolded row appeared first.
+    if (
+      normalizedWords(row.concept.name) === key &&
+      normalizedWords(target.concept.name) !== key
+    ) {
+      target.groupIndex = row.groupIndex;
+      target.conceptIndex = row.conceptIndex;
+      target.concept = row.concept;
     }
 
     target.aliases.add(row.concept.name);
@@ -150,4 +166,3 @@ export function consolidatePracticeCatalogGroups(
     .map((group, index) => ({ ...group, concepts: conceptsByGroup[index] }))
     .filter((group) => group.concepts.length);
 }
-

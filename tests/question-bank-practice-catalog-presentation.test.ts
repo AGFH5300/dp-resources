@@ -75,6 +75,7 @@ describe('practice catalogue presentation', () => {
         concepts: [
           concept('marketing', 'Marketing', 'Current'),
           concept('marketing-2023', '2023 Unit 4 Marketing', 'Legacy'),
+          concept('marketing-2023-copy', '2023 Unit 4 Marketing', 'Legacy Copy'),
           concept('probability', 'Probability', 'AA'),
           concept(
             'logic-probability',
@@ -90,10 +91,10 @@ describe('practice catalogue presentation', () => {
     expect(concepts.find((row) => row.name === 'Marketing')?.sourceConceptIds).toEqual([
       'marketing',
       'marketing-2023',
+      'marketing-2023-copy',
     ]);
     expect(concepts.map((row) => row.name)).toEqual(
       expect.arrayContaining(['Probability', 'Logic, Sets And Probability']),
     );
   });
 });
-
