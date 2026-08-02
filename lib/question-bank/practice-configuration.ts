@@ -16,6 +16,7 @@ export type PracticeConceptBlock = {
   key: string;
   selectionType: 'concept';
   conceptId: string;
+  conceptIds?: string[];
   courseIds: string[];
   requestedCount: number;
   filters: Partial<PracticeFilters>;
@@ -196,10 +197,28 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
           ),
         ),
       ];
+      const primaryConceptId = uuid(
+        row.conceptId,
+        `blocks[${index}].conceptId`,
+      );
+      const rawConceptIds = row.conceptIds ?? [primaryConceptId];
+      if (!Array.isArray(rawConceptIds) || !rawConceptIds.length)
+        throw new Error(`blocks[${index}].conceptIds cannot be empty.`);
+      if (rawConceptIds.length > 25)
+        throw new Error('A concept block can combine at most 25 catalogue concepts.');
+      const conceptIds = [
+        ...new Set(
+          rawConceptIds.map((item, conceptIndex) =>
+            uuid(item, `blocks[${index}].conceptIds[${conceptIndex}]`),
+          ),
+        ),
+      ];
+      if (!conceptIds.includes(primaryConceptId)) conceptIds.unshift(primaryConceptId);
       return {
         key: blockKey,
         selectionType,
-        conceptId: uuid(row.conceptId, `blocks[${index}].conceptId`),
+        conceptId: primaryConceptId,
+        conceptIds,
         courseIds,
         requestedCount,
         filters: blockFilters,
@@ -240,7 +259,10 @@ export function stablePracticeConfiguration(
     blocks: configuration.blocks.map((block) => ({
       ...block,
       ...(block.selectionType === 'concept'
-        ? { courseIds: [...block.courseIds] }
+        ? {
+            conceptIds: [...(block.conceptIds?.length ? block.conceptIds : [block.conceptId])].sort(),
+            courseIds: [...block.courseIds],
+          }
         : {}),
       filters: {
         ...block.filters,

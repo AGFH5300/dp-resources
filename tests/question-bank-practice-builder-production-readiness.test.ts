@@ -31,7 +31,10 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('appearance="summary"');
     expect(builder).toContain('catalog.subjects.find');
     expect(builder).toContain('selectAllSubject(fullSubject)');
-    expect(builder).toContain('More settings below: saved, calculator and order');
+    expect(builder).toContain('aria-label="Expand session settings"');
+    expect(builder).toContain('Every filter and ordering option is visible here.');
+    expect(builder).toContain('Find among ${blocks.length.toLocaleString()} selected topics');
+    expect(builder).toContain('filteredBlockGroups.map');
     expect(builder).toContain('Rotate between topics');
     expect(builder).toContain('Shuffle all questions');
     expect(builder).toContain('Finish one topic at a time');
@@ -43,6 +46,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(styles).toContain(":global(html[data-theme='dark']) .conceptButton");
     expect(styles).toContain('.conceptButtonSelected:disabled');
     expect(styles).toContain('.deleteButton:hover');
+    expect(styles).toContain('.expandedSettingsGrid');
   });
 
   it('keeps practice APIs out of request-mutating middleware and returns JSON auth failures', () => {

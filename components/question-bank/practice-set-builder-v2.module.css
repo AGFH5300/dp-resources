@@ -68,6 +68,25 @@
   background: color-mix(in srgb, #2563eb 18%, var(--dp-warm-surface));
 }
 
+.selectedSubjectGroup,
+.selectedTopicRow {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+}
+
+.selectedSubjectGroup[open] > summary .detailsChevron,
+.selectedTopicRow details[open] > summary .detailsChevron {
+  transform: rotate(180deg);
+}
+
+.detailsChevron {
+  transition: transform 150ms ease;
+}
+
+.selectedTopicRow:hover {
+  border-color: color-mix(in srgb, var(--dp-blue) 40%, var(--outline));
+}
+
 .deleteButton {
   color: var(--dp-muted-text);
   transition: color 150ms ease, background-color 150ms ease;
@@ -115,16 +134,43 @@
   padding-inline: 0.875rem;
 }
 
-.moreSettingsButton {
-  border-color: color-mix(in srgb, var(--dp-blue) 50%, var(--outline));
-  background: color-mix(in srgb, var(--dp-page) 92%, transparent);
-  color: var(--dp-heading);
-  backdrop-filter: blur(12px);
+.settingsPanel {
+  max-height: calc(100dvh - 22rem);
+  min-height: 22rem;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
-.moreSettingsButton:hover {
-  border-color: #3b82f6;
-  background: color-mix(in srgb, var(--dp-blue) 15%, var(--dp-page));
+.expandedSettingsGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.expandedSettingsSection,
+.expandedOrderSection {
+  margin: 0;
+  border: 1px solid var(--outline);
+  border-radius: 1rem;
+  background: var(--dp-warm-surface);
+  padding: 1rem;
+}
+
+.expandedOrderSection {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+  .expandedSettingsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .settingsPanel {
+    height: calc(100% - 5.5rem);
+    max-height: none;
+  }
 }
 
 .previewSuccess {
@@ -156,6 +202,10 @@
   .courseOption,
   .deleteButton,
   .countButton {
+    transition: none;
+  }
+
+  .detailsChevron {
     transition: none;
   }
 }

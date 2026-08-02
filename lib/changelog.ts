@@ -28,6 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-08-02': [
+    'Made the Practice Builder reliable for all-subject sessions, added compact subject-grouped selection editing and expandable filters, and kept every menu inside the screen.',
     'Made multi-subject practice-set previews reliable, clarified every question-order option, and added a visible prompt when more filters are available below.',
   ],
   '2026-08-01': [

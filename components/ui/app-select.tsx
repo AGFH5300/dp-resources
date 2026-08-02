@@ -72,8 +72,8 @@ export function AppSelect({
           side="bottom"
           align="start"
           sideOffset={5}
-          avoidCollisions={false}
-          className="dp-select-content z-[110] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border text-sm shadow-lg outline-none ring-0"
+          collisionPadding={12}
+          className="dp-select-content z-[140] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border text-sm shadow-lg outline-none ring-0"
         >
           {searchable ? (
             <div className="dp-select-search">

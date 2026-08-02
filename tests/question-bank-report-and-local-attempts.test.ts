@@ -94,7 +94,7 @@ describe('question reporting', () => {
 
   it('keeps the dropdown above the original modal', () => {
     expect(reportDialog).toContain('z-[60]');
-    expect(appSelect).toContain('z-[110]');
+    expect(appSelect).toContain('z-[140]');
   });
 
   it('moves only the trigger while the original lower modal remains authoritative', () => {

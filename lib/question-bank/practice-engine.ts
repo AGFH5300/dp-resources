@@ -126,7 +126,13 @@ function blockSnapshot(block: PracticeConfigurationBlock) {
     selectionType: block.selectionType,
     requestedCount: block.requestedCount,
     ...(block.selectionType === 'concept'
-      ? { conceptId: block.conceptId, courseIds: block.courseIds }
+      ? {
+          conceptId: block.conceptId,
+          conceptIds: block.conceptIds?.length
+            ? block.conceptIds
+            : [block.conceptId],
+          courseIds: block.courseIds,
+        }
       : { courseId: block.courseId }),
     filters: block.filters,
   };
@@ -258,7 +264,12 @@ export async function generatePracticeSession(
       return {
         blockKey,
         ...(block.selectionType === 'concept'
-          ? { conceptId: block.conceptId }
+          ? {
+              conceptId: block.conceptId,
+              conceptIds: block.conceptIds?.length
+                ? block.conceptIds
+                : [block.conceptId],
+            }
           : {}),
         selectionType: block.selectionType,
       };

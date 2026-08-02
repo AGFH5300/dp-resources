@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowDown,
   BookOpenCheck,
   Check,
   CheckSquare2,
   ChevronDown,
   ListChecks,
   Loader2,
+  Maximize2,
   Plus,
   Search,
   Trash2,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -48,6 +49,7 @@ type CatalogCourse = {
 
 type CatalogConcept = {
   id: string;
+  sourceConceptIds: string[];
   slug: string;
   name: string;
   description: string;
@@ -179,12 +181,15 @@ function catalogConceptIndex(catalog: Catalog) {
   for (const subject of catalog.subjects) {
     for (const group of subject.groups) {
       for (const concept of group.concepts) {
-        index.set(concept.id, {
+        const match = {
           subjectId: subject.id,
           subjectName: subject.name,
           groupName: group.name,
           concept,
-        });
+        };
+        index.set(concept.id, match);
+        for (const sourceConceptId of concept.sourceConceptIds || [])
+          index.set(sourceConceptId, match);
       }
     }
   }
@@ -252,6 +257,116 @@ function optionBoolean(value: string) {
   return null;
 }
 
+function PracticeSettingsFields({
+  difficulties,
+  statuses,
+  saved,
+  calculator,
+  orderingMode,
+  expanded = false,
+  onToggleDifficulty,
+  onToggleStatus,
+  onSavedChange,
+  onCalculatorChange,
+  onOrderingModeChange,
+}: {
+  difficulties: string[];
+  statuses: string[];
+  saved: boolean | null;
+  calculator: boolean | null;
+  orderingMode: PracticeOrderingMode;
+  expanded?: boolean;
+  onToggleDifficulty: (value: string) => void;
+  onToggleStatus: (value: string) => void;
+  onSavedChange: (value: boolean | null) => void;
+  onCalculatorChange: (value: boolean | null) => void;
+  onOrderingModeChange: (value: PracticeOrderingMode) => void;
+}) {
+  const selectedOrderOption = ORDER_OPTIONS.find(
+    (option) => option.value === orderingMode,
+  );
+  return (
+    <div className={expanded ? styles.expandedSettingsGrid : ''}>
+      <fieldset className={expanded ? styles.expandedSettingsSection : 'mt-4'}>
+        <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Difficulty
+        </legend>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {DIFFICULTIES.map((value) => (
+            <label key={value} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={difficulties.includes(value)}
+                onChange={() => onToggleDifficulty(value)}
+              />
+              {human(value)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className={expanded ? styles.expandedSettingsSection : 'mt-4'}>
+        <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Progress
+        </legend>
+        <div className="mt-2 space-y-2">
+          {STATUSES.map((value) => (
+            <label key={value} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={statuses.includes(value)}
+                onChange={() => onToggleStatus(value)}
+              />
+              {human(value)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className={`${styles.orderSelect} ${expanded ? styles.expandedSettingsSection : 'mt-4'}`}>
+        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Saved status
+        </span>
+        <AppSelect
+          value={savedOption(saved)}
+          onValueChange={(value) => onSavedChange(optionBoolean(value))}
+          options={SAVED_OPTIONS}
+          placeholder="Choose saved status"
+        />
+      </div>
+
+      <div className={`${styles.orderSelect} ${expanded ? styles.expandedSettingsSection : 'mt-4'}`}>
+        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Calculator
+        </span>
+        <AppSelect
+          value={calculatorOption(calculator)}
+          onValueChange={(value) => onCalculatorChange(optionBoolean(value))}
+          options={CALCULATOR_OPTIONS}
+          placeholder="Choose calculator status"
+        />
+      </div>
+
+      <div className={`${styles.orderSelect} ${expanded ? styles.expandedOrderSection : 'mt-4'}`}>
+        <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          Question order
+        </span>
+        <AppSelect
+          value={orderingMode}
+          onValueChange={(value) =>
+            onOrderingModeChange(value as PracticeOrderingMode)
+          }
+          options={ORDER_OPTIONS}
+          placeholder="Choose question order"
+        />
+        <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {selectedOrderOption?.description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function makeBlock(
   subject: CatalogSubject,
   groupName: string,
@@ -285,6 +400,7 @@ export function PracticeSetBuilderV4({
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const [selectionSearch, setSelectionSearch] = useState('');
   const [blocks, setBlocks] = useState<BuilderBlock[]>(() =>
     initialBlocks(catalog, initialConfiguration),
   );
@@ -318,14 +434,13 @@ export function PracticeSetBuilderV4({
   const [isMaximizing, setIsMaximizing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
-  const [settingsHaveMore, setSettingsHaveMore] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
   const previewRequest = useRef(0);
   const previewPending = useRef<{
     requestId: number;
     configuration: PracticeConfiguration;
   } | null>(null);
   const previewInFlight = useRef<Promise<void> | null>(null);
-  const settingsScroll = useRef<HTMLDivElement | null>(null);
 
   const selectedConceptIds = useMemo(
     () => new Set(blocks.map((block) => block.concept.id)),
@@ -334,9 +449,6 @@ export function PracticeSetBuilderV4({
   const totalRequested = useMemo(
     () => blocks.reduce((total, block) => total + block.requestedCount, 0),
     [blocks],
-  );
-  const selectedOrderOption = ORDER_OPTIONS.find(
-    (option) => option.value === orderingMode,
   );
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredSubjects = catalog.subjects
@@ -361,6 +473,32 @@ export function PracticeSetBuilderV4({
         .filter((group) => group.concepts.length),
     }))
     .filter((subject) => subject.groups.length);
+  const filteredBlockGroups = useMemo(() => {
+    const query = selectionSearch.trim().toLocaleLowerCase();
+    const grouped = new Map<
+      string,
+      { subjectId: string; subjectName: string; blocks: BuilderBlock[] }
+    >();
+    for (const block of blocks) {
+      const searchable = [
+        block.subjectName,
+        block.groupName,
+        block.concept.name,
+        ...block.concept.courses.map((course) => course.name),
+      ]
+        .join(' ')
+        .toLocaleLowerCase();
+      if (query && !searchable.includes(query)) continue;
+      const group = grouped.get(block.subjectId) || {
+        subjectId: block.subjectId,
+        subjectName: block.subjectName,
+        blocks: [],
+      };
+      group.blocks.push(block);
+      grouped.set(block.subjectId, group);
+    }
+    return [...grouped.values()];
+  }, [blocks, selectionSearch]);
 
   const configuration = useMemo<PracticeConfiguration | null>(() => {
     const activeBlocks = blocks.filter((block) => block.requestedCount > 0);
@@ -385,6 +523,7 @@ export function PracticeSetBuilderV4({
         key: block.key,
         selectionType: 'concept' as const,
         conceptId: block.concept.id,
+        conceptIds: block.concept.sourceConceptIds,
         courseIds: block.courseIds,
         requestedCount: block.requestedCount,
         filters: { ...filters },
@@ -458,14 +597,6 @@ export function PracticeSetBuilderV4({
     return running;
   }, []);
 
-  const updateSettingsScrollCue = useCallback(() => {
-    const node = settingsScroll.current;
-    if (!node) return;
-    setSettingsHaveMore(
-      node.scrollHeight - node.scrollTop - node.clientHeight > 12,
-    );
-  }, []);
-
   useEffect(() => {
     if (!initialConfiguration) {
       const restored = readPracticeBuilderDraft(userId);
@@ -491,13 +622,18 @@ export function PracticeSetBuilderV4({
   }, [draft, draftReady, userId]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(updateSettingsScrollCue);
-    window.addEventListener('resize', updateSettingsScrollCue);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('resize', updateSettingsScrollCue);
+    if (!settingsExpanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSettingsExpanded(false);
     };
-  }, [updateSettingsScrollCue]);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [settingsExpanded]);
 
   useEffect(() => {
     setPreview(null);
@@ -650,6 +786,7 @@ export function PracticeSetBuilderV4({
           key: block.key,
           selectionType: 'concept' as const,
           conceptId: block.concept.id,
+          conceptIds: block.concept.sourceConceptIds,
           courseIds: [...block.courseIds],
           requestedCount: Math.max(1, block.requestedCount),
           filters: { ...filters },
@@ -754,7 +891,7 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(300px,0.85fr)_minmax(460px,1.3fr)_330px] xl:items-stretch">
+      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(300px,0.85fr)_minmax(460px,1.3fr)_360px] xl:items-stretch">
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex xl:min-h-0 xl:flex-col">
           <div className="shrink-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
@@ -853,8 +990,13 @@ export function PracticeSetBuilderV4({
                                 <span className="min-w-0 flex-1">
                                   <strong className="block text-sm">{concept.name}</strong>
                                   <small className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                                    {concept.courses.length} course collection
-                                    {concept.courses.length === 1 ? '' : 's'}
+                                    {concept.courses
+                                      .slice(0, 2)
+                                      .map((course) => course.name)
+                                      .join(', ')}
+                                    {concept.courses.length > 2
+                                      ? ` +${concept.courses.length - 2} more`
+                                      : ''}
                                   </small>
                                 </span>
                               </button>
@@ -926,171 +1068,267 @@ export function PracticeSetBuilderV4({
             ) : null}
           </div>
 
-          <div className="mt-4 space-y-4 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
-            {blocks.map((block, blockIndex) => {
-              const blockPreview = preview?.blocks.find((row) => row.key === block.key);
-              const maximum = maximumForBlock(block, blockPreview);
-              const allCoursesSelected =
-                block.courseIds.length === block.concept.courses.length;
+          {blocks.length ? (
+            <label
+              className={`${styles.searchShell} mt-4 flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2`}
+            >
+              <Search className="size-4 text-slate-500" />
+              <span className="sr-only">Find a selected topic or course</span>
+              <input
+                value={selectionSearch}
+                onChange={(event) => setSelectionSearch(event.target.value)}
+                placeholder={`Find among ${blocks.length.toLocaleString()} selected topics`}
+                className={`${styles.searchInput} min-w-0 flex-1 border-0 bg-transparent text-sm outline-none`}
+              />
+            </label>
+          ) : null}
+
+          <div className="mt-4 space-y-3 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+            {filteredBlockGroups.map((subjectGroup) => {
+              const subjectRequested = subjectGroup.blocks.reduce(
+                (total, block) => total + block.requestedCount,
+                0,
+              );
               return (
-                <article key={block.key} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-                  <header className="flex items-start gap-3">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--dp-navy)] text-sm font-semibold text-white">
-                      {blockIndex + 1}
+                <details
+                  key={`${subjectGroup.subjectId}:${selectionSearch ? 'filtered' : 'all'}`}
+                  open={blocks.length <= 12 || Boolean(selectionSearch) || undefined}
+                  className={`${styles.selectedSubjectGroup} rounded-2xl border`}
+                >
+                  <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+                    <ChevronDown className={`${styles.detailsChevron} size-4 shrink-0`} />
+                    <strong className="min-w-0 flex-1 text-sm text-slate-900 dark:text-slate-50">
+                      {subjectGroup.subjectName}
+                    </strong>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {subjectGroup.blocks.length} topic
+                      {subjectGroup.blocks.length === 1 ? '' : 's'} ·{' '}
+                      {subjectRequested.toLocaleString()} questions
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        {block.subjectName} · {block.groupName}
-                      </p>
-                      <h3 className="mt-0.5 text-base font-semibold text-slate-900 dark:text-slate-50">
-                        {block.concept.name}
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setBlocks((current) =>
-                          current.filter((item) => item.key !== block.key),
-                        )
-                      }
-                      className={`${styles.deleteButton} rounded-lg p-2`}
-                      aria-label={`Remove ${block.concept.name}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </header>
-
-                  <fieldset className="mt-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        Courses for this topic
-                      </legend>
-                      <button
-                        type="button"
-                        disabled={allCoursesSelected}
-                        onClick={() => useAllCourses(block)}
-                        className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
-                      >
-                        {allCoursesSelected ? 'All courses selected' : 'Use all courses'}
-                      </button>
-                    </div>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {block.concept.courses.map((course) => {
-                        const selected = block.courseIds.includes(course.id);
-                        return (
-                          <label
-                            key={course.id}
-                            className={`${styles.courseOption} ${
-                              selected ? styles.courseOptionSelected : ''
-                            } flex cursor-pointer gap-2 rounded-xl border p-3`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => toggleCourse(block, course.id)}
-                              className="mt-0.5"
-                            />
-                            <span>
-                              <strong className="block text-sm text-slate-800 dark:text-slate-100">
-                                {course.name}
-                              </strong>
-                              <small className="block text-xs text-slate-500 dark:text-slate-400">
-                                {course.syllabusLabel || course.level || 'Course'} ·{' '}
-                                {course.questionCount.toLocaleString()} unique available
-                              </small>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {!block.courseIds.length ? (
-                      <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-300">
-                        Select at least one course for this topic.
-                      </p>
-                    ) : null}
-                  </fieldset>
-
-                  <div className="mt-4">
-                    <div className="flex items-end justify-between gap-3">
-                      <label className="block max-w-48 flex-1">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          Questions from this topic
-                        </span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={block.requestedCount}
-                          onChange={(event) =>
-                            setRequestedCount(
-                              block,
-                              Number(event.target.value.replace(/\D/g, '')),
-                              blockPreview,
-                            )
-                          }
-                          className={`${styles.countInput} mt-2 w-full rounded-xl border px-3 py-2`}
-                          aria-label={`Questions from ${block.concept.name}`}
-                        />
-                      </label>
-                      <span className="pb-2 text-xs text-slate-500 dark:text-slate-400">
-                        Maximum {maximum.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[10, 100].map((increment) => (
-                        <button
-                          key={increment}
-                          type="button"
-                          disabled={maximum === 0 || block.requestedCount >= maximum}
-                          onClick={() =>
-                            setRequestedCount(
-                              block,
-                              block.requestedCount + increment,
-                              blockPreview,
-                            )
-                          }
-                          className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
+                  </summary>
+                  <div className="space-y-2 border-t border-slate-200 p-2 dark:border-slate-800">
+                    {subjectGroup.blocks.map((block) => {
+                      const blockIndex = blocks.indexOf(block);
+                      const blockPreview = preview?.blocks.find(
+                        (row) => row.key === block.key,
+                      );
+                      const maximum = maximumForBlock(block, blockPreview);
+                      const allCoursesSelected =
+                        block.courseIds.length === block.concept.courses.length;
+                      const selectedCourses = block.concept.courses.filter((course) =>
+                        block.courseIds.includes(course.id),
+                      );
+                      const courseSummary = selectedCourses
+                        .map((course) => course.name)
+                        .join(', ');
+                      return (
+                        <article
+                          key={block.key}
+                          className={`${styles.selectedTopicRow} flex items-start gap-1 rounded-xl border`}
                         >
-                          +{increment}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        disabled={maximum === 0 || block.requestedCount >= maximum}
-                        onClick={() => setRequestedCount(block, maximum, blockPreview)}
-                        className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
-                      >
-                        Max topic
-                      </button>
-                    </div>
-                  </div>
+                          <details
+                            open={blocks.length <= 6 || Boolean(selectionSearch) || undefined}
+                            className="min-w-0 flex-1"
+                          >
+                            <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[color:var(--dp-navy)] text-xs font-semibold text-white">
+                                {blockIndex + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                  {block.groupName}
+                                  {block.concept.name.includes(',')
+                                    ? ' · Combined source topic'
+                                    : ''}
+                                </span>
+                                <strong className="mt-0.5 block text-sm text-slate-900 dark:text-slate-50">
+                                  {block.concept.name}
+                                </strong>
+                                <small className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                                  {courseSummary || 'No course selected'}
+                                </small>
+                              </span>
+                              <span className="shrink-0 text-right">
+                                <strong className="block text-sm text-slate-800 dark:text-slate-100">
+                                  {block.requestedCount.toLocaleString()}
+                                </strong>
+                                <small className="block text-[0.7rem] text-slate-500 dark:text-slate-400">
+                                  questions
+                                </small>
+                              </span>
+                              <ChevronDown
+                                className={`${styles.detailsChevron} size-4 shrink-0 text-slate-400`}
+                              />
+                            </summary>
 
-                  {blockPreview ? (
-                    <div
-                      className={`${
-                        blockPreview.shortage
-                          ? styles.previewWarning
-                          : styles.previewSuccess
-                      } mt-4 rounded-xl px-3 py-2 text-sm`}
-                    >
-                      {blockPreview.candidateCount.toLocaleString()} unique candidates ·{' '}
-                      {blockPreview.shortage
-                        ? `${blockPreview.requestedCount.toLocaleString()} requested · short by ${blockPreview.shortage.toLocaleString()}`
-                        : `${blockPreview.allocatedCount.toLocaleString()} allocated`}
-                      {blockPreview.overlapQuestionCount
-                        ? ` · ${blockPreview.overlapQuestionCount.toLocaleString()} also match another selection`
-                        : ''}
-                    </div>
-                  ) : block.requestedCount === 0 ? (
-                    <div className={`${styles.previewWarning} mt-4 rounded-xl px-3 py-2 text-sm`}>
-                      No questions match the current courses and filters. This topic
-                      stays selected but is skipped until Max all finds an eligible
-                      question after your settings change.
-                    </div>
-                  ) : null}
-                </article>
+                            <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+                              <fieldset>
+                                <div className="flex items-center justify-between gap-3">
+                                  <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Courses for this topic
+                                  </legend>
+                                  <button
+                                    type="button"
+                                    disabled={allCoursesSelected}
+                                    onClick={() => useAllCourses(block)}
+                                    className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
+                                  >
+                                    {allCoursesSelected
+                                      ? 'All courses selected'
+                                      : 'Use all courses'}
+                                  </button>
+                                </div>
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  {block.concept.courses.map((course) => {
+                                    const selected = block.courseIds.includes(course.id);
+                                    return (
+                                      <label
+                                        key={course.id}
+                                        className={`${styles.courseOption} ${
+                                          selected ? styles.courseOptionSelected : ''
+                                        } flex cursor-pointer gap-2 rounded-xl border p-3`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selected}
+                                          onChange={() => toggleCourse(block, course.id)}
+                                          className="mt-0.5"
+                                        />
+                                        <span className="min-w-0">
+                                          <strong className="block text-sm text-slate-800 dark:text-slate-100">
+                                            {course.name}
+                                          </strong>
+                                          <small className="block text-xs text-slate-500 dark:text-slate-400">
+                                            {course.syllabusLabel || course.level || 'Course'}{' '}
+                                            · {course.questionCount.toLocaleString()} unique
+                                            available
+                                          </small>
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                {!block.courseIds.length ? (
+                                  <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-300">
+                                    Select at least one course for this topic.
+                                  </p>
+                                ) : null}
+                              </fieldset>
+
+                              <div className="mt-4">
+                                <div className="flex items-end justify-between gap-3">
+                                  <label className="block max-w-48 flex-1">
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                      Questions from this topic
+                                    </span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      value={block.requestedCount}
+                                      onChange={(event) =>
+                                        setRequestedCount(
+                                          block,
+                                          Number(event.target.value.replace(/\D/g, '')),
+                                          blockPreview,
+                                        )
+                                      }
+                                      className={`${styles.countInput} mt-2 w-full rounded-xl border px-3 py-2`}
+                                      aria-label={`Questions from ${block.concept.name}`}
+                                    />
+                                  </label>
+                                  <span className="pb-2 text-xs text-slate-500 dark:text-slate-400">
+                                    Maximum {maximum.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {[10, 100].map((increment) => (
+                                    <button
+                                      key={increment}
+                                      type="button"
+                                      disabled={
+                                        maximum === 0 || block.requestedCount >= maximum
+                                      }
+                                      onClick={() =>
+                                        setRequestedCount(
+                                          block,
+                                          block.requestedCount + increment,
+                                          blockPreview,
+                                        )
+                                      }
+                                      className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
+                                    >
+                                      +{increment}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      maximum === 0 || block.requestedCount >= maximum
+                                    }
+                                    onClick={() =>
+                                      setRequestedCount(block, maximum, blockPreview)
+                                    }
+                                    className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
+                                  >
+                                    Max topic
+                                  </button>
+                                </div>
+                              </div>
+
+                              {blockPreview ? (
+                                <div
+                                  className={`${
+                                    blockPreview.shortage
+                                      ? styles.previewWarning
+                                      : styles.previewSuccess
+                                  } mt-4 rounded-xl px-3 py-2 text-sm`}
+                                >
+                                  {blockPreview.candidateCount.toLocaleString()} unique
+                                  candidates ·{' '}
+                                  {blockPreview.shortage
+                                    ? `${blockPreview.requestedCount.toLocaleString()} requested · short by ${blockPreview.shortage.toLocaleString()}`
+                                    : `${blockPreview.allocatedCount.toLocaleString()} allocated`}
+                                  {blockPreview.overlapQuestionCount
+                                    ? ` · ${blockPreview.overlapQuestionCount.toLocaleString()} also match another selection`
+                                    : ''}
+                                </div>
+                              ) : block.requestedCount === 0 ? (
+                                <div
+                                  className={`${styles.previewWarning} mt-4 rounded-xl px-3 py-2 text-sm`}
+                                >
+                                  No questions match the current courses and filters.
+                                  This topic stays selected and is skipped until the
+                                  settings match an eligible question.
+                                </div>
+                              ) : null}
+                            </div>
+                          </details>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBlocks((current) =>
+                                current.filter((item) => item.key !== block.key),
+                              )
+                            }
+                            className={`${styles.deleteButton} mr-2 mt-2 shrink-0 rounded-lg p-2`}
+                            aria-label={`Remove ${block.concept.name}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </details>
               );
             })}
+
+            {blocks.length && !filteredBlockGroups.length ? (
+              <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                No selected topic or course matches that search.
+              </p>
+            ) : null}
 
             {!blocks.length ? (
               <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
@@ -1107,115 +1345,44 @@ export function PracticeSetBuilderV4({
         </section>
 
         <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:space-y-0">
-          <section className="relative rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-            <div
-              ref={settingsScroll}
-              onScroll={updateSettingsScrollCue}
-              className="p-4 xl:h-full xl:overflow-y-auto xl:pb-20"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-                3 · Session settings
-              </p>
-              <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
-                Mix and filters
-              </h2>
-
-              <fieldset className="mt-4">
-                <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Difficulty
-                </legend>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {DIFFICULTIES.map((value) => (
-                    <label key={value} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={difficulties.includes(value)}
-                        onChange={() =>
-                          toggleListValue(value, difficulties, setDifficulties)
-                        }
-                      />
-                      {human(value)}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset className="mt-4">
-                <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Progress
-                </legend>
-                <div className="mt-2 space-y-2">
-                  {STATUSES.map((value) => (
-                    <label key={value} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={statuses.includes(value)}
-                        onChange={() =>
-                          toggleListValue(value, statuses, setStatuses)
-                        }
-                      />
-                      {human(value)}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div className={`${styles.orderSelect} mt-4`}>
-                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Saved status
-                </span>
-                <AppSelect
-                  value={savedOption(saved)}
-                  onValueChange={(value) => setSaved(optionBoolean(value))}
-                  options={SAVED_OPTIONS}
-                  placeholder="Choose saved status"
-                />
-              </div>
-
-              <div className={`${styles.orderSelect} mt-4`}>
-                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Calculator
-                </span>
-                <AppSelect
-                  value={calculatorOption(calculator)}
-                  onValueChange={(value) => setCalculator(optionBoolean(value))}
-                  options={CALCULATOR_OPTIONS}
-                  placeholder="Choose calculator status"
-                />
-              </div>
-
-              <div className={`${styles.orderSelect} mt-4`}>
-                <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Question order
-                </span>
-                <AppSelect
-                  value={orderingMode}
-                  onValueChange={(value) =>
-                    setOrderingMode(value as PracticeOrderingMode)
-                  }
-                  options={ORDER_OPTIONS}
-                  placeholder="Choose question order"
-                />
-                <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  {selectedOrderOption?.description}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-h-[28rem] xl:flex-1 xl:overflow-hidden">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+                  3 · Session settings
                 </p>
+                <h2 className="mt-1 text-lg font-semibold text-[color:var(--dp-navy)]">
+                  Mix and filters
+                </h2>
               </div>
-            </div>
-            {settingsHaveMore ? (
               <button
                 type="button"
-                onClick={() =>
-                  settingsScroll.current?.scrollBy({
-                    top: Math.max(settingsScroll.current.clientHeight * 0.7, 180),
-                    behavior: 'smooth',
-                  })
-                }
-                className={`${styles.moreSettingsButton} absolute inset-x-4 bottom-3 hidden min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold shadow-lg xl:flex`}
+                onClick={() => setSettingsExpanded(true)}
+                className={`${styles.countButton} inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold`}
+                aria-label="Expand session settings"
               >
-                More settings below: saved, calculator and order
-                <ArrowDown className="size-4 shrink-0" />
+                <Maximize2 className="size-4" />
+                Expand
               </button>
-            ) : null}
+            </div>
+            <div className={`${styles.settingsPanel} p-4`}>
+              <PracticeSettingsFields
+                difficulties={difficulties}
+                statuses={statuses}
+                saved={saved}
+                calculator={calculator}
+                orderingMode={orderingMode}
+                onToggleDifficulty={(value) =>
+                  toggleListValue(value, difficulties, setDifficulties)
+                }
+                onToggleStatus={(value) =>
+                  toggleListValue(value, statuses, setStatuses)
+                }
+                onSavedChange={setSaved}
+                onCalculatorChange={setCalculator}
+                onOrderingModeChange={setOrderingMode}
+              />
+            </div>
           </section>
 
           <section className={`${styles.summaryCard} rounded-2xl p-4 shadow-lg xl:mt-4 xl:shrink-0`}>
@@ -1302,6 +1469,66 @@ export function PracticeSetBuilderV4({
           </section>
         </aside>
       </div>
+
+      {settingsExpanded ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSettingsExpanded(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="practice-settings-title"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          >
+            <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-6">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+                  Session settings
+                </p>
+                <h2
+                  id="practice-settings-title"
+                  className="mt-1 text-2xl font-semibold text-[color:var(--dp-navy)]"
+                >
+                  Mix and filters
+                </h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Every filter and ordering option is visible here.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsExpanded(false)}
+                className={`${styles.countButton} inline-flex size-10 shrink-0 items-center justify-center rounded-xl border`}
+                aria-label="Close expanded session settings"
+              >
+                <X className="size-5" />
+              </button>
+            </header>
+            <div className="p-5 sm:p-6">
+              <PracticeSettingsFields
+                expanded
+                difficulties={difficulties}
+                statuses={statuses}
+                saved={saved}
+                calculator={calculator}
+                orderingMode={orderingMode}
+                onToggleDifficulty={(value) =>
+                  toggleListValue(value, difficulties, setDifficulties)
+                }
+                onToggleStatus={(value) =>
+                  toggleListValue(value, statuses, setStatuses)
+                }
+                onSavedChange={setSaved}
+                onCalculatorChange={setCalculator}
+                onOrderingModeChange={setOrderingMode}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }
