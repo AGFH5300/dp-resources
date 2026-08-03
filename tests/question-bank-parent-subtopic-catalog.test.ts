@@ -75,6 +75,14 @@ describe('Question Bank parent/subtopic picker hierarchy', () => {
     expect(builder).not.toContain('Combined source topic');
   });
 
+  it('shows a larger topic directly when it has only one selectable subtopic', () => {
+    expect(builder).toContain('fullGroup.concepts.length === 1');
+    expect(builder).toContain('practiceSelectionLabel(');
+    expect(builder).toContain('singletonPracticeConceptIds(catalog.subjects)');
+    expect(builder).toContain('!isOnlySubtopic');
+    expect(builder).toContain('<PickerConceptButton');
+  });
+
   it('does not rewrite imported questions, variants, taxonomy, or assets', () => {
     expect(migration).toContain(
       "raise exception 'Parent/subtopic catalogue changed protected Question Bank counts'",
