@@ -6,6 +6,9 @@ const read = (path: string) => readFileSync(path, 'utf8');
 const migration = read(
   'supabase/migrations/20260803184136_batched_practice_build_and_subject_removal.sql',
 );
+const cleanupMigration = read(
+  'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
+);
 const route = read(
   'app/api/question-bank/practice-builder/sessions/route.ts',
 );
@@ -55,5 +58,11 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(migration).toContain('delete from public.dp_qb_assets');
     expect(migration).toContain('delete from public.dp_qb_subjects');
     expect(migration).toContain('drop table if exists public.dp_qb_exam_mate_import_stage');
+    expect(cleanupMigration).toContain(
+      '(select count(*) from public.dp_qb_asset_deletion_queue) <> 1034',
+    );
+    expect(cleanupMigration).toContain(
+      'drop table public.dp_qb_asset_deletion_queue',
+    );
   });
 });
