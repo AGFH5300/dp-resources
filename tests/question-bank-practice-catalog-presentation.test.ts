@@ -27,7 +27,7 @@ function concept(id: string, name: string, courseId: string) {
 }
 
 describe('practice catalogue presentation', () => {
-  it('combines equivalent labels and their course collections across groups', () => {
+  it('combines equivalent labels within a heading without crossing headings', () => {
     const groups: PracticeCatalogGroupRow[] = [
       {
         id: 'calculus',
@@ -51,14 +51,15 @@ describe('practice catalogue presentation', () => {
 
     const result = consolidatePracticeCatalogGroups(groups);
     const concepts = result.flatMap((group) => group.concepts);
-    expect(concepts).toHaveLength(2);
-    expect(concepts.find((row) => row.name === 'Integration')).toMatchObject({
-      sourceConceptIds: ['pilot-integration', 'source-integration'],
-      courses: expect.arrayContaining([
-        expect.objectContaining({ id: 'AA HL' }),
-        expect.objectContaining({ id: 'Legacy HL' }),
-      ]),
-    });
+    expect(concepts).toHaveLength(3);
+    expect(result[0].concepts[0].sourceConceptIds).toEqual([
+      'pilot-integration',
+    ]);
+    expect(result[1].concepts.find((row) => row.name === 'Integration'))
+      .toMatchObject({
+        sourceConceptIds: ['source-integration'],
+        courses: [expect.objectContaining({ id: 'Legacy HL' })],
+      });
     expect(
       concepts.find((row) => row.name === 'Statistics and Probability')
         ?.sourceConceptIds,

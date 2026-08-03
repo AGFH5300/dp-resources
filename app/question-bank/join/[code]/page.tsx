@@ -35,6 +35,20 @@ function buildCatalogIndexes(catalog: any) {
         for (const course of concept.courses || []) courses.set(course.id, course);
       }
     }
+    for (const redirect of subject.redirectConcepts || []) {
+      const match = {
+        subject,
+        group: { name: redirect.groupName },
+        concept: redirect.concept,
+      };
+      concepts.set(redirect.concept.id, match);
+      for (const sourceConceptId of redirect.concept.sourceConceptIds || [])
+        concepts.set(sourceConceptId, match);
+      for (const legacyConceptId of redirect.concept.legacyConceptIds || [])
+        concepts.set(legacyConceptId, match);
+      for (const course of redirect.concept.courses || [])
+        courses.set(course.id, course);
+    }
   }
   return { concepts, courses };
 }

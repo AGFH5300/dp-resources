@@ -74,6 +74,10 @@ type CatalogSubject = {
     description: string;
     concepts: CatalogConcept[];
   }>;
+  redirectConcepts: Array<{
+    groupName: string;
+    concept: CatalogConcept;
+  }>;
 };
 
 type Catalog = { subjects: CatalogSubject[] };
@@ -101,9 +105,9 @@ const STATUSES = ['not_started', 'in_progress', 'completed'] as const;
 const ORDER_OPTIONS = [
   {
     value: 'interleaved',
-    label: 'Rotate between topics',
+    label: 'Rotate between subtopics',
     description:
-      'Takes one question from each selected topic in turn, then repeats.',
+      'Takes one question from each selected subtopic in turn, then repeats.',
   },
   {
     value: 'mixed',
@@ -112,8 +116,8 @@ const ORDER_OPTIONS = [
   },
   {
     value: 'grouped',
-    label: 'Finish one topic at a time',
-    description: 'Keeps each topic together before moving to the next topic.',
+    label: 'Finish one subtopic at a time',
+    description: 'Keeps each subtopic together before moving to the next one.',
   },
   {
     value: 'easier_to_harder',
@@ -202,6 +206,20 @@ function catalogConceptIndex(catalog: Catalog) {
         for (const legacyConceptId of concept.legacyConceptIds || [])
           index.set(legacyConceptId, match);
       }
+    }
+    for (const redirect of subject.redirectConcepts || []) {
+      const match = {
+        subjectId: subject.id,
+        subjectSlug: subject.slug,
+        subjectName: subject.name,
+        groupName: redirect.groupName,
+        concept: redirect.concept,
+      };
+      index.set(redirect.concept.id, match);
+      for (const sourceConceptId of redirect.concept.sourceConceptIds || [])
+        index.set(sourceConceptId, match);
+      for (const legacyConceptId of redirect.concept.legacyConceptIds || [])
+        index.set(legacyConceptId, match);
     }
   }
   return index;
@@ -754,6 +772,22 @@ export function PracticeSetBuilderV4({
     });
   }
 
+  function selectStagedGroup(group: CatalogSubject['groups'][number]) {
+    setStagedConceptIds((current) => {
+      const next = new Set(current);
+      for (const concept of group.concepts) next.add(concept.id);
+      return next;
+    });
+  }
+
+  function clearStagedGroup(group: CatalogSubject['groups'][number]) {
+    setStagedConceptIds((current) => {
+      const next = new Set(current);
+      for (const concept of group.concepts) next.delete(concept.id);
+      return next;
+    });
+  }
+
   function saveContentSelection() {
     const keptBlocks = blocks.filter((block) =>
       stagedConceptIds.has(block.concept.id),
@@ -929,9 +963,9 @@ export function PracticeSetBuilderV4({
       toast.success(
         'Maximized to ' +
           maximum.totalUniqueAllocated.toLocaleString() +
-          ' unique questions across the selected topics.' +
+          ' unique questions across the selected subtopics.' +
           (skippedKeys.size
-            ? ` ${skippedKeys.size} topic${skippedKeys.size === 1 ? '' : 's'} with no matching unique question${skippedKeys.size === 1 ? ' was' : 's were'} left at zero and skipped for this session.`
+            ? ` ${skippedKeys.size} subtopic${skippedKeys.size === 1 ? '' : 's'} with no matching unique question${skippedKeys.size === 1 ? ' was' : 's were'} left at zero and skipped for this session.`
             : ''),
       );
     } catch (error) {
@@ -989,7 +1023,7 @@ export function PracticeSetBuilderV4({
                 Your selected content
               </h2>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                Add the subjects and topics you need, then give every topic its
+                Add the subjects and subtopics you need, then give every subtopic its
                 own courses and question amount.
               </p>
             </div>
@@ -1001,12 +1035,12 @@ export function PracticeSetBuilderV4({
                 </span>
                 <div>
                   <strong className="block text-sm text-slate-900 dark:text-white">
-                    Choose subjects and topics
+                    Choose subjects and subtopics
                   </strong>
                   <span className="mt-0.5 block text-xs leading-5 text-slate-600 dark:text-slate-300">
                     Search all courses, select complete subjects, or change your
                     {blocks.length
-                      ? ` ${blocks.length.toLocaleString()} current topic${blocks.length === 1 ? '' : 's'}.`
+                      ? ` ${blocks.length.toLocaleString()} current subtopic${blocks.length === 1 ? '' : 's'}.`
                       : ' content before configuring it.'}
                   </span>
                 </div>
@@ -1017,7 +1051,7 @@ export function PracticeSetBuilderV4({
                 className={`${styles.primaryAction} inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold`}
               >
                 <Plus className="size-4" />
-                Add subjects or topics
+                Add subjects or subtopics
               </button>
             </div>
 
@@ -1064,11 +1098,11 @@ export function PracticeSetBuilderV4({
               className={`${styles.searchShell} mt-4 flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2`}
             >
               <Search className="size-4 text-slate-500" />
-              <span className="sr-only">Find a selected topic or course</span>
+              <span className="sr-only">Find a selected subtopic or course</span>
               <input
                 value={selectionSearch}
                 onChange={(event) => setSelectionSearch(event.target.value)}
-                placeholder={`Find among ${blocks.length.toLocaleString()} selected topics`}
+                placeholder={`Find among ${blocks.length.toLocaleString()} selected subtopics`}
                 className={`${styles.searchInput} min-w-0 flex-1 border-0 bg-transparent text-sm outline-none`}
               />
             </label>
@@ -1110,7 +1144,7 @@ export function PracticeSetBuilderV4({
                     </strong>
                     <span className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-right text-xs text-slate-500 dark:text-slate-400">
                       <span>
-                        {subjectGroup.blocks.length} topic
+                        {subjectGroup.blocks.length} subtopic
                         {subjectGroup.blocks.length === 1 ? '' : 's'}
                       </span>
                       <span>
@@ -1155,9 +1189,6 @@ export function PracticeSetBuilderV4({
                               <span className="min-w-0 flex-1">
                                 <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                   {block.groupName}
-                                  {block.concept.name.includes(',')
-                                    ? ' · Combined source topic'
-                                    : ''}
                                 </span>
                                 <strong className="mt-0.5 block text-sm text-slate-900 dark:text-slate-50">
                                   {block.concept.name}
@@ -1186,7 +1217,7 @@ export function PracticeSetBuilderV4({
                               <fieldset>
                                 <div className="flex items-center justify-between gap-3">
                                   <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                    Courses for this topic
+                                    Courses for this subtopic
                                   </legend>
                                   <button
                                     type="button"
@@ -1231,7 +1262,7 @@ export function PracticeSetBuilderV4({
                                 </div>
                                 {!block.courseIds.length ? (
                                   <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-300">
-                                    Select at least one course for this topic.
+                                    Select at least one course for this subtopic.
                                   </p>
                                 ) : null}
                               </fieldset>
@@ -1240,7 +1271,7 @@ export function PracticeSetBuilderV4({
                                 <div className="flex items-end justify-between gap-3">
                                   <label className="block max-w-48 flex-1">
                                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                      Questions from this topic
+                                      Questions from this subtopic
                                     </span>
                                     <input
                                       type="text"
@@ -1292,7 +1323,7 @@ export function PracticeSetBuilderV4({
                                     }
                                     className={`${styles.countButton} rounded-lg border px-3 py-1.5 text-xs font-semibold`}
                                   >
-                                    Max topic
+                                    Max subtopic
                                   </button>
                                 </div>
                               </div>
@@ -1319,7 +1350,7 @@ export function PracticeSetBuilderV4({
                                   className={`${styles.previewWarning} mt-4 rounded-xl px-3 py-2 text-sm`}
                                 >
                                   No questions match the current courses and filters.
-                                  This topic stays selected and is skipped until the
+                                  This subtopic stays selected and is skipped until the
                                   settings match an eligible question.
                                 </div>
                               ) : null}
@@ -1347,7 +1378,7 @@ export function PracticeSetBuilderV4({
 
             {blocks.length && !filteredBlockGroups.length ? (
               <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                No selected topic or course matches that search.
+                No selected subtopic or course matches that search.
               </p>
             ) : null}
 
@@ -1357,10 +1388,10 @@ export function PracticeSetBuilderV4({
                   <BookOpenCheck className="size-6" />
                 </span>
                 <h3 className="mt-3 font-semibold text-slate-800 dark:text-slate-100">
-                  Add your first topic
+                  Add your first subtopic
                 </h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Select one topic, a whole subject, or a mixture of subjects.
+                  Select one subtopic, a whole subject, or a mixture of subjects.
                 </p>
                 <button
                   type="button"
@@ -1368,7 +1399,7 @@ export function PracticeSetBuilderV4({
                   className={`${styles.primaryAction} mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold`}
                 >
                   <Plus className="size-4" />
-                  Add subjects or topics
+                  Add subjects or subtopics
                 </button>
               </div>
             ) : null}
@@ -1535,11 +1566,11 @@ export function PracticeSetBuilderV4({
                     id="practice-content-picker-title"
                     className="mt-1 text-2xl font-semibold text-[color:var(--dp-navy)]"
                   >
-                    Choose subjects and topics
+                    Choose subjects and subtopics
                   </h2>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                     Your existing course choices and question amounts are preserved
-                    for every topic you keep selected.
+                    for every subtopic you keep selected.
                   </p>
                 </div>
               </div>
@@ -1559,17 +1590,17 @@ export function PracticeSetBuilderV4({
                   className={`${styles.searchShell} flex min-h-11 flex-1 items-center gap-2 rounded-xl border px-3 py-2`}
                 >
                   <Search className="size-4 text-slate-500" />
-                  <span className="sr-only">Search subjects, topics, or courses</span>
+                  <span className="sr-only">Search subjects, larger topics, subtopics, or courses</span>
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search subjects, topics, or courses"
+                    placeholder="Search subjects, larger topics, subtopics, or courses"
                     className={`${styles.searchInput} min-w-0 flex-1 border-0 bg-transparent text-sm outline-none`}
                     autoFocus
                   />
                 </label>
                 <span className={`${styles.selectionCounter} inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold`}>
-                  {stagedConceptIds.size.toLocaleString()} topics selected
+                  {stagedConceptIds.size.toLocaleString()} subtopics selected
                 </span>
               </div>
             </div>
@@ -1600,7 +1631,7 @@ export function PracticeSetBuilderV4({
                         {subject.name}
                       </strong>
                       <span className={`${styles.selectionCounter} rounded-full px-2.5 py-1 text-xs font-semibold`}>
-                        {selectedInSubject.toLocaleString()}/{concepts.length.toLocaleString()} topics
+                        {selectedInSubject.toLocaleString()}/{concepts.length.toLocaleString()} subtopics
                       </span>
                     </summary>
                     <div className="space-y-5 border-t border-slate-200 p-4 dark:border-slate-800">
@@ -1612,7 +1643,7 @@ export function PracticeSetBuilderV4({
                           className={`${styles.courseBulkButton} inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold`}
                         >
                           <CheckSquare2 className="size-4" />
-                          {allSelected ? 'All topics selected' : 'Select all topics'}
+                          {allSelected ? 'All subtopics selected' : 'Select all subtopics'}
                         </button>
                         {selectedInSubject ? (
                           <button
@@ -1625,11 +1656,40 @@ export function PracticeSetBuilderV4({
                         ) : null}
                       </div>
 
-                      {subject.groups.map((group) => (
+                      {subject.groups.map((group) => {
+                        const fullGroup =
+                          fullSubject.groups.find(
+                            (candidate) => candidate.id === group.id,
+                          ) || group;
+                        const selectedInGroup = fullGroup.concepts.filter(
+                          (concept) => stagedConceptIds.has(concept.id),
+                        ).length;
+                        const groupSelected =
+                          selectedInGroup === fullGroup.concepts.length;
+                        return (
                         <section key={group.id}>
-                          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                            {group.name}
-                          </h3>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                              {group.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <span className={`${styles.selectionCounter} rounded-full px-2.5 py-1 text-xs font-semibold`}>
+                                {selectedInGroup.toLocaleString()}/
+                                {fullGroup.concepts.length.toLocaleString()} subtopics
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  groupSelected
+                                    ? clearStagedGroup(fullGroup)
+                                    : selectStagedGroup(fullGroup)
+                                }
+                                className={`${styles.courseBulkButton} rounded-lg border px-2.5 py-1.5 text-xs font-semibold`}
+                              >
+                                {groupSelected ? 'Clear' : 'Select all'}
+                              </button>
+                            </div>
+                          </div>
                           <div className="mt-2 grid gap-2 md:grid-cols-2">
                             {group.concepts.map((concept) => {
                               const selected = stagedConceptIds.has(concept.id);
@@ -1671,14 +1731,15 @@ export function PracticeSetBuilderV4({
                             })}
                           </div>
                         </section>
-                      ))}
+                        );
+                      })}
                     </div>
                   </details>
                 );
               })}
               {!filteredSubjects.length ? (
                 <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                  No subjects, topics, or courses match that search.
+                  No subjects, larger topics, subtopics, or courses match that search.
                 </p>
               ) : null}
             </div>

@@ -23,10 +23,10 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).not.toContain('type="number"');
     expect(builder).toContain('+{increment}');
     expect(builder).toContain('Maximum {maximum.toLocaleString()}');
-    expect(builder).toContain('Select all topics');
+    expect(builder).toContain('Select all subtopics');
     expect(builder).toContain('Max all');
     expect(builder).toContain('Clear all');
-    expect(builder).toContain('Add subjects or topics');
+    expect(builder).toContain('Add subjects or subtopics');
     expect(builder).toContain('Save content selection');
     expect(builder).toContain('Changes are applied only when you save.');
     expect(builder).not.toContain('1 · Add content');
@@ -56,11 +56,11 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('Course choices');
     expect(builder).toContain('aria-label="Expand session settings"');
     expect(builder).toContain('Every filter and ordering option is visible here.');
-    expect(builder).toContain('Find among ${blocks.length.toLocaleString()} selected topics');
+    expect(builder).toContain('Find among ${blocks.length.toLocaleString()} selected subtopics');
     expect(builder).toContain('filteredBlockGroups.map');
-    expect(builder).toContain('Rotate between topics');
+    expect(builder).toContain('Rotate between subtopics');
     expect(builder).toContain('Shuffle all questions');
-    expect(builder).toContain('Finish one topic at a time');
+    expect(builder).toContain('Finish one subtopic at a time');
     expect(builder).toContain('Original source order');
     expect(builder).toContain('readPracticeApiJson');
     expect(builder).not.toContain('await response.json()');
