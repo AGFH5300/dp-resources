@@ -34,6 +34,7 @@ import type {
   PracticeFilters,
 } from '@/lib/question-bank/practice-configuration';
 import { practiceCourseLabel } from '@/lib/question-bank/practice-course-label';
+import { practiceSelectionLabel } from '@/lib/question-bank/practice-selection-label';
 import type {
   PracticeMaximumPreview,
   PracticePreview,
@@ -419,6 +420,45 @@ function makeBlock(
   };
 }
 
+function PickerConceptButton({
+  concept,
+  label,
+  selected,
+  onToggle,
+}: {
+  concept: CatalogConcept;
+  label: string;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onToggle}
+      className={`${styles.conceptButton} ${
+        selected ? styles.conceptButtonSelected : ''
+      } flex w-full items-center gap-3 rounded-xl border p-3 text-left`}
+    >
+      <span
+        className={`${styles.conceptIcon} flex size-8 shrink-0 items-center justify-center rounded-lg`}
+      >
+        {selected ? <Check className="size-4" /> : <Plus className="size-4" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <strong className="block text-sm">{label}</strong>
+        <small className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {concept.courses.map(practiceCourseLabel).join(', ')}
+        </small>
+      </span>
+      <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+        {concept.courses.length} course
+        {concept.courses.length === 1 ? '' : 's'}
+      </span>
+    </button>
+  );
+}
+
 export function PracticeSetBuilderV4({
   catalog,
   userId,
@@ -494,6 +534,17 @@ export function PracticeSetBuilderV4({
         0,
       ),
     [blocks],
+  );
+  const singletonConceptIds = useMemo(
+    () =>
+      new Set(
+        catalog.subjects.flatMap((subject) =>
+          subject.groups.flatMap((group) =>
+            group.concepts.length === 1 ? [group.concepts[0].id] : [],
+          ),
+        ),
+      ),
+    [catalog],
   );
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredSubjects = catalog.subjects
@@ -1173,6 +1224,14 @@ export function PracticeSetBuilderV4({
                       const courseSummary = selectedCourses
                         .map(practiceCourseLabel)
                         .join(', ');
+                      const isOnlySubtopic = singletonConceptIds.has(
+                        block.concept.id,
+                      );
+                      const selectionLabel = practiceSelectionLabel(
+                        block.groupName,
+                        block.concept.name,
+                        isOnlySubtopic,
+                      );
                       return (
                         <article
                           key={block.key}
@@ -1187,11 +1246,13 @@ export function PracticeSetBuilderV4({
                                 {blockIndex + 1}
                               </span>
                               <span className="min-w-0 flex-1">
-                                <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                  {block.groupName}
-                                </span>
+                                {!isOnlySubtopic ? (
+                                  <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                    {block.groupName}
+                                  </span>
+                                ) : null}
                                 <strong className="mt-0.5 block text-sm text-slate-900 dark:text-slate-50">
-                                  {block.concept.name}
+                                  {selectionLabel}
                                 </strong>
                                 <small className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
                                   {courseSummary || 'No course selected'}
@@ -1286,7 +1347,7 @@ export function PracticeSetBuilderV4({
                                         )
                                       }
                                       className={`${styles.countInput} mt-2 w-full rounded-xl border px-3 py-2`}
-                                      aria-label={`Questions from ${block.concept.name}`}
+                                      aria-label={`Questions from ${selectionLabel}`}
                                     />
                                   </label>
                                   <span className="pb-2 text-xs text-slate-500 dark:text-slate-400">
@@ -1364,7 +1425,7 @@ export function PracticeSetBuilderV4({
                               )
                             }
                             className={`${styles.deleteButton} mr-2 mt-2 shrink-0 rounded-lg p-2`}
-                            aria-label={`Remove ${block.concept.name}`}
+                            aria-label={`Remove ${selectionLabel}`}
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -1656,83 +1717,80 @@ export function PracticeSetBuilderV4({
                         ) : null}
                       </div>
 
-                      {subject.groups.map((group) => {
-                        const fullGroup =
-                          fullSubject.groups.find(
-                            (candidate) => candidate.id === group.id,
-                          ) || group;
-                        const selectedInGroup = fullGroup.concepts.filter(
-                          (concept) => stagedConceptIds.has(concept.id),
-                        ).length;
-                        const groupSelected =
-                          selectedInGroup === fullGroup.concepts.length;
-                        return (
-                        <section key={group.id}>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                              {group.name}
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <span className={`${styles.selectionCounter} rounded-full px-2.5 py-1 text-xs font-semibold`}>
-                                {selectedInGroup.toLocaleString()}/
-                                {fullGroup.concepts.length.toLocaleString()} subtopics
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  groupSelected
-                                    ? clearStagedGroup(fullGroup)
-                                    : selectStagedGroup(fullGroup)
+                      <div className="grid gap-5 md:grid-cols-2">
+                        {subject.groups.map((group) => {
+                          const fullGroup =
+                            fullSubject.groups.find(
+                              (candidate) => candidate.id === group.id,
+                            ) || group;
+                          const selectedInGroup = fullGroup.concepts.filter(
+                            (concept) => stagedConceptIds.has(concept.id),
+                          ).length;
+                          const groupSelected =
+                            selectedInGroup === fullGroup.concepts.length;
+                          const isOnlySubtopic =
+                            fullGroup.concepts.length === 1;
+                          const onlySubtopic = group.concepts[0];
+
+                          if (isOnlySubtopic && onlySubtopic) {
+                            return (
+                              <PickerConceptButton
+                                key={group.id}
+                                concept={onlySubtopic}
+                                label={practiceSelectionLabel(
+                                  fullGroup.name,
+                                  onlySubtopic.name,
+                                  true,
+                                )}
+                                selected={stagedConceptIds.has(onlySubtopic.id)}
+                                onToggle={() =>
+                                  toggleStagedConcept(onlySubtopic.id)
                                 }
-                                className={`${styles.courseBulkButton} rounded-lg border px-2.5 py-1.5 text-xs font-semibold`}
-                              >
-                                {groupSelected ? 'Clear' : 'Select all'}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="mt-2 grid gap-2 md:grid-cols-2">
-                            {group.concepts.map((concept) => {
-                              const selected = stagedConceptIds.has(concept.id);
-                              return (
-                                <button
-                                  key={concept.id}
-                                  type="button"
-                                  aria-pressed={selected}
-                                  onClick={() => toggleStagedConcept(concept.id)}
-                                  className={`${styles.conceptButton} ${
-                                    selected ? styles.conceptButtonSelected : ''
-                                  } flex w-full items-center gap-3 rounded-xl border p-3 text-left`}
-                                >
-                                  <span
-                                    className={`${styles.conceptIcon} flex size-8 shrink-0 items-center justify-center rounded-lg`}
+                              />
+                            );
+                          }
+
+                          return (
+                            <section key={group.id} className="md:col-span-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                  {group.name}
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                  <span className={`${styles.selectionCounter} rounded-full px-2.5 py-1 text-xs font-semibold`}>
+                                    {selectedInGroup.toLocaleString()}/
+                                    {fullGroup.concepts.length.toLocaleString()} subtopics
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      groupSelected
+                                        ? clearStagedGroup(fullGroup)
+                                        : selectStagedGroup(fullGroup)
+                                    }
+                                    className={`${styles.courseBulkButton} rounded-lg border px-2.5 py-1.5 text-xs font-semibold`}
                                   >
-                                    {selected ? (
-                                      <Check className="size-4" />
-                                    ) : (
-                                      <Plus className="size-4" />
-                                    )}
-                                  </span>
-                                  <span className="min-w-0 flex-1">
-                                    <strong className="block text-sm">
-                                      {concept.name}
-                                    </strong>
-                                    <small className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                      {concept.courses
-                                        .map(practiceCourseLabel)
-                                        .join(', ')}
-                                    </small>
-                                  </span>
-                                  <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
-                                    {concept.courses.length} course
-                                    {concept.courses.length === 1 ? '' : 's'}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </section>
-                        );
-                      })}
+                                    {groupSelected ? 'Clear' : 'Select all'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                {group.concepts.map((concept) => (
+                                  <PickerConceptButton
+                                    key={concept.id}
+                                    concept={concept}
+                                    label={concept.name}
+                                    selected={stagedConceptIds.has(concept.id)}
+                                    onToggle={() =>
+                                      toggleStagedConcept(concept.id)
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </section>
+                          );
+                        })}
+                      </div>
                     </div>
                   </details>
                 );
