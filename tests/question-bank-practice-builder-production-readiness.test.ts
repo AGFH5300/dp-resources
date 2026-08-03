@@ -44,6 +44,8 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('aria-labelledby="practice-content-picker-title"');
     expect(builder).toContain('courses selected');
     expect(builder).toContain('eligible questions selected');
+    expect(builder).toContain('subjectPreview.totalUniqueAvailable');
+    expect(builder).not.toContain('subjectEligible');
     expect(builder).toContain('Course choices');
     expect(builder).toContain('aria-label="Expand session settings"');
     expect(builder).toContain('Every filter and ordering option is visible here.');

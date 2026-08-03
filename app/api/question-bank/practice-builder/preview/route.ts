@@ -1,6 +1,9 @@
 import { requireApiMember } from '@/lib/auth';
 import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
-import { previewPracticeConfiguration } from '@/lib/question-bank/practice-engine';
+import {
+  previewPracticeConfiguration,
+  type PracticePreviewGroupRequest,
+} from '@/lib/question-bank/practice-engine';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +12,40 @@ function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
   return response;
+}
+
+function parsePreviewGroups(
+  value: unknown,
+  validBlockKeys: Set<string>,
+): PracticePreviewGroupRequest[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > validBlockKeys.size)
+    throw new Error('Preview groups must match the selected practice blocks.');
+
+  const groupKeys = new Set<string>();
+  const groupedBlockKeys = new Set<string>();
+  return value.map((rawGroup, index) => {
+    if (!isPlainObject(rawGroup))
+      throw new Error(`Preview group ${index + 1} must be an object.`);
+    const key = rawGroup.key;
+    if (typeof key !== 'string' || !key || key.length > 100 || groupKeys.has(key))
+      throw new Error(`Preview group ${index + 1} has an invalid key.`);
+    if (!Array.isArray(rawGroup.blockKeys) || !rawGroup.blockKeys.length)
+      throw new Error(`Preview group ${index + 1} must contain practice blocks.`);
+
+    const blockKeys = rawGroup.blockKeys.map((blockKey) => {
+      if (
+        typeof blockKey !== 'string' ||
+        !validBlockKeys.has(blockKey) ||
+        groupedBlockKeys.has(blockKey)
+      )
+        throw new Error(`Preview group ${index + 1} contains an invalid block.`);
+      groupedBlockKeys.add(blockKey);
+      return blockKey;
+    });
+    groupKeys.add(key);
+    return { key, blockKeys };
+  });
 }
 
 export async function POST(request: Request) {
@@ -26,8 +63,13 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
   const { user } = auth;
   let configuration;
+  let previewGroups: PracticePreviewGroupRequest[];
   try {
     configuration = parsePracticeConfiguration(body.configuration);
+    previewGroups = parsePreviewGroups(
+      body.previewGroups,
+      new Set(configuration.blocks.map((block) => block.key)),
+    );
   } catch (error) {
     return noStore(
       {
@@ -41,7 +83,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const preview = await previewPracticeConfiguration(user.id, configuration);
+    const preview = await previewPracticeConfiguration(
+      user.id,
+      configuration,
+      previewGroups,
+    );
     return noStore({ preview });
   } catch (error) {
     console.error('Unable to preview Question Bank practice configuration.', {

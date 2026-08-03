@@ -40,6 +40,17 @@ export type PracticePreviewBlock = {
   overlapQuestionCount: number;
 };
 
+export type PracticePreviewGroupRequest = {
+  key: string;
+  blockKeys: string[];
+};
+
+export type PracticePreviewGroup = {
+  key: string;
+  allocatedCount: number;
+  totalUniqueAvailable: number;
+};
+
 export type PracticePreview = {
   requestedCount: number;
   allocatedCount: number;
@@ -47,6 +58,7 @@ export type PracticePreview = {
   overlappingQuestionCount: number;
   feasible: boolean;
   blocks: PracticePreviewBlock[];
+  groups: PracticePreviewGroup[];
 };
 
 export type PracticeMaximumPreview = {
@@ -138,9 +150,10 @@ function blockSnapshot(block: PracticeConfigurationBlock) {
   };
 }
 
-function createPreview(
+export function createPracticePreview(
   configuration: PracticeConfiguration,
   candidates: PracticeCandidate[],
+  groups: PracticePreviewGroupRequest[] = [],
 ) {
   const blocks = configuration.blocks.map((block, index) => ({
     blockId: block.key,
@@ -187,6 +200,29 @@ function createPreview(
     };
   });
 
+  const groupKeyByBlock = new Map(
+    groups.flatMap((group) =>
+      group.blockKeys.map((blockKey) => [blockKey, group.key] as const),
+    ),
+  );
+  const questionsByGroup = new Map<string, Set<string>>();
+  for (const candidate of candidates) {
+    const groupKey = groupKeyByBlock.get(candidate.blockId);
+    if (!groupKey) continue;
+    const questions = questionsByGroup.get(groupKey) || new Set<string>();
+    questions.add(candidate.questionId);
+    questionsByGroup.set(groupKey, questions);
+  }
+  const allocatedByGroup = new Map<string, number>();
+  for (const item of allocation.allocations) {
+    const groupKey = groupKeyByBlock.get(item.blockId);
+    if (!groupKey) continue;
+    allocatedByGroup.set(
+      groupKey,
+      (allocatedByGroup.get(groupKey) || 0) + 1,
+    );
+  }
+
   const preview: PracticePreview = {
     requestedCount: allocation.requestedCount,
     allocatedCount: allocation.allocatedCount,
@@ -196,6 +232,11 @@ function createPreview(
     ).length,
     feasible: allocation.shortages.length === 0,
     blocks: previewBlocks,
+    groups: groups.map((group) => ({
+      key: group.key,
+      allocatedCount: allocatedByGroup.get(group.key) || 0,
+      totalUniqueAvailable: questionsByGroup.get(group.key)?.size || 0,
+    })),
   };
 
   return { preview, allocation };
@@ -204,9 +245,10 @@ function createPreview(
 export async function previewPracticeConfiguration(
   userId: string,
   configuration: PracticeConfiguration,
+  groups: PracticePreviewGroupRequest[] = [],
 ) {
   const candidates = await loadCandidates(userId, configuration);
-  return createPreview(configuration, candidates).preview;
+  return createPracticePreview(configuration, candidates, groups).preview;
 }
 
 export async function maximizePracticeConfiguration(
@@ -239,7 +281,7 @@ export async function generatePracticeSession(
 ) {
   const normalized = stablePracticeConfiguration(configuration);
   const candidates = await loadCandidates(userId, normalized);
-  const { preview, allocation } = createPreview(normalized, candidates);
+  const { preview, allocation } = createPracticePreview(normalized, candidates);
   if (!preview.feasible) throw new PracticeConfigurationShortageError(preview);
 
   const seed = randomBytes(16).toString('hex');
