@@ -978,7 +978,7 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(0,1fr)_380px] xl:items-stretch">
+      <div className="mt-6 grid gap-5 xl:min-h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(0,1fr)_380px] xl:items-stretch">
         <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col`}>
           <div className="shrink-0">
             <div>

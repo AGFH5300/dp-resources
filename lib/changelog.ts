@@ -28,6 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-08-03': [
+    'Fixed the Practice Builder page height so large summaries and their actions remain above the footer instead of being covered by it.',
     'Rebuilt the Practice Builder catalogue around larger subject topics, removed mixed and duplicate source labels, clarified current versus legacy courses, and added a distinct icon for every subject.',
     'Corrected Practice Builder subject totals so overlapping questions are counted once and Max now shows the true unique-question maximum consistently.',
   ],
