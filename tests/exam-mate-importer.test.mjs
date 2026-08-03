@@ -5,6 +5,7 @@ import {
   EXAM_MATE_EXPECTED,
   canonicalExamKey,
   courseDescriptor,
+  isRetiredExamMateSubject,
 } from '../scripts/question-bank/exam-mate.mjs';
 import { parseArguments } from '../scripts/import-exam-mate-question-bank-optimized.mjs';
 
@@ -15,10 +16,18 @@ describe('Exam-Mate Question Bank importer', () => {
     );
     expect(EXAM_MATE_EXPECTED).toMatchObject({
       sourceQuestions: 14199,
-      importableQuestions: 14128,
+      retiredQuestions: 754,
+      importableQuestions: 13374,
       quarantinedQuestions: 71,
-      importablePhysicalAssets: 31231,
+      importableAssetUrls: 30552,
+      importablePhysicalAssets: 30225,
     });
+  });
+
+  it('excludes retired subjects before quarantine and import processing', () => {
+    expect(isRetiredExamMateSubject('Philosophy')).toBe(true);
+    expect(isRetiredExamMateSubject('World Religions')).toBe(true);
+    expect(isRetiredExamMateSubject('Biology')).toBe(false);
   });
 
   it('normalizes Exam-Mate and PESTLE references to the same exam key', () => {

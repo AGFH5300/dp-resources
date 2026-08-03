@@ -30,6 +30,10 @@ const EXPECTED = Object.freeze({
   solutionVideoAssociations: 2_119,
   warningFindings: 5,
   criticalFindings: 0,
+  retainedUniqueQuestions: 2_311,
+  retiredUniqueQuestions: 58,
+  retainedLogicalVariants: 4_192,
+  retiredLogicalVariants: 116,
 });
 
 const SUBJECTS = Object.freeze({
@@ -100,6 +104,12 @@ const SUBJECTS = Object.freeze({
     sortOrder: 16,
   },
 });
+
+const RETIRED_SUBJECT_GROUPS = new Set(['ib-english-b']);
+
+export function isRetiredRevisionVillageSubjectGroup(subjectGroup) {
+  return RETIRED_SUBJECT_GROUPS.has(subjectGroup);
+}
 
 const DIRECT_ROLE_MAP = Object.freeze({
   question: 'question',
@@ -479,6 +489,18 @@ function buildLogicalVariantSources(questions) {
   }));
 }
 
+function countLogicalVariantPlacements(questions) {
+  const keys = new Set();
+  for (const question of questions) {
+    for (const placement of question.placements || []) {
+      keys.add(
+        `${question.id}\u0000${placement.subjectGroup}\u0000${placement.course}\u0000${placement.topic}`,
+      );
+    }
+  }
+  return keys.size;
+}
+
 export async function normalizeRevisionVillageArchive(root) {
   const required = [
     'summary.json',
@@ -507,18 +529,64 @@ export async function normalizeRevisionVillageArchive(root) {
       readFile(path.join(root, 'audio-manifest.json'), 'utf8').then(JSON.parse),
       readFile(path.join(root, 'question-bank', 'papers.json'), 'utf8').then(JSON.parse),
     ]);
-  const [questions, occurrences, associations, solutionVideos] = await Promise.all([
+  const [allQuestions, allOccurrences, allAssociations, allSolutionVideos] = await Promise.all([
     readAllNdjson(path.join(root, 'question-bank', 'unique-questions.ndjson')),
     readAllNdjson(path.join(root, 'question-bank', 'question-occurrences.ndjson')),
     readAllNdjson(path.join(root, 'question-bank', 'asset-associations.ndjson')),
     readAllNdjson(path.join(root, 'question-bank', 'solution-videos.ndjson')),
   ]);
 
+  const rawLogicalVariantCount = countLogicalVariantPlacements(allQuestions);
+  const questions = allQuestions
+    .map((question) => ({
+      ...question,
+      placements: (question.placements || []).filter(
+        (placement) =>
+          !isRetiredRevisionVillageSubjectGroup(placement.subjectGroup),
+      ),
+    }))
+    .filter((question) => question.placements.length > 0);
+  const retainedQuestionIds = new Set(
+    questions.map((question) => String(question.id).toLowerCase()),
+  );
+  const retainedPaperIds = new Set(
+    questions.flatMap((question) =>
+      (question.paperIds || []).map((paperId) => String(paperId).toLowerCase()),
+    ),
+  );
+  const occurrences = allOccurrences.filter((occurrence) =>
+    retainedQuestionIds.has(String(occurrence.questionId || '').toLowerCase()),
+  );
+  const associations = allAssociations.filter((association) => {
+    const questionId = String(association.questionId || '').toLowerCase();
+    const paperId = String(association.paperId || '').toLowerCase();
+    return (
+      (questionId && retainedQuestionIds.has(questionId)) ||
+      (paperId && retainedPaperIds.has(paperId))
+    );
+  });
+  const solutionVideos = allSolutionVideos.filter((video) =>
+    retainedQuestionIds.has(String(video.questionId || '').toLowerCase()),
+  );
+  const retainedPapers = papers.filter((paper) =>
+    retainedPaperIds.has(String(paper.id || '').toLowerCase()),
+  );
+  const retainedAudioManifest = audioManifest.filter((audio) =>
+    retainedQuestionIds.has(String(audio.questionId || '').toLowerCase()),
+  );
+  const retainedAssetHashes = new Set(
+    [...associations, ...retainedAudioManifest]
+      .map((row) => String(row.sha256 || '').toLowerCase())
+      .filter((hash) => /^[0-9a-f]{64}$/.test(hash)),
+  );
+  const retainedAssetManifest = assetManifest.filter((asset) =>
+    retainedAssetHashes.has(String(asset.sha256 || '').toLowerCase()),
+  );
   const logicalVariants = buildLogicalVariantSources(questions);
   const { physicalByHash, sourceRowsByHash } = buildPhysicalAssets(
     root,
-    assetManifest,
-    audioManifest,
+    retainedAssetManifest,
+    retainedAudioManifest,
   );
 
   const findings = sourceFindings.map((finding) =>
@@ -534,15 +602,19 @@ export async function normalizeRevisionVillageArchive(root) {
   );
 
   const actualCounts = {
-    uniqueQuestions: questions.length,
-    questionOccurrences: occurrences.length,
+    uniqueQuestions: allQuestions.length,
+    questionOccurrences: allOccurrences.length,
     paperDefinitions: papers.length,
-    logicalVariants: logicalVariants.length,
+    logicalVariants: rawLogicalVariantCount,
     directAssets: assetManifest.length,
     audioAssets: audioManifest.length,
+    retainedUniqueQuestions: questions.length,
+    retiredUniqueQuestions: allQuestions.length - questions.length,
+    retainedLogicalVariants: logicalVariants.length,
+    retiredLogicalVariants: rawLogicalVariantCount - logicalVariants.length,
     uniquePhysicalAssets: physicalByHash.size,
     assetAssociations: associations.length,
-    solutionVideoAssociations: solutionVideos.length,
+    solutionVideoAssociations: allSolutionVideos.length,
     warningFindings: findings.filter((finding) => finding.severity === 'warning').length,
     criticalFindings: findings.filter((finding) => finding.severity === 'critical').length,
     checksummedFiles,
@@ -600,9 +672,9 @@ export async function normalizeRevisionVillageArchive(root) {
       occurrences,
       associations,
       solutionVideos,
-      papers,
-      assetManifest,
-      audioManifest,
+      papers: retainedPapers,
+      assetManifest: retainedAssetManifest,
+      audioManifest: retainedAudioManifest,
       logicalVariants,
       physicalByHash,
       sourceRowsByHash,

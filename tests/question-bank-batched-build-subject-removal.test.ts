@@ -18,6 +18,8 @@ const builder = read('components/question-bank/practice-set-builder-v4.tsx');
 const styles = read(
   'components/question-bank/practice-set-builder-v2.module.css',
 );
+const revisionVillage = read('scripts/question-bank/revision-village.mjs');
+const examMate = read('scripts/question-bank/exam-mate.mjs');
 
 describe('batched Question Bank practice builds and retired subjects', () => {
   it('writes large queues through bounded, idempotent, service-only batches', () => {
@@ -63,6 +65,13 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     );
     expect(cleanupMigration).toContain(
       'drop table public.dp_qb_asset_deletion_queue',
+    );
+    expect(revisionVillage).toContain(
+      'isRetiredRevisionVillageSubjectGroup(placement.subjectGroup)',
+    );
+    expect(revisionVillage).toContain('retainedAssetManifest');
+    expect(examMate.indexOf('isRetiredExamMateSubject(question.subject)')).toBeLessThan(
+      examMate.indexOf('const reasons = [];'),
     );
   });
 });
