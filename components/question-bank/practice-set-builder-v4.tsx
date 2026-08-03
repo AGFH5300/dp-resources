@@ -34,7 +34,10 @@ import type {
   PracticeFilters,
 } from '@/lib/question-bank/practice-configuration';
 import { practiceCourseLabel } from '@/lib/question-bank/practice-course-label';
-import { practiceSelectionLabel } from '@/lib/question-bank/practice-selection-label';
+import {
+  practiceSelectionLabel,
+  singletonPracticeConceptIds,
+} from '@/lib/question-bank/practice-selection-label';
 import type {
   PracticeMaximumPreview,
   PracticePreview,
@@ -536,14 +539,7 @@ export function PracticeSetBuilderV4({
     [blocks],
   );
   const singletonConceptIds = useMemo(
-    () =>
-      new Set(
-        catalog.subjects.flatMap((subject) =>
-          subject.groups.flatMap((group) =>
-            group.concepts.length === 1 ? [group.concepts[0].id] : [],
-          ),
-        ),
-      ),
+    () => singletonPracticeConceptIds(catalog.subjects),
     [catalog],
   );
   const normalizedSearch = search.trim().toLocaleLowerCase();
