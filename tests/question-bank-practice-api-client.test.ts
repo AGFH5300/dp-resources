@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
+import {
+  readPracticeApiJson,
+  readPracticeBuildStream,
+} from '@/lib/question-bank/practice-api-client';
 
 describe('practice API response handling', () => {
   it('returns JSON objects from successful responses', async () => {
@@ -64,5 +67,30 @@ describe('practice API response handling', () => {
     ).rejects.toThrow(
       'Unable to preview this set. The server returned an invalid response; please retry.',
     );
+  });
+
+  it('reads split NDJSON progress events through completion', async () => {
+    const encoder = new TextEncoder();
+    const chunks = [
+      '{"type":"phase","label":"Selecting questions…"}\n{"type":"progress",',
+      '"processedCount":400,"totalCount":900}\n',
+      '{"type":"progress","processedCount":900,"totalCount":900}\n',
+      '{"type":"complete","sessionId":"session-1"}\n',
+    ];
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          controller.close();
+        },
+      }),
+      { headers: { 'content-type': 'application/x-ndjson; charset=utf-8' } },
+    );
+    const progress: Array<number | null> = [];
+    const result = await readPracticeBuildStream(response, (event) =>
+      progress.push(event.processedCount),
+    );
+    expect(result).toEqual({ sessionId: 'session-1' });
+    expect(progress).toEqual([null, 400, 900]);
   });
 });

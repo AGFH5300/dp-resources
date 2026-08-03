@@ -47,8 +47,6 @@ const SUBJECTS = Object.freeze({
   Psychology: { id: 'psychology', slug: 'psychology', name: 'Psychology', order: 5 },
   Economics: { id: 'economics', slug: 'economics', name: 'Economics', order: 6 },
   'Global Politics': { id: 'global-politics', slug: 'global-politics', name: 'Global Politics', order: 13 },
-  Philosophy: { id: 'philosophy', slug: 'philosophy', name: 'Philosophy', order: 14 },
-  'World Religions': { id: 'world-religions', slug: 'world-religions', name: 'World Religions', order: 15 },
 });
 
 function sha256(value) {

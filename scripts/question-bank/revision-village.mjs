@@ -87,12 +87,6 @@ const SUBJECTS = Object.freeze({
     name: 'History',
     sortOrder: 12,
   },
-  'ib-english-b': {
-    id: 'english-b',
-    slug: 'english-b',
-    name: 'English B',
-    sortOrder: 14,
-  },
   'ib-french-b': {
     id: 'french-b',
     slug: 'french-b',
@@ -308,7 +302,7 @@ function syllabusLabel(subjectGroup, courseSlug) {
   if (/-2027$/i.test(courseSlug)) return 'First assessment 2027';
   if (/-2026$/i.test(courseSlug)) return 'First assessment 2026';
   if (/-2025$/i.test(courseSlug)) return 'First assessment 2025';
-  if (['ib-english-b', 'ib-french-b', 'ib-spanish-b'].includes(subjectGroup)) {
+  if (['ib-french-b', 'ib-spanish-b'].includes(subjectGroup)) {
     return 'Current syllabus';
   }
   return 'Legacy syllabus';

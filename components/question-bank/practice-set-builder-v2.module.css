@@ -332,6 +332,20 @@
   background: #172235;
 }
 
+.buildProgressPanel {
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background: rgb(15 23 42 / 0.3);
+}
+
+.buildProgressTrack {
+  background: rgb(15 23 42 / 0.55);
+}
+
+.buildProgressBar {
+  background: linear-gradient(90deg, #93c5fd, #c4b5fd);
+  box-shadow: 0 0 12px rgb(147 197 253 / 0.35);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .conceptButton,
   .courseOption,
@@ -341,6 +355,10 @@
   }
 
   .detailsChevron {
+    transition: none;
+  }
+
+  .buildProgressBar {
     transition: none;
   }
 }
