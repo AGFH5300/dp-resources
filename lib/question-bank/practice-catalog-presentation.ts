@@ -62,9 +62,9 @@ function labelCandidates(value: string) {
 
 /**
  * Consolidate only labels that become equivalent after harmless presentation
- * cleanup (case/punctuation, singular/plural variants, and explicit syllabus
- * scaffolding such as "2024 Unit 4"). Different source-topic meanings remain
- * separate even when they share a word such as "Probability".
+ * cleanup inside the same larger-topic heading (case/punctuation,
+ * singular/plural variants, and explicit syllabus scaffolding such as
+ * "2024 Unit 4"). Equal child labels in different headings remain separate.
  */
 export function consolidatePracticeCatalogGroups(
   groups: PracticeCatalogGroupRow[],
@@ -81,7 +81,11 @@ export function consolidatePracticeCatalogGroups(
   const candidateFrequency = new Map<string, number>();
   for (const row of rows) {
     for (const candidate of row.candidates) {
-      candidateFrequency.set(candidate, (candidateFrequency.get(candidate) || 0) + 1);
+      const scopedCandidate = `${row.group.id}:${candidate}`;
+      candidateFrequency.set(
+        scopedCandidate,
+        (candidateFrequency.get(scopedCandidate) || 0) + 1,
+      );
     }
   }
 
@@ -100,14 +104,18 @@ export function consolidatePracticeCatalogGroups(
 
   for (const row of rows) {
     const repeatedCandidates = row.candidates
-      .filter((candidate) => (candidateFrequency.get(candidate) || 0) > 1)
+      .filter(
+        (candidate) =>
+          (candidateFrequency.get(`${row.group.id}:${candidate}`) || 0) > 1,
+      )
       .sort((left, right) => {
         const frequencyDifference =
-          (candidateFrequency.get(right) || 0) -
-          (candidateFrequency.get(left) || 0);
+          (candidateFrequency.get(`${row.group.id}:${right}`) || 0) -
+          (candidateFrequency.get(`${row.group.id}:${left}`) || 0);
         return frequencyDifference || left.length - right.length;
       });
-    const key = repeatedCandidates[0] || row.candidates[0] || row.concept.id;
+    const labelKey = repeatedCandidates[0] || row.candidates[0] || row.concept.id;
+    const key = `${row.group.id}:${labelKey}`;
     let target = consolidated.get(key);
     if (!target) {
       target = {
@@ -130,8 +138,8 @@ export function consolidatePracticeCatalogGroups(
     // When both scaffolded and clean labels exist, retain the clean label as
     // the representative even if a scaffolded row appeared first.
     if (
-      normalizedWords(row.concept.name) === key &&
-      normalizedWords(target.concept.name) !== key
+      normalizedWords(row.concept.name) === labelKey &&
+      normalizedWords(target.concept.name) !== labelKey
     ) {
       target.groupIndex = row.groupIndex;
       target.conceptIndex = row.conceptIndex;

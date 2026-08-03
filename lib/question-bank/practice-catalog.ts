@@ -47,7 +47,7 @@ export async function getPracticeBuilderCatalog() {
       client
         .from('dp_qb_concept_groups')
         .select('id,subject_id,parent_group_id,slug,name,description,sort_order')
-        .eq('status', 'approved')
+        .or('status.eq.approved,slug.eq.larger-topics')
         .order('sort_order')
         .order('name'),
       client
@@ -91,11 +91,8 @@ export async function getPracticeBuilderCatalog() {
 
   return {
     subjects: (subjects as any[])
-      .map((subject) => ({
-        id: subject.id,
-        slug: subject.slug,
-        name: subject.name,
-        groups: consolidatePracticeCatalogGroups(
+      .map((subject) => {
+        const presentedGroups = consolidatePracticeCatalogGroups(
           (groups as any[])
           .filter((group) => group.subject_id === subject.id)
           .map((group) => ({
@@ -135,9 +132,26 @@ export async function getPracticeBuilderCatalog() {
               .filter((concept) => concept.courses.length),
           }))
           .filter((group) => group.concepts.length) as PracticeCatalogGroupRow[],
-        ),
-      }))
-      .filter((subject) => subject.groups.length),
+        );
+        const redirectGroup = presentedGroups.find(
+          (group) => group.slug === 'larger-topics',
+        );
+        return {
+          id: subject.id,
+          slug: subject.slug,
+          name: subject.name,
+          groups: presentedGroups.filter(
+            (group) => group.slug !== 'larger-topics',
+          ),
+          redirectConcepts: (redirectGroup?.concepts || []).map((concept) => ({
+            groupName: concept.name,
+            concept,
+          })),
+        };
+      })
+      .filter(
+        (subject) => subject.groups.length || subject.redirectConcepts.length,
+      ),
   };
 }
 
