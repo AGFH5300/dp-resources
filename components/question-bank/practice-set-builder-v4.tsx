@@ -978,8 +978,8 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:h-[calc(100dvh-7.5rem)] xl:grid-cols-[minmax(0,1fr)_380px] xl:items-stretch">
-        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col`}>
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:h-[calc(100dvh-7.5rem)] xl:min-h-0 xl:flex-col`}>
           <div className="shrink-0">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
@@ -1375,7 +1375,7 @@ export function PracticeSetBuilderV4({
           </div>
         </section>
 
-        <aside className="space-y-4 xl:flex xl:min-h-0 xl:flex-col xl:space-y-0">
+        <aside className="space-y-4 xl:flex xl:min-h-[calc(100dvh-7.5rem)] xl:flex-col xl:space-y-0">
           <section className={`${styles.settingsCard} rounded-2xl border shadow-sm xl:min-h-[28rem] xl:flex-1 xl:overflow-hidden`}>
             <div className={`${styles.settingsHeader} flex items-start justify-between gap-3 border-b p-4`}>
               <div className="flex items-start gap-3">
