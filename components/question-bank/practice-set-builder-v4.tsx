@@ -37,6 +37,7 @@ import type {
   PracticeMaximumPreview,
   PracticePreview,
   PracticePreviewBlock,
+  PracticePreviewGroupRequest,
 } from '@/lib/question-bank/practice-engine';
 
 import styles from './practice-set-builder-v2.module.css';
@@ -452,6 +453,7 @@ export function PracticeSetBuilderV4({
   const previewPending = useRef<{
     requestId: number;
     configuration: PracticeConfiguration;
+    previewGroups: PracticePreviewGroupRequest[];
   } | null>(null);
   const previewInFlight = useRef<Promise<void> | null>(null);
 
@@ -563,6 +565,19 @@ export function PracticeSetBuilderV4({
     };
   }, [blocks, calculator, difficulties, orderingMode, saved, statuses]);
 
+  const previewGroups = useMemo<PracticePreviewGroupRequest[]>(() => {
+    if (!configuration) return [];
+    const activeBlockKeys = new Set(configuration.blocks.map((block) => block.key));
+    const grouped = new Map<string, string[]>();
+    for (const block of blocks) {
+      if (!activeBlockKeys.has(block.key)) continue;
+      const blockKeys = grouped.get(block.subjectId) || [];
+      blockKeys.push(block.key);
+      grouped.set(block.subjectId, blockKeys);
+    }
+    return [...grouped].map(([key, blockKeys]) => ({ key, blockKeys }));
+  }, [blocks, configuration]);
+
   const draft = useMemo<PracticeBuilderDraft>(
     () => ({
       schemaVersion: 1,
@@ -597,7 +612,10 @@ export function PracticeSetBuilderV4({
             {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ configuration: task.configuration }),
+              body: JSON.stringify({
+                configuration: task.configuration,
+                previewGroups: task.previewGroups,
+              }),
             },
           );
           const payload = await readPracticeApiJson<{
@@ -683,14 +701,14 @@ export function PracticeSetBuilderV4({
 
     const debounce = window.setTimeout(() => {
       setPreviewLoading(true);
-      previewPending.current = { requestId, configuration };
+      previewPending.current = { requestId, configuration, previewGroups };
       void drainPreviewQueue();
     }, 500);
 
     return () => {
       window.clearTimeout(debounce);
     };
-  }, [configuration, draftReady, drainPreviewQueue, isMaximizing]);
+  }, [configuration, draftReady, drainPreviewQueue, isMaximizing, previewGroups]);
 
 
   function updateBlock(key: string, patch: Partial<BuilderBlock>) {
@@ -1071,13 +1089,8 @@ export function PracticeSetBuilderV4({
                   preview?.blocks.find((row) => row.key === block.key),
                 )
                 .filter((row): row is PracticePreviewBlock => Boolean(row));
-              const subjectEligible = subjectPreviewBlocks.reduce(
-                (total, row) => total + row.candidateCount,
-                0,
-              );
-              const subjectAllocated = subjectPreviewBlocks.reduce(
-                (total, row) => total + row.allocatedCount,
-                0,
+              const subjectPreview = preview?.groups.find(
+                (group) => group.key === subjectGroup.subjectId,
               );
               return (
                 <details
@@ -1101,8 +1114,8 @@ export function PracticeSetBuilderV4({
                         {subjectCoursesAvailable.toLocaleString()} courses
                       </span>
                       <span>
-                        {subjectPreviewBlocks.length === subjectGroup.blocks.length
-                          ? `${subjectAllocated.toLocaleString()}/${subjectEligible.toLocaleString()} eligible questions selected`
+                        {subjectPreview
+                          ? `${subjectPreview.allocatedCount.toLocaleString()}/${subjectPreview.totalUniqueAvailable.toLocaleString()} eligible questions selected`
                           : `${subjectRequested.toLocaleString()} questions selected`}
                       </span>
                     </span>

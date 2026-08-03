@@ -154,7 +154,7 @@ describe('Question Bank practice builder engine', () => {
     expect(builder).not.toContain('new AbortController');
     expect(builder).not.toContain('signal: controller.signal');
     expect(builder).toContain(
-      '[configuration, draftReady, drainPreviewQueue, isMaximizing]',
+      '[configuration, draftReady, drainPreviewQueue, isMaximizing, previewGroups]',
     );
     expect(builder).toContain(
       'if (!draftReady || !configuration || isMaximizing)',

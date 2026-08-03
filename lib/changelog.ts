@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-08-03': [
+    'Corrected Practice Builder subject totals so overlapping questions are counted once and Max now shows the true unique-question maximum consistently.',
+  ],
   '2026-08-02': [
     'Simplified the Practice Builder into one colourful editing workspace with a searchable content picker, saved selection changes, and clear selected-versus-available course and question totals.',
     'Made the Practice Builder reliable for all-subject sessions, added compact subject-grouped selection editing and expandable filters, and kept every menu inside the screen.',
