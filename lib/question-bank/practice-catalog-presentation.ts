@@ -15,6 +15,7 @@ export type PracticeCatalogConceptRow = {
   aliases: string[];
   mappingVersion: number;
   sourceConceptIds?: string[];
+  legacyConceptIds?: string[];
   courses: PracticeCatalogCourseRow[];
 };
 
@@ -92,6 +93,7 @@ export function consolidatePracticeCatalogGroups(
       concept: PracticeCatalogConceptRow;
       aliases: Set<string>;
       sourceConceptIds: Set<string>;
+      legacyConceptIds: Set<string>;
       courses: Map<string, PracticeCatalogCourseRow>;
     }
   >();
@@ -118,6 +120,7 @@ export function consolidatePracticeCatalogGroups(
             ? row.concept.sourceConceptIds
             : [row.concept.id],
         ),
+        legacyConceptIds: new Set(row.concept.legacyConceptIds || []),
         courses: new Map(row.concept.courses.map((course) => [course.id, course])),
       };
       consolidated.set(key, target);
@@ -141,6 +144,8 @@ export function consolidatePracticeCatalogGroups(
       ? row.concept.sourceConceptIds
       : [row.concept.id])
       target.sourceConceptIds.add(conceptId);
+    for (const conceptId of row.concept.legacyConceptIds || [])
+      target.legacyConceptIds.add(conceptId);
     for (const course of row.concept.courses) {
       const existing = target.courses.get(course.id);
       target.courses.set(
@@ -158,6 +163,7 @@ export function consolidatePracticeCatalogGroups(
       ...target.concept,
       aliases: [...target.aliases],
       sourceConceptIds: [...target.sourceConceptIds].sort(),
+      legacyConceptIds: [...target.legacyConceptIds].sort(),
       courses: [...target.courses.values()],
     });
   }

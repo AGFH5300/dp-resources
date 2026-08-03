@@ -97,4 +97,30 @@ describe('practice catalogue presentation', () => {
       expect.arrayContaining(['Probability', 'Logic, Sets And Probability']),
     );
   });
+
+  it('preserves redirects from every equivalent legacy catalogue entry', () => {
+    const row = {
+      ...concept('current', 'Calculus', 'AA'),
+      legacyConceptIds: ['legacy-calculus'],
+    };
+    const duplicate = {
+      ...concept('duplicate', 'Calculus', 'Legacy'),
+      legacyConceptIds: ['legacy-integration'],
+    };
+
+    const [result] = consolidatePracticeCatalogGroups([
+      {
+        id: 'larger-topics',
+        slug: 'larger-topics',
+        name: 'Larger topics',
+        description: '',
+        concepts: [row, duplicate],
+      },
+    ]);
+
+    expect(result.concepts[0].legacyConceptIds).toEqual([
+      'legacy-calculus',
+      'legacy-integration',
+    ]);
+  });
 });

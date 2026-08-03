@@ -53,7 +53,7 @@ export async function getPracticeBuilderCatalog() {
       client
         .from('dp_qb_concepts')
         .select(
-          'id,subject_id,group_id,slug,name,description,aliases,sort_order,mapping_version',
+          'id,subject_id,group_id,slug,name,description,aliases,legacy_concept_ids,sort_order,mapping_version',
         )
         .eq('status', 'approved')
         .order('sort_order')
@@ -114,6 +114,7 @@ export async function getPracticeBuilderCatalog() {
                   description: concept.description,
                   aliases: concept.aliases || [],
                   mappingVersion: concept.mapping_version,
+                  legacyConceptIds: concept.legacy_concept_ids || [],
                   courses: [...byCourse.entries()]
                     .map(([courseId, questionCount]) => {
                       const course = courseById.get(courseId);
