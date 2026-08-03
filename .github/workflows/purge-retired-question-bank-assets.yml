@@ -1,9 +1,9 @@
 name: One-time retired Question Bank asset purge
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/batched-practice-build-remove-subjects
+      - main
     paths:
       - .github/workflows/purge-retired-question-bank-assets.yml
       - scripts/purge-retired-question-bank-assets.mjs
