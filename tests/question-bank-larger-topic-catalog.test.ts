@@ -92,7 +92,6 @@ describe('Question Bank larger-topic catalogue', () => {
       "'design-technology': DraftingCompass",
       "'digital-society': Network",
       'economics: ChartNoAxesCombined',
-      "'english-b': Languages",
       'ess: Sprout',
       "'french-b': MessageCircle",
       'geography: Map',
@@ -100,12 +99,11 @@ describe('Question Bank larger-topic catalogue', () => {
       'history: Landmark',
       'mathematics: Sigma',
       'physics: Atom',
-      'philosophy: Lightbulb',
       'psychology: Brain',
       "'spanish-b': MessagesSquare",
       "'sports-exercise-and-health-science': Activity",
-      "'world-religions': Sparkles",
     ];
     for (const mapping of subjectMappings) expect(icons).toContain(mapping);
+    expect(icons).not.toMatch(/english-b|philosophy|world-religions/);
   });
 });

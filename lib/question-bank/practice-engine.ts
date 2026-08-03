@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
@@ -8,6 +8,7 @@ import {
   allocatePracticeQuestions,
   orderPracticeAllocations,
   type PracticeCandidate,
+  type PracticeAllocationResult,
 } from './practice-allocation';
 import {
   stablePracticeConfiguration,
@@ -79,6 +80,23 @@ export class PracticeConfigurationShortageError extends Error {
     this.preview = preview;
   }
 }
+
+export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 400;
+
+export type PreparedPracticeSession = {
+  configuration: PracticeConfiguration;
+  configurationHash: string;
+  preview: PracticePreview;
+  allocation: PracticeAllocationResult;
+};
+
+export type PracticeSessionBuildState = {
+  sessionId: string;
+  generationSeed: string;
+  processedCount: number;
+  totalCount: number;
+  status: 'building' | 'complete';
+};
 
 function number(value: number | string | null, fallback = 0) {
   const parsed = Number(value);
@@ -275,28 +293,41 @@ export async function maximizePracticeConfiguration(
   };
 }
 
-export async function generatePracticeSession(
+export async function preparePracticeSession(
   userId: string,
   configuration: PracticeConfiguration,
-) {
+): Promise<PreparedPracticeSession> {
   const normalized = stablePracticeConfiguration(configuration);
   const candidates = await loadCandidates(userId, normalized);
   const { preview, allocation } = createPracticePreview(normalized, candidates);
   if (!preview.feasible) throw new PracticeConfigurationShortageError(preview);
-
-  const seed = randomBytes(16).toString('hex');
-  const ordered = orderPracticeAllocations(
-    allocation.allocations,
-    normalized.orderingMode,
-    seed,
-  );
-  const blockByKey = new Map(normalized.blocks.map((block) => [block.key, block]));
   const configurationJson = JSON.stringify(normalized);
   const configurationHash = createHash('sha256')
     .update(configurationJson)
     .digest('hex');
 
-  const items = ordered.map((allocationItem, position) => {
+  return {
+    configuration: normalized,
+    configurationHash,
+    preview,
+    allocation,
+  };
+}
+
+export function practiceSessionItems(
+  prepared: PreparedPracticeSession,
+  seed: string,
+) {
+  const ordered = orderPracticeAllocations(
+    prepared.allocation.allocations,
+    prepared.configuration.orderingMode,
+    seed,
+  );
+  const blockByKey = new Map(
+    prepared.configuration.blocks.map((block) => [block.key, block]),
+  );
+
+  return ordered.map((allocationItem, position) => {
     const primaryBlock = blockByKey.get(allocationItem.blockId);
     if (!primaryBlock)
       throw new Error(`Allocated practice block ${allocationItem.blockId} is missing.`);
@@ -325,18 +356,110 @@ export async function generatePracticeSession(
       matches,
     };
   });
+}
+
+function practiceBuildState(data: unknown): PracticeSessionBuildState {
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    throw new Error('Practice session build state was not returned.');
+  const row = data as Record<string, unknown>;
+  const sessionId = typeof row.sessionId === 'string' ? row.sessionId : '';
+  const generationSeed =
+    typeof row.generationSeed === 'string' ? row.generationSeed : '';
+  const processedCount = Number(row.processedCount);
+  const totalCount = Number(row.totalCount);
+  const status = row.status;
+  if (
+    !sessionId ||
+    !generationSeed ||
+    !Number.isInteger(processedCount) ||
+    processedCount < 0 ||
+    !Number.isInteger(totalCount) ||
+    totalCount < 1 ||
+    processedCount > totalCount ||
+    (status !== 'building' && status !== 'complete')
+  )
+    throw new Error('Practice session build state was invalid.');
+  return {
+    sessionId,
+    generationSeed,
+    processedCount,
+    totalCount,
+    status,
+  };
+}
+
+export async function beginPracticeSessionBuild({
+  userId,
+  requestId,
+  prepared,
+  proposedSeed = randomBytes(16).toString('hex'),
+}: {
+  userId: string;
+  requestId: string;
+  prepared: PreparedPracticeSession;
+  proposedSeed?: string;
+}) {
+  const client = createSupabaseAdminClient();
+  const { data, error } = await client.rpc('dp_qb_begin_practice_session_build', {
+    p_user_id: userId,
+    p_client_request_id: requestId,
+    p_configuration: prepared.configuration,
+    p_generation_seed: proposedSeed,
+    p_configuration_hash: prepared.configurationHash,
+    p_ordering_mode: prepared.configuration.orderingMode,
+    p_total_count: prepared.allocation.allocatedCount,
+  });
+  if (error) throw new Error(`Unable to begin practice session: ${error.message}`);
+  return practiceBuildState(data);
+}
+
+export async function appendPracticeSessionBuildBatch({
+  userId,
+  configurationHash,
+  state,
+  items,
+}: {
+  userId: string;
+  configurationHash: string;
+  state: PracticeSessionBuildState;
+  items: ReturnType<typeof practiceSessionItems>;
+}) {
+  const batch = items.slice(
+    state.processedCount,
+    state.processedCount + PRACTICE_SESSION_BUILD_BATCH_SIZE,
+  );
+  if (!batch.length) {
+    if (state.status === 'complete') return state;
+    throw new Error('Practice session build has no remaining batch.');
+  }
 
   const client = createSupabaseAdminClient();
-  const { data, error } = await client.rpc('dp_qb_create_practice_session', {
+  const { data, error } = await client.rpc('dp_qb_append_practice_session_batch', {
     p_user_id: userId,
-    p_configuration: normalized,
-    p_generation_seed: seed,
+    p_session_id: state.sessionId,
     p_configuration_hash: configurationHash,
-    p_ordering_mode: normalized.orderingMode,
-    p_items: items,
+    p_start_position: state.processedCount,
+    p_items: batch,
   });
-  if (error) throw new Error(`Unable to create practice session: ${error.message}`);
-  if (typeof data !== 'string') throw new Error('Practice session ID was not returned.');
+  if (error) throw new Error(`Unable to extend practice session: ${error.message}`);
+  return practiceBuildState(data);
+}
 
-  return { sessionId: data, preview };
+export async function generatePracticeSession(
+  userId: string,
+  configuration: PracticeConfiguration,
+  requestId = randomUUID(),
+) {
+  const prepared = await preparePracticeSession(userId, configuration);
+  let state = await beginPracticeSessionBuild({ userId, requestId, prepared });
+  const items = practiceSessionItems(prepared, state.generationSeed);
+  while (state.status !== 'complete') {
+    state = await appendPracticeSessionBuildBatch({
+      userId,
+      configurationHash: prepared.configurationHash,
+      state,
+      items,
+    });
+  }
+  return { sessionId: state.sessionId, preview: prepared.preview };
 }

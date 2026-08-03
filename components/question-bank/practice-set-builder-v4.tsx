@@ -23,7 +23,11 @@ import { PracticeShareDialog } from '@/components/question-bank/practice-share-d
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
 import { AppSelect } from '@/components/ui/app-select';
 import type { PracticeOrderingMode } from '@/lib/question-bank/practice-allocation';
-import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
+import {
+  readPracticeApiJson,
+  readPracticeBuildStream,
+  type PracticeBuildProgress,
+} from '@/lib/question-bank/practice-api-client';
 import {
   readPracticeBuilderDraft,
   savePracticeBuilderDraft,
@@ -508,6 +512,8 @@ export function PracticeSetBuilderV4({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [isMaximizing, setIsMaximizing] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [buildProgress, setBuildProgress] =
+    useState<PracticeBuildProgress | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const [contentPickerOpen, setContentPickerOpen] = useState(false);
   const [stagedConceptIds, setStagedConceptIds] = useState<Set<string>>(
@@ -521,6 +527,10 @@ export function PracticeSetBuilderV4({
     previewGroups: PracticePreviewGroupRequest[];
   } | null>(null);
   const previewInFlight = useRef<Promise<void> | null>(null);
+  const pendingBuild = useRef<{
+    requestId: string;
+    configurationJson: string;
+  } | null>(null);
 
   const totalRequested = useMemo(
     () => blocks.reduce((total, block) => total + block.requestedCount, 0),
@@ -1028,21 +1038,39 @@ export function PracticeSetBuilderV4({
 
   async function startSession() {
     if (!configuration || !preview?.feasible || isStarting) return;
+    const configurationJson = JSON.stringify(configuration);
+    if (pendingBuild.current?.configurationJson !== configurationJson) {
+      pendingBuild.current = {
+        requestId: crypto.randomUUID(),
+        configurationJson,
+      };
+    }
     setIsStarting(true);
+    setBuildProgress({
+      phase: 'selecting',
+      label: 'Selecting and ordering questions…',
+      processedCount: null,
+      totalCount: null,
+    });
     try {
       const response = await fetch('/api/question-bank/practice-builder/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ configuration }),
+        body: JSON.stringify({
+          configuration,
+          requestId: pendingBuild.current.requestId,
+        }),
       });
-      const payload = await readPracticeApiJson<{ sessionId: string }>(
+      const payload = await readPracticeBuildStream(
         response,
-        'Unable to create this session.',
+        setBuildProgress,
       );
+      pendingBuild.current = null;
       toast.success('Your practice session is ready.');
       router.push(`/question-bank/practice/${payload.sessionId}`);
     } catch (error) {
       setIsStarting(false);
+      setBuildProgress(null);
       toast.error(
         error instanceof Error ? error.message : 'Unable to create this session.',
       );
@@ -1570,6 +1598,76 @@ export function PracticeSetBuilderV4({
                 all for the largest jointly possible set, or reduce the highlighted
                 amounts.
               </p>
+            ) : null}
+            {isStarting && buildProgress ? (
+              <div
+                className={`${styles.buildProgressPanel} mt-4 rounded-xl px-3 py-3`}
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-semibold text-white">
+                    {buildProgress.label}
+                  </span>
+                  <span className="shrink-0 font-semibold text-blue-100">
+                    {buildProgress.totalCount === null
+                      ? 'Preparing'
+                      : `${Math.round(
+                          ((buildProgress.processedCount || 0) /
+                            buildProgress.totalCount) *
+                            100,
+                        )}%`}
+                  </span>
+                </div>
+                <div
+                  className={`${styles.buildProgressTrack} mt-2 h-2 overflow-hidden rounded-full`}
+                  role={
+                    buildProgress.totalCount === null ? undefined : 'progressbar'
+                  }
+                  aria-label="Practice session preparation progress"
+                  aria-valuemin={
+                    buildProgress.totalCount === null ? undefined : 0
+                  }
+                  aria-valuemax={
+                    buildProgress.totalCount === null ? undefined : 100
+                  }
+                  aria-valuenow={
+                    buildProgress.totalCount === null
+                      ? undefined
+                      : Math.round(
+                          ((buildProgress.processedCount || 0) /
+                            buildProgress.totalCount) *
+                            100,
+                        )
+                  }
+                >
+                  <div
+                    className={`${styles.buildProgressBar} h-full rounded-full transition-[width] duration-150 ${
+                      buildProgress.totalCount === null
+                        ? 'w-2/5 animate-pulse'
+                        : ''
+                    }`}
+                    style={
+                      buildProgress.totalCount === null
+                        ? undefined
+                        : {
+                            width: `${Math.round(
+                              ((buildProgress.processedCount || 0) /
+                                buildProgress.totalCount) *
+                                100,
+                            )}%`,
+                          }
+                    }
+                  />
+                </div>
+                <p className="mt-2 text-xs text-blue-100">
+                  {buildProgress.totalCount === null
+                    ? 'Checking the complete eligible pool before saving.'
+                    : `${(
+                        buildProgress.processedCount || 0
+                      ).toLocaleString()} of ${buildProgress.totalCount.toLocaleString()} questions saved`}
+                </p>
+              </div>
             ) : null}
             <div className="mt-4 grid gap-2">
               <button

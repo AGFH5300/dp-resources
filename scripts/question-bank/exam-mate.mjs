@@ -31,10 +31,11 @@ export const EXAM_MATE_EXPECTED = Object.freeze({
   discoveredJobs: 27,
   completedJobs: 11,
   emptyOrUnavailableJobs: 16,
-  importableQuestions: 14_128,
+  retiredQuestions: 754,
+  importableQuestions: 13_374,
   quarantinedQuestions: 71,
-  importableAssetUrls: 32_093,
-  importablePhysicalAssets: 31_231,
+  importableAssetUrls: 30_552,
+  importablePhysicalAssets: 30_225,
 });
 
 const SUBJECTS = Object.freeze({
@@ -47,9 +48,13 @@ const SUBJECTS = Object.freeze({
   Psychology: { id: 'psychology', slug: 'psychology', name: 'Psychology', order: 5 },
   Economics: { id: 'economics', slug: 'economics', name: 'Economics', order: 6 },
   'Global Politics': { id: 'global-politics', slug: 'global-politics', name: 'Global Politics', order: 13 },
-  Philosophy: { id: 'philosophy', slug: 'philosophy', name: 'Philosophy', order: 14 },
-  'World Religions': { id: 'world-religions', slug: 'world-religions', name: 'World Religions', order: 15 },
 });
+
+const RETIRED_SUBJECTS = new Set(['Philosophy', 'World Religions']);
+
+export function isRetiredExamMateSubject(subject) {
+  return RETIRED_SUBJECTS.has(subject);
+}
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -790,9 +795,14 @@ export async function normalizeExamMateArchive(root, options = {}) {
   );
   const quarantinedQuestions = [];
   const importableQuestions = [];
+  const retiredQuestions = [];
   const usedAssetUrls = new Set();
 
   for (const question of sourceQuestions) {
+    if (isRetiredExamMateSubject(question.subject)) {
+      retiredQuestions.push(question);
+      continue;
+    }
     const reasons = [];
     if (
       !cleanText(question.questionText) &&
@@ -852,6 +862,7 @@ export async function normalizeExamMateArchive(root, options = {}) {
     completedJobs: Number(summary.completedJobs || 0),
     emptyOrUnavailableJobs: Number(summary.emptyOrUnavailableJobs || 0),
     importableQuestions: importableQuestions.length,
+    retiredQuestions: retiredQuestions.length,
     quarantinedQuestions: quarantinedQuestions.length,
     importableAssetUrls: usedAssetUrls.size,
     importablePhysicalAssets: usedPhysicalHashes.size,
@@ -955,6 +966,7 @@ export async function normalizeExamMateArchive(root, options = {}) {
       assetManifest,
       verifiedAssetByUrl,
       importableQuestions,
+      retiredQuestions,
       quarantinedQuestions,
       usedAssetUrls,
       usedPhysicalHashes,

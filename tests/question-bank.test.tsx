@@ -651,8 +651,7 @@ describe('question filters and production security expectations', () => {
     expect(icons).toContain('biology: Dna');
     expect(icons).toContain('mathematics: Sigma');
     expect(icons).toContain('physics: Atom');
-    expect(icons).toContain("'english-b': Languages");
-    expect(icons).toContain("'world-religions': Sparkles");
+    expect(icons).not.toMatch(/english-b|philosophy|world-religions/);
     expect(oldCourse).toContain('Old course');
     expect(oldCourse).toContain('role="tooltip"');
     expect(oldCourse).toContain('previous IB course and assessment format');
