@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 const migration = read(
-  'supabase/migrations/20260803182202_batched_practice_build_and_subject_removal.sql',
+  'supabase/migrations/20260803184136_batched_practice_build_and_subject_removal.sql',
 );
 const route = read(
   'app/api/question-bank/practice-builder/sessions/route.ts',
