@@ -18,6 +18,7 @@ import { PracticeCodeEntry } from '@/components/question-bank/practice-code-entr
 import { PracticeShareExactButton } from '@/components/question-bank/practice-share-exact-button';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
+import { practiceCourseLabel } from '@/lib/question-bank/practice-course-label';
 import { getPracticeShare } from '@/lib/question-bank/practice-share';
 
 function buildCatalogIndexes(catalog: any) {
@@ -29,6 +30,8 @@ function buildCatalogIndexes(catalog: any) {
         concepts.set(concept.id, { subject, group, concept });
         for (const sourceConceptId of concept.sourceConceptIds || [])
           concepts.set(sourceConceptId, { subject, group, concept });
+        for (const legacyConceptId of concept.legacyConceptIds || [])
+          concepts.set(legacyConceptId, { subject, group, concept });
         for (const course of concept.courses || []) courses.set(course.id, course);
       }
     }
@@ -93,8 +96,9 @@ export default async function SharedPracticeSetPage({
         conceptName: match.concept.name,
         requestedCount: block.requestedCount,
         courseNames: block.courseIds
-          .map((courseId) => courses.get(courseId)?.name)
-          .filter(Boolean),
+          .map((courseId) => courses.get(courseId))
+          .filter(Boolean)
+          .map(practiceCourseLabel),
       };
     })
     .filter(Boolean) as Array<{

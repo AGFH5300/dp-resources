@@ -333,6 +333,30 @@ button:disabled:hover {
   background: #fee2e2;
   color: #b91c1c;
 }
+.dp-qb-subject-icon[data-subject='english-b'] {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+.dp-qb-subject-icon[data-subject='french-b'] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.dp-qb-subject-icon[data-subject='spanish-b'] {
+  background: #fef3c7;
+  color: #b45309;
+}
+.dp-qb-subject-icon[data-subject='global-politics'] {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+.dp-qb-subject-icon[data-subject='philosophy'] {
+  background: #fef9c3;
+  color: #a16207;
+}
+.dp-qb-subject-icon[data-subject='world-religions'] {
+  background: #fae8ff;
+  color: #a21caf;
+}
 .dp-qb-course-link,
 .dp-qb-side-card {
   display: flex;

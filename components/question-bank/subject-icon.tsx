@@ -11,9 +11,15 @@ import {
   DraftingCompass,
   FlaskConical,
   Landmark,
+  Languages,
+  Lightbulb,
   Map,
+  MessageCircle,
+  MessagesSquare,
   Network,
+  Scale,
   Sigma,
+  Sparkles,
   Sprout,
 } from 'lucide-react';
 
@@ -25,13 +31,19 @@ const SUBJECT_ICONS: Record<string, LucideIcon> = {
   'design-technology': DraftingCompass,
   'digital-society': Network,
   economics: ChartNoAxesCombined,
+  'english-b': Languages,
   ess: Sprout,
+  'french-b': MessageCircle,
   geography: Map,
+  'global-politics': Scale,
   history: Landmark,
   mathematics: Sigma,
   physics: Atom,
+  philosophy: Lightbulb,
   psychology: Brain,
+  'spanish-b': MessagesSquare,
   'sports-exercise-and-health-science': Activity,
+  'world-religions': Sparkles,
 };
 
 export function SubjectIcon({

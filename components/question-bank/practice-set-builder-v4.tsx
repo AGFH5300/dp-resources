@@ -33,6 +33,7 @@ import type {
   PracticeConfiguration,
   PracticeFilters,
 } from '@/lib/question-bank/practice-configuration';
+import { practiceCourseLabel } from '@/lib/question-bank/practice-course-label';
 import type {
   PracticeMaximumPreview,
   PracticePreview,
@@ -54,6 +55,7 @@ type CatalogCourse = {
 type CatalogConcept = {
   id: string;
   sourceConceptIds: string[];
+  legacyConceptIds: string[];
   slug: string;
   name: string;
   description: string;
@@ -197,6 +199,8 @@ function catalogConceptIndex(catalog: Catalog) {
         index.set(concept.id, match);
         for (const sourceConceptId of concept.sourceConceptIds || [])
           index.set(sourceConceptId, match);
+        for (const legacyConceptId of concept.legacyConceptIds || [])
+          index.set(legacyConceptId, match);
       }
     }
   }
@@ -1133,7 +1137,7 @@ export function PracticeSetBuilderV4({
                         block.courseIds.includes(course.id),
                       );
                       const courseSummary = selectedCourses
-                        .map((course) => course.name)
+                        .map(practiceCourseLabel)
                         .join(', ');
                       return (
                         <article
@@ -1654,7 +1658,7 @@ export function PracticeSetBuilderV4({
                                     </strong>
                                     <small className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">
                                       {concept.courses
-                                        .map((course) => course.name)
+                                        .map(practiceCourseLabel)
                                         .join(', ')}
                                     </small>
                                   </span>
