@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  'supabase/migrations/20260803131706_question_bank_parent_subtopic_catalog.sql',
+  'supabase/migrations/20260803135634_question_bank_parent_subtopic_catalog.sql',
   'utf8',
 );
 const catalog = readFileSync('lib/question-bank/practice-catalog.ts', 'utf8');
