@@ -32,7 +32,7 @@ export async function getPracticeSession(
   const { data: session, error: sessionError } = await client
     .from('dp_qb_practice_sessions')
     .select(
-      'id,status,ordering_mode,requested_count,generated_count,current_position,configuration_snapshot,generation_seed,created_at,started_at,completed_at',
+      'id,status,ordering_mode,requested_count,generated_count,current_position,configuration_snapshot,generation_seed,queue_storage,created_at,started_at,completed_at',
     )
     .eq('id', sessionId)
     .eq('user_id', userId)
@@ -42,72 +42,123 @@ export async function getPracticeSession(
 
   const pageSize = Math.min(Math.max(Number(options.pageSize || PRACTICE_SESSION_PAGE_SIZE), 10), 100);
   const total = Number(session.generated_count || 0);
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  let targetPosition: number | null = null;
-
-  if (options.requestedVariantId && UUID.test(options.requestedVariantId)) {
-    const { data: requestedItem, error: requestedError } = await client
-      .from('dp_qb_practice_session_items')
-      .select('position')
-      .eq('session_id', sessionId)
-      .eq('variant_id', options.requestedVariantId)
-      .maybeSingle();
-    requireData(requestedItem, requestedError, 'Requested session question');
-    if (requestedItem) targetPosition = Number(requestedItem.position);
-  }
-
   const requestedPage = Number(options.page || 0);
-  const currentPage = Math.min(
-    pages,
-    Math.max(
-      1,
-      targetPosition !== null
-        ? Math.floor(targetPosition / pageSize) + 1
-        : Number.isInteger(requestedPage) && requestedPage > 0
-          ? requestedPage
-          : Math.floor(Number(session.current_position || 0) / pageSize) + 1,
-    ),
-  );
-  const offset = (currentPage - 1) * pageSize;
-  const lastPosition = Math.min(total - 1, offset + pageSize - 1);
+  let pages: number;
+  let currentPage: number;
+  let offset: number;
+  let sessionItems: any[];
+  let previousBoundary: { variant_id: string } | null;
+  let nextBoundary: { variant_id: string } | null;
 
-  const [itemsResult, previousBoundaryResult, nextBoundaryResult] = await Promise.all([
-    client
-      .from('dp_qb_practice_session_items')
-      .select('id,position,status,question_id,variant_id,primary_block_snapshot')
-      .eq('session_id', sessionId)
-      .order('position')
-      .range(offset, Math.max(offset, lastPosition)),
-    offset > 0
-      ? client
+  if (session.queue_storage === 'chunks') {
+    const { data, error } = await client.rpc(
+      'dp_qb_compact_practice_session_page',
+      {
+        p_user_id: userId,
+        p_session_id: sessionId,
+        p_requested_page:
+          Number.isInteger(requestedPage) && requestedPage > 0
+            ? requestedPage
+            : null,
+        p_page_size: pageSize,
+        p_requested_variant_id:
+          options.requestedVariantId && UUID.test(options.requestedVariantId)
+            ? options.requestedVariantId
+            : null,
+      },
+    );
+    const compact = requireData(data, error, 'Compact practice session page');
+    if (!compact || typeof compact !== 'object' || Array.isArray(compact))
+      throw new Error('Compact practice session page: invalid response.');
+    const row = compact as Record<string, unknown>;
+    if (!Array.isArray(row.items))
+      throw new Error('Compact practice session page: items are missing.');
+    pages = Number(row.pages);
+    currentPage = Number(row.currentPage);
+    offset = Number(row.offset);
+    if (
+      !Number.isInteger(pages) ||
+      pages < 1 ||
+      !Number.isInteger(currentPage) ||
+      currentPage < 1 ||
+      currentPage > pages ||
+      !Number.isInteger(offset) ||
+      offset < 0
+    )
+      throw new Error('Compact practice session page: invalid pagination.');
+    sessionItems = row.items;
+    previousBoundary =
+      typeof row.previousBoundaryVariantId === 'string'
+        ? { variant_id: row.previousBoundaryVariantId }
+        : null;
+    nextBoundary =
+      typeof row.nextBoundaryVariantId === 'string'
+        ? { variant_id: row.nextBoundaryVariantId }
+        : null;
+  } else {
+    pages = Math.max(1, Math.ceil(total / pageSize));
+    let targetPosition: number | null = null;
+    if (options.requestedVariantId && UUID.test(options.requestedVariantId)) {
+      const { data: requestedItem, error: requestedError } = await client
+        .from('dp_qb_practice_session_items')
+        .select('position')
+        .eq('session_id', sessionId)
+        .eq('variant_id', options.requestedVariantId)
+        .maybeSingle();
+      requireData(requestedItem, requestedError, 'Requested session question');
+      if (requestedItem) targetPosition = Number(requestedItem.position);
+    }
+    currentPage = Math.min(
+      pages,
+      Math.max(
+        1,
+        targetPosition !== null
+          ? Math.floor(targetPosition / pageSize) + 1
+          : Number.isInteger(requestedPage) && requestedPage > 0
+            ? requestedPage
+            : Math.floor(Number(session.current_position || 0) / pageSize) + 1,
+      ),
+    );
+    offset = (currentPage - 1) * pageSize;
+    const lastPosition = Math.min(total - 1, offset + pageSize - 1);
+    const [itemsResult, previousBoundaryResult, nextBoundaryResult] =
+      await Promise.all([
+        client
           .from('dp_qb_practice_session_items')
-          .select('variant_id,position')
+          .select('id,position,status,question_id,variant_id,primary_block_snapshot')
           .eq('session_id', sessionId)
-          .eq('position', offset - 1)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    lastPosition + 1 < total
-      ? client
-          .from('dp_qb_practice_session_items')
-          .select('variant_id,position')
-          .eq('session_id', sessionId)
-          .eq('position', lastPosition + 1)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-  ]);
-
-  const sessionItems =
-    requireData(itemsResult.data, itemsResult.error, 'Practice session items') || [];
-  const previousBoundary = requireData(
-    previousBoundaryResult.data,
-    previousBoundaryResult.error,
-    'Previous session boundary',
-  );
-  const nextBoundary = requireData(
-    nextBoundaryResult.data,
-    nextBoundaryResult.error,
-    'Next session boundary',
-  );
+          .order('position')
+          .range(offset, Math.max(offset, lastPosition)),
+        offset > 0
+          ? client
+              .from('dp_qb_practice_session_items')
+              .select('variant_id,position')
+              .eq('session_id', sessionId)
+              .eq('position', offset - 1)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        lastPosition + 1 < total
+          ? client
+              .from('dp_qb_practice_session_items')
+              .select('variant_id,position')
+              .eq('session_id', sessionId)
+              .eq('position', lastPosition + 1)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+    sessionItems =
+      requireData(itemsResult.data, itemsResult.error, 'Practice session items') || [];
+    previousBoundary = requireData(
+      previousBoundaryResult.data,
+      previousBoundaryResult.error,
+      'Previous session boundary',
+    );
+    nextBoundary = requireData(
+      nextBoundaryResult.data,
+      nextBoundaryResult.error,
+      'Next session boundary',
+    );
+  }
   const variantIds = sessionItems.map((item: any) => item.variant_id);
   const questionIds = sessionItems.map((item: any) => item.question_id);
 

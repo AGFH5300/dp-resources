@@ -531,6 +531,10 @@ export function PracticeSetBuilderV4({
     requestId: string;
     configurationJson: string;
   } | null>(null);
+  const rightColumnRef = useRef<HTMLElement | null>(null);
+  const [desktopSelectionHeight, setDesktopSelectionHeight] = useState<
+    number | null
+  >(null);
 
   const totalRequested = useMemo(
     () => blocks.reduce((total, block) => total + block.requestedCount, 0),
@@ -767,6 +771,25 @@ export function PracticeSetBuilderV4({
   }, [contentPickerOpen, settingsExpanded]);
 
   useEffect(() => {
+    const rightColumn = rightColumnRef.current;
+    if (!rightColumn) return;
+    const desktop = window.matchMedia('(min-width: 1280px)');
+    const updateHeight = () => {
+      setDesktopSelectionHeight(
+        desktop.matches ? Math.ceil(rightColumn.getBoundingClientRect().height) : null,
+      );
+    };
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(rightColumn);
+    desktop.addEventListener('change', updateHeight);
+    updateHeight();
+    return () => {
+      observer.disconnect();
+      desktop.removeEventListener('change', updateHeight);
+    };
+  }, []);
+
+  useEffect(() => {
     setPreview(null);
     setPreviewError('');
     const requestId = previewRequest.current + 1;
@@ -827,6 +850,12 @@ export function PracticeSetBuilderV4({
         for (const concept of group.concepts) next.delete(concept.id);
       return next;
     });
+  }
+
+  function removeSelectedSubject(subjectId: string) {
+    setBlocks((current) =>
+      current.filter((block) => block.subjectId !== subjectId),
+    );
   }
 
   function selectStagedGroup(group: CatalogSubject['groups'][number]) {
@@ -1087,8 +1116,15 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden`}>
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+        <section
+          className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden`}
+          style={
+            desktopSelectionHeight === null
+              ? undefined
+              : { height: `${desktopSelectionHeight}px` }
+          }
+        >
           <div className={`${styles.selectionViewport} xl:flex xl:min-h-0 xl:flex-1 xl:flex-col`}>
           <div className="shrink-0">
             <div>
@@ -1233,6 +1269,19 @@ export function PracticeSetBuilderV4({
                           : `${subjectRequested.toLocaleString()} questions selected`}
                       </span>
                     </span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        removeSelectedSubject(subjectGroup.subjectId);
+                      }}
+                      className={`${styles.deleteButton} inline-flex size-9 shrink-0 items-center justify-center rounded-lg`}
+                      aria-label={`Remove ${subjectGroup.subjectName}`}
+                      title={`Remove ${subjectGroup.subjectName}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </summary>
                   <div className="space-y-2 border-t border-slate-200 p-2 dark:border-slate-800">
                     {subjectGroup.blocks.map((block) => {
@@ -1493,7 +1542,7 @@ export function PracticeSetBuilderV4({
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside ref={rightColumnRef} className="space-y-4">
           <section className={`${styles.settingsCard} rounded-2xl border shadow-sm`}>
             <div className={`${styles.settingsHeader} flex items-start justify-between gap-3 border-b p-4`}>
               <div className="flex items-start gap-3">
