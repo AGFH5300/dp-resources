@@ -7,7 +7,7 @@ const migration = read(
   'supabase/migrations/20260803184136_batched_practice_build_and_subject_removal.sql',
 );
 const fasterBatchMigration = read(
-  'supabase/migrations/20260804094615_speed_up_practice_session_batches.sql',
+  'supabase/migrations/20260804100927_speed_up_practice_session_batches.sql',
 );
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
