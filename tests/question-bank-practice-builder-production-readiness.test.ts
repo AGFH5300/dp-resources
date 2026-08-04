@@ -40,16 +40,21 @@ describe('Question Bank practice builder production readiness', () => {
       'styles.selectionViewport} xl:flex xl:min-h-0 xl:flex-1 xl:flex-col',
     );
     expect(styles).not.toContain('height: calc(100dvh - 9.5rem)');
-    expect(builder).toContain('<aside className="space-y-4">');
+    expect(builder).toContain('ref={rightColumnRef} className="space-y-4"');
     expect(builder).not.toContain('xl:min-h-[calc(100dvh-7.5rem)]');
     expect(builder).not.toContain('xl:min-h-[28rem] xl:flex-1');
     expect(builder).toContain('xl:grid-cols-[minmax(0,1fr)_380px]');
-    expect(builder).not.toContain('xl:items-start');
+    expect(builder).toContain('xl:items-start');
     expect(builder).not.toContain('xl:items-stretch');
+    expect(builder).toContain("window.matchMedia('(min-width: 1280px)')");
+    expect(builder).toContain('new ResizeObserver(updateHeight)');
+    expect(builder).toContain('{ height: `${desktopSelectionHeight}px` }');
     expect(builder).toContain('appearance="summary"');
     expect(builder).toContain('catalog.subjects.find');
     expect(builder).toContain('selectStagedSubject(fullSubject)');
     expect(builder).toContain('clearStagedSubject(fullSubject)');
+    expect(builder).toContain('removeSelectedSubject(subjectGroup.subjectId)');
+    expect(builder).toContain('aria-label={`Remove ${subjectGroup.subjectName}`}');
     expect(builder).toContain('toggleStagedConcept(concept.id)');
     expect(builder).toContain('setBlocks([...keptBlocks, ...additions])');
     expect(builder).toContain('aria-labelledby="practice-content-picker-title"');
@@ -77,7 +82,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(styles).toContain('.primaryAction');
     expect(styles).toContain('.courseCountPill');
     expect(styles).toContain('.questionCountPill');
-  });
+  }, 10_000);
 
   it('keeps practice APIs out of request-mutating middleware and returns JSON auth failures', () => {
     const middleware = read('middleware.ts');

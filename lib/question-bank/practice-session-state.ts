@@ -44,12 +44,26 @@ export async function updatePracticeSessionItem({
   const client = createSupabaseAdminClient();
   const { data: session, error: sessionError } = await client
     .from('dp_qb_practice_sessions')
-    .select('id,status,started_at')
+    .select('id,status,started_at,queue_storage')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .maybeSingle();
   if (sessionError) throw sessionError;
   if (!session) return false;
+
+  if (session.queue_storage === 'chunks') {
+    const { data, error } = await client.rpc(
+      'dp_qb_update_compact_practice_session_item',
+      {
+        p_user_id: userId,
+        p_session_id: sessionId,
+        p_variant_id: variantId,
+        p_status: status,
+      },
+    );
+    if (error) throw error;
+    return data === true;
+  }
 
   const { data: item, error: itemError } = await client
     .from('dp_qb_practice_session_items')

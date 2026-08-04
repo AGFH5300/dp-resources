@@ -15,6 +15,9 @@ const compactBatchMigration = read(
 const streamlinedBatchMigration = read(
   'supabase/migrations/20260804113008_streamline_practice_session_batches.sql',
 );
+const chunkedQueueMigration = read(
+  'supabase/migrations/20260804134000_store_practice_queues_in_chunks.sql',
+);
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
 );
@@ -73,6 +76,29 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(streamlinedBatchMigration).toContain('item_count > 10000');
     expect(streamlinedBatchMigration).toContain('from public, anon, authenticated');
     expect(streamlinedBatchMigration).toContain('to service_role');
+    expect(chunkedQueueMigration).toContain(
+      'public.dp_qb_practice_session_queue_chunks',
+    );
+    expect(chunkedQueueMigration).toContain(
+      "queue_storage in ('rows', 'chunks')",
+    );
+    expect(chunkedQueueMigration).toContain(
+      'insert into public.dp_qb_practice_session_queue_chunks',
+    );
+    expect(chunkedQueueMigration).not.toContain(
+      'insert into public.dp_qb_practice_session_items (\n+    session_id, position',
+    );
+    expect(chunkedQueueMigration).toContain(
+      'public.dp_qb_compact_practice_session_page',
+    );
+    expect(chunkedQueueMigration).toContain(
+      'public.dp_qb_update_compact_practice_session_item',
+    );
+    expect(chunkedQueueMigration).toContain(
+      'public.dp_qb_practice_share_queue_chunks',
+    );
+    expect(chunkedQueueMigration).toContain('from public, anon, authenticated');
+    expect(chunkedQueueMigration).toContain('to service_role');
   });
 
   it('reuses the bounded preview preparation when a session starts immediately', () => {
