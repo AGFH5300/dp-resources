@@ -435,6 +435,10 @@ button:disabled:hover {
 .dp-qb-recent-link {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   gap: 0.65rem;
   border-bottom: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -453,12 +457,15 @@ button:disabled:hover {
   color: #64748b;
 }
 .dp-qb-recent-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 45%);
   align-items: baseline;
-  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
   gap: 0.5rem;
 }
 .dp-qb-recent-heading strong {
+  min-width: 0;
   overflow: hidden;
   color: var(--dp-navy);
   font-size: 0.82rem;
@@ -467,11 +474,32 @@ button:disabled:hover {
 }
 .dp-qb-recent-heading small,
 .dp-qb-recent-copy > span:last-child {
+  min-width: 0;
   overflow: hidden;
   color: #64748b;
   font-size: 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.dp-qb-recent-grid-link {
+  display: grid;
+  align-content: start;
+  gap: 0.18rem;
+}
+.dp-qb-recent-grid-link > :is(strong, span, small) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dp-qb-recent-grid-link > strong {
+  color: var(--dp-navy);
+  font-size: 0.82rem;
+}
+.dp-qb-recent-grid-link > :is(span, small) {
+  color: #64748b;
+  font-size: 0.7rem;
 }
 .dp-qb-course-sidebar {
   align-self: start;
