@@ -29,6 +29,7 @@ import { QuestionStateControls } from '@/components/question-bank/question-state
 import { SolutionVideo } from '@/components/question-bank/solution-video';
 import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
+import { hasSubstantiveExaminerReport } from '@/lib/question-bank/examiner-report';
 import {
   isCorrectSelection,
   parseInteractiveQuestion,
@@ -413,6 +414,9 @@ export function CoursePracticeWorkspace({
   );
   const examinerReportAssets = (detail?.assets || []).filter(
     (asset) => asset.role === 'examiner_report',
+  );
+  const hasExaminerReport = hasSubstantiveExaminerReport(
+    detail?.question.examinerReport,
   );
   const allInteractiveChecked = Boolean(
     interactive?.sections.length &&
@@ -878,7 +882,7 @@ export function CoursePracticeWorkspace({
                 </section>
               ) : null}
 
-              {detail.question.examinerReport ? (
+              {hasExaminerReport ? (
                 <details className="dp-qb-practice-extra">
                   <summary>
                     <FileText className="size-5" /> Read the examiner report

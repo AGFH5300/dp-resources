@@ -34,13 +34,15 @@ describe('Question Bank practice builder production readiness', () => {
     expect(builder).toContain('2 · Session settings');
     expect(builder).toContain("'/api/question-bank/practice-builder/maximize'");
     expect(builder).toContain(
-      'xl:flex xl:h-[calc(100dvh-7.5rem)] xl:min-h-0 xl:flex-col',
+      'xl:min-h-[calc(100dvh-7.5rem)] xl:overflow-hidden',
     );
+    expect(builder).toContain('styles.selectionViewport');
+    expect(styles).toContain('height: calc(100dvh - 9.5rem)');
     expect(builder).toContain(
       'xl:flex xl:min-h-[calc(100dvh-7.5rem)] xl:flex-col',
     );
     expect(builder).toContain('xl:grid-cols-[minmax(0,1fr)_380px]');
-    expect(builder).toContain('xl:items-start');
+    expect(builder).not.toContain('xl:items-start');
     expect(builder).not.toContain('xl:items-stretch');
     expect(builder).toContain('appearance="summary"');
     expect(builder).toContain('catalog.subjects.find');

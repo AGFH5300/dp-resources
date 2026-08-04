@@ -6,6 +6,9 @@ const read = (path: string) => readFileSync(path, 'utf8');
 const migration = read(
   'supabase/migrations/20260803184136_batched_practice_build_and_subject_removal.sql',
 );
+const fasterBatchMigration = read(
+  'supabase/migrations/20260804094615_speed_up_practice_session_batches.sql',
+);
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
 );
@@ -33,7 +36,11 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(migration).toContain('Practice session batch does not match committed progress');
     expect(migration).toContain('from public, anon, authenticated');
     expect(migration).toContain('to service_role');
-    expect(engine).toContain('PRACTICE_SESSION_BUILD_BATCH_SIZE = 400');
+    expect(fasterBatchMigration).toContain('item_count > 1000');
+    expect(fasterBatchMigration).toContain('between 1 and 1000 items');
+    expect(fasterBatchMigration).toContain('from public, anon, authenticated');
+    expect(fasterBatchMigration).toContain('to service_role');
+    expect(engine).toContain('PRACTICE_SESSION_BUILD_BATCH_SIZE = 1_000');
     expect(engine).toContain("client.rpc('dp_qb_append_practice_session_batch'");
   });
 

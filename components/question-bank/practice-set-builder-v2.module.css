@@ -302,6 +302,10 @@
 }
 
 @media (min-width: 1280px) {
+  .selectionViewport {
+    height: calc(100dvh - 9.5rem);
+  }
+
   .settingsPanel {
     height: calc(100% - 5.5rem);
     max-height: none;

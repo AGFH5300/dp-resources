@@ -694,7 +694,9 @@ describe('question filters and production security expectations', () => {
     );
     expect(migration).toContain('examiner_report text not null');
     expect(migration).toContain("'examiner_report'");
-    expect(questionRoute).toContain('examinerReport: question.examiner_report');
+    expect(questionRoute).toContain(
+      'hasSubstantiveExaminerReport(question.examiner_report)',
+    );
     expect(workspace).toContain('Read the examiner report');
   });
 
