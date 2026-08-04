@@ -100,11 +100,13 @@ export default async function Recent() {
                 <Link
                   key={progress.question_id}
                   href={`/question-bank/${variant.course.subject.slug}/${variant.course.slug}?question=${variant.id}`}
-                  className="dp-qb-recent-link"
+                  className="dp-qb-recent-link dp-qb-recent-grid-link"
                 >
-                  <strong>{variant.question.reference}</strong>
-                  <span>{variant.topic.name}</span>
-                  <small>{variant.course.name}</small>
+                  <strong title={variant.question.reference}>
+                    {variant.question.reference}
+                  </strong>
+                  <span title={variant.topic.name}>{variant.topic.name}</span>
+                  <small title={variant.course.name}>{variant.course.name}</small>
                 </Link>
               ))
             ) : (

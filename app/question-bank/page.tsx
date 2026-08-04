@@ -336,10 +336,18 @@ export default async function QuestionBankLanding() {
                       />
                       <span className="dp-qb-recent-copy">
                         <span className="dp-qb-recent-heading">
-                          <strong>{row.question.reference}</strong>
-                          <small>{row.course.name}</small>
+                          <strong title={row.question.reference}>
+                            {row.question.reference}
+                          </strong>
+                          <small title={row.course.name}>{row.course.name}</small>
                         </span>
-                        <span>
+                        <span
+                          title={
+                            row.topic.name === 'Uncategorized'
+                              ? 'Topic not assigned'
+                              : row.topic.name
+                          }
+                        >
                           {row.topic.name === 'Uncategorized'
                             ? 'Topic not assigned'
                             : row.topic.name}
