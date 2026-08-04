@@ -16,7 +16,7 @@ const streamlinedBatchMigration = read(
   'supabase/migrations/20260804113008_streamline_practice_session_batches.sql',
 );
 const chunkedQueueMigration = read(
-  'supabase/migrations/20260804134000_store_practice_queues_in_chunks.sql',
+  'supabase/migrations/20260804141319_store_practice_queues_in_chunks.sql',
 );
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
