@@ -81,6 +81,7 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(engine).toContain('cachePreparedPracticeSession(userId');
     expect(engine).toContain('takePreparedPracticeSession(');
     expect(engine).toContain('if (cached) return cached');
+    expect(engine).toContain('practiceConfigurationSupportsPreparedReuse');
     expect(engine).toContain('correctness never depends on process memory');
   });
 

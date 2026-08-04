@@ -84,6 +84,7 @@ export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 10_000;
 
 const PREPARED_SESSION_CACHE_TTL_MS = 90_000;
 const PREPARED_SESSION_CACHE_MAX_QUESTIONS = 60_000;
+const ALL_PROGRESS_STATUSES = ['completed', 'in_progress', 'not_started'] as const;
 
 export type PreparedPracticeSession = {
   configuration: PracticeConfiguration;
@@ -176,6 +177,21 @@ function prunePreparedSessionCache(now = Date.now()) {
   }
 }
 
+export function practiceConfigurationSupportsPreparedReuse(
+  configuration: PracticeConfiguration,
+) {
+  return [configuration.filters, ...configuration.blocks.map((block) => block.filters)]
+    .every(
+      (filters) =>
+        filters.saved == null &&
+        (!filters.statuses?.length ||
+          (filters.statuses.length === ALL_PROGRESS_STATUSES.length &&
+            ALL_PROGRESS_STATUSES.every((status) =>
+              filters.statuses?.includes(status),
+            ))),
+    );
+}
+
 function cachePreparedPracticeSession(
   userId: string,
   prepared: PreparedPracticeSession,
@@ -184,6 +200,7 @@ function cachePreparedPracticeSession(
   preparedSessionCache.delete(userId);
   if (
     !prepared.preview.feasible ||
+    !practiceConfigurationSupportsPreparedReuse(prepared.configuration) ||
     prepared.allocation.allocatedCount > PREPARED_SESSION_CACHE_MAX_QUESTIONS
   )
     return;
