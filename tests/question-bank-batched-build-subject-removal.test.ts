@@ -13,7 +13,7 @@ const compactBatchMigration = read(
   'supabase/migrations/20260804111243_compact_practice_session_batches.sql',
 );
 const streamlinedBatchMigration = read(
-  'supabase/migrations/20260804111723_streamline_practice_session_batches.sql',
+  'supabase/migrations/20260804113008_streamline_practice_session_batches.sql',
 );
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
