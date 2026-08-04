@@ -9,6 +9,9 @@ const migration = read(
 const fasterBatchMigration = read(
   'supabase/migrations/20260804100927_speed_up_practice_session_batches.sql',
 );
+const compactBatchMigration = read(
+  'supabase/migrations/20260804105607_compact_practice_session_batches.sql',
+);
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
 );
@@ -40,8 +43,35 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(fasterBatchMigration).toContain('between 1 and 1000 items');
     expect(fasterBatchMigration).toContain('from public, anon, authenticated');
     expect(fasterBatchMigration).toContain('to service_role');
-    expect(engine).toContain('PRACTICE_SESSION_BUILD_BATCH_SIZE = 1_000');
+    expect(compactBatchMigration).toContain('item_count > 10000');
+    expect(compactBatchMigration).toContain('between 1 and 10000 items');
+    expect(compactBatchMigration).toContain('primary_block_key text');
+    expect(compactBatchMigration).toContain('match_keys text[]');
+    expect(compactBatchMigration).toContain(
+      'referencing new table as new_session_items',
+    );
+    expect(compactBatchMigration).not.toContain(
+      'insert into public.dp_qb_practice_session_item_matches',
+    );
+    expect(compactBatchMigration).toContain(
+      "jsonb_build_array(block.value ->> 'conceptId')",
+    );
+    expect(compactBatchMigration).toContain("set work_mem = '32MB'");
+    expect(compactBatchMigration).toContain('from public, anon, authenticated');
+    expect(compactBatchMigration).toContain('to service_role');
+    expect(engine).toContain('PRACTICE_SESSION_BUILD_BATCH_SIZE = 10_000');
+    expect(engine).toContain('matchedBlockKeys: allocationItem.matchedBlockIds');
+    expect(engine).not.toContain('primaryBlockSnapshot: blockSnapshot');
     expect(engine).toContain("client.rpc('dp_qb_append_practice_session_batch'");
+  });
+
+  it('reuses the bounded preview preparation when a session starts immediately', () => {
+    expect(engine).toContain('PREPARED_SESSION_CACHE_TTL_MS = 90_000');
+    expect(engine).toContain('PREPARED_SESSION_CACHE_MAX_QUESTIONS = 60_000');
+    expect(engine).toContain('cachePreparedPracticeSession(userId');
+    expect(engine).toContain('takePreparedPracticeSession(');
+    expect(engine).toContain('if (cached) return cached');
+    expect(engine).toContain('correctness never depends on process memory');
   });
 
   it('streams committed progress and renders a compact accessible bar', () => {

@@ -28,6 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-08-04': [
+    'Matched the Practice Builder selection panel to the complete natural-height settings and summary column, and cut very large session preparation to compact, cached 10,000-question batches.',
     'Extended the Practice Builder selection panel to the full configuration height, hid empty examiner reports, and accelerated large-session preparation with safely bounded 1,000-question batches.',
   ],
   '2026-08-03': [

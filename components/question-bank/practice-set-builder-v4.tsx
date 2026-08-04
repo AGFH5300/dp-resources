@@ -1088,7 +1088,7 @@ export function PracticeSetBuilderV4({
       ) : null}
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-[calc(100dvh-7.5rem)] xl:flex-col xl:overflow-hidden`}>
+        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden`}>
           <div className={`${styles.selectionViewport} xl:flex xl:min-h-0 xl:flex-1 xl:flex-col`}>
           <div className="shrink-0">
             <div>
@@ -1493,8 +1493,8 @@ export function PracticeSetBuilderV4({
           </div>
         </section>
 
-        <aside className="space-y-4 xl:flex xl:min-h-[calc(100dvh-7.5rem)] xl:flex-col xl:space-y-0">
-          <section className={`${styles.settingsCard} rounded-2xl border shadow-sm xl:min-h-[28rem] xl:flex-1 xl:overflow-hidden`}>
+        <aside className="space-y-4">
+          <section className={`${styles.settingsCard} rounded-2xl border shadow-sm`}>
             <div className={`${styles.settingsHeader} flex items-start justify-between gap-3 border-b p-4`}>
               <div className="flex items-start gap-3">
                 <span className={`${styles.settingsIcon} flex size-10 shrink-0 items-center justify-center rounded-xl`}>
@@ -1539,7 +1539,7 @@ export function PracticeSetBuilderV4({
             </div>
           </section>
 
-          <section className={`${styles.summaryCard} rounded-2xl p-4 shadow-lg xl:mt-4 xl:shrink-0`}>
+          <section className={`${styles.summaryCard} rounded-2xl p-4 shadow-lg`}>
             <div className="flex items-center gap-2">
               <ListChecks className="size-5" />
               <h2 className="font-semibold">Practice-set summary</h2>
