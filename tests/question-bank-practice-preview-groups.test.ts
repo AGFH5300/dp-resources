@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { PracticeCandidate } from '@/lib/question-bank/practice-allocation';
 import type { PracticeConfiguration } from '@/lib/question-bank/practice-configuration';
-import { createPracticePreview } from '@/lib/question-bank/practice-engine';
+import {
+  createPracticePreview,
+  practiceConfigurationSupportsPreparedReuse,
+} from '@/lib/question-bank/practice-engine';
 
 const configuration: PracticeConfiguration = {
   schemaVersion: 1,
@@ -58,5 +61,31 @@ describe('Question Bank subject preview totals', () => {
         totalUniqueAvailable: 3,
       },
     ]);
+  });
+
+  it('reuses previews only when saved and progress eligibility cannot go stale', () => {
+    expect(practiceConfigurationSupportsPreparedReuse(configuration)).toBe(true);
+    expect(
+      practiceConfigurationSupportsPreparedReuse({
+        ...configuration,
+        filters: { ...configuration.filters, saved: true },
+      }),
+    ).toBe(false);
+    expect(
+      practiceConfigurationSupportsPreparedReuse({
+        ...configuration,
+        filters: { ...configuration.filters, statuses: ['not_started'] },
+      }),
+    ).toBe(false);
+    expect(
+      practiceConfigurationSupportsPreparedReuse({
+        ...configuration,
+        blocks: configuration.blocks.map((block, index) =>
+          index === 0
+            ? { ...block, filters: { ...block.filters, saved: false } }
+            : block,
+        ),
+      }),
+    ).toBe(false);
   });
 });

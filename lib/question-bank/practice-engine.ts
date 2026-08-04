@@ -13,7 +13,6 @@ import {
 import {
   stablePracticeConfiguration,
   type PracticeConfiguration,
-  type PracticeConfigurationBlock,
 } from './practice-configuration';
 import { maximizePracticeBlockCounts } from './practice-maximization';
 
@@ -81,7 +80,11 @@ export class PracticeConfigurationShortageError extends Error {
   }
 }
 
-export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 1_000;
+export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 10_000;
+
+const PREPARED_SESSION_CACHE_TTL_MS = 90_000;
+const PREPARED_SESSION_CACHE_MAX_QUESTIONS = 60_000;
+const ALL_PROGRESS_STATUSES = ['completed', 'in_progress', 'not_started'] as const;
 
 export type PreparedPracticeSession = {
   configuration: PracticeConfiguration;
@@ -89,6 +92,18 @@ export type PreparedPracticeSession = {
   preview: PracticePreview;
   allocation: PracticeAllocationResult;
 };
+
+type CachedPreparedPracticeSession = {
+  prepared: PreparedPracticeSession;
+  expiresAt: number;
+};
+
+// When the preview and session routes share a warm Node process, keep only the
+// latest bounded preparation per member so a Start click can reuse the
+// eligibility/allocation work the preview just did.
+// A cold or separately isolated route simply misses this best-effort cache and
+// recomputes normally; correctness never depends on process memory.
+const preparedSessionCache = new Map<string, CachedPreparedPracticeSession>();
 
 export type PracticeSessionBuildState = {
   sessionId: string;
@@ -150,22 +165,74 @@ async function loadCandidates(
   });
 }
 
-function blockSnapshot(block: PracticeConfigurationBlock) {
-  return {
-    key: block.key,
-    selectionType: block.selectionType,
-    requestedCount: block.requestedCount,
-    ...(block.selectionType === 'concept'
-      ? {
-          conceptId: block.conceptId,
-          conceptIds: block.conceptIds?.length
-            ? block.conceptIds
-            : [block.conceptId],
-          courseIds: block.courseIds,
-        }
-      : { courseId: block.courseId }),
-    filters: block.filters,
-  };
+function configurationHash(configuration: PracticeConfiguration) {
+  return createHash('sha256')
+    .update(JSON.stringify(configuration))
+    .digest('hex');
+}
+
+function prunePreparedSessionCache(now = Date.now()) {
+  for (const [userId, cached] of preparedSessionCache) {
+    if (cached.expiresAt <= now) preparedSessionCache.delete(userId);
+  }
+}
+
+export function practiceConfigurationSupportsPreparedReuse(
+  configuration: PracticeConfiguration,
+) {
+  return [configuration.filters, ...configuration.blocks.map((block) => block.filters)]
+    .every(
+      (filters) =>
+        filters.saved == null &&
+        (!filters.statuses?.length ||
+          (filters.statuses.length === ALL_PROGRESS_STATUSES.length &&
+            ALL_PROGRESS_STATUSES.every((status) =>
+              filters.statuses?.includes(status),
+            ))),
+    );
+}
+
+function cachePreparedPracticeSession(
+  userId: string,
+  prepared: PreparedPracticeSession,
+) {
+  prunePreparedSessionCache();
+  preparedSessionCache.delete(userId);
+  if (
+    !prepared.preview.feasible ||
+    !practiceConfigurationSupportsPreparedReuse(prepared.configuration) ||
+    prepared.allocation.allocatedCount > PREPARED_SESSION_CACHE_MAX_QUESTIONS
+  )
+    return;
+
+  while (
+    [...preparedSessionCache.values()].reduce(
+      (total, cached) => total + cached.prepared.allocation.allocatedCount,
+      0,
+    ) +
+      prepared.allocation.allocatedCount >
+    PREPARED_SESSION_CACHE_MAX_QUESTIONS
+  ) {
+    const oldestUserId = preparedSessionCache.keys().next().value;
+    if (typeof oldestUserId !== 'string') break;
+    preparedSessionCache.delete(oldestUserId);
+  }
+  preparedSessionCache.set(userId, {
+    prepared,
+    expiresAt: Date.now() + PREPARED_SESSION_CACHE_TTL_MS,
+  });
+}
+
+function takePreparedPracticeSession(
+  userId: string,
+  expectedConfigurationHash: string,
+) {
+  prunePreparedSessionCache();
+  const cached = preparedSessionCache.get(userId);
+  if (!cached || cached.prepared.configurationHash !== expectedConfigurationHash)
+    return null;
+  preparedSessionCache.delete(userId);
+  return cached.prepared;
 }
 
 export function createPracticePreview(
@@ -265,8 +332,20 @@ export async function previewPracticeConfiguration(
   configuration: PracticeConfiguration,
   groups: PracticePreviewGroupRequest[] = [],
 ) {
-  const candidates = await loadCandidates(userId, configuration);
-  return createPracticePreview(configuration, candidates, groups).preview;
+  const normalized = stablePracticeConfiguration(configuration);
+  const candidates = await loadCandidates(userId, normalized);
+  const { preview, allocation } = createPracticePreview(
+    normalized,
+    candidates,
+    groups,
+  );
+  cachePreparedPracticeSession(userId, {
+    configuration: normalized,
+    configurationHash: configurationHash(normalized),
+    preview,
+    allocation,
+  });
+  return preview;
 }
 
 export async function maximizePracticeConfiguration(
@@ -298,17 +377,20 @@ export async function preparePracticeSession(
   configuration: PracticeConfiguration,
 ): Promise<PreparedPracticeSession> {
   const normalized = stablePracticeConfiguration(configuration);
+  const normalizedConfigurationHash = configurationHash(normalized);
+  const cached = takePreparedPracticeSession(
+    userId,
+    normalizedConfigurationHash,
+  );
+  if (cached) return cached;
+
   const candidates = await loadCandidates(userId, normalized);
   const { preview, allocation } = createPracticePreview(normalized, candidates);
   if (!preview.feasible) throw new PracticeConfigurationShortageError(preview);
-  const configurationJson = JSON.stringify(normalized);
-  const configurationHash = createHash('sha256')
-    .update(configurationJson)
-    .digest('hex');
 
   return {
     configuration: normalized,
-    configurationHash,
+    configurationHash: normalizedConfigurationHash,
     preview,
     allocation,
   };
@@ -331,29 +413,16 @@ export function practiceSessionItems(
     const primaryBlock = blockByKey.get(allocationItem.blockId);
     if (!primaryBlock)
       throw new Error(`Allocated practice block ${allocationItem.blockId} is missing.`);
-    const matches = allocationItem.matchedBlockIds.map((blockKey) => {
-      const block = blockByKey.get(blockKey);
-      if (!block) throw new Error(`Matched practice block ${blockKey} is missing.`);
-      return {
-        blockKey,
-        ...(block.selectionType === 'concept'
-          ? {
-              conceptId: block.conceptId,
-              conceptIds: block.conceptIds?.length
-                ? block.conceptIds
-                : [block.conceptId],
-            }
-          : {}),
-        selectionType: block.selectionType,
-      };
-    });
+    for (const blockKey of allocationItem.matchedBlockIds) {
+      if (!blockByKey.has(blockKey))
+        throw new Error(`Matched practice block ${blockKey} is missing.`);
+    }
     return {
       position,
       primaryBlockKey: allocationItem.blockId,
-      primaryBlockSnapshot: blockSnapshot(primaryBlock),
       questionId: allocationItem.questionId,
       variantId: allocationItem.variantId,
-      matches,
+      matchedBlockKeys: allocationItem.matchedBlockIds,
     };
   });
 }
