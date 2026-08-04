@@ -1,4 +1,5 @@
 import { requireMember } from '@/lib/auth';
+import { hasSubstantiveExaminerReport } from '@/lib/question-bank/examiner-report';
 import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { getQuestionDetail } from '@/lib/question-bank/queries';
 import { getExtendedQuestionDetail } from '@/lib/question-bank/revision-village-detail';
@@ -207,7 +208,9 @@ export async function GET(
       reference: question.reference,
       content: question.content,
       markScheme: question.mark_scheme,
-      examinerReport: question.examiner_report,
+      examinerReport: hasSubstantiveExaminerReport(question.examiner_report)
+        ? question.examiner_report
+        : '',
       maximumMark: question.maximum_mark,
     },
     assets,

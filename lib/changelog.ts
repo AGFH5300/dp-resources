@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-08-04': [
+    'Extended the Practice Builder selection panel to the full configuration height, hid empty examiner reports, and accelerated large-session preparation with safely bounded 1,000-question batches.',
+  ],
   '2026-08-03': [
     'Made very large Practice Builder sessions save in resumable batches with a live compact progress bar, and retired English B, Philosophy, and World Religions from the Question Bank.',
     'Simplified Practice Builder topics with only one selectable subtopic so the topic name appears directly instead of a redundant General questions row.',

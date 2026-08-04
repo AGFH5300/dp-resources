@@ -1087,8 +1087,9 @@ export function PracticeSetBuilderV4({
         </section>
       ) : null}
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:h-[calc(100dvh-7.5rem)] xl:min-h-0 xl:flex-col`}>
+      <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className={`${styles.selectionPanel} rounded-2xl border p-4 shadow-sm xl:flex xl:min-h-[calc(100dvh-7.5rem)] xl:flex-col xl:overflow-hidden`}>
+          <div className={`${styles.selectionViewport} xl:flex xl:min-h-0 xl:flex-1 xl:flex-col`}>
           <div className="shrink-0">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
@@ -1488,6 +1489,7 @@ export function PracticeSetBuilderV4({
                 </button>
               </div>
             ) : null}
+          </div>
           </div>
         </section>
 

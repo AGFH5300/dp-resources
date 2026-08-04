@@ -81,7 +81,7 @@ export class PracticeConfigurationShortageError extends Error {
   }
 }
 
-export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 400;
+export const PRACTICE_SESSION_BUILD_BATCH_SIZE = 1_000;
 
 export type PreparedPracticeSession = {
   configuration: PracticeConfiguration;
