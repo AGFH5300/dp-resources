@@ -12,6 +12,9 @@ const fasterBatchMigration = read(
 const compactBatchMigration = read(
   'supabase/migrations/20260804111243_compact_practice_session_batches.sql',
 );
+const streamlinedBatchMigration = read(
+  'supabase/migrations/20260804111723_streamline_practice_session_batches.sql',
+);
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
 );
@@ -63,6 +66,13 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(engine).toContain('matchedBlockKeys: allocationItem.matchedBlockIds');
     expect(engine).not.toContain('primaryBlockSnapshot: blockSnapshot');
     expect(engine).toContain("client.rpc('dp_qb_append_practice_session_batch'");
+    expect(streamlinedBatchMigration).toContain('jsonb_to_recordset(p_items)');
+    expect(streamlinedBatchMigration).not.toContain(
+      'create temporary table pg_temp.dp_qb_session_batch_stage',
+    );
+    expect(streamlinedBatchMigration).toContain('item_count > 10000');
+    expect(streamlinedBatchMigration).toContain('from public, anon, authenticated');
+    expect(streamlinedBatchMigration).toContain('to service_role');
   });
 
   it('reuses the bounded preview preparation when a session starts immediately', () => {
