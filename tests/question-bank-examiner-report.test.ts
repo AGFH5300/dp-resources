@@ -38,6 +38,9 @@ describe('Question Bank examiner-report visibility', () => {
     expect(hasSubstantiveExaminerReport('[N/A]\n\na.\n\nN/A\n\nb.')).toBe(
       false,
     );
+    expect(hasSubstantiveExaminerReport('(i) N/A\n(ii) N/A')).toBe(false);
+    expect(hasSubstantiveExaminerReport('i. [N/A]\nii. [N/A]')).toBe(false);
+    expect(hasSubstantiveExaminerReport('(a) (ii) N/A')).toBe(false);
     expect(hasSubstantiveExaminerReport('No examiner report available.')).toBe(
       false,
     );
@@ -50,6 +53,9 @@ describe('Question Bank examiner-report visibility', () => {
       ),
     ).toBe(true);
     expect(hasSubstantiveExaminerReport(String.raw`\[x = 2\]`)).toBe(true);
+    expect(hasSubstantiveExaminerReport('(ii) Candidates omitted a unit.')).toBe(
+      true,
+    );
     expect(
       hasSubstantiveExaminerReport(
         '![Examiner diagram](examiner_report:123e4567-e89b-12d3-a456-426614174000)',

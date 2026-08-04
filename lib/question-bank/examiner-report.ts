@@ -4,6 +4,9 @@ const REPORT_MEDIA =
 const EMPTY_REPORT_PHRASES =
   /\b(?:n\s*\/\s*a|not\s+(?:available|applicable)|no\s+examiner\s+report(?:\s+available)?)\b/giu;
 
+const PART_LABEL_PREFIXES =
+  /(^|\n)\s*(?:(?:[*_]{1,2}\s*)?(?:\((?:[a-z]|\d{1,3}|[ivxlcdm]{1,5})\)|(?:[a-z]|\d{1,3}|[ivxlcdm]{1,5})[.)])(?:\s*[*_]{1,2})?\s*)+/giu;
+
 /**
  * Imported archives occasionally contain a non-empty examiner-report field
  * made only of N/A placeholders and part labels. Treat those as absent while
@@ -17,6 +20,7 @@ export function hasSubstantiveExaminerReport(
   if (REPORT_MEDIA.test(value)) return true;
 
   const withoutPlaceholders = value
+    .replace(PART_LABEL_PREFIXES, '$1')
     .replace(/\\?\[\s*n\s*\/\s*a\s*\\?\]/giu, ' ')
     .replace(EMPTY_REPORT_PHRASES, ' ')
     .replace(/<[^>]*>/g, ' ');
