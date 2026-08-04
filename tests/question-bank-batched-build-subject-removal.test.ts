@@ -10,7 +10,7 @@ const fasterBatchMigration = read(
   'supabase/migrations/20260804100927_speed_up_practice_session_batches.sql',
 );
 const compactBatchMigration = read(
-  'supabase/migrations/20260804105607_compact_practice_session_batches.sql',
+  'supabase/migrations/20260804111243_compact_practice_session_batches.sql',
 );
 const cleanupMigration = read(
   'supabase/migrations/20260803184732_drop_retired_question_bank_asset_queue.sql',
