@@ -28,7 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-08-04': [
-    'Made very large Practice Builder sessions open quickly by storing fixed queues in compact chunks, capped the selected-content panel to the complete right-column height, and added one-click subject removal.',
+    'Reduced very large Practice Builder session creation from minutes to seconds with compact fixed queues, contained selected content to the complete natural settings-and-summary height, and added one-click subject removal.',
     'Matched the Practice Builder selection panel to the complete natural-height settings and summary column, and cut very large session preparation to compact, cached 10,000-question batches.',
     'Extended the Practice Builder selection panel to the full configuration height, hid empty examiner reports, and accelerated large-session preparation with safely bounded 1,000-question batches.',
   ],
