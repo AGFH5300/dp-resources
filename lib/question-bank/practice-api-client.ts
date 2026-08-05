@@ -2,9 +2,14 @@ import {
   parsePracticeConfiguration,
   type PracticeConfiguration,
 } from './practice-configuration';
-import type {
-  LocalPracticeQueueChunk,
-  LocalPracticeQueueTuple,
+import {
+  appendLocalPracticeQueueChunk,
+  beginLocalPracticeSession,
+  completeLocalPracticeSession,
+  discardLocalPracticeSession,
+  ensureLocalPracticeStorage,
+  type LocalPracticeQueueChunk,
+  type LocalPracticeQueueTuple,
 } from './local-practice-session-storage';
 
 type ApiErrorPayload = {
@@ -85,6 +90,7 @@ export type PracticeBuildProgress = {
 
 export type LocalPracticeBuildMetadata = {
   sessionId: string;
+  userId: string;
   schemaVersion: 1;
   configuration: PracticeConfiguration;
   generationSeed: string;
@@ -125,11 +131,47 @@ function localQueueTuple(value: unknown): LocalPracticeQueueTuple | null {
   return [value[0], value[1], value[2], [...value[3]]];
 }
 
+function browserPracticeSink(): LocalPracticeBuildSink {
+  let activeUserId = '';
+  return {
+    async begin(metadata) {
+      activeUserId = metadata.userId;
+      await ensureLocalPracticeStorage(metadata.userId, metadata.totalCount);
+      await beginLocalPracticeSession({
+        id: metadata.sessionId,
+        userId: metadata.userId,
+        schemaVersion: metadata.schemaVersion,
+        configuration: metadata.configuration,
+        generationSeed: metadata.generationSeed,
+        orderingMode: metadata.orderingMode,
+        totalCount: metadata.totalCount,
+        chunkSize: metadata.chunkSize,
+        createdAt: metadata.createdAt,
+      });
+    },
+    async append(chunk) {
+      if (!activeUserId)
+        throw new Error('The local practice-session owner is missing.');
+      await appendLocalPracticeQueueChunk(chunk, activeUserId);
+    },
+    async complete(sessionId) {
+      if (!activeUserId)
+        throw new Error('The local practice-session owner is missing.');
+      await completeLocalPracticeSession(sessionId, activeUserId);
+    },
+    async abort(sessionId) {
+      if (!sessionId) return;
+      await discardLocalPracticeSession(sessionId, activeUserId || undefined);
+    },
+  };
+}
+
 export async function readPracticeBuildStream(
   response: Response,
   onProgress: (progress: PracticeBuildProgress) => void,
-  sink: LocalPracticeBuildSink,
+  suppliedSink?: LocalPracticeBuildSink,
 ) {
+  const sink = suppliedSink || browserPracticeSink();
   const contentType = response.headers.get('content-type') || '';
   if (!response.ok || !/application\/x-ndjson/i.test(contentType)) {
     await readPracticeApiJson<Record<string, never>>(
@@ -174,6 +216,7 @@ export async function readPracticeBuildStream(
     if (event.type === 'session') {
       const nextSessionId =
         typeof event.sessionId === 'string' ? event.sessionId : '';
+      const userId = typeof event.userId === 'string' ? event.userId : '';
       const generationSeed =
         typeof event.generationSeed === 'string' ? event.generationSeed : '';
       const totalCount = Number(event.totalCount);
@@ -187,6 +230,7 @@ export async function readPracticeBuildStream(
       }
       if (
         !UUID.test(nextSessionId) ||
+        !UUID.test(userId) ||
         !generationSeed ||
         !Number.isInteger(totalCount) ||
         totalCount < 1 ||
@@ -205,6 +249,7 @@ export async function readPracticeBuildStream(
       sessionStarted = true;
       await sink.begin({
         sessionId: nextSessionId,
+        userId,
         schemaVersion: 1,
         configuration,
         generationSeed,
