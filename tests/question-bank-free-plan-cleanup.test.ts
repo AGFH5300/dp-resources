@@ -20,7 +20,7 @@ describe('Question Bank Free Plan database cleanup', () => {
     expect(recreatedSearchTable).toContain('search_text text not null');
     expect(recreatedSearchTable).not.toContain('search_vector');
     expect(migration).toContain("new.search_text := '';");
-    expect(migration).toContain('dp_qb_questions_search_idx');
+    expect(migration).toContain("to_tsvector(\n          'simple'");
     expect(migration).not.toContain('join public.dp_qb_question_search');
     expect(migration).toContain(
       'drop index if exists public.dp_qb_questions_content_hash_idx;',
