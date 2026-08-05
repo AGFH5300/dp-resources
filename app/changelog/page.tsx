@@ -19,7 +19,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-05-local-device-practice',
     summary:
-      'Moved ordinary Practice Builder sessions and their position to the current browser, added automatic local cleanup and device deletion, and keeps exact queues online only when a user deliberately shares them.',
+      'Moved ordinary Practice Builder sessions and each session’s position to the current browser, added automatic local cleanup and device deletion, and now keeps exact queues online only when a user deliberately shares them.',
     date: '2026-08-05T14:42:11.000Z',
   },
   {
