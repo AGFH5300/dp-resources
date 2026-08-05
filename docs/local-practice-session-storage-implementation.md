@@ -1,1 +1,0 @@
-Implementation notes are maintained in local-practice-session-storage.md.
