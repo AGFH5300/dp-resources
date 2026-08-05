@@ -8,6 +8,7 @@ import { Nav } from '@/components/nav';
 import { PracticeSetBuilderV4 } from '@/components/question-bank/practice-set-builder-v4';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
+import { cleanupAbandonedPracticeSessions } from '@/lib/question-bank/practice-session-cleanup';
 import {
   applyPracticeSharePreset,
   getPracticeShare,
@@ -21,6 +22,15 @@ export default async function BuildPracticeSetPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { membership } = await requireMember();
+  await cleanupAbandonedPracticeSessions({ userId: membership.id }).catch(
+    (error) => {
+      console.error('Unable to clean stale Question Bank practice sessions.', {
+        userId: membership.id,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    },
+  );
+
   const query = await searchParams;
   const [catalog, shared] = await Promise.all([
     getPracticeBuilderCatalog(),
