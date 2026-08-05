@@ -28,7 +28,7 @@ describe('Question Bank Free Plan database cleanup', () => {
     );
   });
 
-  it('deletes only the owning user’s interrupted builds', () => {
+  it('keeps the guarded legacy cleanup available for old deployments', () => {
     const migration = read(cleanupMigration);
     const cleanup = read(
       'lib/question-bank/practice-session-cleanup.ts',
@@ -38,30 +38,28 @@ describe('Question Bank Free Plan database cleanup', () => {
     expect(migration).toContain("session.status = 'building'");
     expect(migration).toContain('session.id = p_session_id');
     expect(migration).toContain('session.updated_at < now() - make_interval');
-    expect(migration).toContain('before insert on public.dp_qb_practice_sessions');
     expect(cleanup).toContain("'dp_qb_cleanup_abandoned_practice_sessions'");
     expect(cleanup).toContain("'dp_qb_delete_abandoned_practice_session'");
-    expect(cleanup).toContain('p_user_id: userId');
-    expect(cleanup).toContain('p_session_id: sessionId');
   });
 
-  it('cleans failed, cancelled, refreshed and stale practice builds', () => {
+  it('does not create ordinary practice-session rows in production', () => {
     const route = read(
       'app/api/question-bank/practice-builder/sessions/route.ts',
     );
-    const page = read('app/question-bank/build/page.tsx');
+    const client = read('lib/question-bank/practice-api-client.ts');
+    const localStorage = read(
+      'lib/question-bank/local-practice-session-storage.ts',
+    );
 
-    expect(route).toContain('cleanupAbandonedPracticeSessions');
-    expect(route).toContain('deleteAbandonedPracticeSession');
-    expect(route).toContain("removeActiveBuild('session creation failed')");
-    expect(route).toContain(
-      "removeActiveBuild('client cancelled the response stream')",
-    );
-    expect(route).toContain(
-      "removeActiveBuild('client disconnected during session creation')",
-    );
-    expect(route).not.toContain('Your saved progress can be retried.');
-    expect(page).toContain('cleanupAbandonedPracticeSessions');
-    expect(page).toContain('Unable to clean stale Question Bank practice sessions.');
+    expect(route).toContain("type: 'session'");
+    expect(route).toContain("type: 'chunk'");
+    expect(route).toContain('practiceSessionItems(prepared, generationSeed)');
+    expect(route).not.toContain('beginPracticeSessionBuild');
+    expect(route).not.toContain('appendPracticeSessionBuildBatch');
+    expect(route).not.toContain('dp_qb_practice_sessions');
+    expect(client).toContain('browserPracticeSink');
+    expect(client).toContain('beginLocalPracticeSession');
+    expect(client).toContain('appendLocalPracticeQueueChunk');
+    expect(localStorage).toContain("const DATABASE_NAME = 'dp-resources-question-bank-local'");
   });
 });
