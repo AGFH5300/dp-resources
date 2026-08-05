@@ -26,6 +26,9 @@ const route = read(
 );
 const engine = read('lib/question-bank/practice-engine.ts');
 const client = read('lib/question-bank/practice-api-client.ts');
+const localStorage = read(
+  'lib/question-bank/local-practice-session-storage.ts',
+);
 const builder = read('components/question-bank/practice-set-builder-v4.tsx');
 const styles = read(
   'components/question-bank/practice-set-builder-v2.module.css',
@@ -34,7 +37,7 @@ const revisionVillage = read('scripts/question-bank/revision-village.mjs');
 const examMate = read('scripts/question-bank/exam-mate.mjs');
 
 describe('batched Question Bank practice builds and retired subjects', () => {
-  it('writes large queues through bounded, idempotent, service-only batches', () => {
+  it('retains the audited legacy database batching and compact share schema', () => {
     expect(migration).toContain('public.dp_qb_practice_session_builds');
     expect(migration).toContain('client_request_id');
     expect(migration).toContain("status in ('building', 'complete')");
@@ -111,14 +114,17 @@ describe('batched Question Bank practice builds and retired subjects', () => {
     expect(engine).toContain('correctness never depends on process memory');
   });
 
-  it('streams committed progress and renders a compact accessible bar', () => {
+  it('streams bounded local chunks and renders a compact accessible bar', () => {
     expect(route).toContain("'Content-Type': 'application/x-ndjson; charset=utf-8'");
+    expect(route).toContain("type: 'session'");
+    expect(route).toContain("type: 'chunk'");
     expect(route).toContain("type: 'progress'");
-    expect(route).toContain("send({ type: 'progress', ...state })");
-    expect(route).toContain('for (let attempt = 0; attempt < 4; attempt += 1)');
+    expect(route).toContain('LOCAL_QUEUE_CHUNK_SIZE = 1_000');
+    expect(route).not.toContain('appendPracticeSessionBuildBatch');
     expect(client).toContain('readPracticeBuildStream');
+    expect(client).toContain('Saving your fixed question queue on this device');
+    expect(localStorage).toContain('appendLocalPracticeQueueChunk');
     expect(builder).toContain('Practice session preparation progress');
-    expect(builder).toContain('questions saved');
     expect(builder).not.toContain('fixed inset-0 z-[150]');
     expect(styles).toContain('.buildProgressPanel');
     expect(styles).toContain('.buildProgressBar');
