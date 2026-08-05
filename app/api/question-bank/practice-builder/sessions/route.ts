@@ -7,6 +7,10 @@ import {
   preparePracticeSession,
   PracticeConfigurationShortageError,
 } from '@/lib/question-bank/practice-engine';
+import {
+  cleanupAbandonedPracticeSessions,
+  deleteAbandonedPracticeSession,
+} from '@/lib/question-bank/practice-session-cleanup';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 
 export const dynamic = 'force-dynamic';
@@ -53,23 +57,59 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder();
   let cancelled = false;
+  let activeSessionId: string | null = null;
+  let buildCompleted = false;
+
+  const removeActiveBuild = async (reason: string) => {
+    const sessionId = activeSessionId;
+    if (!sessionId || buildCompleted) return;
+    try {
+      const deleted = await deleteAbandonedPracticeSession({
+        userId: user.id,
+        sessionId,
+      });
+      if (deleted && activeSessionId === sessionId) activeSessionId = null;
+    } catch (error) {
+      console.error('Unable to remove interrupted Question Bank practice session.', {
+        userId: user.id,
+        sessionId,
+        reason,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (event: Record<string, unknown>) =>
+      const send = (event: Record<string, unknown>) => {
+        if (cancelled) return;
         controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
+
       void (async () => {
         try {
+          await cleanupAbandonedPracticeSessions({ userId: user.id });
+          if (cancelled) return;
+
           send({
             type: 'phase',
             phase: 'selecting',
             label: 'Selecting and ordering questions…',
           });
           const prepared = await preparePracticeSession(user.id, configuration);
+          if (cancelled) return;
+
           let state = await beginPracticeSessionBuild({
             userId: user.id,
             requestId,
             prepared,
           });
+          activeSessionId = state.sessionId;
+          if (cancelled) {
+            await removeActiveBuild('client disconnected after session creation');
+            return;
+          }
+
           const items = practiceSessionItems(prepared, state.generationSeed);
           send({ type: 'progress', ...state });
 
@@ -102,10 +142,18 @@ export async function POST(request: Request) {
             send({ type: 'progress', ...state });
           }
 
-          if (!cancelled && state.status === 'complete') {
+          if (cancelled) {
+            await removeActiveBuild('client disconnected during session creation');
+            return;
+          }
+
+          if (state.status === 'complete') {
+            buildCompleted = true;
+            activeSessionId = null;
             send({ type: 'complete', sessionId: state.sessionId });
           }
         } catch (error) {
+          await removeActiveBuild('session creation failed');
           const shortage = error instanceof PracticeConfigurationShortageError;
           console.error('Unable to generate Question Bank practice session.', {
             userId: user.id,
@@ -117,7 +165,7 @@ export async function POST(request: Request) {
               type: 'error',
               error: shortage
                 ? error.message
-                : 'Unable to finish this practice session. Your saved progress can be retried.',
+                : 'Unable to finish this practice session. Please try again.',
               ...(shortage ? { preview: error.preview } : {}),
             });
         } finally {
@@ -127,6 +175,7 @@ export async function POST(request: Request) {
     },
     cancel() {
       cancelled = true;
+      void removeActiveBuild('client cancelled the response stream');
     },
   });
 
