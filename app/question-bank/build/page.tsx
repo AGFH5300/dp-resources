@@ -1,14 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowLeft, Layers3 } from 'lucide-react';
+import { ArrowLeft, HardDrive, Layers3 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { Nav } from '@/components/nav';
 import { PracticeSetBuilderV4 } from '@/components/question-bank/practice-set-builder-v4';
 import { requireMember } from '@/lib/auth';
 import { getPracticeBuilderCatalog } from '@/lib/question-bank/practice-catalog';
-import { cleanupAbandonedPracticeSessions } from '@/lib/question-bank/practice-session-cleanup';
 import {
   applyPracticeSharePreset,
   getPracticeShare,
@@ -22,15 +21,6 @@ export default async function BuildPracticeSetPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { membership } = await requireMember();
-  await cleanupAbandonedPracticeSessions({ userId: membership.id }).catch(
-    (error) => {
-      console.error('Unable to clean stale Question Bank practice sessions.', {
-        userId: membership.id,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    },
-  );
-
   const query = await searchParams;
   const [catalog, shared] = await Promise.all([
     getPracticeBuilderCatalog(),
@@ -73,16 +63,17 @@ export default async function BuildPracticeSetPage({
               <p className="mt-3 text-base leading-7 text-slate-600">
                 Combine topics across subjects, choose different courses for every
                 selection, remove duplicate question cores automatically, and generate
-                one fixed practice queue you can leave and resume.
+                one fixed practice queue you can leave and resume on this device.
               </p>
             </div>
             <div
               className={`${styles.heroNote} rounded-2xl border px-4 py-3 text-sm text-slate-600 shadow-sm`}
             >
-              <strong className="block text-[color:var(--dp-navy)]">
-                One topic or many
+              <strong className="flex items-center gap-2 text-[color:var(--dp-navy)]">
+                <HardDrive className="size-4" /> Device-local by default
               </strong>
-              A single topic is simply the smallest custom practice set.
+              Ordinary queues stay in this browser. Supabase stores an exact queue only
+              when you explicitly save and share it.
             </div>
           </div>
         </section>
