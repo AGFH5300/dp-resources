@@ -109,15 +109,19 @@ describe('Question Bank practice builder production readiness', () => {
   });
 
   it('does not monkey-patch history or observe every attribute mutation', () => {
-    const tracker = read(
+    const legacyTracker = read(
       'components/question-bank/practice-session-tracker.tsx',
+    );
+    const localTracker = read(
+      'components/question-bank/local-practice-session-tracker.tsx',
     );
     const fullscreen = read(
       'components/question-bank/question-practice-fullscreen-control.tsx',
     );
 
-    expect(tracker).not.toContain('window.history.replaceState =');
-    expect(tracker).toContain('window.setInterval(record, 400)');
+    expect(legacyTracker).not.toContain('window.history.replaceState =');
+    expect(localTracker).not.toContain('window.history.replaceState =');
+    expect(localTracker).toContain('window.setInterval(record, 400)');
     expect(fullscreen).toContain('observer.observe(document.body');
     expect(fullscreen).toContain('childList: true');
     expect(fullscreen).not.toContain('attributes: true');
@@ -166,15 +170,21 @@ describe('Question Bank practice builder production readiness', () => {
     expect(validationRoute).toContain('valid: false');
   });
 
-  it('paginates fixed queues instead of loading every shared question at once', () => {
-    const queries = read('lib/question-bank/practice-session-queries.ts');
-    const sessionPage = read(
-      'app/question-bank/practice/[sessionId]/page.tsx',
+  it('paginates browser-local fixed queues instead of loading every question at once', () => {
+    const storage = read(
+      'lib/question-bank/local-practice-session-storage.ts',
+    );
+    const localPage = read(
+      'components/question-bank/local-practice-session-page.tsx',
+    );
+    const hydrationRoute = read(
+      'app/api/question-bank/practice-builder/local-session-page/route.ts',
     );
 
-    expect(queries).toContain('PRACTICE_SESSION_PAGE_SIZE = 50');
-    expect(queries).toContain('.range(offset, Math.max(offset, lastPosition))');
-    expect(sessionPage).toContain('Queue page');
-    expect(sessionPage).toContain('only this page of the fixed queue is');
+    expect(storage).toContain('pageSize = 50');
+    expect(storage).toContain('Math.ceil(session.totalCount / safePageSize)');
+    expect(localPage).toContain('Queue page');
+    expect(localPage).toContain('only this page is hydrated from the server');
+    expect(hydrationRoute).toContain('const MAX_PAGE_ITEMS = 100');
   });
 });
