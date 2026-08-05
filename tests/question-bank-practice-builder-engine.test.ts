@@ -22,6 +22,9 @@ const hardeningMigration = file(
 const scaleReliabilityMigration = file(
   'supabase/migrations/20260802111846_question_bank_builder_scale_reliability.sql',
 );
+const localShareMigration = file(
+  'supabase/migrations/20260805142500_local_practice_share_upload.sql',
+);
 const previewRoute = file(
   'app/api/question-bank/practice-builder/preview/route.ts',
 );
@@ -52,6 +55,9 @@ const joinModal = file(
 const joinRoute = file('app/question-bank/join/page.tsx');
 const joinPage = file('app/question-bank/join/[code]/page.tsx');
 const sessionPage = file('app/question-bank/practice/[sessionId]/page.tsx');
+const localSessionPage = file(
+  'components/question-bank/local-practice-session-page.tsx',
+);
 
 describe('Question Bank practice builder engine', () => {
   it('uses one database candidate function for preview, maximize and generation', () => {
@@ -77,12 +83,16 @@ describe('Question Bank practice builder engine', () => {
       candidateMigration,
       hardeningMigration,
       scaleReliabilityMigration,
+      localShareMigration,
     ]) {
       expect(migration).toContain('from public, anon, authenticated');
       expect(migration).toContain('to service_role');
     }
     expect(sharingMigration).not.toMatch(
       /grant execute on function public\.dp_qb_(?:create_practice_session|create_practice_share|clone_practice_share)[\s\S]*?to authenticated/,
+    );
+    expect(localShareMigration).not.toMatch(
+      /grant execute on function public\.dp_qb_(?:append|finalize|cancel)_local_practice_share[\s\S]*?to authenticated/,
     );
     expect(hardeningMigration).not.toMatch(
       /grant execute on function public\.dp_qb_practice_candidates[\s\S]*?to authenticated/,
@@ -107,6 +117,12 @@ describe('Question Bank practice builder engine', () => {
     );
     expect(sharingMigration).toContain(
       'insert into public.dp_qb_practice_session_item_matches',
+    );
+    expect(localShareMigration).toContain(
+      'Practice share chunks must be uploaded in order',
+    );
+    expect(localShareMigration).toContain(
+      'The uploaded practice share queue has a gap',
     );
   });
 
@@ -185,23 +201,25 @@ describe('Question Bank practice builder engine', () => {
     expect(joinPage).toContain('Use the creator\'s exact queue');
     expect(joinPage).toContain('Fully customize');
     expect(joinPage).toContain('Invalid practice-set code');
-    expect(sessionPage).toContain('CoursePracticeWorkspace');
-    expect(sessionPage).toContain('PracticeSessionTracker');
-    expect(sessionPage).toContain('Share this session');
+    expect(sessionPage).toContain('LocalPracticeSessionPage');
+    expect(localSessionPage).toContain('CoursePracticeWorkspace');
+    expect(localSessionPage).toContain('LocalPracticeSessionTracker');
+    expect(localSessionPage).toContain('Save and share this session');
   });
 
-  it('saves builder and session position changes before users navigate back', () => {
+  it('saves builder and local session position changes before users navigate back', () => {
     const workspace = file(
       'components/question-bank/course-practice-workspace.tsx',
     );
     const tracker = file(
-      'components/question-bank/practice-session-tracker.tsx',
+      'components/question-bank/local-practice-session-tracker.tsx',
     );
 
     expect(builderPage).toContain('userId={membership.id}');
     expect(builder).toContain('readPracticeBuilderDraft(userId)');
     expect(builder).toContain('savePracticeBuilderDraft(userId, draft)');
     expect(workspace).toContain("new Event('dp-question-change')");
-    expect(tracker).toContain('keepalive: true');
+    expect(tracker).toContain('updateLocalPracticeSessionPosition');
+    expect(tracker).toContain("window.addEventListener('dp-question-change', record)");
   });
 });
