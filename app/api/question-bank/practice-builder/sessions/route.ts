@@ -78,6 +78,7 @@ export async function POST(request: Request) {
           send({
             type: 'session',
             sessionId: requestId,
+            userId: user.id,
             schemaVersion: 1,
             configuration: prepared.configuration,
             generationSeed,
