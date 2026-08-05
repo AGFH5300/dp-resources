@@ -6,7 +6,7 @@ const coursePage = readFileSync(
   'utf8',
 );
 const customSessionPage = readFileSync(
-  'app/question-bank/practice/[sessionId]/page.tsx',
+  'components/question-bank/local-practice-session-page.tsx',
   'utf8',
 );
 const courseStyles = readFileSync(

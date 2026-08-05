@@ -1,3 +1,17 @@
+import {
+  parsePracticeConfiguration,
+  type PracticeConfiguration,
+} from './practice-configuration';
+import {
+  appendLocalPracticeQueueChunk,
+  beginLocalPracticeSession,
+  completeLocalPracticeSession,
+  discardLocalPracticeSession,
+  ensureLocalPracticeStorage,
+  type LocalPracticeQueueChunk,
+  type LocalPracticeQueueTuple,
+} from './local-practice-session-storage';
+
 type ApiErrorPayload = {
   error?: unknown;
 };
@@ -74,16 +88,97 @@ export type PracticeBuildProgress = {
   totalCount: number | null;
 };
 
+export type LocalPracticeBuildMetadata = {
+  sessionId: string;
+  userId: string;
+  schemaVersion: 1;
+  configuration: PracticeConfiguration;
+  generationSeed: string;
+  orderingMode: PracticeConfiguration['orderingMode'];
+  totalCount: number;
+  chunkSize: number;
+  createdAt: string;
+};
+
+export type LocalPracticeBuildSink = {
+  begin: (metadata: LocalPracticeBuildMetadata) => Promise<void>;
+  append: (chunk: LocalPracticeQueueChunk) => Promise<void>;
+  complete: (sessionId: string) => Promise<void>;
+  abort: (sessionId: string | null) => Promise<void>;
+};
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function localQueueTuple(value: unknown): LocalPracticeQueueTuple | null {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 4 ||
+    typeof value[0] !== 'string' ||
+    !UUID.test(value[0]) ||
+    typeof value[1] !== 'string' ||
+    !UUID.test(value[1]) ||
+    typeof value[2] !== 'string' ||
+    value[2].length < 1 ||
+    value[2].length > 100 ||
+    !Array.isArray(value[3]) ||
+    value[3].length < 1 ||
+    !value[3].every(
+      (key) => typeof key === 'string' && key.length >= 1 && key.length <= 100,
+    )
+  )
+    return null;
+  return [value[0], value[1], value[2], [...value[3]]];
+}
+
+function browserPracticeSink(): LocalPracticeBuildSink {
+  let activeUserId = '';
+  return {
+    async begin(metadata) {
+      activeUserId = metadata.userId;
+      await ensureLocalPracticeStorage(metadata.userId, metadata.totalCount);
+      await beginLocalPracticeSession({
+        id: metadata.sessionId,
+        userId: metadata.userId,
+        schemaVersion: metadata.schemaVersion,
+        configuration: metadata.configuration,
+        generationSeed: metadata.generationSeed,
+        orderingMode: metadata.orderingMode,
+        totalCount: metadata.totalCount,
+        chunkSize: metadata.chunkSize,
+        createdAt: metadata.createdAt,
+      });
+    },
+    async append(chunk) {
+      if (!activeUserId)
+        throw new Error('The local practice-session owner is missing.');
+      await appendLocalPracticeQueueChunk(chunk, activeUserId);
+    },
+    async complete(sessionId) {
+      if (!activeUserId)
+        throw new Error('The local practice-session owner is missing.');
+      await completeLocalPracticeSession(sessionId, activeUserId);
+    },
+    async abort(sessionId) {
+      if (!sessionId) return;
+      await discardLocalPracticeSession(sessionId, activeUserId || undefined);
+    },
+  };
+}
+
 export async function readPracticeBuildStream(
   response: Response,
   onProgress: (progress: PracticeBuildProgress) => void,
+  suppliedSink?: LocalPracticeBuildSink,
 ) {
+  const sink = suppliedSink || browserPracticeSink();
   const contentType = response.headers.get('content-type') || '';
   if (!response.ok || !/application\/x-ndjson/i.test(contentType)) {
-    return readPracticeApiJson<{ sessionId: string }>(
+    await readPracticeApiJson<Record<string, never>>(
       response,
       'Unable to create this session.',
     );
+    throw new Error('Unable to create this session.');
   }
   if (!response.body)
     throw new Error('Unable to create this session. The server returned no progress stream.');
@@ -91,9 +186,11 @@ export async function readPracticeBuildStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffered = '';
-  let sessionId = '';
+  let sessionId: string | null = null;
+  let sessionStarted = false;
+  let sessionCompleted = false;
 
-  const readEvent = (line: string) => {
+  const readEvent = async (line: string) => {
     let event: unknown;
     try {
       event = JSON.parse(line);
@@ -102,6 +199,7 @@ export async function readPracticeBuildStream(
     }
     if (!isObject(event) || typeof event.type !== 'string')
       throw new Error('Unable to create this session. The progress response was invalid.');
+
     if (event.type === 'phase') {
       onProgress({
         phase: 'selecting',
@@ -114,6 +212,78 @@ export async function readPracticeBuildStream(
       });
       return;
     }
+
+    if (event.type === 'session') {
+      const nextSessionId =
+        typeof event.sessionId === 'string' ? event.sessionId : '';
+      const userId = typeof event.userId === 'string' ? event.userId : '';
+      const generationSeed =
+        typeof event.generationSeed === 'string' ? event.generationSeed : '';
+      const totalCount = Number(event.totalCount);
+      const chunkSize = Number(event.chunkSize);
+      const createdAt = typeof event.createdAt === 'string' ? event.createdAt : '';
+      let configuration: PracticeConfiguration;
+      try {
+        configuration = parsePracticeConfiguration(event.configuration);
+      } catch {
+        throw new Error('Unable to create this session. Its configuration was invalid.');
+      }
+      if (
+        !UUID.test(nextSessionId) ||
+        !UUID.test(userId) ||
+        !generationSeed ||
+        !Number.isInteger(totalCount) ||
+        totalCount < 1 ||
+        !Number.isInteger(chunkSize) ||
+        chunkSize < 1 ||
+        chunkSize > 10_000 ||
+        !createdAt ||
+        Number.isNaN(Date.parse(createdAt)) ||
+        event.schemaVersion !== 1 ||
+        event.orderingMode !== configuration.orderingMode ||
+        sessionStarted
+      )
+        throw new Error('Unable to create this session. Its metadata was invalid.');
+
+      sessionId = nextSessionId;
+      sessionStarted = true;
+      await sink.begin({
+        sessionId: nextSessionId,
+        userId,
+        schemaVersion: 1,
+        configuration,
+        generationSeed,
+        orderingMode: configuration.orderingMode,
+        totalCount,
+        chunkSize,
+        createdAt,
+      });
+      return;
+    }
+
+    if (event.type === 'chunk') {
+      if (!sessionId || !sessionStarted || sessionCompleted)
+        throw new Error('Unable to create this session. Its queue arrived out of order.');
+      const startPosition = Number(event.startPosition);
+      const rawItems = Array.isArray(event.items) ? event.items : null;
+      const items = rawItems?.map(localQueueTuple) || null;
+      if (
+        !Number.isInteger(startPosition) ||
+        startPosition < 0 ||
+        !items ||
+        !items.length ||
+        items.some((item) => item === null)
+      )
+        throw new Error('Unable to create this session. Its queue was invalid.');
+      await sink.append({
+        sessionId,
+        startPosition,
+        itemCount: items.length,
+        items: items as LocalPracticeQueueTuple[],
+      });
+      return;
+    }
+
     if (event.type === 'progress') {
       const processedCount = Number(event.processedCount);
       const totalCount = Number(event.totalCount);
@@ -127,12 +297,13 @@ export async function readPracticeBuildStream(
         throw new Error('Unable to create this session. The progress response was invalid.');
       onProgress({
         phase: 'building',
-        label: 'Saving your fixed question queue…',
+        label: 'Saving your fixed question queue on this device…',
         processedCount,
         totalCount,
       });
       return;
     }
+
     if (event.type === 'error') {
       throw new Error(
         typeof event.error === 'string' && event.error.trim()
@@ -140,23 +311,36 @@ export async function readPracticeBuildStream(
           : 'Unable to finish this practice session.',
       );
     }
+
     if (event.type === 'complete') {
-      if (typeof event.sessionId !== 'string' || !event.sessionId)
+      if (
+        !sessionId ||
+        typeof event.sessionId !== 'string' ||
+        event.sessionId !== sessionId ||
+        sessionCompleted
+      )
         throw new Error('Unable to create this session. The session ID was missing.');
-      sessionId = event.sessionId;
+      await sink.complete(sessionId);
+      sessionCompleted = true;
     }
   };
 
-  while (true) {
-    const { value, done } = await reader.read();
-    buffered += decoder.decode(value, { stream: !done });
-    const lines = buffered.split('\n');
-    buffered = lines.pop() || '';
-    for (const line of lines) if (line.trim()) readEvent(line);
-    if (done) break;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      buffered += decoder.decode(value, { stream: !done });
+      const lines = buffered.split('\n');
+      buffered = lines.pop() || '';
+      for (const line of lines) if (line.trim()) await readEvent(line);
+      if (done) break;
+    }
+    if (buffered.trim()) await readEvent(buffered);
+    if (!sessionId || !sessionCompleted)
+      throw new Error('Unable to finish this practice session. Please retry.');
+    return { sessionId };
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    await sink.abort(sessionId).catch(() => undefined);
+    throw error;
   }
-  if (buffered.trim()) readEvent(buffered);
-  if (!sessionId)
-    throw new Error('Unable to finish this practice session. Please retry.');
-  return { sessionId };
 }

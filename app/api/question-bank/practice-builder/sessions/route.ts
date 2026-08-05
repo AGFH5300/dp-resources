@@ -1,16 +1,12 @@
+import { randomBytes } from 'node:crypto';
+
 import { requireApiMember } from '@/lib/auth';
 import { parsePracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import {
-  appendPracticeSessionBuildBatch,
-  beginPracticeSessionBuild,
   practiceSessionItems,
   preparePracticeSession,
   PracticeConfigurationShortageError,
 } from '@/lib/question-bank/practice-engine';
-import {
-  cleanupAbandonedPracticeSessions,
-  deleteAbandonedPracticeSession,
-} from '@/lib/question-bank/practice-session-cleanup';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +14,7 @@ export const runtime = 'nodejs';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LOCAL_QUEUE_CHUNK_SIZE = 1_000;
 
 function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
@@ -57,27 +54,6 @@ export async function POST(request: Request) {
 
   const encoder = new TextEncoder();
   let cancelled = false;
-  let activeSessionId: string | null = null;
-  let buildCompleted = false;
-
-  const removeActiveBuild = async (reason: string) => {
-    const sessionId = activeSessionId;
-    if (!sessionId || buildCompleted) return;
-    try {
-      const deleted = await deleteAbandonedPracticeSession({
-        userId: user.id,
-        sessionId,
-      });
-      if (deleted && activeSessionId === sessionId) activeSessionId = null;
-    } catch (error) {
-      console.error('Unable to remove interrupted Question Bank practice session.', {
-        userId: user.id,
-        sessionId,
-        reason,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  };
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -88,9 +64,6 @@ export async function POST(request: Request) {
 
       void (async () => {
         try {
-          await cleanupAbandonedPracticeSessions({ userId: user.id });
-          if (cancelled) return;
-
           send({
             type: 'phase',
             phase: 'selecting',
@@ -99,63 +72,52 @@ export async function POST(request: Request) {
           const prepared = await preparePracticeSession(user.id, configuration);
           if (cancelled) return;
 
-          let state = await beginPracticeSessionBuild({
+          const generationSeed = randomBytes(16).toString('hex');
+          const items = practiceSessionItems(prepared, generationSeed);
+          const createdAt = new Date().toISOString();
+          send({
+            type: 'session',
+            sessionId: requestId,
             userId: user.id,
-            requestId,
-            prepared,
+            schemaVersion: 1,
+            configuration: prepared.configuration,
+            generationSeed,
+            orderingMode: prepared.configuration.orderingMode,
+            totalCount: items.length,
+            chunkSize: LOCAL_QUEUE_CHUNK_SIZE,
+            createdAt,
           });
-          activeSessionId = state.sessionId;
-          if (cancelled) {
-            await removeActiveBuild('client disconnected after session creation');
-            return;
+
+          for (
+            let startPosition = 0;
+            startPosition < items.length && !cancelled;
+            startPosition += LOCAL_QUEUE_CHUNK_SIZE
+          ) {
+            const batch = items.slice(
+              startPosition,
+              startPosition + LOCAL_QUEUE_CHUNK_SIZE,
+            );
+            send({
+              type: 'chunk',
+              startPosition,
+              items: batch.map((item) => [
+                item.questionId,
+                item.variantId,
+                item.primaryBlockKey,
+                item.matchedBlockKeys,
+              ]),
+            });
+            send({
+              type: 'progress',
+              processedCount: startPosition + batch.length,
+              totalCount: items.length,
+            });
           }
 
-          const items = practiceSessionItems(prepared, state.generationSeed);
-          send({ type: 'progress', ...state });
-
-          while (!cancelled && state.status !== 'complete') {
-            let lastError: unknown = null;
-            for (let attempt = 0; attempt < 4; attempt += 1) {
-              try {
-                state = await appendPracticeSessionBuildBatch({
-                  userId: user.id,
-                  configurationHash: prepared.configurationHash,
-                  state,
-                  items,
-                });
-                lastError = null;
-                break;
-              } catch (error) {
-                lastError = error;
-                const message = error instanceof Error ? error.message : String(error);
-                if (
-                  attempt >= 3 ||
-                  !/\b(?:timeout|connection|fetch|502|503|504|520)\b/i.test(message)
-                )
-                  break;
-                await new Promise((resolve) =>
-                  setTimeout(resolve, 350 * 2 ** attempt),
-                );
-              }
-            }
-            if (lastError) throw lastError;
-            send({ type: 'progress', ...state });
-          }
-
-          if (cancelled) {
-            await removeActiveBuild('client disconnected during session creation');
-            return;
-          }
-
-          if (state.status === 'complete') {
-            buildCompleted = true;
-            activeSessionId = null;
-            send({ type: 'complete', sessionId: state.sessionId });
-          }
+          if (!cancelled) send({ type: 'complete', sessionId: requestId });
         } catch (error) {
-          await removeActiveBuild('session creation failed');
           const shortage = error instanceof PracticeConfigurationShortageError;
-          console.error('Unable to generate Question Bank practice session.', {
+          console.error('Unable to generate local Question Bank practice session.', {
             userId: user.id,
             requestId,
             message: error instanceof Error ? error.message : String(error),
@@ -175,7 +137,6 @@ export async function POST(request: Request) {
     },
     cancel() {
       cancelled = true;
-      void removeActiveBuild('client cancelled the response stream');
     },
   });
 
