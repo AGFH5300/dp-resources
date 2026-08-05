@@ -17,6 +17,13 @@ describe('public changelog page', () => {
     expect(page).toContain(
       'A listed record of all the features, improvements, and fixes',
     );
+    expect(page).toContain("date: '2026-08-05T14:42:11.000Z'");
+    expect(page).toContain('Moved ordinary Practice Builder sessions');
+    expect(page).toContain('Reduced Question Bank storage use');
+    expect(page).toContain(
+      'Fixed long Question Bank references and course names',
+    );
+    expect(page).toContain('includeLatestReleaseNotes');
     expect(list).toContain("month: 'long'");
     expect(list).toContain("day: 'numeric'");
     expect(list).toContain('group.entries.map');
