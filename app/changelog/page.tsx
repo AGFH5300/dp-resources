@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BrandWordmark } from '@/components/brand-wordmark';
 import { ChangelogList } from './changelog-list';
-import { getChangelog } from '@/lib/changelog';
+import { getChangelog, type ChangelogEntry } from '@/lib/changelog';
 import { publicPageMetadata } from '@/lib/seo';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -15,8 +15,41 @@ export const metadata: Metadata = publicPageMetadata({
   path: '/changelog',
 });
 
+const latestReleaseNotes: ChangelogEntry[] = [
+  {
+    id: 'release-2026-08-05-local-device-practice',
+    summary:
+      'Moved ordinary Practice Builder sessions and their position to the current browser, added automatic local cleanup and device deletion, and keeps exact queues online only when a user deliberately shares them.',
+    date: '2026-08-05T14:42:11.000Z',
+  },
+  {
+    id: 'release-2026-08-05-storage-cleanup',
+    summary:
+      'Reduced Question Bank storage use, kept search responsive, and added automatic cleanup for interrupted or abandoned practice builds.',
+    date: '2026-08-05T13:36:26.000Z',
+  },
+  {
+    id: 'release-2026-08-04-recent-card-overflow',
+    summary:
+      'Fixed long Question Bank references and course names so Continue Practising and recent-question cards stay contained instead of overflowing.',
+    date: '2026-08-04T16:13:08.000Z',
+  },
+];
+
+function includeLatestReleaseNotes(entries: ChangelogEntry[]) {
+  const latestSummaries = new Set(
+    latestReleaseNotes.map((entry) => entry.summary),
+  );
+
+  return [
+    ...latestReleaseNotes,
+    ...entries.filter((entry) => !latestSummaries.has(entry.summary)),
+  ].sort((left, right) => Date.parse(right.date) - Date.parse(left.date));
+}
+
 export default async function ChangelogPage() {
-  const { entries } = await getChangelog();
+  const { entries: history } = await getChangelog();
+  const entries = includeLatestReleaseNotes(history);
 
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
