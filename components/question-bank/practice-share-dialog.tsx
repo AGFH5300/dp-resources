@@ -6,18 +6,27 @@ import { toast } from 'sonner';
 
 import { readPracticeApiJson } from '@/lib/question-bank/practice-api-client';
 import type { PracticeConfiguration } from '@/lib/question-bank/practice-configuration';
+import { readLocalPracticeQueueChunks } from '@/lib/question-bank/local-practice-session-storage';
 
 type ShareButtonAppearance = 'default' | 'summary';
+
+type LocalShareSession = {
+  id: string;
+  userId: string;
+  totalCount: number;
+};
 
 export function PracticeShareDialog({
   configuration,
   sessionId,
+  localSession,
   disabled = false,
   buttonLabel = 'Share set',
   appearance = 'default',
 }: {
   configuration: PracticeConfiguration | null;
   sessionId?: string | null;
+  localSession?: LocalShareSession | null;
   disabled?: boolean;
   buttonLabel?: string;
   appearance?: ShareButtonAppearance;
@@ -25,14 +34,18 @@ export function PracticeShareDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [code, setCode] = useState('');
   const [exactQuestionCount, setExactQuestionCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const configuredQuestionCount =
+    localSession?.totalCount ||
     configuration?.blocks.reduce(
       (total, block) => total + block.requestedCount,
       0,
-    ) || 0;
+    ) ||
+    0;
+  const includesExactQueue = Boolean(localSession || sessionId);
   const buttonClass =
     appearance === 'summary'
       ? 'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/55 bg-white/12 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white hover:bg-white/22 disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-white/5 disabled:text-blue-200/55'
@@ -41,6 +54,64 @@ export function PracticeShareDialog({
   function close() {
     if (loading) return;
     setOpen(false);
+  }
+
+  async function uploadLocalExactQueue(shareCode: string) {
+    if (!localSession) return 0;
+    const local = await readLocalPracticeQueueChunks(
+      localSession.id,
+      localSession.userId,
+    );
+    if (local.session.totalCount !== localSession.totalCount)
+      throw new Error('The locally stored question count changed. Please reopen the session.');
+
+    let committed = 0;
+    for (const chunk of local.chunks) {
+      const response = await fetch(
+        `/api/question-bank/practice-shares/${encodeURIComponent(shareCode)}/queue`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            startPosition: chunk.startPosition,
+            items: chunk.items.map((item, index) => ({
+              position: chunk.startPosition + index,
+              questionId: item[0],
+              variantId: item[1],
+              primaryBlockKey: item[2],
+              matchedBlockKeys: item[3],
+            })),
+          }),
+        },
+      );
+      const payload = await readPracticeApiJson<{ committedCount: number }>(
+        response,
+        'Unable to upload this exact practice queue.',
+      );
+      committed = Number(payload.committedCount || 0);
+      setUploadedCount(committed);
+    }
+
+    const finalizeResponse = await fetch(
+      `/api/question-bank/practice-shares/${encodeURIComponent(shareCode)}/queue`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ expectedCount: local.session.totalCount }),
+      },
+    );
+    const finalized = await readPracticeApiJson<{
+      exactQuestionCount: number;
+    }>(finalizeResponse, 'Unable to finalize this exact practice queue.');
+    return Number(finalized.exactQuestionCount || 0);
+  }
+
+  async function cancelIncompleteLocalShare(shareCode: string) {
+    if (!localSession || !shareCode) return;
+    await fetch(
+      `/api/question-bank/practice-shares/${encodeURIComponent(shareCode)}/queue`,
+      { method: 'DELETE', keepalive: true },
+    ).catch(() => undefined);
   }
 
   async function createCode() {
@@ -52,6 +123,8 @@ export function PracticeShareDialog({
     }
 
     setLoading(true);
+    setUploadedCount(0);
+    let createdCode = '';
     try {
       const response = await fetch('/api/question-bank/practice-shares', {
         method: 'POST',
@@ -59,17 +132,28 @@ export function PracticeShareDialog({
         body: JSON.stringify({
           name: normalizedName,
           configuration,
-          sessionId: sessionId || null,
+          sessionId: localSession ? null : sessionId || null,
         }),
       });
       const payload = await readPracticeApiJson<{
         code?: string;
         exactQuestionCount?: number;
       }>(response, 'Unable to create a practice-set code.');
-      setCode(String(payload.code || ''));
-      setExactQuestionCount(Number(payload.exactQuestionCount || 0));
-      toast.success('Permanent practice-set code created.');
+      createdCode = String(payload.code || '');
+      if (!createdCode) throw new Error('The practice-set code was missing.');
+
+      const exactCount = localSession
+        ? await uploadLocalExactQueue(createdCode)
+        : Number(payload.exactQuestionCount || 0);
+      setCode(createdCode);
+      setExactQuestionCount(exactCount);
+      toast.success(
+        exactCount
+          ? 'Permanent exact practice-set code created.'
+          : 'Permanent practice-set code created.',
+      );
     } catch (error) {
+      await cancelIncompleteLocalShare(createdCode);
       toast.error(
         error instanceof Error
           ? error.message
@@ -77,6 +161,7 @@ export function PracticeShareDialog({
       );
     } finally {
       setLoading(false);
+      setUploadedCount(0);
     }
   }
 
@@ -161,12 +246,37 @@ export function PracticeShareDialog({
                   Your public name or username will be shown as the creator. Your
                   answers, saved questions and progress are never included.
                 </p>
-                {sessionId ? (
+                {includesExactQueue ? (
                   <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
-                    This code will also offer the exact{' '}
-                    {configuredQuestionCount.toLocaleString()}-question queue and
-                    order. Recipients still get their own independent copy.
+                    The exact {configuredQuestionCount.toLocaleString()}-question queue
+                    and order will be copied from this device into the permanent share.
+                    Ordinary unshared sessions remain local only.
                   </p>
+                ) : null}
+                {loading && localSession ? (
+                  <div className="mt-4" role="status" aria-live="polite">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span>Saving the exact queue…</span>
+                      <span>
+                        {uploadedCount.toLocaleString()} /{' '}
+                        {localSession.totalCount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                      <div
+                        className="h-full rounded-full bg-blue-700 transition-[width]"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (uploadedCount / Math.max(localSession.totalCount, 1)) *
+                                100,
+                            ),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 ) : null}
                 <button
                   type="button"
@@ -175,7 +285,13 @@ export function PracticeShareDialog({
                   className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="size-4 animate-spin" /> : null}
-                  Create permanent code
+                  {loading
+                    ? localSession
+                      ? 'Saving and creating code…'
+                      : 'Creating code…'
+                    : includesExactQueue
+                      ? 'Save exact queue and create code'
+                      : 'Create permanent code'}
                 </button>
               </div>
             ) : (
@@ -201,7 +317,7 @@ export function PracticeShareDialog({
                   course and quantity, or{' '}
                   {exactQuestionCount
                     ? `copy the same ${exactQuestionCount.toLocaleString()} questions and order.`
-                    : 'generate a fresh queue from this setup.'}
+                    : 'generate a fresh local queue from this setup.'}
                 </p>
                 <button
                   type="button"
