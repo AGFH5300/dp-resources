@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 
+const cleanupMigration =
+  'supabase/migrations/20260805132615_free_plan_database_cleanup.sql';
+
 describe('Question Bank Free Plan database cleanup', () => {
   it('removes duplicated search storage without changing importer writes', () => {
-    const migration = read(
-      'supabase/migrations/20260805131000_free_plan_database_cleanup.sql',
-    );
+    const migration = read(cleanupMigration);
     const recreatedSearchTable = migration.slice(
       migration.indexOf('create table public.dp_qb_question_search'),
       migration.indexOf(
@@ -28,9 +29,7 @@ describe('Question Bank Free Plan database cleanup', () => {
   });
 
   it('deletes only the owning user’s interrupted builds', () => {
-    const migration = read(
-      'supabase/migrations/20260805131000_free_plan_database_cleanup.sql',
-    );
+    const migration = read(cleanupMigration);
     const cleanup = read(
       'lib/question-bank/practice-session-cleanup.ts',
     );
