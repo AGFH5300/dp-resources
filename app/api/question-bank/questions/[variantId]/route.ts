@@ -5,6 +5,7 @@ import { getQuestionDetail } from '@/lib/question-bank/queries';
 import { getExtendedQuestionDetail } from '@/lib/question-bank/revision-village-detail';
 import type { QuestionAsset } from '@/lib/question-bank/types';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+import { getQuestionSourceMap } from '@/lib/content-attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,6 +189,9 @@ export async function GET(
       );
 
   const extendedVideos = extended.videos.length ? extended.videos : data.videos;
+  const sourceMap = await getQuestionSourceMap([
+    { variantId: variant.id, questionId: question.id },
+  ]);
 
   return noStore({
     variant: {
@@ -230,5 +234,6 @@ export async function GET(
         }
       : data.progress,
     saved: data.saved,
+    sources: sourceMap.get(variant.id) ?? [],
   });
 }

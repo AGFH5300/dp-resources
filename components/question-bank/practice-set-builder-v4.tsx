@@ -302,24 +302,30 @@ function PracticeSettingsFields({
   saved,
   calculator,
   orderingMode,
+  sourceSlugs,
+  sourceOptions,
   expanded = false,
   onToggleDifficulty,
   onToggleStatus,
   onSavedChange,
   onCalculatorChange,
   onOrderingModeChange,
+  onToggleSource,
 }: {
   difficulties: string[];
   statuses: string[];
   saved: boolean | null;
   calculator: boolean | null;
   orderingMode: PracticeOrderingMode;
+  sourceSlugs: string[];
+  sourceOptions: Array<{ slug: string; label: string; count: number }>;
   expanded?: boolean;
   onToggleDifficulty: (value: string) => void;
   onToggleStatus: (value: string) => void;
   onSavedChange: (value: boolean | null) => void;
   onCalculatorChange: (value: boolean | null) => void;
   onOrderingModeChange: (value: PracticeOrderingMode) => void;
+  onToggleSource: (value: string) => void;
 }) {
   const selectedOrderOption = ORDER_OPTIONS.find(
     (option) => option.value === orderingMode,
@@ -343,6 +349,22 @@ function PracticeSettingsFields({
           ))}
         </div>
       </fieldset>
+
+      {sourceOptions.length > 1 ? (
+        <fieldset className={expanded ? styles.expandedSettingsSection : 'mt-4'}>
+          <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">Sources</legend>
+          <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
+            {sourceOptions.map((source) => (
+              <label key={source.slug} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={sourceSlugs.includes(source.slug)} onChange={() => onToggleSource(source.slug)} />
+                <span className="min-w-0 flex-1 truncate">{source.label}</span>
+                <small className="text-slate-500">{source.count.toLocaleString()}</small>
+              </label>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Match any selected source. Leave all clear to use every source.</p>
+        </fieldset>
+      ) : null}
 
       <fieldset className={expanded ? styles.expandedSettingsSection : 'mt-4'}>
         <legend className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -471,11 +493,13 @@ export function PracticeSetBuilderV4({
   userId,
   initialConfiguration,
   sharedSource,
+  sourceOptions,
 }: {
   catalog: Catalog;
   userId: string;
   initialConfiguration?: PracticeConfiguration | null;
   sharedSource?: SharedBuilderSource | null;
+  sourceOptions: Array<{ slug: string; label: string; count: number }>;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -503,6 +527,9 @@ export function PracticeSetBuilderV4({
   );
   const [calculator, setCalculator] = useState<boolean | null>(
     initialConfiguration?.filters.calculator ?? null,
+  );
+  const [sourceSlugs, setSourceSlugs] = useState<string[]>(
+    initialConfiguration?.filters.sourceSlugs ?? [],
   );
   const [orderingMode, setOrderingMode] = useState<PracticeOrderingMode>(
     initialConfiguration?.orderingMode || 'interleaved',
@@ -631,6 +658,7 @@ export function PracticeSetBuilderV4({
       statuses: statuses as PracticeConfiguration['filters']['statuses'],
       saved,
       calculator,
+      sourceSlugs,
     };
     return {
       schemaVersion: 1,
@@ -646,7 +674,7 @@ export function PracticeSetBuilderV4({
         filters: { ...filters },
       })),
     };
-  }, [blocks, calculator, difficulties, orderingMode, saved, statuses]);
+  }, [blocks, calculator, difficulties, orderingMode, saved, sourceSlugs, statuses]);
 
   const previewGroups = useMemo<PracticePreviewGroupRequest[]>(() => {
     if (!configuration) return [];
@@ -671,6 +699,7 @@ export function PracticeSetBuilderV4({
         statuses: statuses as PracticeConfiguration['filters']['statuses'],
         saved,
         calculator,
+        sourceSlugs,
       },
       blocks: blocks.map((block) => ({
         key: block.key,
@@ -679,7 +708,7 @@ export function PracticeSetBuilderV4({
         requestedCount: block.requestedCount,
       })),
     }),
-    [blocks, calculator, difficulties, orderingMode, saved, statuses],
+    [blocks, calculator, difficulties, orderingMode, saved, sourceSlugs, statuses],
   );
 
   const drainPreviewQueue = useCallback(() => {
@@ -739,6 +768,7 @@ export function PracticeSetBuilderV4({
         setStatuses(restored.filters.statuses);
         setSaved(restored.filters.saved);
         setCalculator(restored.filters.calculator);
+        setSourceSlugs(restored.filters.sourceSlugs);
         setOrderingMode(restored.orderingMode);
       }
     }
@@ -982,6 +1012,7 @@ export function PracticeSetBuilderV4({
       statuses: statuses as PracticeConfiguration['filters']['statuses'],
       saved,
       calculator,
+      sourceSlugs,
     };
 
     function configurationFor(nextBlocks: BuilderBlock[]): PracticeConfiguration {
@@ -1575,6 +1606,8 @@ export function PracticeSetBuilderV4({
                 saved={saved}
                 calculator={calculator}
                 orderingMode={orderingMode}
+                sourceSlugs={sourceSlugs}
+                sourceOptions={sourceOptions}
                 onToggleDifficulty={(value) =>
                   toggleListValue(value, difficulties, setDifficulties)
                 }
@@ -1584,6 +1617,7 @@ export function PracticeSetBuilderV4({
                 onSavedChange={setSaved}
                 onCalculatorChange={setCalculator}
                 onOrderingModeChange={setOrderingMode}
+                onToggleSource={(value) => toggleListValue(value, sourceSlugs, setSourceSlugs)}
               />
             </div>
           </section>
@@ -2018,6 +2052,8 @@ export function PracticeSetBuilderV4({
                 saved={saved}
                 calculator={calculator}
                 orderingMode={orderingMode}
+                sourceSlugs={sourceSlugs}
+                sourceOptions={sourceOptions}
                 onToggleDifficulty={(value) =>
                   toggleListValue(value, difficulties, setDifficulties)
                 }
@@ -2027,6 +2063,7 @@ export function PracticeSetBuilderV4({
                 onSavedChange={setSaved}
                 onCalculatorChange={setCalculator}
                 onOrderingModeChange={setOrderingMode}
+                onToggleSource={(value) => toggleListValue(value, sourceSlugs, setSourceSlugs)}
               />
             </div>
           </section>

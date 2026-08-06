@@ -182,7 +182,17 @@ export async function runIndexSyncChunk() {
         .from('dp_resource_index')
         .upsert(batch, { onConflict: 'drive_file_id' });
       if (error) throw new Error(error.message);
+      const { error: attributionError } = await sb.rpc(
+        'dp_seed_resource_attribution',
+        { p_drive_file_ids: batch.map((row) => row.drive_file_id) },
+      );
+      if (attributionError) throw new Error(attributionError.message);
     }
+    const { error: inheritanceError } = await sb.rpc(
+      'dp_resolve_resource_source_inheritance',
+      { p_resolution_version: `index-sync:${syncRunId}` },
+    );
+    if (inheritanceError) throw new Error(inheritanceError.message);
 
     const next = {
       folder_queue: chunk.queue,

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createSupabaseAdminClient } from './supabase-admin';
 import type { DriveItem } from './types';
+import { getResourceAttributionMap } from './content-attribution';
 
 function syncComplete(state: any) {
   return (
@@ -27,6 +28,7 @@ export async function getIndexedResourceShell(
     .eq('drive_file_id', fileId)
     .maybeSingle();
   if (!data) return null;
+  const attribution = await getResourceAttributionMap([fileId]);
   return {
     id: data.drive_file_id,
     name: data.name,
@@ -35,5 +37,6 @@ export async function getIndexedResourceShell(
     size: data.size_bytes ? String(data.size_bytes) : undefined,
     modifiedTime: data.modified_at || undefined,
     path: data.path,
+    attribution: attribution.get(fileId),
   };
 }

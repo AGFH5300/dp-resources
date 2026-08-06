@@ -6,9 +6,24 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import Link from 'next/link';
 import { resourceUrl, typeLabel } from '@/lib/resource-utils';
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
-export default async function Saved() {
+import { getQuestionSourceMap, getResourceAttributionMap } from '@/lib/content-attribution';
+import { QuestionSourceBadges, ResourceAttributionBadges } from '@/components/content-source-badge';
+import { SourceMultiFilter } from '@/components/question-bank/source-multi-filter';
+import { createClient } from '@/lib/supabase-server';
+export default async function Saved({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { user, membership } = await requireMember();
+  const params = await searchParams;
+  const selectedSources = String(params.sources || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => /^[a-z0-9_]+$/.test(value))
+    .slice(0, 10);
   const sb = createSupabaseAdminClient();
+  const memberClient = await createClient();
   const { data: favs = [] } = await sb
     .from('dp_resource_favorites')
     .select('drive_file_id,created_at')
@@ -26,6 +41,22 @@ export default async function Saved() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20);
+  const [resourceAttribution, questionSources, { data: sourceOptions = [] }] =
+    await Promise.all([
+      getResourceAttributionMap(ids),
+      getQuestionSourceMap(
+        (savedQuestions as any[])
+          .filter((row) => row.last_variant_id)
+          .map((row) => ({ variantId: row.last_variant_id, questionId: row.question_id })),
+      ),
+      memberClient.rpc('dp_content_source_options'),
+    ]);
+  const filteredQuestions = (savedQuestions as any[]).filter((row) => {
+    if (!selectedSources.length) return true;
+    return (questionSources.get(row.last_variant_id) ?? []).some(
+      (source) => source.isVariantSource && selectedSources.includes(source.slug),
+    );
+  });
   return (
     <>
       <Nav
@@ -55,8 +86,17 @@ export default async function Saved() {
             </Link>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {(savedQuestions as any[]).length ? (
-              (savedQuestions as any[]).map((row) => (
+            <div className="col-span-full">
+              <SourceMultiFilter
+                compact
+                selected={selectedSources}
+                options={(sourceOptions as any[])
+                  .filter((source) => Number(source.question_variant_count || 0) > 0)
+                  .map((source) => ({ slug: source.slug, label: source.short_label }))}
+              />
+            </div>
+            {filteredQuestions.length ? (
+              filteredQuestions.map((row) => (
                 <Link
                   key={row.question_id}
                   href={`/question-bank/${row.variant.course.subject.slug}/${row.variant.course.slug}/questions/${row.last_variant_id}`}
@@ -64,6 +104,7 @@ export default async function Saved() {
                 >
                   <span>
                     <strong>{row.question.reference}</strong>
+                    <QuestionSourceBadges sources={questionSources.get(row.last_variant_id) ?? []} />
                     <small>
                       {row.variant.course.name} · {row.variant.topic.name}
                     </small>
@@ -96,6 +137,9 @@ export default async function Saved() {
                   <span className="truncate text-slate-500">{r.path}</span>
                   <span className="text-slate-500">
                     {typeLabel(r.mime_type, r.is_folder)}
+                    <span className="mt-1 block">
+                      <ResourceAttributionBadges attribution={resourceAttribution.get(r.drive_file_id)} />
+                    </span>
                   </span>
                 </Link>
               ))

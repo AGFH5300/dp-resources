@@ -59,6 +59,19 @@ describe('Question Bank practice configuration', () => {
       courseId: UUIDS.mathsCourse,
       requestedCount: 8,
     });
+    expect(parsed.filters.sourceSlugs).toEqual([]);
+  });
+
+  it('preserves match-any source filters and sorts them for stable shares', () => {
+    const withSources = configuration() as any;
+    withSources.filters.sourceSlugs = ['pestle', 'exam_mate'];
+    const parsed = parsePracticeConfiguration(withSources);
+    expect(parsed.filters.sourceSlugs).toEqual(['pestle', 'exam_mate']);
+    expect(parsed.blocks[0].filters.sourceSlugs).toEqual(['pestle', 'exam_mate']);
+    expect(stablePracticeConfiguration(parsed).filters.sourceSlugs).toEqual([
+      'exam_mate',
+      'pestle',
+    ]);
   });
 
   it('normalizes filter ordering before hashing while preserving block priority', () => {

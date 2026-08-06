@@ -10,6 +10,7 @@ export type PracticeFilters = {
   statuses: PracticeProgressStatus[];
   saved: boolean | null;
   calculator: boolean | null;
+  sourceSlugs: string[];
 };
 
 export type PracticeConceptBlock = {
@@ -54,6 +55,7 @@ const ORDERING_MODES = new Set<PracticeOrderingMode>([
   'source_order',
 ]);
 const POSTGRES_INTEGER_MAXIMUM = 2_147_483_647;
+const SOURCE_SLUG = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -108,6 +110,18 @@ function nullableBoolean(value: unknown, label: string) {
   return value;
 }
 
+function sourceSlugs(value: unknown, label: string) {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array.`);
+  if (value.length > 20) throw new Error(`${label} can contain at most 20 sources.`);
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string' || !SOURCE_SLUG.test(item))
+      throw new Error(`${label} contains an invalid source.`);
+    if (!result.includes(item)) result.push(item);
+  }
+  return result;
+}
+
 function parseFilters(
   value: unknown,
   defaults: PracticeFilters,
@@ -139,6 +153,10 @@ function parseFilters(
       row.calculator === undefined
         ? defaults.calculator
         : nullableBoolean(row.calculator, `${label}.calculator`),
+    sourceSlugs:
+      row.sourceSlugs === undefined
+        ? defaults.sourceSlugs
+        : sourceSlugs(row.sourceSlugs, `${label}.sourceSlugs`),
   };
 }
 
@@ -157,6 +175,7 @@ export function parsePracticeConfiguration(value: unknown): PracticeConfiguratio
     statuses: ['not_started', 'in_progress', 'completed'],
     saved: null,
     calculator: null,
+    sourceSlugs: [],
   };
   const filters = parseFilters(root.filters, defaultFilters, 'filters');
 
@@ -255,6 +274,7 @@ export function stablePracticeConfiguration(
       ...configuration.filters,
       difficulties: [...configuration.filters.difficulties].sort(),
       statuses: [...configuration.filters.statuses].sort(),
+      sourceSlugs: [...configuration.filters.sourceSlugs].sort(),
     },
     blocks: configuration.blocks.map((block) => ({
       ...block,
@@ -268,6 +288,7 @@ export function stablePracticeConfiguration(
         ...block.filters,
         difficulties: [...(block.filters.difficulties || [])].sort(),
         statuses: [...(block.filters.statuses || [])].sort(),
+        sourceSlugs: [...(block.filters.sourceSlugs || [])].sort(),
       },
     })),
   };

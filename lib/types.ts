@@ -33,6 +33,27 @@ export type DriveItem = {
   featuredLabel?: string;
   featuredPriority?: number;
   estimatedSize?: number;
+  attribution?: ResourceAttribution;
+};
+export type PublicContentSource = {
+  slug: string;
+  displayName: string;
+  shortLabel: string;
+  attributionLabel: string;
+  reviewStatus: 'reviewed' | 'under_review';
+};
+export type ResourceAttribution = {
+  sources: Array<
+    PublicContentSource & {
+      relationship: 'primary' | 'adapted_from' | 'compiled_from' | 'contributed_by' | 'hosted_from';
+      isPrimary: boolean;
+    }
+  >;
+  resourceType: {
+    slug: string;
+    displayName: string;
+    reviewStatus: 'reviewed' | 'under_review';
+  } | null;
 };
 export type ResourceIndex = {
   id?: string;

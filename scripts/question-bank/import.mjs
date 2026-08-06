@@ -7,6 +7,7 @@ import {
   getPrivateR2Object,
   putPrivateR2Object,
 } from '../r2-s3.mjs';
+import { attachCanonicalSource, requireCanonicalContentSource } from './source-registry.mjs';
 
 const TABLES = [
   ['dp_qb_subjects', 'subjects', 'id'],
@@ -17,7 +18,9 @@ const TABLES = [
   ['dp_qb_papers', 'papers', 'id'],
   ['dp_qb_course_papers', 'coursePapers', 'course_id,paper_id'],
   ['dp_qb_questions', 'questions', 'id'],
+  ['dp_qb_question_sources', 'questionSources', 'provider,source_question_id,source_scope'],
   ['dp_qb_question_variants', 'variants', 'id'],
+  ['dp_qb_variant_sources', 'variantSources', 'provider,source_question_id,source_course,source_topic'],
   [
     'dp_qb_question_subtopics',
     'placements',
@@ -145,10 +148,18 @@ export async function importDatabase(normalized, options = {}) {
     options.mode || 'database',
   );
   const operationCounts = {};
+  const canonicalSource = await requireCanonicalContentSource(
+    client,
+    normalized.sourceRegistrySlug,
+  );
 
   try {
     for (const [table, rowKey, conflict] of TABLES) {
-      const rows = normalized.rows[rowKey];
+      const rows = attachCanonicalSource(
+        table,
+        normalized.rows[rowKey] || [],
+        canonicalSource,
+      );
       operationCounts[table] = await upsertRows(
         client,
         table,

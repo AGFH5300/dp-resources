@@ -14,6 +14,7 @@ import {
 } from '@/lib/question-bank/practice-share';
 
 import styles from './page.module.css';
+import { createClient } from '@/lib/supabase-server';
 
 export default async function BuildPracticeSetPage({
   searchParams,
@@ -22,9 +23,11 @@ export default async function BuildPracticeSetPage({
 }) {
   const { membership } = await requireMember();
   const query = await searchParams;
-  const [catalog, shared] = await Promise.all([
+  const client = await createClient();
+  const [catalog, shared, { data: sourceRows = [] }] = await Promise.all([
     getPracticeBuilderCatalog(),
     query.code ? getPracticeShare(query.code) : Promise.resolve(null),
+    client.rpc('dp_content_source_options'),
   ]);
   if (query.code && !shared) notFound();
 
@@ -82,6 +85,13 @@ export default async function BuildPracticeSetPage({
           <PracticeSetBuilderV4
             catalog={catalog as any}
             userId={membership.id}
+            sourceOptions={(sourceRows as any[])
+              .filter((source) => Number(source.question_variant_count || 0) > 0)
+              .map((source) => ({
+                slug: source.slug,
+                label: source.short_label,
+                count: Number(source.question_variant_count || 0),
+              }))}
             initialConfiguration={initialConfiguration}
             sharedSource={
               shared

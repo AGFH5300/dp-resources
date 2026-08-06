@@ -8,6 +8,9 @@ import { requireMember } from '@/lib/auth';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { marksLabel, taxonomyLabel } from '@/lib/question-bank/presentation';
 import { searchQuestionBank } from '@/lib/question-bank/queries';
+import { createClient } from '@/lib/supabase-server';
+import { QuestionSourceBadges } from '@/components/content-source-badge';
+import { SourceMultiFilter } from '@/components/question-bank/source-multi-filter';
 
 export default async function QuestionBankSearch({
   searchParams,
@@ -18,7 +21,16 @@ export default async function QuestionBankSearch({
   const params = await searchParams;
   const query = String(params.q || '').trim();
   const page = Math.max(1, Number(params.page || 1) || 1);
-  const results = query.length >= 2 ? await searchQuestionBank(query, page) : [];
+  const selectedSources = String(params.sources || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => /^[a-z0-9_]+$/.test(value))
+    .slice(0, 10);
+  const client = await createClient();
+  const [{ data: sourceOptions = [] }, results] = await Promise.all([
+    client.rpc('dp_content_source_options'),
+    query.length >= 2 ? searchQuestionBank(query, page, selectedSources) : Promise.resolve([]),
+  ]);
   const total = Number((results as any[])[0]?.total_count || 0);
   return (
     <>
@@ -46,6 +58,16 @@ export default async function QuestionBankSearch({
           />
           <button type="submit">Search</button>
         </form>
+        <SourceMultiFilter
+          selected={selectedSources}
+          options={(sourceOptions as any[])
+            .filter((source) => Number(source.question_variant_count || 0) > 0)
+            .map((source) => ({
+              slug: source.slug,
+              label: source.short_label,
+              count: Number(source.question_variant_count || 0),
+            }))}
+        />
         <p className="mt-3 text-sm text-slate-600">
           {query.length < 2
             ? 'Enter at least two characters.'
@@ -71,6 +93,7 @@ export default async function QuestionBankSearch({
                 <span className="dp-qb-chip dp-qb-mark-chip">
                   {marksLabel(row.maximum_mark)}
                 </span>
+                <QuestionSourceBadges sources={row.sources} />
               </div>
               <p>
                 {questionPreview(row.content_preview) ||

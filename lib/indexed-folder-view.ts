@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from './supabase-admin';
 import { rootFolderId } from './drive';
 import { getFeaturedResourceMap } from './featured-resources';
 import { getIndexedFolderSizeSummaries } from './folder-summaries';
+import { getResourceAttributionMap } from './content-attribution';
 
 function toDriveItem(row: ResourceIndex): DriveItem {
   return {
@@ -97,6 +98,9 @@ export async function getIndexedFolderView(folderId = rootFolderId()) {
     }
   }
 
+  const attributionPromise = getResourceAttributionMap(
+    (rows || []).map((r: any) => r.drive_file_id),
+  );
   const folderSummaries = await getIndexedFolderSizeSummaries(
     ((rows || []) as ResourceIndex[])
       .filter((r) => r.is_folder)
@@ -105,10 +109,12 @@ export async function getIndexedFolderView(folderId = rootFolderId()) {
   const featured = await getFeaturedResourceMap(
     (rows || []).map((r: any) => r.drive_file_id),
   );
+  const attribution = await attributionPromise;
   const items = ((rows || []) as ResourceIndex[])
     .map((r) => {
       const hit = featured.get(r.drive_file_id);
       const base = toDriveItem(r);
+      base.attribution = attribution.get(r.drive_file_id);
       const withSize =
         r.is_folder && folderSummaries.has(r.drive_file_id)
           ? { ...base, estimatedSize: folderSummaries.get(r.drive_file_id) }

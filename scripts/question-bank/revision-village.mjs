@@ -1549,6 +1549,7 @@ export async function resolveRevisionVillageForProduction(normalized, client, op
 
   return {
     importerVersion: normalized.importerVersion,
+    sourceRegistrySlug: 'revision_village',
     archiveIdentifier: normalized.archiveIdentifier,
     archiveSha256: normalized.archiveSha256,
     expectedCounts: normalized.expectedCounts,

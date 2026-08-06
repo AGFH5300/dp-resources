@@ -10,6 +10,7 @@ import {
 type AdminSection =
   | 'index'
   | 'question-bank'
+  | 'content-sources'
   | 'reports'
   | 'tickets'
   | 'users'
@@ -34,6 +35,12 @@ export function AdminSectionTabs({
       id: 'question-bank',
       label: 'Question bank',
       href: '/admin/question-bank',
+      unread: 0,
+    },
+    {
+      id: 'content-sources',
+      label: 'Sources & types',
+      href: '/admin/content-sources',
       unread: 0,
     },
     {

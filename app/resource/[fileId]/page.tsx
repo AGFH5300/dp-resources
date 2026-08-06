@@ -18,6 +18,7 @@ import { MASTER_WORKBOOK_FILE_ID } from '@/lib/resource-capabilities';
 import { ResourceUsageTracker } from './usage-tracker';
 import { privatePageMetadata } from '@/lib/seo';
 import { RecentResourceRecorder } from '@/components/recent-resource-recorder';
+import { ResourceAttributionBadges } from '@/components/content-source-badge';
 
 export const metadata: Metadata = privatePageMetadata('Resource');
 
@@ -106,6 +107,7 @@ export default async function Page({
                 <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                   {typeLabel(meta.mimeType, meta.isFolder)}
                 </span>
+                <ResourceAttributionBadges attribution={indexedMeta?.attribution} />
               </span>
             </div>
             <FavoritesProvider initialSavedIds={favoriteIds}>
@@ -115,6 +117,8 @@ export default async function Page({
                   resourceName: meta.name,
                   resourcePath,
                   mimeType: meta.mimeType,
+                  sourceLabel: indexedMeta?.attribution?.sources[0]?.shortLabel,
+                  resourceTypeLabel: indexedMeta?.attribution?.resourceType?.displayName,
                 }}
                 downloadHref={
                   !meta.isFolder && !isPdf

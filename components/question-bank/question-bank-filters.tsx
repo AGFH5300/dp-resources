@@ -20,6 +20,12 @@ type FilterOptions = {
   difficulties: string[];
   sections: string[];
   calculatorValues: boolean[];
+  sources: Array<{
+    slug: string;
+    displayName: string;
+    shortLabel: string;
+    count: number;
+  }>;
 };
 
 function label(value: string) {
@@ -54,7 +60,8 @@ export function QuestionBankFilters({
         filters.section ||
         filters.calculator !== null ||
         filters.status ||
-        filters.saved,
+        filters.saved ||
+        filters.sourceSlugs.length,
     ),
   );
   const selectedTopic = topics.find((topic) => topic.id === topicId);
@@ -73,6 +80,7 @@ export function QuestionBankFilters({
     filters.calculator !== null,
     Boolean(filters.status),
     Boolean(filters.saved),
+    filters.sourceSlugs.length > 0,
   ].filter(Boolean).length;
 
   useEffect(() => {
@@ -233,6 +241,33 @@ export function QuestionBankFilters({
 
       {moreOpen ? (
         <div className="dp-qb-filter-more">
+          {filterOptions.sources.length > 1 ? (
+            <fieldset className="min-w-0">
+              <legend>Sources</legend>
+              <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
+                {filterOptions.sources.map((source) => {
+                  const checked = filters.sourceSlugs.includes(source.slug);
+                  return (
+                    <label key={source.slug} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const next = checked
+                            ? filters.sourceSlugs.filter((slug) => slug !== source.slug)
+                            : [...filters.sourceSlugs, source.slug];
+                          updateParams({ sources: next.length ? next.join(',') : null });
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{source.shortLabel}</span>
+                      <small className="text-slate-500">{source.count.toLocaleString()}</small>
+                    </label>
+                  );
+                })}
+              </div>
+              <small className="mt-1 block text-slate-500">Match any selected source.</small>
+            </fieldset>
+          ) : null}
           {showDifficulty ? (
             <label>
               <span>Difficulty</span>
