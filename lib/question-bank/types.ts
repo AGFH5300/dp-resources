@@ -13,7 +13,17 @@ export type QuestionFilters = {
   calculator: boolean | null;
   status: QuestionProgressStatus | null;
   saved: boolean | null;
+  sourceSlugs: string[];
   page: number;
+};
+
+export type QuestionPublicSource = {
+  slug: string;
+  displayName: string;
+  shortLabel: string;
+  attributionLabel: string;
+  reviewStatus: 'reviewed' | 'under_review';
+  isVariantSource: boolean;
 };
 
 export type QuestionListRow = {
@@ -34,6 +44,7 @@ export type QuestionListRow = {
   progress_status: QuestionProgressStatus;
   is_saved: boolean;
   total_count: number;
+  sources?: QuestionPublicSource[];
 };
 
 export type QuestionAssetRole =

@@ -1,3 +1,5 @@
+import type { ResourceAttribution } from './types';
+
 export type RecentResource = {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export type RecentResource = {
   mimeType: string;
   path: string;
   at: number;
+  attribution?: ResourceAttribution;
 };
 
 type RecentActivity = {
@@ -68,7 +71,13 @@ export function mergeRecentResources(
   for (const resource of sources.flat()) {
     if (!resource?.id) continue;
     const current = latest.get(resource.id);
-    if (!current || resource.at > current.at) latest.set(resource.id, resource);
+    if (!current || resource.at > current.at)
+      latest.set(resource.id, {
+        ...resource,
+        attribution: resource.attribution ?? current?.attribution,
+      });
+    else if (!current.attribution && resource.attribution)
+      latest.set(resource.id, { ...current, attribution: resource.attribution });
   }
   return [...latest.values()].sort((a, b) => b.at - a.at).slice(0, 12);
 }

@@ -878,6 +878,8 @@ export async function normalizeArchive(root, options = {}) {
   }
 
   const searchDocuments = [];
+  const questionSources = new Map();
+  const variantSources = new Map();
   for (const variant of variants.values()) {
     const question = questions.get(variant.question_id);
     const course = courses.get(variant.course_id);
@@ -903,6 +905,33 @@ export async function normalizeArchive(root, options = {}) {
         .filter(Boolean)
         .join(' '),
     });
+    if (!questionSources.has(question.id)) {
+      questionSources.set(question.id, {
+        id: deterministicUuid(`legacy-authorized:question-source:${question.id}`),
+        question_id: question.id,
+        provider: 'unknown',
+        source_question_id: question.id,
+        source_subject_id: null,
+        source_reference: question.reference,
+        source_url: null,
+        source_metadata: { attribution: 'under_review' },
+        source_scope: 'legacy_authorized_archive',
+        assignment_method: 'explicit_import',
+        review_status: 'under_review',
+      });
+    }
+    variantSources.set(variant.id, {
+      id: deterministicUuid(`legacy-authorized:variant-source:${variant.id}`),
+      variant_id: variant.id,
+      provider: 'unknown',
+      source_question_id: variant.id,
+      source_course: course.source_key,
+      source_topic: topic.slug,
+      source_index: variant.source_index,
+      source_metadata: { attribution: 'under_review' },
+      assignment_method: 'explicit_import',
+      review_status: 'under_review',
+    });
   }
 
   const actualCounts = {
@@ -911,7 +940,9 @@ export async function normalizeArchive(root, options = {}) {
     datasets: datasets.size,
     questionOccurrences,
     questionCores: questions.size,
+    questionSources: questionSources.size,
     variants: variants.size,
+    variantSources: variantSources.size,
     topics: topics.size,
     subtopics: subtopics.size,
     authoritativePlacements: [...placements.values()].filter(
@@ -946,6 +977,7 @@ export async function normalizeArchive(root, options = {}) {
 
   return {
     importerVersion: IMPORTER_VERSION,
+    sourceRegistrySlug: 'unknown',
     archiveIdentifier: path.basename(root),
     archiveSha256: await archiveFingerprint(root),
     processedAt: new Date().toISOString(),
@@ -963,7 +995,9 @@ export async function normalizeArchive(root, options = {}) {
       papers: [...papers.values()],
       coursePapers: [...coursePapers.values()],
       questions: [...questions.values()],
+      questionSources: [...questionSources.values()],
       variants: [...variants.values()],
+      variantSources: [...variantSources.values()],
       placements: [...placements.values()],
       assets: [...assets.values()],
       assetSources: [...assetSources.values()],

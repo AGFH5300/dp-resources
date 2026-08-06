@@ -12,6 +12,8 @@ import {
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { SearchHighlight } from '@/components/search-highlight';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
+import { getResourceAttributionMap } from '@/lib/content-attribution';
+import { ResourceAttributionBadges } from '@/components/content-source-badge';
 
 export default async function SearchPage({
   searchParams,
@@ -45,15 +47,37 @@ export default async function SearchPage({
           .order('name')
           .limit(100)
       : { data: [] as any[] };
+  const aliasKey = q.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const [{ data: sourceAliases = [] }, { data: resourceTypes = [] }] = safe.length >= 2
+    ? await Promise.all([
+        sb.from('dp_content_source_aliases').select('source:dp_content_sources!inner(slug)').eq('alias_key', aliasKey),
+        sb.from('dp_resource_types').select('slug,display_name').eq('is_active', true),
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }];
+  const sourceSlugs = (sourceAliases as any[]).map((row) => Array.isArray(row.source) ? row.source[0]?.slug : row.source?.slug).filter(Boolean);
+  const normalizedQuery = normalizeResourceName(q).toLowerCase();
+  const typeSlugs = (resourceTypes as any[])
+    .filter((row) => normalizeResourceName(row.display_name).toLowerCase() === normalizedQuery || row.slug.replaceAll('_', ' ') === normalizedQuery)
+    .map((row) => row.slug);
+  const [sourceMatches, typeMatches] = await Promise.all([
+    sourceSlugs.length ? sb.from('dp_resource_source_catalog').select('*').in('source_slug', sourceSlugs).limit(100) : Promise.resolve({ data: [] as any[] }),
+    typeSlugs.length ? sb.from('dp_resource_source_catalog').select('*').in('resource_type_slug', typeSlugs).limit(100) : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const mergedRows = new Map<string, any>();
+  for (const row of [...(data as any[]), ...((sourceMatches as any).data || []), ...((typeMatches as any).data || [])]) {
+    if (!mergedRows.has(row.drive_file_id)) mergedRows.set(row.drive_file_id, row);
+  }
+  const searchableRows = [...mergedRows.values()].slice(0, 100);
   const featured = await getFeaturedResourceMap(
-    (data as any[]).map((r) => r.drive_file_id),
+    searchableRows.map((r) => r.drive_file_id),
   );
-  const rows = (data as any[])
+  const attribution = await getResourceAttributionMap(searchableRows.map((r) => r.drive_file_id));
+  const rows = searchableRows
     .map((r) => {
       const hit = featured.get(r.drive_file_id);
       return hit
-        ? { ...r, featuredLabel: hit.label, featuredPriority: hit.priority }
-        : r;
+          ? { ...r, featuredLabel: hit.label, featuredPriority: hit.priority, attribution: attribution.get(r.drive_file_id) }
+          : { ...r, attribution: attribution.get(r.drive_file_id) };
     })
     .sort(
       (a, b) =>
@@ -110,6 +134,7 @@ export default async function SearchPage({
                       <SearchHighlight text={r.path || 'Library'} query={q} /> ·{' '}
                       {typeLabel(r.mime_type, r.is_folder)}
                     </span>
+                    <span className="mt-1 block"><ResourceAttributionBadges attribution={r.attribution} /></span>
                   </span>
                 </span>
                 <span className="hidden truncate text-slate-500 md:block">
@@ -117,6 +142,7 @@ export default async function SearchPage({
                 </span>
                 <span className="hidden text-slate-600 md:block">
                   {typeLabel(r.mime_type, r.is_folder)}
+                  <span className="mt-1 block"><ResourceAttributionBadges attribution={r.attribution} /></span>
                 </span>
                 <span className="hidden text-slate-500 md:block">
                   {formatDate(r.modified_at)}

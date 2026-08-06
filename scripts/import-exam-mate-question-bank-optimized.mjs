@@ -27,6 +27,7 @@ import {
   loadExamMateOptimizationAudit,
   resolveExamMateOptimizationAudit,
 } from './question-bank/exam-mate-optimization.mjs';
+import { attachCanonicalSource, requireCanonicalContentSource } from './question-bank/source-registry.mjs';
 
 const WRITE_MODES = new Set([
   'database',
@@ -637,6 +638,10 @@ async function importDatabase(normalized, options) {
     throw new Error('Database import refused because normalization failed.');
   }
   const client = options.client;
+  const canonicalSource = await requireCanonicalContentSource(
+    client,
+    normalized.sourceRegistrySlug,
+  );
   const batchId = await createOrResumeBatch(
     client,
     normalized,
@@ -646,7 +651,11 @@ async function importDatabase(normalized, options) {
   const operationCounts = {};
   try {
     for (const [table, rowKey, conflict] of TABLES) {
-      const rows = normalized.rows[rowKey] || [];
+      const rows = attachCanonicalSource(
+        table,
+        normalized.rows[rowKey] || [],
+        canonicalSource,
+      );
       operationCounts[table] = await upsertRows(
         client,
         table,

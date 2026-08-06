@@ -141,6 +141,7 @@ export function PracticeSetBuilder({ catalog }: { catalog: Catalog }) {
         statuses: statuses as PracticeConfiguration['filters']['statuses'],
         saved: null,
         calculator: null,
+        sourceSlugs: [],
       },
       blocks: blocks.map((block) => ({
         key: block.key,

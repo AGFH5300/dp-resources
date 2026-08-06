@@ -7,6 +7,7 @@ import type {
   QuestionListRow,
   QuestionProgressStatus,
 } from './types';
+import { getQuestionSourceMap } from '@/lib/content-attribution';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -55,6 +56,13 @@ export function parseQuestionFilters(
       bool(searchParams.revisit) === true
         ? true
         : null,
+    sourceSlugs: String(searchParams.sources || '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter((value, index, values) =>
+        /^[a-z0-9_]+$/.test(value) && values.indexOf(value) === index,
+      )
+      .slice(0, 10),
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
   };
 }
@@ -126,6 +134,16 @@ export async function getQuestionBankLanding(userId: string) {
           String(a.progress?.last_viewed_at),
         ),
       );
+    const sourceMap = await getQuestionSourceMap(
+      recent.map((row: any) => ({
+        variantId: row.id,
+        questionId: row.progress.question_id,
+      })),
+    );
+    recent = recent.map((row: any) => ({
+      ...row,
+      sources: sourceMap.get(row.id) ?? [],
+    }));
   }
 
   return {
@@ -175,6 +193,7 @@ export async function getCourseQuestionBank(
     papersResult,
     datasetsResult,
     filterOptionsResult,
+    sourceOptionsResult,
     questionsResult,
   ] =
     await Promise.all([
@@ -198,6 +217,9 @@ export async function getCourseQuestionBank(
       client.rpc('dp_qb_course_filter_options', {
         p_course_id: course.id,
       }),
+      client.rpc('dp_qb_source_options_for_course', {
+        p_course_id: course.id,
+      }),
       client.rpc('dp_qb_list_questions', {
         p_course_id: course.id,
         p_query: filters.q || null,
@@ -212,6 +234,7 @@ export async function getCourseQuestionBank(
         p_revisit: null,
         p_page: filters.page,
         p_page_size: 24,
+        p_source_slugs: filters.sourceSlugs.length ? filters.sourceSlugs : null,
       }),
     ]);
 
@@ -228,6 +251,18 @@ export async function getCourseQuestionBank(
         calculator_values: boolean[];
       }
     | undefined;
+
+  const questionRows = (requireData(
+    questionsResult.data,
+    questionsResult.error,
+    'Question list',
+  ) || []) as QuestionListRow[];
+  const sourceMap = await getQuestionSourceMap(
+    questionRows.map((row) => ({
+      variantId: row.variant_id,
+      questionId: row.question_id,
+    })),
+  );
 
   return {
     subject,
@@ -248,16 +283,29 @@ export async function getCourseQuestionBank(
       difficulties: filterOptions?.difficulties || [],
       sections: filterOptions?.sections || [],
       calculatorValues: filterOptions?.calculator_values || [],
+      sources: (requireData(
+        sourceOptionsResult.data,
+        sourceOptionsResult.error,
+        'Course source options',
+      ) || []).map((row: any) => ({
+        slug: row.slug,
+        displayName: row.display_name,
+        shortLabel: row.short_label,
+        count: Number(row.eligible_variant_count || 0),
+      })),
     },
-    questions: (requireData(
-      questionsResult.data,
-      questionsResult.error,
-      'Question list',
-    ) || []) as QuestionListRow[],
+    questions: questionRows.map((row) => ({
+      ...row,
+      sources: sourceMap.get(row.variant_id) ?? [],
+    })),
   };
 }
 
-export async function searchQuestionBank(query: string, page = 1) {
+export async function searchQuestionBank(
+  query: string,
+  page = 1,
+  sourceSlugs: string[] = [],
+) {
   const client = await createClient();
   const safeQuery = query.trim().slice(0, 160);
   if (safeQuery.length < 2) return [];
@@ -265,8 +313,13 @@ export async function searchQuestionBank(query: string, page = 1) {
     p_query: safeQuery,
     p_limit: 30,
     p_offset: Math.max(0, page - 1) * 30,
+    p_source_slugs: sourceSlugs.length ? sourceSlugs : null,
   });
-  return requireData(data, error, 'Question search') || [];
+  const rows = (requireData(data, error, 'Question search') || []) as any[];
+  const sourceMap = await getQuestionSourceMap(
+    rows.map((row) => ({ variantId: row.variant_id, questionId: row.question_id })),
+  );
+  return rows.map((row) => ({ ...row, sources: sourceMap.get(row.variant_id) ?? [] }));
 }
 
 export async function getQuestionDetail(variantId: string, userId: string) {

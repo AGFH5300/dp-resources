@@ -1,0 +1,136 @@
+{
+  "capturedAt": "2026-08-06T16:32:17Z",
+  "productionProject": "dp-resources",
+  "feature": "content-source-attribution",
+  "originalArchiveIdentity": {
+    "verifiedProvider": null,
+    "publicAssignment": "unknown",
+    "finding": "Existing manifests and importer evidence do not reliably distinguish the authorized legacy archive as Revision Town. It remains Source attribution under review."
+  },
+  "protectedCounts": {
+    "before": {
+      "subjects": 17,
+      "courses": 51,
+      "questionCores": 30846,
+      "variants": 42695,
+      "readyVariants": 42630,
+      "quarantinedVariants": 65,
+      "topics": 685,
+      "subtopics": 3804,
+      "assets": 42532,
+      "solutionVideos": 8194,
+      "userProgress": 70,
+      "savedQuestions": 0
+    },
+    "after": {
+      "subjects": 17,
+      "courses": 51,
+      "questionCores": 30846,
+      "variants": 42695,
+      "readyVariants": 42630,
+      "quarantinedVariants": 65,
+      "topics": 685,
+      "subtopics": 3804,
+      "assets": 42532,
+      "solutionVideos": 8194,
+      "userProgress": 70,
+      "savedQuestions": 0
+    },
+    "changed": false
+  },
+  "questionBank": {
+    "questionCoresBySource": {
+      "exam_mate": 13374,
+      "pestle": 10362,
+      "revision_village": 2311,
+      "unknown": 5135,
+      "revision_town": 0,
+      "save_my_exams": 0,
+      "school": 0,
+      "teacher_created": 0,
+      "ib_official": 0,
+      "dp_resources": 0
+    },
+    "variantsBySource": {
+      "exam_mate": 13374,
+      "pestle": 13291,
+      "revision_village": 4192,
+      "unknown": 12212,
+      "revision_town": 0,
+      "save_my_exams": 0,
+      "school": 0,
+      "teacher_created": 0,
+      "ib_official": 0,
+      "dp_resources": 0
+    },
+    "multiSourceQuestionCores": 336,
+    "readyVariantsWithoutSourceBefore": 25064,
+    "readyVariantsWithoutReviewedSourceAfter": 11817,
+    "readyVariantsWithoutAnyAttributionStateAfter": 0,
+    "exactDuplicateQuestionSourceLinks": 0,
+    "exactDuplicateVariantSourceLinks": 0
+  },
+  "resourceLibrary": {
+    "indexedItems": 16916,
+    "indexedFiles": 12309,
+    "indexedFolders": 4607,
+    "driveItemsMoved": 0,
+    "driveItemsRenamed": 0,
+    "driveItemsCopied": 0,
+    "driveItemsDeleted": 0,
+    "assignmentsBySource": {
+      "unknown": { "files": 12309, "folders": 4607 },
+      "reviewedProviders": { "files": 0, "folders": 0 }
+    },
+    "assignmentsByMethod": { "unresolved": 16916 },
+    "multipleSourceFiles": 0,
+    "providerNamePathEvidence": {
+      "save_my_exams": 0,
+      "revision_village": 0,
+      "revision_dojo": 0,
+      "kognity": 0,
+      "exam_mate": 0,
+      "pestle": 0,
+      "revision_town": 0
+    },
+    "resourceTypes": {
+      "markscheme": 4744,
+      "question_paper": 1695,
+      "cheatsheet": 190,
+      "formula_booklet": 3,
+      "video": 1,
+      "audio": 5,
+      "needs_review": 5671
+    }
+  },
+  "security": {
+    "newTablesWithRls": 6,
+    "anonCanReadSourceRegistry": false,
+    "anonCanReadResourceAssignments": false,
+    "authenticatedCanReadSourceWebsiteUrl": false,
+    "authenticatedCanReadAssignmentCreator": false,
+    "authenticatedCanExecuteAdminQuestionSourceMutation": false,
+    "serviceRoleCanExecuteAdminQuestionSourceMutation": true,
+    "newSecurityDefinerSearchPathPinned": true,
+    "suspendedProductionFixtures": 0
+  },
+  "validation": {
+    "testsPassed": 626,
+    "testsSkipped": 1,
+    "lint": "passed",
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "dependencyAuditVulnerabilities": 0
+  },
+  "performanceMs": {
+    "questionBankCourseListSourceAware": 411.717,
+    "questionBankSearchUnfilteredExistingPath": 9387.66,
+    "questionBankSearchPestle": 11596.774,
+    "practiceCandidatesPestle": 393.091,
+    "libraryFolderAttributionBatch": 1179.343,
+    "librarySearch": 948.538,
+    "virtualUnknownSourceBrowse": 1121.208,
+    "adminFullSourceAudit": 9720.892,
+    "note": "EXPLAIN ANALYZE measurements on the shared production database; global QB search and the full admin audit remain known performance risks."
+  }
+}

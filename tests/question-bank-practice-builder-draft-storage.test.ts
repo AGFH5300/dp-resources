@@ -23,6 +23,7 @@ const draft: PracticeBuilderDraft = {
     statuses: ['not_started', 'in_progress'],
     saved: true,
     calculator: false,
+    sourceSlugs: ['pestle', 'exam_mate'],
   },
   blocks: [
     {

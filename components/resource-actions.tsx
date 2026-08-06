@@ -18,6 +18,8 @@ type ResourceContext = {
   resourcePath?: string;
   isFolder?: boolean;
   mimeType?: string;
+  sourceLabel?: string;
+  resourceTypeLabel?: string;
 };
 type ReportContext = Omit<ResourceContext, 'driveFileId'> & {
   driveFileId?: string;
@@ -274,6 +276,11 @@ export function ReportResourceDialog({
                 <p className="truncate text-xs text-[color:var(--dp-ink)]/60">
                   {resource.resourcePath || 'Library'}
                 </p>
+                {resource.sourceLabel || resource.resourceTypeLabel ? (
+                  <p className="mt-1 truncate text-xs text-[color:var(--dp-ink)]/60">
+                    {[resource.sourceLabel, resource.resourceTypeLabel].filter(Boolean).join(' · ')}
+                  </p>
+                ) : null}
               </div>
             </div>
             {sent ? (

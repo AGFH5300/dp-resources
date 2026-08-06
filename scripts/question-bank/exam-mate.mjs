@@ -2202,6 +2202,7 @@ export async function resolveExamMateForProduction(normalized, client, options =
   const critical = findings.filter((row) => row.severity === 'critical');
   return {
     ...normalized,
+    sourceRegistrySlug: 'exam_mate',
     processedAt: new Date().toISOString(),
     actualCounts,
     verificationStatus: critical.length ? 'failed' : 'passed',

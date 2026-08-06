@@ -27,6 +27,10 @@ import { toast } from 'sonner';
 import { QuestionContent } from '@/components/question-bank/question-content';
 import { QuestionStateControls } from '@/components/question-bank/question-state-controls';
 import { SolutionVideo } from '@/components/question-bank/solution-video';
+import {
+  QuestionSourceBadges,
+  QuestionSourceInformation,
+} from '@/components/content-source-badge';
 import { ReportResourceDialog } from '@/components/resource-actions';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { hasSubstantiveExaminerReport } from '@/lib/question-bank/examiner-report';
@@ -105,6 +109,7 @@ type QuestionDetail = {
   videos: Array<{ id: string; name: string | null; url: string }>;
   progress: { status: QuestionProgressStatus };
   saved: boolean;
+  sources: QuestionListRow['sources'];
 };
 
 async function updateQuestionState(
@@ -594,6 +599,7 @@ export function CoursePracticeWorkspace({
                 <span className="dp-qb-chip dp-qb-mark-chip">
                   {marksLabel(question.maximum_mark)}
                 </span>
+                <QuestionSourceBadges sources={question.sources} />
                 <span
                   className={`dp-qb-status-badge ml-auto is-${question.progress_status.replaceAll('_', '-')}`}
                   aria-label={question.progress_status.replaceAll('_', ' ')}
@@ -769,6 +775,7 @@ export function CoursePracticeWorkspace({
                   </span>
                 ) : null}
               </div>
+              <QuestionSourceInformation sources={detail.sources} />
 
               <section className="dp-qb-quiz-card">
                 {interactive.sections.length ? (

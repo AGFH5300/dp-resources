@@ -8,6 +8,8 @@ import { requireMember } from '@/lib/auth';
 import { recentResourcesFromActivity } from '@/lib/recent-resources';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { RecentClient } from './recent-client';
+import { getQuestionSourceMap, getResourceAttributionMap } from '@/lib/content-attribution';
+import { QuestionSourceBadges } from '@/components/content-source-badge';
 
 export default async function Recent() {
   const { user, membership } = await requireMember();
@@ -35,6 +37,8 @@ export default async function Recent() {
     (activity || []) as any,
     (indexed || []) as any,
   );
+  const recentResourceAttribution = await getResourceAttributionMap(initialRows.map((row) => row.id));
+  for (const row of initialRows) row.attribution = recentResourceAttribution.get(row.id);
 
   const { data: progressRows = [], error: progressError } = await sb
     .from('dp_qb_user_progress')
@@ -70,6 +74,12 @@ export default async function Recent() {
       variant: variantById.get(progress.last_variant_id),
     }))
     .filter((row: any) => row.variant);
+  const recentQuestionSources = await getQuestionSourceMap(
+    recentQuestions.map(({ progress, variant }: any) => ({
+      variantId: variant.id,
+      questionId: progress.question_id,
+    })),
+  );
 
   return (
     <>
@@ -105,6 +115,7 @@ export default async function Recent() {
                   <strong title={variant.question.reference}>
                     {variant.question.reference}
                   </strong>
+                  <QuestionSourceBadges sources={recentQuestionSources.get(variant.id) ?? []} />
                   <span title={variant.topic.name}>{variant.topic.name}</span>
                   <small title={variant.course.name}>{variant.course.name}</small>
                 </Link>

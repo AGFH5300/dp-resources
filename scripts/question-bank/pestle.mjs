@@ -707,7 +707,9 @@ export async function normalizePestleArchive(root, options = {}) {
   const topics = new Map();
   const subtopics = new Map();
   const questions = new Map();
+  const questionSources = new Map();
   const variants = new Map();
+  const variantSources = new Map();
   const placements = new Map();
   const papers = new Map();
   const coursePapers = new Map();
@@ -901,6 +903,34 @@ export async function normalizePestleArchive(root, options = {}) {
             sourceTopic: topicSlug,
           },
         });
+        const questionSourceKey = `${record.questionUuid}:${course.source_key}`;
+        if (!questionSources.has(questionSourceKey)) {
+          questionSources.set(questionSourceKey, {
+            id: deterministicUuid(`pestle:question-source:${record.questionId}:${course.source_key}`),
+            question_id: record.questionUuid,
+            provider: 'pestle',
+            source_question_id: record.questionId,
+            source_subject_id: record.sourceSubject || null,
+            source_reference: record.questionId,
+            source_url: null,
+            source_metadata: { sourceBank: record.bank },
+            source_scope: course.source_key,
+            assignment_method: 'explicit_import',
+            review_status: 'reviewed',
+          });
+        }
+        variantSources.set(variantId, {
+          id: deterministicUuid(`pestle:variant-source:${variantId}`),
+          variant_id: variantId,
+          provider: 'pestle',
+          source_question_id: record.questionId,
+          source_course: course.source_key,
+          source_topic: topicSlug,
+          source_index: record.sourceIndex,
+          source_metadata: { sourceBank: record.bank },
+          assignment_method: 'explicit_import',
+          review_status: 'reviewed',
+        });
         datasets.get(taxonomy.datasetId).expected_question_count += 1;
         taxonomy.subtopicIds.forEach((subtopicId, placementOrder) => {
           placements.set(`${variantId}:${subtopicId}`, {
@@ -1021,12 +1051,14 @@ export async function normalizePestleArchive(root, options = {}) {
     overlappingRows,
     quarantinedQuestions: QUARANTINE.size,
     importableQuestions: questions.size,
+    questionSources: questionSources.size,
     subjects: subjects.size,
     courses: courses.size,
     datasets: datasets.size,
     topics: topics.size,
     subtopics: subtopics.size,
     variants: variants.size,
+    variantSources: variantSources.size,
     storedPlacementRows: placements.size,
     papers: papers.size,
     assetOccurrences: assetOccurrenceCount,
@@ -1132,6 +1164,7 @@ export async function normalizePestleArchive(root, options = {}) {
   );
   return {
     importerVersion: PESTLE_IMPORTER_VERSION,
+    sourceRegistrySlug: 'pestle',
     archiveIdentifier: 'pestle-audited-capture-20260723',
     archiveSha256: fingerprint.digest('hex'),
     processedAt: new Date().toISOString(),
@@ -1148,7 +1181,9 @@ export async function normalizePestleArchive(root, options = {}) {
       papers: [...papers.values()],
       coursePapers: [...coursePapers.values()],
       questions: [...questions.values()],
+      questionSources: [...questionSources.values()],
       variants: [...variants.values()],
+      variantSources: [...variantSources.values()],
       placements: [...placements.values()],
       assets: [...assets.values()],
       assetSources: [...assetSources.values()],

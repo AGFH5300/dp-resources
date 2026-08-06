@@ -282,6 +282,7 @@ export function PracticeSetBuilderV3({
       statuses: statuses as PracticeConfiguration['filters']['statuses'],
       saved,
       calculator,
+      sourceSlugs: [],
     };
     return {
       schemaVersion: 1,

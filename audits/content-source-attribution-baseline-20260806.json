@@ -1,0 +1,70 @@
+{
+  "captured_at": "2026-08-06T15:04:21.517652+00:00",
+  "environment": "production",
+  "purpose": "content-source-attribution pre-write baseline",
+  "protected_counts": {
+    "subjects": 17,
+    "courses": 51,
+    "question_cores": 30846,
+    "question_variants": 42695,
+    "ready_variants": 42630,
+    "quarantined_variants": 65,
+    "topics": 685,
+    "subtopics": 3804,
+    "assets": 42532,
+    "solution_videos": 8194,
+    "user_progress_rows": 70,
+    "saved_question_rows": 0,
+    "resource_index_rows": 16916,
+    "resource_files": 12309,
+    "resource_folders": 4607
+  },
+  "source_rows": {
+    "question_sources": 15685,
+    "variant_sources": 17566,
+    "questions_without_dedicated_source": 15161,
+    "questions_with_one_dedicated_source": 15685,
+    "questions_with_multiple_dedicated_sources": 0,
+    "variants_without_dedicated_source": 25129,
+    "variants_with_one_dedicated_source": 17566,
+    "variants_with_multiple_dedicated_sources": 0,
+    "ready_variants_without_dedicated_source": 25064
+  },
+  "dedicated_provider_counts": {
+    "question_sources": {
+      "exam_mate": 13374,
+      "revision_village": 2311
+    },
+    "variant_sources": {
+      "exam_mate": 13374,
+      "revision_village": 4192
+    }
+  },
+  "metadata_provider_counts": {
+    "datasets": {
+      "Exam-Mate": 633,
+      "PESTLE": 425,
+      "Revision Village": 35
+    },
+    "questions": {
+      "Exam-Mate": 13374,
+      "PESTLE": 10362,
+      "Revision Village": 1975
+    },
+    "variants": {
+      "Exam-Mate": 13374,
+      "PESTLE": 13291,
+      "Revision Village": 3818
+    }
+  },
+  "archive_identity": {
+    "status": "unverified",
+    "public_assignment": "unknown",
+    "review_status": "under_review",
+    "reason": "Existing importer and production metadata do not reliably distinguish Revision Town from Revision Village; no provider is assigned from ambiguous path normalization."
+  },
+  "library_source_evidence": {
+    "indexed_paths_with_verified_provider_names": 0,
+    "policy": "Do not infer provider attribution from visual similarity or ambiguous filenames; unverified resources remain unknown and enter review."
+  }
+}

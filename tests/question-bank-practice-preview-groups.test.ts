@@ -15,6 +15,7 @@ const configuration: PracticeConfiguration = {
     statuses: ['not_started', 'in_progress', 'completed'],
     saved: null,
     calculator: null,
+    sourceSlugs: [],
   },
   blocks: ['topic-one', 'topic-two'].map((key) => ({
     key,

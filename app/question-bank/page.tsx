@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
+import { QuestionSourceBadges } from '@/components/content-source-badge';
 import { QuestionBankJoinModal } from '@/components/question-bank/question-bank-join-modal';
 import { OldCourseBadge } from '@/components/question-bank/old-course-badge';
 import { SubjectIcon } from '@/components/question-bank/subject-icon';
@@ -339,6 +340,7 @@ export default async function QuestionBankLanding() {
                           <strong title={row.question.reference}>
                             {row.question.reference}
                           </strong>
+                          <QuestionSourceBadges sources={row.sources} />
                           <small title={row.course.name}>{row.course.name}</small>
                         </span>
                         <span

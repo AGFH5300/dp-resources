@@ -30,6 +30,7 @@ import {
 import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
 import { rememberRecentResource } from '@/lib/recent-client-storage';
+import { ResourceAttributionBadges } from '@/components/content-source-badge';
 
 type Props = {
   items: DriveItem[];
@@ -254,6 +255,8 @@ export function ResourceContextMenu({
             resourceName: item.name,
             resourcePath: path,
             isFolder: item.isFolder,
+            sourceLabel: item.attribution?.sources[0]?.shortLabel,
+            resourceTypeLabel: item.attribution?.resourceType?.displayName,
           }}
           className={row}
           onBegin={onClose}
@@ -336,6 +339,9 @@ export function ResourceDetailsPanel({
         <p className="mt-1 text-sm text-slate-500">
           {typeLabel(item.mimeType, item.isFolder)}
         </p>
+        <div className="mt-2">
+          <ResourceAttributionBadges attribution={item.attribution} />
+        </div>
         <dl className="mt-5 space-y-3 text-sm">
           <div>
             <dt className="text-xs uppercase text-slate-500">
@@ -401,6 +407,8 @@ export function ResourceDetailsPanel({
               resourceName: item.name,
               resourcePath: path,
               isFolder: item.isFolder,
+              sourceLabel: item.attribution?.sources[0]?.shortLabel,
+              resourceTypeLabel: item.attribution?.resourceType?.displayName,
             }}
             previewHref={hrefFor(item, rootId)}
             downloadHref={
@@ -464,6 +472,12 @@ function FileBrowserToolbar({
   clear,
   view,
   setPersist,
+  sourceFilter,
+  setSourceFilter,
+  sourceOptions,
+  resourceTypeFilter,
+  setResourceTypeFilter,
+  resourceTypeOptions,
 }: any) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-2">
@@ -503,6 +517,28 @@ function FileBrowserToolbar({
               />
             </label>
             <label className="mt-3 block text-sm">
+              Source
+              <AppSelect
+                value={sourceFilter}
+                onValueChange={setSourceFilter}
+                options={[
+                  { value: 'all', label: 'All sources' },
+                  ...sourceOptions,
+                ]}
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Resource type
+              <AppSelect
+                value={resourceTypeFilter}
+                onValueChange={setResourceTypeFilter}
+                options={[
+                  { value: 'all', label: 'All resource types' },
+                  ...resourceTypeOptions,
+                ]}
+              />
+            </label>
+            <label className="mt-3 block text-sm">
               Modified date
               <AppSelect
                 value={modified}
@@ -524,6 +560,8 @@ function FileBrowserToolbar({
                   { value: 'modified', label: 'Recently modified' },
                   { value: 'type', label: 'Type' },
                   { value: 'size', label: 'Size' },
+                  { value: 'source', label: 'Source' },
+                  { value: 'resource-type', label: 'Resource type' },
                 ]}
               />
             </label>
@@ -630,11 +668,15 @@ export function ResourceRow({
                 : ''}
             {item.modifiedTime ? ` · ${formatDate(item.modifiedTime)}` : ''}
           </span>
+          <span className="mt-1 block md:hidden">
+            <ResourceAttributionBadges attribution={item.attribution} />
+          </span>
         </span>
       </div>
       <span className="hidden truncate text-slate-500 md:block">{path}</span>
-      <span className="hidden text-slate-600 md:block">
-        {typeLabel(item.mimeType, item.isFolder)}
+      <span className="hidden min-w-0 text-slate-600 md:block">
+        <span className="block">{typeLabel(item.mimeType, item.isFolder)}</span>
+        <ResourceAttributionBadges attribution={item.attribution} />
       </span>
       <span className="hidden text-slate-500 md:block">
         {formatDate(item.modifiedTime)}
@@ -675,6 +717,8 @@ export function LibraryBrowser({
     [filtersOpen, setFiltersOpen] = useState(false),
     [view, setView] = useState<'list' | 'grid'>('list'),
     [sort, setSort] = useState('name'),
+    [sourceFilter, setSourceFilter] = useState('all'),
+    [resourceTypeFilter, setResourceTypeFilter] = useState('all'),
     [details, setDetails] = useState<DriveItem | null>(null),
     [menu, setMenu] = useState<{
       item: DriveItem;
@@ -702,6 +746,23 @@ export function LibraryBrowser({
     setView(v);
     localStorage.setItem('dp_view', v);
   }
+  const sourceOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const item of localItems) {
+      for (const source of item.attribution?.sources ?? []) {
+        names.set(source.slug, source.shortLabel);
+      }
+    }
+    return [...names].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
+  }, [localItems]);
+  const resourceTypeOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const item of localItems) {
+      const resourceType = item.attribution?.resourceType;
+      if (resourceType) names.set(resourceType.slug, resourceType.displayName);
+    }
+    return [...names].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
+  }, [localItems]);
   const filtered = useMemo(
     () =>
       localItems
@@ -709,6 +770,16 @@ export function LibraryBrowser({
           if (folderOnly && !i.isFolder) return false;
           const label = typeLabel(i.mimeType, i.isFolder).toLowerCase();
           if (type !== 'all' && !label.includes(type)) return false;
+          if (
+            sourceFilter !== 'all' &&
+            !(i.attribution?.sources ?? []).some((source) => source.slug === sourceFilter)
+          )
+            return false;
+          if (
+            resourceTypeFilter !== 'all' &&
+            i.attribution?.resourceType?.slug !== resourceTypeFilter
+          )
+            return false;
           if (modified !== 'all' && i.modifiedTime) {
             const days =
               (Date.now() - new Date(i.modifiedTime).getTime()) / 86400000;
@@ -732,14 +803,30 @@ export function LibraryBrowser({
               typeLabel(b.mimeType, b.isFolder),
             );
           if (sort === 'size') return Number(b.size || 0) - Number(a.size || 0);
+          if (sort === 'source')
+            return String(
+              (a.attribution?.sources.find((source) => source.isPrimary) ??
+                a.attribution?.sources[0])?.shortLabel ?? '',
+            ).localeCompare(
+              String(
+                (b.attribution?.sources.find((source) => source.isPrimary) ??
+                  b.attribution?.sources[0])?.shortLabel ?? '',
+              ),
+            );
+          if (sort === 'resource-type')
+            return String(a.attribution?.resourceType?.displayName ?? '').localeCompare(
+              String(b.attribution?.resourceType?.displayName ?? ''),
+            );
           return a.name.localeCompare(b.name);
         }),
-    [localItems, folderOnly, type, modified, sort],
+    [localItems, folderOnly, type, modified, sort, sourceFilter, resourceTypeFilter],
   );
   const clear = () => {
     setFolderOnly(false);
     setType('all');
     setModified('all');
+    setSourceFilter('all');
+    setResourceTypeFilter('all');
     setSort('name');
   };
   return (
@@ -767,6 +854,9 @@ export function LibraryBrowser({
           <h1 className="text-xl font-semibold tracking-tight text-[color:var(--dp-navy)]">
             {active?.name || 'Library'}
           </h1>
+          <Link href="/library/sources" className="mt-1 inline-block text-sm font-medium text-[color:var(--dp-blue)] hover:underline">
+            Browse by source
+          </Link>
         </div>
       </div>
       {crumbs.length > 1 && (
@@ -795,6 +885,12 @@ export function LibraryBrowser({
           clear,
           view,
           setPersist,
+          sourceFilter,
+          setSourceFilter,
+          sourceOptions,
+          resourceTypeFilter,
+          setResourceTypeFilter,
+          resourceTypeOptions,
         }}
       />
       {crumbs.length === 1 && localItems.find((i) => i.featuredLabel) && (
@@ -877,6 +973,9 @@ export function LibraryBrowser({
                   ? ` · ${formatEstimatedSize(item.estimatedSize)}`
                   : ''}
               </p>
+              <div className="mt-2 min-w-0">
+                <ResourceAttributionBadges attribution={item.attribution} />
+              </div>
             </div>
           ))}
         </div>

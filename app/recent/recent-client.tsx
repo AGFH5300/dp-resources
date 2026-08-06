@@ -7,6 +7,7 @@ import {
   mergeRecentResources,
   type RecentResource,
 } from '@/lib/recent-resources';
+import { ResourceAttributionBadges } from '@/components/content-source-badge';
 
 export function RecentClient({ initialRows }: { initialRows: RecentResource[] }) {
   const [rows, setRows] = useState(initialRows);
@@ -35,6 +36,7 @@ export function RecentClient({ initialRows }: { initialRows: RecentResource[] })
                 item={{ isFolder: r.isFolder, mimeType: r.mimeType }}
               />
               <span className="truncate">{r.name}</span>
+              <ResourceAttributionBadges attribution={r.attribution} />
             </span>
             <span className="truncate text-slate-500">{r.path}</span>
             <span className="text-slate-500">

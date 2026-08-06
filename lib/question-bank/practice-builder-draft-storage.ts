@@ -21,6 +21,7 @@ const UUID =
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DIFFICULTIES = new Set(['easy', 'medium', 'hard', 'unrated']);
 const STATUSES = new Set(['not_started', 'in_progress', 'completed']);
+const SOURCE_SLUG = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 const ORDERING_MODES = new Set<PracticeOrderingMode>([
   'mixed',
   'grouped',
@@ -59,9 +60,14 @@ export function parsePracticeBuilderDraft(value: unknown): PracticeBuilderDraft 
   const filters = root.filters as Record<string, unknown>;
   const difficulties = stringArray(filters.difficulties, DIFFICULTIES);
   const statuses = stringArray(filters.statuses, STATUSES);
+  const sourceSlugs =
+    filters.sourceSlugs === undefined ? [] : stringArray(filters.sourceSlugs);
   if (
     !difficulties ||
     !statuses ||
+    !sourceSlugs ||
+    sourceSlugs.length > 20 ||
+    sourceSlugs.some((sourceSlug) => !SOURCE_SLUG.test(sourceSlug)) ||
     !nullableBoolean(filters.saved) ||
     !nullableBoolean(filters.calculator) ||
     !Array.isArray(root.blocks) ||
@@ -106,6 +112,7 @@ export function parsePracticeBuilderDraft(value: unknown): PracticeBuilderDraft 
       statuses: statuses as PracticeFilters['statuses'],
       saved: filters.saved as boolean | null,
       calculator: filters.calculator as boolean | null,
+      sourceSlugs,
     },
     blocks,
   };
