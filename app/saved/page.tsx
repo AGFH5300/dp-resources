@@ -33,30 +33,22 @@ export default async function Saved({
   const { data: rows = [] } = ids.length
     ? await sb.from('dp_resource_index').select('*').in('drive_file_id', ids)
     : { data: [] as any[] };
-  const { data: savedQuestions = [] } = await sb
-    .from('dp_qb_user_saved_questions')
-    .select(
-      'question_id,last_variant_id,created_at,question:dp_qb_questions!question_id(reference),variant:dp_qb_question_variants!last_variant_id(id,course:dp_qb_courses!course_id(slug,name,subject:dp_qb_subjects!subject_id(slug)),topic:dp_qb_topics!topic_id(name))',
-    )
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
-  const [resourceAttribution, questionSources, { data: sourceOptions = [] }] =
+  const [{ data: savedQuestions = [] }, { data: sourceOptions = [] }] =
     await Promise.all([
+      memberClient.rpc('dp_qb_list_saved_questions', {
+        p_source_slugs: selectedSources.length ? selectedSources : null,
+        p_limit: 20,
+      }),
+      memberClient.rpc('dp_content_source_options'),
+    ]);
+  const [resourceAttribution, questionSources] = await Promise.all([
       getResourceAttributionMap(ids),
       getQuestionSourceMap(
         (savedQuestions as any[])
           .filter((row) => row.last_variant_id)
           .map((row) => ({ variantId: row.last_variant_id, questionId: row.question_id })),
       ),
-      memberClient.rpc('dp_content_source_options'),
     ]);
-  const filteredQuestions = (savedQuestions as any[]).filter((row) => {
-    if (!selectedSources.length) return true;
-    return (questionSources.get(row.last_variant_id) ?? []).some(
-      (source) => source.isVariantSource && selectedSources.includes(source.slug),
-    );
-  });
   return (
     <>
       <Nav
@@ -95,18 +87,18 @@ export default async function Saved({
                   .map((source) => ({ slug: source.slug, label: source.short_label }))}
               />
             </div>
-            {filteredQuestions.length ? (
-              filteredQuestions.map((row) => (
+            {(savedQuestions as any[]).length ? (
+              (savedQuestions as any[]).map((row) => (
                 <Link
                   key={row.question_id}
-                  href={`/question-bank/${row.variant.course.subject.slug}/${row.variant.course.slug}/questions/${row.last_variant_id}`}
+                  href={`/question-bank/${row.subject_slug}/${row.course_slug}/questions/${row.last_variant_id}`}
                   className="dp-qb-course-link"
                 >
                   <span>
-                    <strong>{row.question.reference}</strong>
+                    <strong>{row.reference}</strong>
                     <QuestionSourceBadges sources={questionSources.get(row.last_variant_id) ?? []} />
                     <small>
-                      {row.variant.course.name} · {row.variant.topic.name}
+                      {row.course_name} · {row.topic_name}
                     </small>
                   </span>
                 </Link>

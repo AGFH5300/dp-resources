@@ -46,6 +46,45 @@ describe('unified content source attribution', () => {
     expect(output).toContain('Needs review');
   });
 
+  it('never renders a named Question Bank provider while attribution is under review', () => {
+    const unreviewed = [{
+      slug: 'exam_mate', displayName: 'Exam-Mate', shortLabel: 'Exam-Mate',
+      attributionLabel: 'Indexed from', reviewStatus: 'under_review' as const,
+      isVariantSource: true,
+    }];
+    const badges = renderToStaticMarkup(<QuestionSourceBadges sources={unreviewed} />);
+    const information = renderToStaticMarkup(<QuestionSourceInformation sources={unreviewed} />);
+    expect(badges).toContain('Source: Under review');
+    expect(information).toContain('Source attribution under review');
+    expect(`${badges}${information}`).not.toContain('Exam-Mate');
+  });
+
+  it('filters saved questions in the database before the 20-row limit', () => {
+    const page = readFileSync('app/saved/page.tsx', 'utf8');
+    const migration = readFileSync(
+      'supabase/migrations/20260807171243_content_source_review_hotfix.sql',
+      'utf8',
+    );
+    expect(page).toContain("memberClient.rpc('dp_qb_list_saved_questions'");
+    expect(page).not.toContain(".from('dp_qb_user_saved_questions')");
+    expect(migration).toContain("provenance.review_status = 'reviewed'");
+    expect(migration.indexOf('source.slug = any(p_source_slugs)')).toBeLessThan(
+      migration.indexOf('limit least(greatest(coalesce(p_limit, 20), 1), 100)'),
+    );
+  });
+
+  it('supersedes an old explicit primary source before applying a replacement', () => {
+    const migration = readFileSync(
+      'supabase/migrations/20260807171243_content_source_review_hotfix.sql',
+      'utf8',
+    );
+    expect(migration).toContain('dp_resource_one_reviewed_primary_override_uidx');
+    expect(migration).toContain("assignment_method in ('admin_override', 'manual')");
+    expect(migration).toContain("review_status = 'rejected'");
+    expect(migration).toContain('change_version');
+    expect(migration).toContain("'admin_v2'");
+  });
+
   it('keeps migration surfaces additive, RLS-protected, service-scoped and source-aware before practice dedup', () => {
     const migration = readFileSync('supabase/migrations/20260806151159_content_source_attribution.sql', 'utf8');
     for (const table of ['dp_content_sources', 'dp_content_source_aliases', 'dp_resource_source_assignments', 'dp_resource_types', 'dp_resource_type_assignments', 'dp_content_source_audit_log']) {

@@ -162,15 +162,18 @@ export async function getQuestionSourceMap(
   ) => {
     const source = one(row.source) as SourceRow | null;
     if (!source) return;
+    const underReview = row.review_status === 'under_review';
     const current = raw.get(variantId) ?? [];
     current.push({
-      slug: source.slug,
-      displayName: source.display_name,
-      shortLabel: source.short_label,
-      attributionLabel: source.attribution_label,
+      slug: underReview ? 'unknown' : source.slug,
+      displayName: underReview
+        ? 'Source attribution under review'
+        : source.display_name,
+      shortLabel: underReview ? 'Under review' : source.short_label,
+      attributionLabel: underReview ? 'Source' : source.attribution_label,
       reviewStatus: row.review_status,
       isVariantSource,
-      order: source.display_order,
+      order: underReview ? 9990 : source.display_order,
     });
     raw.set(variantId, current);
   };
