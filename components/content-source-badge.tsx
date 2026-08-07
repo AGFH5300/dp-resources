@@ -10,6 +10,20 @@ function labelForSources(labels: string[]) {
   return `${labels.slice(0, 2).join(' · ')} · +${labels.length - 2}`;
 }
 
+function publicQuestionSources(sources: QuestionPublicSource[]) {
+  return sources.map((source) =>
+    source.reviewStatus === 'under_review'
+      ? {
+          ...source,
+          slug: 'unknown',
+          displayName: 'Source attribution under review',
+          shortLabel: 'Under review',
+          attributionLabel: 'Source',
+        }
+      : source,
+  );
+}
+
 export function QuestionSourceBadges({
   sources = [],
   className = '',
@@ -17,8 +31,9 @@ export function QuestionSourceBadges({
   sources?: QuestionPublicSource[];
   className?: string;
 }) {
-  const variantSources = sources.filter((source) => source.isVariantSource);
-  const display = variantSources.length ? variantSources : sources;
+  const safeSources = publicQuestionSources(sources);
+  const variantSources = safeSources.filter((source) => source.isVariantSource);
+  const display = variantSources.length ? variantSources : safeSources;
   const deduped = [...new Map(display.map((source) => [source.slug, source])).values()];
   if (!deduped.length) return null;
   const labels = deduped.map((source) => source.shortLabel);
@@ -39,16 +54,17 @@ export function QuestionSourceInformation({
 }: {
   sources?: QuestionPublicSource[];
 }) {
+  const safeSources = publicQuestionSources(sources);
   const indexed = [
     ...new Map(
-      sources
+      safeSources
         .filter((source) => source.isVariantSource)
         .map((source) => [source.slug, source]),
     ).values(),
   ];
   const alsoFound = [
     ...new Map(
-      sources
+      safeSources
         .filter(
           (source) =>
             !source.isVariantSource && !indexed.some((item) => item.slug === source.slug),
@@ -75,7 +91,7 @@ export function QuestionSourceInformation({
             {alsoFound.map((source) => source.displayName).join(' · ')}
           </p>
         ) : null}
-        {sources.some((source) => source.reviewStatus === 'under_review') ? (
+        {safeSources.some((source) => source.reviewStatus === 'under_review') ? (
           <p>Source attribution is under review; no unverified provider is shown.</p>
         ) : null}
         <p className="text-xs text-slate-500">
