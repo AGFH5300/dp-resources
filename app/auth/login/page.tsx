@@ -57,6 +57,7 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPath] = useState(readNextPath);
@@ -76,6 +77,10 @@ export default function LoginPage() {
       .auth.signOut({ scope: 'local' })
       .catch(() => undefined);
   }, []);
+
+  function updateCapsLockState(event: React.KeyboardEvent<HTMLInputElement>) {
+    setCapsLockOn(event.getModifierState('CapsLock'));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -164,14 +169,27 @@ export default function LoginPage() {
           <div className="relative">
             <input
               id="login-password"
-              className="tsm-input pr-10"
+              className="tsm-input pr-16"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={updateCapsLockState}
+              onKeyUp={updateCapsLockState}
+              onBlur={() => setCapsLockOn(false)}
+              aria-describedby={capsLockOn ? 'login-caps-lock-warning' : undefined}
               required
               disabled={loading}
             />
+            {capsLockOn && (
+              <span
+                className="absolute right-8 top-1/2 -translate-y-1/2 select-none text-lg leading-none text-amber-700"
+                title="Caps Lock is on"
+                aria-hidden="true"
+              >
+                ⇪
+              </span>
+            )}
             <button
               type="button"
               className="absolute right-0 top-1/2 -translate-y-1/2 text-[#43474d] hover:text-[#00152a] disabled:cursor-not-allowed disabled:opacity-60"
@@ -186,6 +204,19 @@ export default function LoginPage() {
               )}
             </button>
           </div>
+          {capsLockOn && (
+            <p
+              id="login-caps-lock-warning"
+              className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700"
+              role="status"
+              aria-live="polite"
+            >
+              <span aria-hidden="true" className="text-sm leading-none">
+                ⇪
+              </span>
+              Caps Lock is on
+            </p>
+          )}
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}
         <button
