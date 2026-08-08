@@ -1,0 +1,90 @@
+{
+  "audit": "resource_source_evidence_v3",
+  "date": "2026-08-08",
+  "scope": "Ordinary Google Drive-backed Resource Library source/provider attribution only",
+  "safety": {
+    "drive_files_moved": 0,
+    "drive_files_renamed": 0,
+    "drive_files_copied": 0,
+    "drive_files_deleted": 0,
+    "question_bank_content_mutated": false,
+    "user_state_mutated": false,
+    "raw_private_source_urls_recorded": false
+  },
+  "baseline": {
+    "resource_files": 12309,
+    "resource_folders": 4607,
+    "under_review_assignments": 16916
+  },
+  "evidence_policy": [
+    "Use explicit provider branding inside reviewed files.",
+    "Use reviewed Resource Library manifest evidence where it matches a coherent collection.",
+    "Use highly specific collection folder patterns only after cross-subject/content review.",
+    "Use explicit official-IB and school-managed filename evidence.",
+    "Do not infer a provider from visual style alone.",
+    "Do not label the legacy Question Bank archive as Revision Town without independent evidence.",
+    "Leave mixed textbooks, student work, IA/EE samples and ambiguous learning resources under review rather than guess."
+  ],
+  "reviewed_effective": {
+    "files": 12041,
+    "folders": 4495,
+    "by_source_files": {
+      "ib_official": 10540,
+      "save_my_exams": 641,
+      "christos_nikolaidis": 466,
+      "revisiondojo": 206,
+      "brilliant_learning": 126,
+      "school": 56,
+      "padlet": 5,
+      "dp_resources": 1
+    },
+    "by_source_folders": {
+      "ib_official": 4333,
+      "save_my_exams": 137,
+      "christos_nikolaidis": 7,
+      "revisiondojo": 15,
+      "brilliant_learning": 3
+    }
+  },
+  "remaining_under_review": {
+    "files": 268,
+    "folders": 112,
+    "file_percentage": 2.18,
+    "reason": "Residual items are mixed or do not contain enough reviewed acquisition/provider evidence for a safe automatic assignment."
+  },
+  "representative_evidence": {
+    "ib_official": [
+      "Past Papers collections use session/year/level/paper/markscheme structures across subjects.",
+      "Reviewed subject guides explicitly identify the International Baccalaureate Organization as publisher.",
+      "Specimen Papers, Guides and Syllabus, Formula & Data Booklets and Grade Boundaries use verified official patterns."
+    ],
+    "save_my_exams": [
+      "Reviewed Notes PDFs across Biology, Business, Mathematics and Psychology contain Save My Exams branding/copyright."
+    ],
+    "revisiondojo": [
+      "Reviewed Cheatsheets across Economics, Biology, Business, English and Physics explicitly reference revisiondojo.com.",
+      "The reviewed Math AI predicted/mock paper collection matches RevisionDojo material."
+    ],
+    "christos_nikolaidis": [
+      "Reviewed Math AA/AI Study Materials explicitly credit Christos Nikolaidis.",
+      "The Resource Library manifest contains a Christos Nikolaidis Maths entry.",
+      "Reviewed Math AA mock materials carry Christos Nikolaidis/CN attribution."
+    ],
+    "brilliant_learning": [
+      "Physics Study Materials titles match the reviewed Brilliant Learning IB DP Physics practice-topic catalogue."
+    ],
+    "school": [
+      "Assignments are limited to explicit DIA subject briefs, course/programme/curriculum/subject outlines, school assessment/planning documents and similarly explicit filenames."
+    ],
+    "padlet": [
+      "Only the five current Library items whose filenames explicitly state Padlet provenance were assigned to Padlet; no DIA Padlet identity was inferred without matching evidence."
+    ]
+  },
+  "post_verification": {
+    "duplicate_reviewed_effective_primary_items": 0,
+    "question_bank_cores": 30846,
+    "question_bank_variants": 42695,
+    "question_bank_assets": 42532,
+    "question_bank_solution_videos": 8194
+  }
+}
