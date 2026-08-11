@@ -301,7 +301,7 @@ async function getMetadata(drive, fileId) {
 async function findChild(drive, parentId, wantedName) {
   const escaped = parentId.replace(/'/g, "\\'");
   let pageToken;
-  const matches = [];
+  const children = [];
   do {
     const { data } = await drive.files.list({
       q: `'${escaped}' in parents and trashed=false`,
@@ -311,9 +311,19 @@ async function findChild(drive, parentId, wantedName) {
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     });
-    matches.push(...(data.files || []).filter((file) => normalizeName(file.name || '') === normalizeName(wantedName)));
+    children.push(...(data.files || []));
     pageToken = data.nextPageToken || undefined;
   } while (pageToken);
+
+  const exactMatches = children.filter((file) => file.name === wantedName);
+  if (exactMatches.length > 1) throw new Error(`Multiple exact destination children match ${wantedName}`);
+  if (exactMatches.length === 1) return exactMatches[0];
+
+  const normalizedWantedName = normalizeName(wantedName);
+  if (!normalizedWantedName) return null;
+  const matches = children.filter(
+    (file) => normalizeName(file.name || '') === normalizedWantedName,
+  );
   if (matches.length > 1) throw new Error(`Multiple destination children match ${wantedName}`);
   return matches[0] || null;
 }
