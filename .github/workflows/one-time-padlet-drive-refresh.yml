@@ -9,7 +9,7 @@ on:
       - scripts/one-time-padlet-drive-refresh.mjs
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: one-time-padlet-drive-refresh
@@ -54,3 +54,16 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Record verification summary on the maintenance branch
+        if: always()
+        shell: bash
+        run: |
+          test -f padlet-refresh-summary.json || exit 0
+          mkdir -p ops
+          cp padlet-refresh-summary.json ops/padlet-drive-refresh-summary.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ops/padlet-drive-refresh-summary.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record Padlet Drive refresh result"
+          git push
