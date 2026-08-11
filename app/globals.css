@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 @import 'katex/dist/katex.min.css';
+
+/* Theme selection is controlled by the explicit data-theme attribute. Without
+   this override Tailwind's dark utilities follow the operating-system media
+   query, so choosing Light while the OS is dark produces a mixed, unreadable
+   interface. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 :root {
   --dp-navy: #0b1f3a;
   --dp-blue: #2563eb;
@@ -94,6 +101,10 @@ body {
 .tsm-input:focus {
   outline: none;
   border-bottom: 2px solid var(--primary);
+}
+
+.tsm-input.dp-login-password-input {
+  padding-right: 4rem;
 }
 
 .tsm-btn-primary {
@@ -613,7 +624,7 @@ button:disabled:hover {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.dp-qb-filters input {
+.dp-qb-filters input:not([type='checkbox']):not([type='radio']) {
   width: 100%;
   min-height: 2.45rem;
   border: 1px solid #cbd5e1;
@@ -622,6 +633,15 @@ button:disabled:hover {
   padding: 0.45rem 0.55rem;
   color: #334155;
   font-size: 0.82rem;
+}
+.dp-qb-filters input:is([type='checkbox'], [type='radio']) {
+  width: 1rem;
+  height: 1rem;
+  min-height: 1rem;
+  flex: 0 0 auto;
+  border-radius: 0.2rem;
+  padding: 0;
+  accent-color: var(--dp-blue);
 }
 .dp-qb-filters .dp-select-trigger { min-height: 2.45rem; font-size: 0.82rem; }
 .dp-qb-filter-bar {
@@ -699,6 +719,32 @@ button:disabled:hover {
   margin-top: 0.65rem;
   border-top: 1px solid #e2e8f0;
   padding-top: 0.65rem;
+}
+.dp-qb-filter-more legend {
+  color: var(--dp-heading);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dp-qb-source-options {
+  border-color: var(--outline);
+  background: var(--dp-warm-surface);
+}
+.dp-qb-source-option {
+  color: var(--dp-heading);
+}
+.dp-qb-filter-more .dp-qb-source-option > span {
+  margin-bottom: 0;
+  color: var(--dp-heading);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.dp-qb-source-option small,
+.dp-qb-source-hint {
+  color: var(--dp-muted-text);
 }
 .dp-qb-filter-actions {
   grid-column: 1 / -1;

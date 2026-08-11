@@ -244,11 +244,14 @@ export function QuestionBankFilters({
           {filterOptions.sources.length > 1 ? (
             <fieldset className="min-w-0">
               <legend>Sources</legend>
-              <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
+              <div className="dp-qb-source-options mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
                 {filterOptions.sources.map((source) => {
                   const checked = filters.sourceSlugs.includes(source.slug);
                   return (
-                    <label key={source.slug} className="flex items-center gap-2 text-sm">
+                    <label
+                      key={source.slug}
+                      className="dp-qb-source-option flex items-center gap-2 text-sm"
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
@@ -260,12 +263,14 @@ export function QuestionBankFilters({
                         }}
                       />
                       <span className="min-w-0 flex-1 truncate">{source.shortLabel}</span>
-                      <small className="text-slate-500">{source.count.toLocaleString()}</small>
+                      <small>{source.count.toLocaleString()}</small>
                     </label>
                   );
                 })}
               </div>
-              <small className="mt-1 block text-slate-500">Match any selected source.</small>
+              <small className="dp-qb-source-hint mt-1 block">
+                Choose one or more sources. Leave all unchecked to show every source.
+              </small>
             </fieldset>
           ) : null}
           {showDifficulty ? (

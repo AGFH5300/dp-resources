@@ -1,7 +1,7 @@
 'use client';
 
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -58,6 +58,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const capsLockActiveRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPath] = useState(readNextPath);
@@ -78,8 +80,31 @@ export default function LoginPage() {
       .catch(() => undefined);
   }, []);
 
-  function updateCapsLockState(event: React.KeyboardEvent<HTMLInputElement>) {
-    setCapsLockOn(event.getModifierState('CapsLock'));
+  useEffect(() => {
+    const rememberCapsLockState = (event: KeyboardEvent) => {
+      const active = event.getModifierState('CapsLock');
+      capsLockActiveRef.current = active;
+      if (document.activeElement === passwordInputRef.current) {
+        setCapsLockOn(active);
+      }
+    };
+
+    window.addEventListener('keydown', rememberCapsLockState, true);
+    window.addEventListener('keyup', rememberCapsLockState, true);
+    return () => {
+      window.removeEventListener('keydown', rememberCapsLockState, true);
+      window.removeEventListener('keyup', rememberCapsLockState, true);
+    };
+  }, []);
+
+  function updateCapsLockState(
+    event:
+      | React.KeyboardEvent<HTMLInputElement>
+      | React.PointerEvent<HTMLInputElement>,
+  ) {
+    const active = event.getModifierState('CapsLock');
+    capsLockActiveRef.current = active;
+    setCapsLockOn(active);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -168,14 +193,17 @@ export default function LoginPage() {
           </div>
           <div className="relative">
             <input
+              ref={passwordInputRef}
               id="login-password"
-              className="tsm-input pr-16"
+              className="tsm-input dp-login-password-input"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={updateCapsLockState}
               onKeyUp={updateCapsLockState}
+              onPointerDown={updateCapsLockState}
+              onFocus={() => setCapsLockOn(capsLockActiveRef.current)}
               onBlur={() => setCapsLockOn(false)}
               aria-describedby={capsLockOn ? 'login-caps-lock-warning' : undefined}
               required

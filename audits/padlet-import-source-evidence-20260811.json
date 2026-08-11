@@ -1,0 +1,28 @@
+{
+  "audit": "padlet_archive_hosting_evidence_v1",
+  "date": "2026-08-11",
+  "scope": "Hosted-from provenance for exact Resource Library matches in PADLET IMPORT - COMPRESSED.zip",
+  "safety": {
+    "drive_files_moved": 0,
+    "drive_files_renamed": 0,
+    "drive_files_copied": 0,
+    "drive_files_deleted": 0,
+    "existing_primary_sources_replaced": 0,
+    "question_bank_content_mutated": false,
+    "user_state_mutated": false
+  },
+  "evidence": {
+    "archive_sha256": "911a6bfa097e47ce060b6dfcb9cf15f12de1f3b76f8f7b2134b699d010cd541b",
+    "archive_listing_sha256": "75e98c1a8f2969168fc3b631ca30bc89e93bfe46aa27646737dea1eea889f2d5",
+    "archive_files": 269,
+    "unique_normalized_filename_matches": 239,
+    "ambiguous_filename_matches_excluded": 2,
+    "unmatched_archive_files_excluded": 28,
+    "pre_existing_padlet_assignments_on_matches": 0
+  },
+  "existing_sources_preserved": {
+    "school": 30,
+    "ib_official": 5
+  },
+  "decision": "Add Padlet as a non-primary hosted_from relationship only for the 239 unique live-Library matches. Preserve original-source attribution and leave ambiguous or unmatched files unchanged."
+}

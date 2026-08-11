@@ -51,7 +51,7 @@ export function QuestionBankJoinModal() {
             <KeyRound className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <strong className="text-lg text-[color:var(--dp-navy)]">
+            <strong className="text-lg text-[color:var(--dp-navy)] dark:text-slate-50">
               Join with a code
             </strong>
             <span className="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">

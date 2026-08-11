@@ -1,0 +1,34 @@
+{
+  "audit": "revision_town_archive_evidence_v1",
+  "date": "2026-08-11",
+  "scope": "Question Bank source attribution metadata for the verified processed-20260721-222121 import batch",
+  "safety": {
+    "question_text_mutated": false,
+    "question_variants_mutated": false,
+    "assets_mutated": false,
+    "taxonomy_mutated": false,
+    "user_state_mutated": false,
+    "resource_library_mutated": false
+  },
+  "evidence": {
+    "archive_identifier": "processed-20260721-222121",
+    "database_archive_sha256": "e91b6f5752b67626b278b34858ff0f11444bcb11bf0324e4cba1a5edad14a64d",
+    "supplied_summary_sha256": "0b403eaa91034571109247ec6255224135b6cadc175a2c4a249726a3c9623e9e",
+    "source_capture": "revisiontown2024.pages.dev",
+    "import_status": "completed",
+    "verification_status": "passed",
+    "importer_version": "1.0.0",
+    "mode": "all"
+  },
+  "invariants": {
+    "expected_variants": 12212,
+    "actual_variants": 12212,
+    "unknown_under_review_variant_rows_before": 12212,
+    "expected_question_cores": 5135,
+    "actual_question_cores": 5135,
+    "unknown_under_review_question_rows_before": 5135,
+    "pre_existing_revision_town_variant_rows": 0,
+    "pre_existing_revision_town_question_rows": 0
+  },
+  "decision": "Review only the exact source rows created by the verified batch as Revision Town. Abort on any batch, hash, count, status, or collision mismatch."
+}

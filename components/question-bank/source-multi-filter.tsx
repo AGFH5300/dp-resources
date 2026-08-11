@@ -27,12 +27,12 @@ export function SourceMultiFilter({
   };
   return (
     <fieldset className={compact ? 'mt-3' : 'mt-4'}>
-      <legend className="text-sm font-medium text-slate-700">Sources</legend>
+      <legend className="text-sm font-medium text-[color:var(--dp-heading)]">Sources</legend>
       <div className="mt-1 flex flex-wrap gap-2" aria-label="Filter by source; matches any selected source">
         {options.map((option) => (
           <label
             key={option.slug}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-sm text-slate-700"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[color:var(--outline)] bg-[color:var(--dp-warm-surface)] px-2.5 py-1 text-sm text-[color:var(--dp-heading)]"
           >
             <input
               type="checkbox"
@@ -42,7 +42,7 @@ export function SourceMultiFilter({
             />
             <span>{option.label}</span>
             {option.count !== undefined ? (
-              <small className="text-slate-500">{option.count.toLocaleString()}</small>
+              <small className="text-[color:var(--dp-muted-text)]">{option.count.toLocaleString()}</small>
             ) : null}
           </label>
         ))}
