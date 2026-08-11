@@ -430,6 +430,26 @@ async function main() {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
+  const { data: completedAudit, error: completedAuditError } = await supabase
+    .from('dp_content_source_audit_log')
+    .select('after_state,created_at')
+    .eq('action', 'drive_content_refresh')
+    .eq('change_version', VERSION)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (completedAuditError) throw new Error(completedAuditError.message);
+  if (completedAudit?.after_state) {
+    const summary = {
+      ...completedAudit.after_state,
+      status: 'already_completed',
+      verifiedFromAuditAt: completedAudit.created_at,
+    };
+    writeFileSync(SUMMARY_PATH, `${JSON.stringify(summary, null, 2)}\n`);
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+
   await downloadArchive(drive);
   const extractedRoot = join(EXTRACT_DIR, ARCHIVE_ROOT);
   if (!existsSync(extractedRoot)) throw new Error('Archive root is missing');
