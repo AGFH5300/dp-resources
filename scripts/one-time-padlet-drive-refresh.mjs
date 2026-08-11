@@ -521,10 +521,20 @@ async function main() {
 
   const existingPlans = plan.filter((item) => item.fileId);
   const existingMetadata = new Map();
+  const permissionFailures = {
+    uneditableTargets: [],
+    unwritableDestinations: [],
+  };
   await mapWithConcurrency(existingPlans, 8, async (item) => {
     const metadata = await getMetadata(drive, item.fileId);
     if (metadata.trashed || metadata.capabilities?.canEdit !== true) {
-      throw new Error(`Service account cannot edit target: ${item.archivePath}`);
+      permissionFailures.uneditableTargets.push({
+        archivePath: item.archivePath,
+        fileId: item.fileId,
+        parentIds: metadata.parents || [],
+        trashed: metadata.trashed === true,
+      });
+      return;
     }
     existingMetadata.set(item.fileId, metadata);
   });
@@ -534,9 +544,25 @@ async function main() {
   await mapWithConcurrency(destinationParentIds, 8, async (parentId) => {
     const metadata = await getMetadata(drive, parentId);
     if (metadata.trashed || metadata.capabilities?.canAddChildren !== true) {
-      throw new Error(`Service account cannot add files to destination folder ${parentId}`);
+      permissionFailures.unwritableDestinations.push({
+        parentId,
+        trashed: metadata.trashed === true,
+      });
     }
   });
+  permissionFailures.uneditableTargets.sort((a, b) => a.archivePath.localeCompare(b.archivePath));
+  permissionFailures.unwritableDestinations.sort((a, b) => a.parentId.localeCompare(b.parentId));
+  if (
+    permissionFailures.uneditableTargets.length > 0 ||
+    permissionFailures.unwritableDestinations.length > 0
+  ) {
+    const error = new Error(
+      `Drive preflight found ${permissionFailures.uneditableTargets.length} uneditable targets and ` +
+      `${permissionFailures.unwritableDestinations.length} unwritable destinations`,
+    );
+    error.permissionFailures = permissionFailures;
+    throw error;
+  }
 
   const updated = [];
   const uploaded = [];
@@ -740,6 +766,7 @@ main().catch((error) => {
     version: VERSION,
     status: 'failed',
     message: error instanceof Error ? error.message : String(error),
+    ...(error?.permissionFailures ? { permissionFailures: error.permissionFailures } : {}),
     failedAt: new Date().toISOString(),
   };
   writeFileSync(SUMMARY_PATH, `${JSON.stringify(failure, null, 2)}\n`);
