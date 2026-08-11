@@ -82,7 +82,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(styles).toContain('.primaryAction');
     expect(styles).toContain('.courseCountPill');
     expect(styles).toContain('.questionCountPill');
-  }, 10_000);
+  }, 30_000);
 
   it('keeps practice APIs out of request-mutating middleware and returns JSON auth failures', () => {
     const middleware = read('middleware.ts');

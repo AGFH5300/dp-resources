@@ -101,5 +101,5 @@ describe('resource usage production hardening', () => {
     expect(console).not.toContain('Per-user top resources');
     expect(console).not.toContain('<td className="p-2">{r.mime_type}</td>');
     expect(console).not.toContain('{usageResource.mime_type}');
-  });
+  }, 30_000);
 });

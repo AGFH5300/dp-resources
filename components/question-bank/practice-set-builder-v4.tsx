@@ -362,7 +362,9 @@ function PracticeSettingsFields({
               </label>
             ))}
           </div>
-          <p className="mt-1 text-xs text-slate-500">Match any selected source. Leave all clear to use every source.</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Choose one or more sources. Leave all unchecked to use every source.
+          </p>
         </fieldset>
       ) : null}
 
