@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import type { ResourceMembership } from './types';
 import { requireSupabaseUrl } from './supabase-config';
+import { bootstrapAdminMembershipUpdate } from './membership-records';
 
 export function createSupabaseAdminClient() {
   return createClient(
@@ -18,17 +19,6 @@ export function adminEmails() {
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
-}
-
-export function bootstrapAdminMembershipUpdate(
-  existing: Pick<ResourceMembership, 'approved_at'> | null,
-  now = new Date().toISOString(),
-) {
-  return {
-    role: 'admin' as const,
-    is_approved: true,
-    approved_at: existing?.approved_at || now,
-  };
 }
 
 export async function syncBootstrapAdminResourceMembership(user: {

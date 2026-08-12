@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { bootstrapAdminMembershipUpdate } from '../lib/supabase-admin';
-import { pendingMembershipInsert } from '../lib/supabase';
+import {
+  bootstrapAdminMembershipUpdate,
+  pendingMembershipInsert,
+} from '../lib/membership-records';
 
 const middlewareSource = readFileSync('middleware.ts', 'utf8');
 const sessionHelperSource = readFileSync('lib/supabase.ts', 'utf8');
@@ -53,7 +55,7 @@ describe('missing membership repair fallback', () => {
 
 describe('middleware missing configuration resilience', () => {
   it('returns before creating a Supabase SSR client when public configuration is absent', () => {
-    const configIndex = middlewareSource.indexOf('getSupabasePublicConfig()');
+    const configIndex = middlewareSource.indexOf('getSupabaseServerConfig()');
     const guardIndex = middlewareSource.indexOf('!supabaseUrl || !supabaseKey');
     const returnIndex = middlewareSource.indexOf(
       'return NextResponse.next()',
@@ -61,9 +63,8 @@ describe('middleware missing configuration resilience', () => {
     );
     const createClientIndex = middlewareSource.indexOf('createServerClient(');
 
-    expect(middlewareSource).toContain(
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-    );
+    expect(middlewareSource).toContain('getSupabaseServerConfig');
+    expect(middlewareSource).not.toContain('NEXT_PUBLIC_SUPABASE');
     expect(configIndex).toBeGreaterThan(-1);
     expect(guardIndex).toBeGreaterThan(configIndex);
     expect(returnIndex).toBeGreaterThan(guardIndex);
