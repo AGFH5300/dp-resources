@@ -6,7 +6,6 @@ import { Eye, EyeOff } from 'lucide-react';
 import { AuthShell } from '@/components/auth-shell';
 import { PasswordStrengthMeter } from '@/components/password-strength-meter';
 import { Spinner } from '@/components/ui/spinner';
-import { createClient } from '@/lib/supabase/client';
 import { safeInternalReturnPath } from '@/lib/auth-redirect';
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
@@ -96,109 +95,22 @@ export default function SetPasswordPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
+    const response = await fetch('/api/auth/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'set_signup_password',
+        password,
+      }),
+    });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+    } | null;
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
-      setError('Your verification session expired. Please sign up again.');
-      setLoading(false);
-      return;
-    }
-
-    const cached =
-      typeof window !== 'undefined'
-        ? window.sessionStorage.getItem(SIGNUP_DRAFT_KEY)
-        : null;
-    let parsed: {
-      username?: string;
-      fullName?: string;
-      email?: string;
-    } | null = null;
-    if (cached) {
-      try {
-        parsed = JSON.parse(cached) as {
-          username?: string;
-          fullName?: string;
-          email?: string;
-        };
-      } catch {
-        parsed = null;
-      }
-    }
-
-    const draftUsername =
-      parsed?.username?.trim() ||
-      authData.user.user_metadata?.username?.trim() ||
-      null;
-    const draftFullName =
-      parsed?.fullName?.trim() ||
-      authData.user.user_metadata?.full_name?.trim() ||
-      null;
-    const draftEmail =
-      parsed?.email?.trim().toLowerCase() ||
-      authData.user.email?.trim().toLowerCase() ||
-      null;
-    const userEmail = authData.user.email?.trim().toLowerCase() || null;
-
-    if (
-      !draftUsername ||
-      !draftFullName ||
-      !draftEmail ||
-      draftEmail !== userEmail
-    ) {
+    if (!response.ok) {
       setError(
-        'Your signup details could not be verified. Please sign up again.',
+        result?.message || 'Could not finish account setup. Please try again.',
       );
-      setLoading(false);
-      return;
-    }
-
-    const { data: existingProfile, error: profileLoadError } = await supabase
-      .from('dp_resource_profiles')
-      .select('username, full_name, email')
-      .eq('id', authData.user.id)
-      .maybeSingle();
-
-    if (profileLoadError) {
-      setError('Could not verify your account details. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    const existingUsername = existingProfile?.username?.trim() || null;
-    if (
-      existingUsername &&
-      existingUsername.toLowerCase() !== draftUsername.toLowerCase()
-    ) {
-      setError('This email already has an account. Please log in instead.');
-      setLoading(false);
-      return;
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
-      setError(updateError.message);
-      setLoading(false);
-      return;
-    }
-
-    const { error: profileError } = await supabase
-      .from('dp_resource_profiles')
-      .upsert({
-        id: authData.user.id,
-        email: userEmail,
-        username: existingUsername ?? draftUsername,
-        full_name: existingProfile?.full_name?.trim() || draftFullName,
-      });
-
-    if (profileError) {
-      const duplicateMessage =
-        profileError.code === '23505'
-          ? profileError.message.includes('email')
-            ? 'That email is already registered. Log in instead.'
-            : 'That username is already taken.'
-          : profileError.message;
-      setError(duplicateMessage);
       setLoading(false);
       return;
     }

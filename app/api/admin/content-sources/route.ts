@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth';
 import { sameOriginOrForbidden } from '@/lib/request-security';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+import { loadContentSourceAudit } from '@/lib/content-source-audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +33,15 @@ export async function GET(request: Request) {
     if (error || !data) return Response.json({ error: 'Unable to inspect Question Bank attribution.' }, { status: 404 });
     return Response.json({ inspector: data }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
-  const { data, error } = await sb.rpc('dp_admin_content_source_audit');
-  if (error) return Response.json({ error: 'Unable to load source audit.' }, { status: 500 });
+  let data;
+  try {
+    data = await loadContentSourceAudit();
+  } catch (error) {
+    console.error('[content-sources] audit load failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return Response.json({ error: 'Unable to load source audit.' }, { status: 503 });
+  }
   const headers: Record<string, string> = { 'Cache-Control': 'private, no-store' };
   if (url.searchParams.get('download') === '1') {
     headers['Content-Disposition'] = 'attachment; filename="content-source-audit.json"';

@@ -12,7 +12,6 @@ import {
   Star,
 } from 'lucide-react';
 
-import { createClient } from '@/lib/supabase/client';
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
 import { SuspensionWatcher } from './suspension-watcher';
@@ -55,24 +54,16 @@ export function AppHeader({
     if (!userId) return;
 
     let cancelled = false;
-    const supabase = createClient();
-
-    void supabase
-      .from('dp_resource_profiles')
-      .select('username')
-      .eq('id', userId)
-      .maybeSingle<{ username: string }>()
-      .then(({ data, error }) => {
+    void fetch('/api/account/profile', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Profile request failed');
+        return response.json() as Promise<{ username?: string | null }>;
+      })
+      .then((data) => {
         if (cancelled) return;
-        if (error) {
-          console.error('[app-header] username lookup failed', {
-            code: error.code,
-            message: error.message,
-          });
-          return;
-        }
         setUsername(data?.username?.trim() || null);
-      });
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;

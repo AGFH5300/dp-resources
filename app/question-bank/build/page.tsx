@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { ArrowLeft, HardDrive, Layers3 } from 'lucide-react';
+import { ArrowLeft, Layers3 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 import { Nav } from '@/components/nav';
@@ -52,7 +52,7 @@ export default async function BuildPracticeSetPage({
         <section
           className={`${styles.hero} mt-3 rounded-3xl border p-6 shadow-sm sm:p-8`}
         >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 text-blue-700">
                 <Layers3 className="size-5" />
@@ -64,19 +64,10 @@ export default async function BuildPracticeSetPage({
                 Build exactly the revision session you need
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                Combine topics across subjects, choose different courses for every
-                selection, remove duplicate question cores automatically, and generate
-                one fixed practice queue you can leave and resume on this device.
+                Combine topics across subjects, choose a course for each selection,
+                remove duplicate questions automatically, and generate one focused
+                practice session.
               </p>
-            </div>
-            <div
-              className={`${styles.heroNote} rounded-2xl border px-4 py-3 text-sm text-slate-600 shadow-sm`}
-            >
-              <strong className="flex items-center gap-2 text-[color:var(--dp-navy)]">
-                <HardDrive className="size-4" /> Device-local by default
-              </strong>
-              Ordinary queues stay in this browser. Supabase stores an exact queue only
-              when you explicitly save and share it.
             </div>
           </div>
         </section>

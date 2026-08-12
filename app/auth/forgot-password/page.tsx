@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
 import { InboxShortcuts } from '@/components/inbox-shortcuts';
-import { createClient } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -29,17 +28,22 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError(null);
 
-    const callbackUrl = new URL('/auth/callback', window.location.origin);
-    callbackUrl.searchParams.set('next', '/auth/update-password');
+    const response = await fetch('/api/auth/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'forgot_password',
+        email: email.trim().toLowerCase(),
+      }),
+    });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+    } | null;
 
-    const { error: resetError } = await createClient().auth.resetPasswordForEmail(
-      email.trim().toLowerCase(),
-      { redirectTo: callbackUrl.toString() },
-    );
-
-    if (resetError) {
+    if (!response.ok) {
       setError(
-        'We could not send a reset email right now. Please wait a moment and try again.',
+        result?.message ||
+          'We could not send a reset email right now. Please wait a moment and try again.',
       );
       setLoading(false);
       return;

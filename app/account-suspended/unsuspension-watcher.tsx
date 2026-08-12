@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { createClientSupabase } from '@/lib/supabase-browser';
 import {
   dispatchSuspensionReasonUpdated,
   SUSPENDED_USER_ID_STORAGE_KEY,
@@ -14,12 +13,6 @@ type StatusResponse = {
   authenticated?: boolean;
   suspended?: boolean;
   suspensionReason?: string | null;
-};
-
-type MembershipUpdate = {
-  id?: string;
-  is_suspended?: boolean;
-  suspension_reason?: string | null;
 };
 
 const LIBRARY_PATH = '/library';
@@ -47,7 +40,6 @@ export function UnsuspensionWatcher({
     if (!resolvedUserId) return;
 
     let active = true;
-    const supabase = createClientSupabase();
 
     function clearStoredSuspension() {
       window.sessionStorage.removeItem(SUSPENSION_REASON_STORAGE_KEY);
@@ -75,19 +67,6 @@ export function UnsuspensionWatcher({
       window.location.replace(LIBRARY_PATH);
     }
 
-    function handleMembershipUpdate(
-      updated: MembershipUpdate | null | undefined,
-    ) {
-      if (!active || navigatedRef.current || updated?.id !== resolvedUserId)
-        return;
-      if (updated.is_suspended === false) {
-        navigateToLibraryOnce();
-        return;
-      }
-      if (updated.is_suspended === true)
-        storeSuspendedReason(updated.suspension_reason);
-    }
-
     async function checkStatus() {
       if (!active || navigatedRef.current) return;
       try {
@@ -107,23 +86,9 @@ export function UnsuspensionWatcher({
         if (status.suspended === true)
           storeSuspendedReason(status.suspensionReason);
       } catch {
-        // Quiet fallback: realtime remains primary.
+        // The next focus, visibility, or interval check retries automatically.
       }
     }
-
-    const channel = supabase
-      .channel(`dp-resource-unsuspension:${resolvedUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'dp_resource_memberships',
-          filter: `id=eq.${resolvedUserId}`,
-        },
-        (payload) => handleMembershipUpdate(payload.new as MembershipUpdate),
-      )
-      .subscribe();
 
     void checkStatus();
     const onFocus = () => void checkStatus();
@@ -142,7 +107,6 @@ export function UnsuspensionWatcher({
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
       window.clearInterval(interval);
-      void supabase.removeChannel(channel);
     };
   }, [userId]);
 

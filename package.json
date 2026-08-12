@@ -18,7 +18,8 @@
     "question-bank:optimize-assets": "node scripts/optimize-question-bank-assets.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "security:client-bundle": "node scripts/check-client-bundle-secrets.mjs"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.3.2",

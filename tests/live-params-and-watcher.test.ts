@@ -104,29 +104,6 @@ describe('SuspensionWatcher executable behavior', () => {
     const fetch = vi.fn(async () => ({ ok: true, json: async () => status }));
     vi.stubGlobal('fetch', fetch);
 
-    let handler:
-      | ((payload: {
-          new: {
-            id?: string;
-            is_suspended?: boolean;
-            suspension_reason?: string | null;
-          };
-        }) => void)
-      | null = null;
-    const channel = { id: 'channel' };
-    const removeChannel = vi.fn();
-    const on = vi.fn((_event, _filter, cb) => {
-      handler = cb;
-      return { subscribe: vi.fn(() => channel) };
-    });
-    const supabase = {
-      channel: vi.fn(() => ({ on })),
-      removeChannel,
-    };
-    vi.doMock('../lib/supabase-browser', () => ({
-      createClientSupabase: vi.fn(() => supabase),
-    }));
-
     let cleanup: (() => void) | undefined;
     vi.doMock('react', () => ({
       useRef: vi.fn(() => ({ current: false })),
@@ -139,27 +116,25 @@ describe('SuspensionWatcher executable behavior', () => {
     );
     SuspensionWatcher({ userId: 'user-1' });
     return {
-      handler: () => handler,
       cleanup: () => cleanup?.(),
       replace,
       fetch,
-      removeChannel,
       sessionStorage: window.sessionStorage,
     };
   }
 
-  it('an UPDATE with is_suspended true redirects exactly once and repeated updates still redirect once', async () => {
-    const ctx = await mountWatcher();
-    ctx.handler()?.({
-      new: {
-        id: 'user-1',
-        is_suspended: true,
-        suspension_reason: 'Policy violation',
-      },
+  it('a suspended status response stores the reason and redirects exactly once', async () => {
+    const ctx = await mountWatcher({
+      authenticated: true,
+      suspended: true,
+      suspensionReason: 'Policy violation',
     });
-    ctx.handler()?.({
-      new: { id: 'user-1', is_suspended: true, suspension_reason: 'Second' },
-    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    vi.advanceTimersByTime(30000);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(ctx.sessionStorage.setItem).toHaveBeenCalledTimes(2);
     expect(ctx.sessionStorage.setItem).toHaveBeenCalledWith(
       'dp_resource_suspended_user_id',
@@ -173,9 +148,11 @@ describe('SuspensionWatcher executable behavior', () => {
     expect(ctx.replace).toHaveBeenCalledWith('/account-suspended');
   });
 
-  it('an active membership does not redirect', async () => {
-    const ctx = await mountWatcher();
-    ctx.handler()?.({ new: { id: 'user-1', is_suspended: false } });
+  it('an active status response does not redirect', async () => {
+    const ctx = await mountWatcher({ authenticated: true, suspended: false });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(ctx.replace).not.toHaveBeenCalled();
   });
 
@@ -214,7 +191,7 @@ describe('SuspensionWatcher executable behavior', () => {
     expect(ctx.replace).toHaveBeenCalledWith('/account-suspended');
   });
 
-  it('cleans up interval, focus listener, visibility listener and Realtime channel', async () => {
+  it('cleans up interval, focus listener and visibility listener', async () => {
     const ctx = await mountWatcher();
     const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
     ctx.cleanup();
@@ -227,7 +204,6 @@ describe('SuspensionWatcher executable behavior', () => {
       expect.any(Function),
     );
     expect(clearIntervalSpy).toHaveBeenCalled();
-    expect(ctx.removeChannel).toHaveBeenCalledWith({ id: 'channel' });
   });
 });
 
@@ -283,29 +259,6 @@ describe('UnsuspensionWatcher executable behavior', () => {
     const fetch = vi.fn(async () => ({ ok: true, json: async () => status }));
     vi.stubGlobal('fetch', fetch);
 
-    let handler:
-      | ((payload: {
-          new: {
-            id?: string;
-            is_suspended?: boolean;
-            suspension_reason?: string | null;
-          };
-        }) => void)
-      | null = null;
-    const channel = { id: 'unsuspension-channel' };
-    const removeChannel = vi.fn();
-    const on = vi.fn((_event, _filter, cb) => {
-      handler = cb;
-      return { subscribe: vi.fn(() => channel) };
-    });
-    const supabase = {
-      channel: vi.fn(() => ({ on })),
-      removeChannel,
-    };
-    vi.doMock('../lib/supabase-browser', () => ({
-      createClientSupabase: vi.fn(() => supabase),
-    }));
-
     let cleanup: (() => void) | undefined;
     vi.doMock('react', () => ({
       useMemo: vi.fn((factory: () => unknown) => factory()),
@@ -320,32 +273,27 @@ describe('UnsuspensionWatcher executable behavior', () => {
     );
     UnsuspensionWatcher({ initialUserId });
     return {
-      handler: () => handler,
       cleanup: () => cleanup?.(),
       replace,
       fetch,
-      removeChannel,
       sessionStorage,
-      supabase,
       listeners,
       store,
-      on,
     };
   }
 
-  it('subscribes to only the resolved user row and navigates once on realtime unsuspension after clearing storage', async () => {
-    const ctx = await mountUnsuspensionWatcher();
-    expect(ctx.on).toHaveBeenCalledWith(
-      'postgres_changes',
-      expect.objectContaining({ filter: 'id=eq.user-1' }),
-      expect.any(Function),
-    );
-    ctx.handler()?.({
-      new: { id: 'user-1', is_suspended: false, suspension_reason: null },
+  it('navigates once on polled unsuspension after clearing storage', async () => {
+    const ctx = await mountUnsuspensionWatcher({
+      authenticated: true,
+      suspended: false,
+      suspensionReason: null,
     });
-    ctx.handler()?.({
-      new: { id: 'user-1', is_suspended: false, suspension_reason: null },
-    });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    vi.advanceTimersByTime(12000);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(ctx.sessionStorage.removeItem).toHaveBeenNthCalledWith(
       1,
       'dp_resource_suspension_reason',
@@ -362,15 +310,15 @@ describe('UnsuspensionWatcher executable behavior', () => {
     expect(ctx.replace.mock.calls.flat().join(' ')).not.toContain('user-1');
   });
 
-  it('stays on the page for realtime suspended updates and publishes changed reasons', async () => {
-    const ctx = await mountUnsuspensionWatcher();
-    ctx.handler()?.({
-      new: {
-        id: 'user-1',
-        is_suspended: true,
-        suspension_reason: 'Updated\nreason',
-      },
+  it('stays on the page for suspended polls and publishes changed reasons', async () => {
+    const ctx = await mountUnsuspensionWatcher({
+      authenticated: true,
+      suspended: true,
+      suspensionReason: 'Updated\nreason',
     });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(ctx.replace).not.toHaveBeenCalled();
     expect(ctx.sessionStorage.setItem).toHaveBeenCalledWith(
       'dp_resource_suspension_reason',
@@ -381,9 +329,9 @@ describe('UnsuspensionWatcher executable behavior', () => {
     );
   });
 
-  it('does not create an unfiltered subscription without an initial or stored user id', async () => {
+  it('does not poll without an initial or stored user id', async () => {
     const ctx = await mountUnsuspensionWatcher(undefined, null, null);
-    expect(ctx.supabase.channel).not.toHaveBeenCalled();
+    expect(ctx.fetch).not.toHaveBeenCalled();
     expect(ctx.replace).not.toHaveBeenCalled();
   });
 
@@ -448,7 +396,7 @@ describe('UnsuspensionWatcher executable behavior', () => {
     );
   });
 
-  it('cleans up realtime channel, interval, focus listener, and visibility listener', async () => {
+  it('cleans up interval, focus listener, and visibility listener', async () => {
     const ctx = await mountUnsuspensionWatcher();
     const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
     ctx.cleanup();
@@ -461,9 +409,6 @@ describe('UnsuspensionWatcher executable behavior', () => {
       expect.any(Function),
     );
     expect(clearIntervalSpy).toHaveBeenCalled();
-    expect(ctx.removeChannel).toHaveBeenCalledWith({
-      id: 'unsuspension-channel',
-    });
   });
 });
 

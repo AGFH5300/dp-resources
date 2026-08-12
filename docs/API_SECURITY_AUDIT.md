@@ -214,9 +214,12 @@ Scope: `app/api/**/route.ts`. This is an internal audit of server-side access co
 
 ## Global findings and changes
 
+- Browser modules no longer initialize Supabase or read Supabase environment variables. Authentication, profile reads, and suspension checks now go through same-origin server routes.
+- Docker builds accept no API-key build arguments and contain no hard-coded Supabase key. CI scans generated client chunks for JWTs, private keys, cloud access keys, and server-secret markers.
+- Supabase URL and publishable-key configuration is runtime-only. Service-role, Google service-account, and R2 credentials remain limited to server modules and workers.
 - Public username availability now relies on `dp_resource_username_availability_status`, which returns only `available`, `unavailable`, or `invalid` and never exposes moderation reasons or matched terms.
 - Production signup debug output is gated by `NODE_ENV === development` only; `NEXT_PUBLIC_SIGNUP_DEBUG` no longer enables production debug payloads.
 - State-changing cookie-session routes audited in this pass now reject cross-origin writes using Origin/Host validation before authorization and body handling.
-- Service-role usage remains in server-only modules (`lib/supabase-admin.ts`, `lib/supabase.ts`, and activity/indexing helpers) and is not exposed through `NEXT_PUBLIC_*` variables.
+- Service-role usage remains in server-only modules (`lib/supabase-admin.ts`, `lib/supabase.ts`, and activity/indexing helpers).
 - Resource/file/folder routes require membership and verify Drive items with `assertInsideRoot(...)` before serving media, downloads, conversions, or activity writes.
 - Production security headers include CSP, `frame-ancestors`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`; Google Drive/Sheets frames and PDF.js workers remain allowed.

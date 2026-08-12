@@ -4,7 +4,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { AuthShell } from '@/components/auth-shell';
 import { safeInternalReturnPath } from '@/lib/auth-redirect';
 import {
@@ -75,9 +74,7 @@ export default function LoginPage() {
       'account_suspended';
     if (!isSuspendedError) return;
     setError(SUSPENDED_MESSAGE);
-    createClient()
-      .auth.signOut({ scope: 'local' })
-      .catch(() => undefined);
+    void fetch('/api/auth/signout', { method: 'POST' }).catch(() => undefined);
   }, []);
 
   useEffect(() => {

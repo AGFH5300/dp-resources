@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSupabaseServerConfig } from '@/lib/supabase-config';
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/',
@@ -17,15 +18,6 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/privacy',
   '/terms',
 ]);
-
-function getSupabasePublicConfig() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  return { supabaseUrl, supabaseKey };
-}
 
 export function shouldBypassSupabaseMiddleware(pathname: string) {
   return (
@@ -131,7 +123,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const { supabaseUrl, supabaseKey } = getSupabasePublicConfig();
+  const { supabaseUrl, supabaseKey } = getSupabaseServerConfig();
 
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next();

@@ -4,6 +4,7 @@ import { isSuspendedAuthError } from '@/lib/suspension-auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { sameOriginOrForbidden } from '@/lib/request-security';
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
+import { getSupabaseServerConfig } from '@/lib/supabase-config';
 
 type SuspendedLoginRequest = {
   email?: string;
@@ -24,10 +25,7 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 function createCredentialCheckClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const { supabaseUrl, supabaseKey } = getSupabaseServerConfig();
 
   if (!supabaseUrl || !supabaseKey) return null;
 

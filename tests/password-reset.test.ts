@@ -5,6 +5,7 @@ describe('password reset flow', () => {
   const loginPage = readFileSync('app/auth/login/page.tsx', 'utf8');
   const forgotPage = readFileSync('app/auth/forgot-password/page.tsx', 'utf8');
   const updatePage = readFileSync('app/auth/update-password/page.tsx', 'utf8');
+  const accountRoute = readFileSync('app/api/auth/account/route.ts', 'utf8');
   const inboxShortcuts = readFileSync(
     'components/inbox-shortcuts.tsx',
     'utf8',
@@ -20,16 +21,21 @@ describe('password reset flow', () => {
   });
 
   it('sends a privacy-safe reset email through the existing callback', () => {
-    expect(forgotPage).toContain('resetPasswordForEmail');
-    expect(forgotPage).toContain("new URL('/auth/callback'");
-    expect(forgotPage).toContain("'/auth/update-password'");
+    expect(forgotPage).toContain("fetch('/api/auth/account'");
+    expect(forgotPage).toContain("action: 'forgot_password'");
+    expect(accountRoute).toContain('resetPasswordForEmail');
+    expect(accountRoute).toContain("new URL('/auth/callback'");
+    expect(accountRoute).toContain("'/auth/update-password'");
     expect(forgotPage).toContain('If an account exists');
   });
 
   it('verifies the recovery session, changes the password, and signs out old sessions', () => {
-    expect(updatePage).toContain('supabase.auth.getUser()');
-    expect(updatePage).toContain('supabase.auth.updateUser({ password })');
-    expect(updatePage).toContain("signOut({ scope: 'global' })");
+    expect(updatePage).toContain("fetch('/api/auth/account'");
+    expect(updatePage).toContain("action: 'update_password'");
+    expect(accountRoute).toContain('supabase.auth.getUser()');
+    expect(accountRoute).toContain('supabase.auth.updateUser({ password })');
+    expect(accountRoute).toContain("signOut({ scope: 'global' })");
+    expect(updatePage).not.toContain('@supabase/');
   });
 
   it('restores the full strength meter and matching feedback on password recovery', () => {

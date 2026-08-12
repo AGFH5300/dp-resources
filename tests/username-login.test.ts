@@ -6,6 +6,7 @@ const loginRoute = readFileSync('app/api/auth/login/route.ts', 'utf8');
 const identifierResolver = readFileSync('lib/login-identifier.ts', 'utf8');
 const nav = readFileSync('components/nav.tsx', 'utf8');
 const appHeader = readFileSync('components/app-header.tsx', 'utf8');
+const profileRoute = readFileSync('app/api/account/profile/route.ts', 'utf8');
 const accountMenu = readFileSync('components/account-menu.tsx', 'utf8');
 
 describe('username or email login', () => {
@@ -32,8 +33,11 @@ describe('username account display', () => {
   it('loads the signed-in profile username through the client-safe header', () => {
     expect(nav).toContain('<AppHeader admin={admin} userId={userId} />');
     expect(nav).not.toContain('createSupabaseServerClient');
-    expect(appHeader).toContain("from('dp_resource_profiles')");
-    expect(appHeader).toContain(".select('username')");
+    expect(appHeader).toContain("fetch('/api/account/profile'");
+    expect(appHeader).not.toContain('@supabase/');
+    expect(profileRoute).toContain("from('dp_resource_profiles')");
+    expect(profileRoute).toContain(".select('username')");
+    expect(profileRoute).toContain('requireApiMember');
     expect(appHeader).toContain('username={username}');
   });
 

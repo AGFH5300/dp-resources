@@ -11,6 +11,7 @@ const loginLayout = readFileSync('app/auth/login/layout.tsx', 'utf8');
 const signUpLayout = readFileSync('app/auth/sign-up/layout.tsx', 'utf8');
 const authPage = readFileSync('app/auth/page.tsx', 'utf8');
 const signupRoute = readFileSync('app/api/auth/start-signup/route.ts', 'utf8');
+const accountRoute = readFileSync('app/api/auth/account/route.ts', 'utf8');
 const availabilityRoute = readFileSync(
   'app/api/auth/availability/route.ts',
   'utf8',
@@ -102,8 +103,9 @@ describe('OTP request and verification flow', () => {
     expect(signupRoute).toContain('signInWithOtp');
     expect(signupRoute).toContain('shouldCreateUser: true');
     expect(verifyOtpForm).toContain('OTP_LENGTH = 6');
-    expect(verifyOtpForm).toContain('verifyOtp');
-    expect(verifyOtpForm).toContain("type: 'signup'");
+    expect(verifyOtpForm).toContain("action: 'verify_signup_otp'");
+    expect(accountRoute).toContain('supabase.auth.verifyOtp');
+    expect(accountRoute).toContain("type: 'signup'");
     expect(verifyOtpForm).toContain('router.push(`/auth/set-password?next=');
   });
 
@@ -137,7 +139,7 @@ describe('DP-only schema and target code references', () => {
   });
 
   it('does not reference forbidden database names in target auth code or schema', () => {
-    const target = [signupRoute, availabilityRoute, verifyOtpForm, schema].join(
+    const target = [signupRoute, availabilityRoute, accountRoute, verifyOtpForm, schema].join(
       '\n',
     );
     expect(target).not.toMatch(/public\.profiles\b/);

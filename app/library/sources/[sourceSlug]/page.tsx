@@ -12,7 +12,7 @@ import { formatDate, formatSize, resourceUrl, typeLabel } from '@/lib/resource-u
 
 const slugPattern = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 
-export default async function VirtualSourcePage({
+export default async function SourcePage({
   params,
   searchParams,
 }: {
@@ -50,7 +50,7 @@ export default async function VirtualSourcePage({
   else catalog = catalog.order('is_folder', { ascending: false }).order('name');
   const pageSize = 60;
   const { data: rawRows = [], count, error } = await catalog.range((page - 1) * pageSize, page * pageSize - 1);
-  if (error) throw new Error(`Unable to load virtual source collection: ${error.message}`);
+  if (error) throw new Error(`Unable to load source collection: ${error.message}`);
   const seen = new Set<string>();
   const rows = (rawRows as any[]).filter((row) => {
     if (seen.has(row.drive_file_id)) return false;
@@ -67,18 +67,17 @@ export default async function VirtualSourcePage({
     <>
       <Nav admin={membership.role === 'admin'} email={membership.email} userId={membership.id} />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav className="flex flex-wrap gap-1 text-sm text-slate-500" aria-label="Virtual source breadcrumb">
+        <nav className="flex flex-wrap gap-1 text-sm text-slate-500" aria-label="Source breadcrumb">
           <Link href="/library" className="hover:underline">Library</Link><span>/</span>
           <Link href="/library/sources" className="hover:underline">Browse by source</Link><span>/</span>
           <span aria-current="page">{source.display_name}</span>
         </nav>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Virtual source view</p>
             <h1 className="text-2xl font-semibold text-[color:var(--dp-navy)]">{source.display_name}</h1>
             <p className="mt-1 max-w-3xl text-sm text-slate-600">{source.description}</p>
           </div>
-          <Link href="/library" className="text-sm font-medium text-blue-700 hover:underline">Return to physical folders</Link>
+          <Link href="/library" className="text-sm font-medium text-blue-700 hover:underline">Back to Library</Link>
         </div>
         <form className="mt-5 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(220px,1fr)_200px_180px_auto]">
           <input name="q" defaultValue={q} placeholder="Search within source" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
@@ -86,7 +85,7 @@ export default async function VirtualSourcePage({
             <option value="">All resource types</option>
             {(resourceTypes as any[]).map((resourceType) => <option key={resourceType.slug} value={resourceType.slug}>{resourceType.display_name}</option>)}
           </select>
-          <select name="sort" defaultValue={sort} className="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm" aria-label="Sort virtual collection">
+          <select name="sort" defaultValue={sort} className="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm" aria-label="Sort source collection">
             <option value="name">Name</option><option value="modified">Recently modified</option>
             <option value="size">File size</option><option value="type">Resource type</option>
           </select>
@@ -115,10 +114,10 @@ export default async function VirtualSourcePage({
               </Link>
             );
           })}
-          {!rows.length ? <div className="p-8 text-center text-sm text-slate-600">No resources match this virtual collection filter.</div> : null}
+          {!rows.length ? <div className="p-8 text-center text-sm text-slate-600">No resources match these filters.</div> : null}
         </div>
         {pages > 1 ? (
-          <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Virtual source pages">
+          <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Source pages">
             {page > 1 ? <Link className="font-medium text-blue-700" href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page - 1) })}`}>← Previous</Link> : <span />}
             <span className="text-slate-500">Page {page} of {pages}</span>
             {page < pages ? <Link className="font-medium text-blue-700" href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page + 1) })}`}>Next →</Link> : <span />}
