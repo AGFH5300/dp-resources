@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createClientSupabase } from '@/lib/supabase-browser';
 import {
   SUSPENDED_USER_ID_STORAGE_KEY,
   SUSPENSION_REASON_STORAGE_KEY,
@@ -18,7 +17,6 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
     if (!userId || navigatedRef.current) return;
 
     let active = true;
-    const supabase = createClientSupabase();
 
     function storeSuspension(reason: unknown) {
       window.sessionStorage.setItem(
@@ -57,38 +55,11 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
         }
         clearSuspensionStorage();
       } catch {
-        // Quiet fallback: realtime remains primary and active users are not refreshed.
+        // The next focus, visibility, or interval check retries automatically.
       }
     }
 
-    const channel = supabase
-      .channel(`dp-resource-membership-status:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'dp_resource_memberships',
-          filter: `id=eq.${userId}`,
-        },
-        (payload) => {
-          const updated = payload.new as {
-            id?: string;
-            is_suspended?: boolean;
-            suspension_reason?: string | null;
-          };
-          if (
-            updated?.id === userId &&
-            updated.is_suspended === true &&
-            !navigatedRef.current
-          ) {
-            storeSuspension(updated.suspension_reason);
-            redirectOnce();
-          }
-        },
-      )
-      .subscribe();
-
+    void checkStatus();
     const onFocus = () => void checkStatus();
     const onVisibility = () => {
       if (document.visibilityState === 'visible') void checkStatus();
@@ -102,7 +73,6 @@ export function SuspensionWatcher({ userId }: SuspensionWatcherProps) {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
       window.clearInterval(interval);
-      void supabase.removeChannel(channel);
     };
   }, [userId]);
 

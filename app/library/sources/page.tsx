@@ -20,7 +20,7 @@ export default async function LibrarySourcesPage() {
         </nav>
         <h1 className="mt-2 text-2xl font-semibold text-[color:var(--dp-navy)]">Browse by source</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          These are virtual collections generated from attribution metadata. No Google Drive files are moved, renamed, copied, or duplicated.
+          Choose a source to browse its resources.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(data as any[]).map((source) => (

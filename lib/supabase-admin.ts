@@ -1,10 +1,11 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import type { ResourceMembership } from './types';
+import { requireSupabaseUrl } from './supabase-config';
 
 export function createSupabaseAdminClient() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    requireSupabaseUrl(),
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: { persistSession: false, autoRefreshToken: false },

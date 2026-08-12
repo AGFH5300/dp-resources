@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
 import { PasswordStrengthMeter } from '@/components/password-strength-meter';
-import { createClient } from '@/lib/supabase/client';
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('');
@@ -20,13 +19,18 @@ export default function UpdatePasswordPage() {
 
   useEffect(() => {
     let active = true;
-    const supabase = createClient();
-
-    supabase.auth.getUser().then(({ data, error: userError }) => {
-      if (!active) return;
-      setValidSession(!userError && Boolean(data.user));
-      setCheckingSession(false);
-    });
+    void fetch('/api/auth/account', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
+        setValidSession(data?.authenticated === true);
+        setCheckingSession(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setValidSession(false);
+        setCheckingSession(false);
+      });
 
     return () => {
       active = false;
@@ -47,16 +51,23 @@ export default function UpdatePasswordPage() {
 
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const response = await fetch('/api/auth/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_password', password }),
+    });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+    } | null;
 
-    if (updateError) {
-      setError(updateError.message);
+    if (!response.ok) {
+      setError(
+        result?.message || 'Could not update your password. Please try again.',
+      );
       setLoading(false);
       return;
     }
 
-    await supabase.auth.signOut({ scope: 'global' }).catch(() => undefined);
     setComplete(true);
     setLoading(false);
   }

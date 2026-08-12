@@ -9,6 +9,10 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: '1'
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY

@@ -34,19 +34,18 @@ describe('suspension UX regression coverage', () => {
     expect(middleware).toContain("'/account-suspended'");
   });
 
-  it('watcher redirects exactly once when suspension changes and does nothing noisy for active users', () => {
+  it('watcher polls the server-only status endpoint and redirects exactly once', () => {
     const source = read('components/suspension-watcher.tsx');
     expect(source).toContain('window.location.replace(ACCOUNT_SUSPENDED_PATH)');
     expect(source).toContain('navigatedRef.current');
-    expect(source).toContain('filter: `id=eq.${userId}`');
-    expect(source).toContain('is_suspended === true');
     expect(source).toContain(
       "fetch('/api/account/status', { cache: 'no-store' })",
     );
     expect(source).toContain(
       'window.setInterval(() => void checkStatus(), 30000)',
     );
-    expect(source).toContain('supabase.removeChannel(channel)');
+    expect(source).not.toContain('createClientSupabase');
+    expect(source).not.toContain('.channel(');
     expect(source).not.toContain('router.refresh');
   });
 

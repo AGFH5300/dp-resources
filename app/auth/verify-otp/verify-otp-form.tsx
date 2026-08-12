@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from 'react';
 import { AuthShell } from '@/components/auth-shell';
 import { InboxShortcuts } from '@/components/inbox-shortcuts';
 import { Spinner } from '@/components/ui/spinner';
-import { createClient } from '@/lib/supabase/client';
 
 const SIGNUP_DRAFT_KEY = 'dp_resource_signup_profile';
 const OTP_LENGTH = 6;
@@ -119,15 +118,21 @@ export function VerifyOtpForm({
     setError(null);
     setNotice(null);
 
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: normalizedEmail,
-      token: sanitizedOtpCode,
-      type: 'signup',
+    const response = await fetch('/api/auth/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'verify_signup_otp',
+        email: normalizedEmail,
+        token: sanitizedOtpCode,
+      }),
     });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+    } | null;
 
-    if (verifyError) {
-      setError(verifyError.message);
+    if (!response.ok) {
+      setError(result?.message || 'That code is invalid or has expired.');
       setLoading(false);
       return;
     }
@@ -156,17 +161,21 @@ export function VerifyOtpForm({
     setError(null);
     setNotice(null);
 
-    const supabase = createClient();
-    const { error: resendError } = await supabase.auth.resend({
-      type: 'signup',
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
+    const response = await fetch('/api/auth/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'resend_signup_otp',
+        email: normalizedEmail,
+        next,
+      }),
     });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+    } | null;
 
-    if (resendError) {
-      setError(resendError.message);
+    if (!response.ok) {
+      setError(result?.message || 'We could not resend the code right now.');
       setResending(false);
       return;
     }

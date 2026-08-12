@@ -62,7 +62,7 @@ export function SourceAdminWorkspace({ sources, resourceTypes }: { sources: Opti
     <>
     <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
       <h2 className="font-semibold text-[color:var(--dp-navy)]">Library attribution workspace</h2>
-      <p className="mt-1 text-sm text-slate-600">Assignments update DP Resources metadata only. They never move, rename, copy, or delete Google Drive files.</p>
+      <p className="mt-1 text-sm text-slate-600">Review and update Library source and resource-type metadata.</p>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <label className="text-sm">Drive file or folder ID
           <input value={driveFileId} onChange={(event) => { setDriveFileId(event.target.value); setPreview(null); }} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
@@ -93,7 +93,7 @@ export function SourceAdminWorkspace({ sources, resourceTypes }: { sources: Opti
     </section>
     <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4">
       <h2 className="font-semibold text-[color:var(--dp-navy)]">Question Bank source inspector</h2>
-      <p className="mt-1 text-sm text-slate-600">Inspect canonical and technical provenance for one variant. Corrections update attribution metadata only and are audit-logged.</p>
+      <p className="mt-1 text-sm text-slate-600">Inspect and review one Question Bank variant.</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <input aria-label="Question Bank variant ID" value={variantId} onChange={(event) => setVariantId(event.target.value)} placeholder="Variant UUID" className="min-w-72 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
         <button disabled={busy || !variantId} onClick={() => void inspectQuestionBank()} className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-50">Inspect</button>
