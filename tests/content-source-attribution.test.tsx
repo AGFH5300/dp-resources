@@ -30,7 +30,7 @@ describe('unified content source attribution', () => {
     expect(output).toContain('Revision Village');
   });
 
-  it('uses a neutral public label for unresolved Library attribution', () => {
+  it('hides unresolved Library source attribution', () => {
     const output = renderToStaticMarkup(
       <ResourceAttributionBadges
         attribution={{
@@ -42,8 +42,24 @@ describe('unified content source attribution', () => {
         }}
       />,
     );
-    expect(output).toContain('Source attribution under review');
+    expect(output).not.toContain('Source attribution under review');
     expect(output).toContain('Needs review');
+  });
+
+  it('shows a Library source only when it is reviewed and applicable', () => {
+    const output = renderToStaticMarkup(
+      <ResourceAttributionBadges
+        attribution={{
+          sources: [{
+            slug: 'save_my_exams', displayName: 'Save My Exams', shortLabel: 'Save My Exams',
+            attributionLabel: 'Source', reviewStatus: 'reviewed', relationship: 'primary', isPrimary: true,
+          }],
+          resourceType: null,
+        }}
+      />,
+    );
+    expect(output).toContain('Save My Exams');
+    expect(output).toContain('Source: Save My Exams');
   });
 
   it('never renders a named Question Bank provider while attribution is under review', () => {

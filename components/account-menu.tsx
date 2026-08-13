@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CircleUserRound, LogOut, Sparkles, UserStar } from 'lucide-react';
+import { ChevronDown, CircleUserRound, LogOut, UserStar } from 'lucide-react';
+import { WHATS_NEW_RELEASE } from '@/lib/whats-new';
 import { NotificationBadge } from './notification-center';
 
 export function AccountMenu({
@@ -79,14 +80,16 @@ export function AccountMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50"
+            className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-blue-50"
             onClick={() => {
               setOpen(false);
               window.dispatchEvent(new Event('dp:open-whats-new'));
             }}
           >
-            <Sparkles className="size-4" />
             What’s new
+            <span className="ml-auto text-xs text-slate-500">
+              {WHATS_NEW_RELEASE.dateLabel}
+            </span>
           </button>
           <form action="/api/auth/signout" method="post">
             <button
