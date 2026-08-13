@@ -9,7 +9,6 @@ import { getIndexedFolderView } from '@/lib/indexed-folder-view';
 import { devTiming, nowMs } from '@/lib/perf';
 import { getFavoriteIdSet } from '@/lib/favorites';
 import { FavoritesProvider } from '@/components/favorites-provider';
-import { FolderSearchButton } from '@/components/folder-search-button';
 
 export default async function Library({
   searchParams,
@@ -77,14 +76,6 @@ export default async function Library({
           </div>
         ) : crumbs.length ? (
           <FavoritesProvider initialSavedIds={favoriteIds}>
-            {crumbs.length > 1 && (
-              <div className="mb-3 flex justify-end">
-                <FolderSearchButton
-                  folderId={crumbs[crumbs.length - 1].id}
-                  folderName={crumbs[crumbs.length - 1].name}
-                />
-              </div>
-            )}
             <LibraryBrowser
               items={displayItems}
               crumbs={crumbs}
