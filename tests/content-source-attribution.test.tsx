@@ -62,6 +62,21 @@ describe('unified content source attribution', () => {
     expect(output).toContain('Source: Save My Exams');
   });
 
+  it('does not leave an empty badge wrapper that increases Library row height', () => {
+    const output = renderToStaticMarkup(
+      <ResourceAttributionBadges
+        attribution={{
+          sources: [{
+            slug: 'unknown', displayName: 'Source attribution under review', shortLabel: 'Under review',
+            attributionLabel: 'Source', reviewStatus: 'under_review', relationship: 'primary', isPrimary: true,
+          }],
+          resourceType: null,
+        }}
+      />,
+    );
+    expect(output).toBe('');
+  });
+
   it('never renders a named Question Bank provider while attribution is under review', () => {
     const unreviewed = [{
       slug: 'exam_mate', displayName: 'Exam-Mate', shortLabel: 'Exam-Mate',
