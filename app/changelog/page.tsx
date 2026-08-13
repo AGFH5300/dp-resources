@@ -17,9 +17,15 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-13-source-clarity',
+    summary:
+      'Added visible Question Bank source summaries and filters, clearer Library attribution, consistent app dropdowns, and improved admin source review tools.',
+    date: '2026-08-13T12:00:00.000Z',
+  },
+  {
     id: 'release-2026-08-05-local-device-practice',
     summary:
-      'Moved ordinary Practice Builder sessions and each session’s position to the current browser, added automatic local cleanup and device deletion, and now keeps exact queues online only when a user deliberately shares them.',
+      'Moved ordinary Practice Builder sessions to a more reliable flow, added automatic cleanup, and kept exact question queues limited to deliberate sharing.',
     date: '2026-08-05T14:42:11.000Z',
   },
   {

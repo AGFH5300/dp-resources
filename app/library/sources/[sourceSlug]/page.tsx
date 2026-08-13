@@ -9,6 +9,7 @@ import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import type { ResourceAttribution } from '@/lib/types';
 import { formatDate, formatSize, resourceUrl, typeLabel } from '@/lib/resource-utils';
+import { AppSelect } from '@/components/ui/app-select';
 
 const slugPattern = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 
@@ -24,7 +25,8 @@ export default async function SourcePage({
   if (!slugPattern.test(sourceSlug)) notFound();
   const queryParams = await searchParams;
   const q = String(queryParams.q || '').trim().slice(0, 120);
-  const type = String(queryParams.type || '').trim().slice(0, 60);
+  const requestedType = String(queryParams.type || '').trim().slice(0, 60);
+  const type = requestedType === 'all' ? '' : requestedType;
   const sort = ['name', 'modified', 'size', 'type'].includes(queryParams.sort || '')
     ? String(queryParams.sort)
     : 'name';
@@ -81,14 +83,26 @@ export default async function SourcePage({
         </div>
         <form className="mt-5 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(220px,1fr)_200px_180px_auto]">
           <input name="q" defaultValue={q} placeholder="Search within source" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
-          <select name="type" defaultValue={type} className="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm" aria-label="Resource type">
-            <option value="">All resource types</option>
-            {(resourceTypes as any[]).map((resourceType) => <option key={resourceType.slug} value={resourceType.slug}>{resourceType.display_name}</option>)}
-          </select>
-          <select name="sort" defaultValue={sort} className="rounded-md border border-slate-300 bg-white px-2 py-2 text-sm" aria-label="Sort source collection">
-            <option value="name">Name</option><option value="modified">Recently modified</option>
-            <option value="size">File size</option><option value="type">Resource type</option>
-          </select>
+          <AppSelect
+            name="type"
+            defaultValue={type || 'all'}
+            placeholder="Resource type"
+            options={[
+              { value: 'all', label: 'All resource types' },
+              ...(resourceTypes as any[]).map((resourceType) => ({ value: resourceType.slug, label: resourceType.display_name })),
+            ]}
+          />
+          <AppSelect
+            name="sort"
+            defaultValue={sort}
+            placeholder="Sort source collection"
+            options={[
+              { value: 'name', label: 'Name' },
+              { value: 'modified', label: 'Recently modified' },
+              { value: 'size', label: 'File size' },
+              { value: 'type', label: 'Resource type' },
+            ]}
+          />
           <button className="rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-medium text-white">Apply</button>
         </form>
         <p className="mt-3 text-sm text-slate-600">{Number(count || 0).toLocaleString()} indexed item{count === 1 ? '' : 's'}</p>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AppSelect } from '@/components/ui/app-select';
 
 type Option = { slug: string; display_name: string };
 
@@ -68,9 +69,15 @@ export function SourceAdminWorkspace({ sources, resourceTypes }: { sources: Opti
           <input value={driveFileId} onChange={(event) => { setDriveFileId(event.target.value); setPreview(null); }} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" />
         </label>
         <label className="text-sm">Source
-          <select value={sourceSlug} onChange={(event) => { setSourceSlug(event.target.value); setPreview(null); }} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
-            {sources.map((source) => <option key={source.slug} value={source.slug}>{source.display_name}</option>)}
-          </select>
+          <span className="mt-1 block">
+            <AppSelect
+              value={sourceSlug}
+              onValueChange={(value) => { setSourceSlug(value); setPreview(null); }}
+              options={sources.map((source) => ({ value: source.slug, label: source.display_name }))}
+              placeholder="Choose a source"
+              searchable
+            />
+          </span>
         </label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recursive} onChange={(event) => { setRecursive(event.target.checked); setPreview(null); }} />Apply to current and future descendants of this folder</label>
       </div>
@@ -83,9 +90,14 @@ export function SourceAdminWorkspace({ sources, resourceTypes }: { sources: Opti
       <div className="mt-5 border-t border-slate-200 pt-4">
         <h3 className="text-sm font-semibold">Set one file’s resource type</h3>
         <div className="mt-2 flex flex-wrap gap-2">
-          <select value={resourceTypeSlug} onChange={(event) => setResourceTypeSlug(event.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-            {resourceTypes.map((resourceType) => <option key={resourceType.slug} value={resourceType.slug}>{resourceType.display_name}</option>)}
-          </select>
+          <div className="min-w-52">
+            <AppSelect
+              value={resourceTypeSlug}
+              onValueChange={setResourceTypeSlug}
+              options={resourceTypes.map((resourceType) => ({ value: resourceType.slug, label: resourceType.display_name }))}
+              placeholder="Choose a resource type"
+            />
+          </div>
           <button disabled={busy || !driveFileId} onClick={() => void call('set_resource_type', { resourceTypeSlug })} className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium disabled:opacity-50">Assign reviewed type</button>
         </div>
       </div>
@@ -116,12 +128,21 @@ function QbSourceRows({ title, rows, targetKind, sources, busy, onReview }: {
     <h3 className="bg-slate-50 px-3 py-2 font-semibold">{title}</h3>
     {rows.length === 0 ? <p className="p-3 text-slate-500">No source rows.</p> : <table className="w-full min-w-[760px] text-left text-xs">
       <thead><tr className="border-t border-slate-200 text-slate-500"><th className="p-2">Canonical source</th><th className="p-2">Technical provider</th><th className="p-2">Source question ID</th><th className="p-2">Course/topic/reference</th><th className="p-2">Import batch</th><th className="p-2">Review</th></tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.rowId} className="border-t border-slate-100 align-top">
-        <td className="p-2"><select value={row.sourceSlug} disabled={busy} onChange={(event) => { row.sourceSlug = event.target.value; }} className="rounded border border-slate-300 px-2 py-1">{sources.map((source) => <option key={source.slug} value={source.slug}>{source.display_name}</option>)}</select></td>
-        <td className="p-2">{row.provider}</td><td className="p-2">{row.sourceQuestionId}</td>
-        <td className="p-2">{row.sourceCourse || row.sourceTopic || row.sourceReference || '—'}</td><td className="p-2">{row.importBatchId || '—'}</td>
-        <td className="p-2"><div className="flex gap-1"><button disabled={busy} onClick={() => void onReview(row, targetKind, 'reviewed')} className="rounded border px-2 py-1">Review</button><button disabled={busy} onClick={() => void onReview(row, targetKind, 'under_review')} className="rounded border px-2 py-1">Under review</button><button disabled={busy} onClick={() => void onReview(row, targetKind, 'rejected')} className="rounded border px-2 py-1">Reject</button></div></td>
-      </tr>)}</tbody>
+      <tbody>{rows.map((row) => <QbSourceRow key={row.rowId} row={row} targetKind={targetKind} sources={sources} busy={busy} onReview={onReview} />)}</tbody>
     </table>}
   </div>;
+}
+
+function QbSourceRow({ row, targetKind, sources, busy, onReview }: {
+  row: any; targetKind: 'question_source' | 'variant_source'; sources: Option[]; busy: boolean;
+  onReview: (row: any, targetKind: 'question_source' | 'variant_source', reviewStatus: 'reviewed' | 'under_review' | 'rejected') => Promise<void>;
+}) {
+  const [selectedSource, setSelectedSource] = useState(row.sourceSlug);
+  const reviewedRow = { ...row, sourceSlug: selectedSource };
+  return <tr className="border-t border-slate-100 align-top">
+    <td className="min-w-48 p-2"><AppSelect value={selectedSource} disabled={busy} onValueChange={setSelectedSource} options={sources.map((source) => ({ value: source.slug, label: source.display_name }))} placeholder="Choose a source" searchable /></td>
+    <td className="p-2">{row.provider}</td><td className="p-2">{row.sourceQuestionId}</td>
+    <td className="p-2">{row.sourceCourse || row.sourceTopic || row.sourceReference || '—'}</td><td className="p-2">{row.importBatchId || '—'}</td>
+    <td className="p-2"><div className="flex gap-1"><button disabled={busy} onClick={() => void onReview(reviewedRow, targetKind, 'reviewed')} className="rounded border px-2 py-1">Review</button><button disabled={busy} onClick={() => void onReview(reviewedRow, targetKind, 'under_review')} className="rounded border px-2 py-1">Under review</button><button disabled={busy} onClick={() => void onReview(reviewedRow, targetKind, 'rejected')} className="rounded border px-2 py-1">Reject</button></div></td>
+  </tr>;
 }

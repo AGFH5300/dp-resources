@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Layers3,
   Search,
+  Tags,
 } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
@@ -23,6 +24,7 @@ import {
   oldCourseFinalAssessmentYear,
 } from '@/lib/question-bank/presentation';
 import { getQuestionBankLanding } from '@/lib/question-bank/queries';
+import { createClient } from '@/lib/supabase-server';
 
 type LandingCourse = {
   id: string;
@@ -190,10 +192,19 @@ function SubjectCourseLinks({
 
 export default async function QuestionBankLanding() {
   const { user, membership } = await requireMember();
-  const [data, questionCounts] = await Promise.all([
+  const client = await createClient();
+  const [data, questionCounts, { data: sourceRows = [] }] = await Promise.all([
     getQuestionBankLanding(user.id),
     getQuestionBankCourseCounts(),
+    client.rpc('dp_content_source_options'),
   ]);
+  const questionSources = (sourceRows as any[])
+    .filter((source) => Number(source.question_variant_count || 0) > 0)
+    .map((source) => ({
+      slug: String(source.slug),
+      label: String(source.short_label),
+      count: Number(source.question_variant_count || 0),
+    }));
 
   return (
     <>
@@ -272,6 +283,45 @@ export default async function QuestionBankLanding() {
 
           <QuestionBankJoinModal />
         </section>
+
+        {questionSources.length ? (
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  <Tags className="size-5" aria-hidden />
+                </span>
+                <div>
+                  <h2 className="font-semibold text-[color:var(--dp-navy)] dark:text-slate-50">
+                    Question sources
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    Source labels identify the collection each question was indexed from.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/question-bank/build"
+                className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
+              >
+                Build by source <ArrowRight className="size-4" />
+              </Link>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Question Bank sources">
+              {questionSources.map((source) => (
+                <span
+                  key={source.slug}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <strong className="font-medium">{source.label}</strong>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {source.count.toLocaleString()}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div
           id="courses"

@@ -7,12 +7,14 @@ export function SiteConfirmDialog({
   open,
   title,
   description,
+  closeLabel = 'Close dialog',
   onClose,
   children,
 }: {
   open: boolean;
   title: string;
   description?: React.ReactNode;
+  closeLabel?: string;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -84,7 +86,7 @@ export function SiteConfirmDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close confirmation"
+            aria-label={closeLabel}
             className="grid size-9 shrink-0 place-items-center rounded-md border border-[color:var(--dp-theme-border)] bg-[color:var(--dp-page)] text-[color:var(--dp-muted-text)] hover:text-[color:var(--dp-navy)]"
           >
             <X className="size-4" />
