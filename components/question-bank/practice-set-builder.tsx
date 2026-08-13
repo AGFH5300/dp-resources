@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import type { PracticeOrderingMode } from '@/lib/question-bank/practice-allocation';
 import type { PracticeConfiguration } from '@/lib/question-bank/practice-configuration';
 import type { PracticePreview } from '@/lib/question-bank/practice-engine';
+import { AppSelect } from '@/components/ui/app-select';
 
 type CatalogCourse = {
   id: string;
@@ -551,19 +552,20 @@ export function PracticeSetBuilder({ catalog }: { catalog: Catalog }) {
 
           <label className="mt-4 block">
             <span className="text-sm font-semibold text-slate-700">Question order</span>
-            <select
+            <AppSelect
               value={orderingMode}
-              onChange={(event) =>
-                setOrderingMode(event.target.value as PracticeOrderingMode)
+              onValueChange={(value) =>
+                setOrderingMode(value as PracticeOrderingMode)
               }
-              className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="interleaved">Interleave selected concepts</option>
-              <option value="mixed">Mix randomly</option>
-              <option value="grouped">Group by concept</option>
-              <option value="easier_to_harder">Easier to harder</option>
-              <option value="source_order">Source order</option>
-            </select>
+              placeholder="Question order"
+              options={[
+                { value: 'interleaved', label: 'Interleave selected concepts' },
+                { value: 'mixed', label: 'Mix randomly' },
+                { value: 'grouped', label: 'Group by concept' },
+                { value: 'easier_to_harder', label: 'Easier to harder' },
+                { value: 'source_order', label: 'Source order' },
+              ]}
+            />
           </label>
         </section>
 

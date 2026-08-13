@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CircleUserRound, LogOut, UserStar } from 'lucide-react';
+import { ChevronDown, CircleUserRound, LogOut, Sparkles, UserStar } from 'lucide-react';
 import { NotificationBadge } from './notification-center';
 
 export function AccountMenu({
@@ -76,6 +76,18 @@ export function AccountMenu({
               </span>
             </Link>
           )}
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50"
+            onClick={() => {
+              setOpen(false);
+              window.dispatchEvent(new Event('dp:open-whats-new'));
+            }}
+          >
+            <Sparkles className="size-4" />
+            What’s new
+          </button>
           <form action="/api/auth/signout" method="post">
             <button
               role="menuitem"
