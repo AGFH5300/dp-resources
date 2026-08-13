@@ -118,6 +118,7 @@ export function ResourceAttributionBadges({
   const primary =
     applicableSources.find((source) => source.isPrimary) ?? applicableSources[0];
   const type = attribution.resourceType;
+  if (!primary && !type) return null;
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-1 text-xs text-slate-500">
       {primary ? (
