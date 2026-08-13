@@ -31,6 +31,7 @@ import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
 import { rememberRecentResource } from '@/lib/recent-client-storage';
 import { ResourceAttributionBadges } from '@/components/content-source-badge';
+import { FolderSearchButton } from '@/components/folder-search-button';
 
 type Props = {
   items: DriveItem[];
@@ -478,20 +479,22 @@ function FileBrowserToolbar({
   resourceTypeFilter,
   setResourceTypeFilter,
   resourceTypeOptions,
+  folderSearch,
 }: any) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-2">
-      <div className="relative">
-        <button
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(!filtersOpen)}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <SlidersHorizontal className="size-4" />
-          Filter
-        </button>
-        {filtersOpen && (
-          <div className="absolute z-20 mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <button
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filter
+          </button>
+          {filtersOpen && (
+            <div className="absolute z-20 mt-2 w-72 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
             <label className="flex items-center justify-between text-sm">
               <span className="sr-only">Search within this folder</span>Folders
               only
@@ -571,8 +574,15 @@ function FileBrowserToolbar({
             >
               Clear filters
             </button>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+        {folderSearch ? (
+          <FolderSearchButton
+            folderId={folderSearch.folderId}
+            folderName={folderSearch.folderName}
+          />
+        ) : null}
       </div>
       <div className="flex gap-1">
         <button
@@ -891,6 +901,10 @@ export function LibraryBrowser({
           resourceTypeFilter,
           setResourceTypeFilter,
           resourceTypeOptions,
+          folderSearch:
+            crumbs.length > 1 && active
+              ? { folderId: active.id, folderName: active.name }
+              : null,
         }}
       />
       {crumbs.length === 1 && localItems.find((i) => i.featuredLabel) && (
