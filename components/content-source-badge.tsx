@@ -109,7 +109,14 @@ export function ResourceAttributionBadges({
   attribution?: ResourceAttribution;
 }) {
   if (!attribution) return null;
-  const primary = attribution.sources.find((source) => source.isPrimary) ?? attribution.sources[0];
+  const applicableSources = attribution.sources.filter(
+    (source) =>
+      source.reviewStatus === 'reviewed' &&
+      source.slug !== 'unknown' &&
+      !/under review/i.test(source.displayName),
+  );
+  const primary =
+    applicableSources.find((source) => source.isPrimary) ?? applicableSources[0];
   const type = attribution.resourceType;
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-1 text-xs text-slate-500">
@@ -119,9 +126,7 @@ export function ResourceAttributionBadges({
           title={SOURCE_TOOLTIP}
           aria-label={`Source: ${primary.displayName}. ${SOURCE_TOOLTIP}`}
         >
-          {primary.reviewStatus === 'under_review'
-            ? 'Source attribution under review'
-            : primary.shortLabel}
+          {primary.shortLabel}
         </span>
       ) : null}
       {type ? (

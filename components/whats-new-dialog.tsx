@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { SiteConfirmDialog } from '@/components/ui/site-confirm-dialog';
@@ -38,12 +38,7 @@ export function WhatsNewDialog() {
       onClose={dismiss}
       closeLabel="Close What’s new"
       title="What’s new"
-      description={
-        <span className="inline-flex items-center gap-2">
-          <Sparkles className="size-4 text-amber-600" aria-hidden />
-          {WHATS_NEW_RELEASE.dateLabel}
-        </span>
-      }
+      description={WHATS_NEW_RELEASE.dateLabel}
     >
       <ul className="space-y-4">
         {WHATS_NEW_RELEASE.items.map((item) => (

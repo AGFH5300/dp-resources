@@ -32,6 +32,9 @@ describe('source UI and release notes', () => {
     expect(dialog).toContain('localStorage.getItem');
     expect(dialog).toContain('localStorage.setItem');
     expect(dialog).toContain('View full changelog');
+    expect(dialog).not.toContain('Sparkles');
     expect(accountMenu).toContain('dp:open-whats-new');
+    expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
+    expect(accountMenu).not.toContain('Sparkles');
   });
 });
