@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - run: npm test -- --no-file-parallelism --detectAsyncLeaks --reporter=verbose
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
