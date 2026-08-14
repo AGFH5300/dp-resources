@@ -156,7 +156,9 @@ export async function POST(request: Request) {
   // Database availability checks are server-only so callers cannot bypass the
   // application rate limits by invoking SECURITY DEFINER RPCs directly.
   const supabase = await createClient();
-  const admin = createSupabaseAdminClient();
+  const admin = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createSupabaseAdminClient()
+    : supabase;
   let domainPolicy;
   try {
     domainPolicy = await getEmailDomainPolicy(admin, email);
