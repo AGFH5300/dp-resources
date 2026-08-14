@@ -7,7 +7,7 @@ describe('full resource search result capacity', () => {
   it('keeps the full results page at 100 while the RPC remains bounded', () => {
     const page = read('app/search/page.tsx');
     const migration = read(
-      'supabase/migrations/20260814153100_preserve_full_resource_search_limit.sql',
+      'supabase/migrations/20260814155107_preserve_full_resource_search_limit.sql',
     );
 
     expect(page).toContain('result_limit: 100');
