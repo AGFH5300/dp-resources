@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createClient } from '@/lib/supabase-server';
 import { isValidEmail } from '@/lib/auth-email';
 import {
@@ -137,8 +138,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
-  const supabase = await createClient();
+  // Production uses the service-role client so callers cannot bypass this
+  // endpoint's rate limit by invoking the availability RPCs directly. If the
+  // service-role key is absent, the ordinary server client is allowed to fail
+  // closed against the restricted database grants rather than crashing here.
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createSupabaseAdminClient()
+    : await createClient();
 
   if (type === 'username') {
     const { data, error } = await supabase.rpc(

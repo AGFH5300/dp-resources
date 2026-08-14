@@ -91,9 +91,11 @@ describe('signup validation and availability', () => {
   });
 
   it('checks availability through DP-only RPC names', () => {
-    expect(availabilityRoute).toContain('dp_resource_is_username_available');
+    expect(availabilityRoute).toContain(
+      'dp_resource_username_availability_status',
+    );
     expect(availabilityRoute).toContain('dp_resource_is_email_available');
-    expect(signupRoute).toContain('dp_resource_is_username_available');
+    expect(signupRoute).toContain('dp_resource_username_availability_status');
     expect(signupRoute).toContain('dp_resource_is_email_available');
   });
 });
@@ -139,9 +141,13 @@ describe('DP-only schema and target code references', () => {
   });
 
   it('does not reference forbidden database names in target auth code or schema', () => {
-    const target = [signupRoute, availabilityRoute, accountRoute, verifyOtpForm, schema].join(
-      '\n',
-    );
+    const target = [
+      signupRoute,
+      availabilityRoute,
+      accountRoute,
+      verifyOtpForm,
+      schema,
+    ].join('\n');
     expect(target).not.toMatch(/public\.profiles\b/);
     expect(target).not.toMatch(/\bis_username_available\b(?![\w])/);
     expect(target).not.toMatch(/\bis_email_available\b(?![\w])/);
