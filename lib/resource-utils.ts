@@ -23,6 +23,18 @@ export function normalizeResourceName(value: string) {
     .trim();
 }
 
+/**
+ * PostgREST `.or(...)` accepts raw filter grammar. Only allow characters that
+ * cannot introduce operators, grouping, quoted values, or wildcard syntax.
+ */
+export function normalizeResourceFilterTerm(value: string, maxLength = 120) {
+  return normalizeResourceName(value)
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
 export function formatSize(size?: string | number | null) {
   if (size == null || size === '') return '—';
   const bytes = Number(size);
