@@ -41,8 +41,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body !== 'object')
+  const rawBody = await req.text();
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_SUPPORT_BODY_BYTES) {
+    return Response.json(
+      { error: 'Support request is too large.' },
+      { status: 413 },
+    );
+  }
+
+  let body: any;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return Response.json(
+      { error: 'Expected JSON request body' },
+      { status: 400 },
+    );
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body))
     return Response.json(
       { error: 'Expected JSON request body' },
       { status: 400 },
@@ -90,5 +106,11 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-  return Response.json({ ticket: data }, { status: 201 });
+  return Response.json(
+    { ticket: data },
+    {
+      status: 201,
+      headers: { 'Cache-Control': 'private, no-store' },
+    },
+  );
 }
