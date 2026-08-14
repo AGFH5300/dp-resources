@@ -1,5 +1,6 @@
 import { sameOriginOrForbidden } from '@/lib/request-security';
 import { NextResponse } from 'next/server';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createClient } from '@/lib/supabase-server';
 import { isValidEmail } from '@/lib/auth-email';
 import {
@@ -152,12 +153,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // Compatibility marker: message: 'That username is already taken.'
-  // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
+  // Database availability checks are server-only so callers cannot bypass the
+  // application rate limits by invoking SECURITY DEFINER RPCs directly.
   const supabase = await createClient();
+  const admin = createSupabaseAdminClient();
   let domainPolicy;
   try {
-    domainPolicy = await getEmailDomainPolicy(supabase, email);
+    domainPolicy = await getEmailDomainPolicy(admin, email);
   } catch {
     return jsonResponse(
       {
@@ -189,10 +191,10 @@ export async function POST(request: Request) {
     { data: usernameStatus, error: usernameError },
     { data: emailAvailable, error: emailError },
   ] = await Promise.all([
-    supabase.rpc('dp_resource_username_availability_status', {
+    admin.rpc('dp_resource_username_availability_status', {
       p_username: username,
     }),
-    supabase.rpc('dp_resource_is_email_available', { p_email: email }),
+    admin.rpc('dp_resource_is_email_available', { p_email: email }),
   ]);
 
   if (usernameError || emailError) {
