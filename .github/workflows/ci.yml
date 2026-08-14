@@ -23,7 +23,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test -- --no-file-parallelism --reporter=verbose
+      - name: Run tests
+        run: npm test -- --no-file-parallelism --reporter=verbose
+        timeout-minutes: 5
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
