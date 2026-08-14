@@ -21,9 +21,9 @@ export default async function SearchPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { membership } = await requireMember();
-  const q = (await searchParams).q || '';
+  const q = ((await searchParams).q || '').slice(0, 500);
   const sb = createSupabaseAdminClient();
-  const safe = normalizeResourceName(q).replace(/[,%]/g, '');
+  const safe = normalizeResourceName(q).slice(0, 120);
   const { data: sync } = await sb
     .from('dp_resource_index_sync_state')
     .select('status,folder_queue,lock_expires_at,completed_at')
@@ -35,49 +35,87 @@ export default async function SearchPage({
     new Date(sync.lock_expires_at).getTime() > Date.now();
   const incomplete = sync?.status && sync.status !== 'complete';
   const initialSyncIncomplete = !sync?.completed_at && incomplete;
-  const { data = [] } =
+
+  const searchResult =
     safe.length >= 2
-      ? await sb
-          .from('dp_resource_index')
-          .select('*')
-          .or(
-            `normalized_name.ilike.%${safe}%,path.ilike.%${safe}%,mime_type.ilike.%${safe}%`,
-          )
-          .order('is_folder', { ascending: false })
-          .order('name')
-          .limit(100)
+      ? await sb.rpc('dp_search_resources', {
+          search_query: safe,
+          result_limit: 50,
+        })
       : { data: [] as any[] };
+  const data = Array.isArray(searchResult.data) ? searchResult.data : [];
+
   const aliasKey = q.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const [{ data: sourceAliases = [] }, { data: resourceTypes = [] }] = safe.length >= 2
-    ? await Promise.all([
-        sb.from('dp_content_source_aliases').select('source:dp_content_sources!inner(slug)').eq('alias_key', aliasKey),
-        sb.from('dp_resource_types').select('slug,display_name').eq('is_active', true),
-      ])
-    : [{ data: [] as any[] }, { data: [] as any[] }];
-  const sourceSlugs = (sourceAliases as any[]).map((row) => Array.isArray(row.source) ? row.source[0]?.slug : row.source?.slug).filter(Boolean);
+  const [{ data: sourceAliases = [] }, { data: resourceTypes = [] }] =
+    safe.length >= 2
+      ? await Promise.all([
+          sb
+            .from('dp_content_source_aliases')
+            .select('source:dp_content_sources!inner(slug)')
+            .eq('alias_key', aliasKey),
+          sb
+            .from('dp_resource_types')
+            .select('slug,display_name')
+            .eq('is_active', true),
+        ])
+      : [{ data: [] as any[] }, { data: [] as any[] }];
+  const sourceSlugs = (sourceAliases as any[])
+    .map((row) =>
+      Array.isArray(row.source) ? row.source[0]?.slug : row.source?.slug,
+    )
+    .filter(Boolean);
   const normalizedQuery = normalizeResourceName(q).toLowerCase();
   const typeSlugs = (resourceTypes as any[])
-    .filter((row) => normalizeResourceName(row.display_name).toLowerCase() === normalizedQuery || row.slug.replaceAll('_', ' ') === normalizedQuery)
+    .filter(
+      (row) =>
+        normalizeResourceName(row.display_name).toLowerCase() ===
+          normalizedQuery ||
+        row.slug.replaceAll('_', ' ') === normalizedQuery,
+    )
     .map((row) => row.slug);
   const [sourceMatches, typeMatches] = await Promise.all([
-    sourceSlugs.length ? sb.from('dp_resource_source_catalog').select('*').in('source_slug', sourceSlugs).limit(100) : Promise.resolve({ data: [] as any[] }),
-    typeSlugs.length ? sb.from('dp_resource_source_catalog').select('*').in('resource_type_slug', typeSlugs).limit(100) : Promise.resolve({ data: [] as any[] }),
+    sourceSlugs.length
+      ? sb
+          .from('dp_resource_source_catalog')
+          .select('*')
+          .in('source_slug', sourceSlugs)
+          .limit(100)
+      : Promise.resolve({ data: [] as any[] }),
+    typeSlugs.length
+      ? sb
+          .from('dp_resource_source_catalog')
+          .select('*')
+          .in('resource_type_slug', typeSlugs)
+          .limit(100)
+      : Promise.resolve({ data: [] as any[] }),
   ]);
   const mergedRows = new Map<string, any>();
-  for (const row of [...(data as any[]), ...((sourceMatches as any).data || []), ...((typeMatches as any).data || [])]) {
-    if (!mergedRows.has(row.drive_file_id)) mergedRows.set(row.drive_file_id, row);
+  for (const row of [
+    ...(data as any[]),
+    ...((sourceMatches as any).data || []),
+    ...((typeMatches as any).data || []),
+  ]) {
+    if (!mergedRows.has(row.drive_file_id))
+      mergedRows.set(row.drive_file_id, row);
   }
   const searchableRows = [...mergedRows.values()].slice(0, 100);
   const featured = await getFeaturedResourceMap(
     searchableRows.map((r) => r.drive_file_id),
   );
-  const attribution = await getResourceAttributionMap(searchableRows.map((r) => r.drive_file_id));
+  const attribution = await getResourceAttributionMap(
+    searchableRows.map((r) => r.drive_file_id),
+  );
   const rows = searchableRows
     .map((r) => {
       const hit = featured.get(r.drive_file_id);
       return hit
-          ? { ...r, featuredLabel: hit.label, featuredPriority: hit.priority, attribution: attribution.get(r.drive_file_id) }
-          : { ...r, attribution: attribution.get(r.drive_file_id) };
+        ? {
+            ...r,
+            featuredLabel: hit.label,
+            featuredPriority: hit.priority,
+            attribution: attribution.get(r.drive_file_id),
+          }
+        : { ...r, attribution: attribution.get(r.drive_file_id) };
     })
     .sort(
       (a, b) =>
@@ -134,7 +172,9 @@ export default async function SearchPage({
                       <SearchHighlight text={r.path || 'Library'} query={q} /> ·{' '}
                       {typeLabel(r.mime_type, r.is_folder)}
                     </span>
-                    <span className="mt-1 block"><ResourceAttributionBadges attribution={r.attribution} /></span>
+                    <span className="mt-1 block">
+                      <ResourceAttributionBadges attribution={r.attribution} />
+                    </span>
                   </span>
                 </span>
                 <span className="hidden truncate text-slate-500 md:block">
@@ -142,7 +182,9 @@ export default async function SearchPage({
                 </span>
                 <span className="hidden text-slate-600 md:block">
                   {typeLabel(r.mime_type, r.is_folder)}
-                  <span className="mt-1 block"><ResourceAttributionBadges attribution={r.attribution} /></span>
+                  <span className="mt-1 block">
+                    <ResourceAttributionBadges attribution={r.attribution} />
+                  </span>
                 </span>
                 <span className="hidden text-slate-500 md:block">
                   {formatDate(r.modified_at)}
