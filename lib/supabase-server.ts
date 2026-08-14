@@ -1,6 +1,7 @@
 import 'server-only';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { hardenSupabaseCookieOptions } from './supabase-cookie-security';
 import { getSupabaseServerConfig } from './supabase-config';
 
 export function isSupabaseConfigured() {
@@ -26,7 +27,7 @@ export async function createSupabaseServerClient() {
       ) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
-            store.set(name, value, options),
+            store.set(name, value, hardenSupabaseCookieOptions(options)),
           );
         } catch {}
       },

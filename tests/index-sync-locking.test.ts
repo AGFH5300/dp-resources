@@ -62,11 +62,12 @@ describe('resumable Drive index sync locking', () => {
     expect(sync).toContain(
       'completed_at: initialRunIncomplete ? null : state.completed_at',
     );
-    expect(search).toContain("updating:available&&state?.status!=='complete'");
     expect(search).toContain(
-      "if(!available)return Response.json({folders:[],files:[],indexState:'preparing'})",
+      "return { available, updating: available && state?.status !== 'complete' }",
     );
-    expect(search).toContain('Response.json({...hit.payload,indexState}');
+    expect(search).toContain('if (!available)');
+    expect(search).toContain("{ folders: [], files: [], indexState: 'preparing' }");
+    expect(search).toContain('{ ...cachedPayload, indexState }');
   });
 
   it('adds the singleton row and lock columns in a later migration', () => {

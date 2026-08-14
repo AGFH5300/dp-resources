@@ -12,6 +12,20 @@ import { createClient } from '@/lib/supabase-server';
 import { QuestionSourceBadges } from '@/components/content-source-badge';
 import { SourceMultiFilter } from '@/components/question-bank/source-multi-filter';
 
+const QUESTION_SEARCH_MAX_PAGE = 1000;
+
+function canonicalQuestionSearchQuery(query: string) {
+  const compact = query.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const courseCode = compact.replace(/^(?:math|maths|mathematics)/, '');
+  const aliases: Record<string, string> = {
+    aahl: 'Analysis and Approaches HL',
+    aasl: 'Analysis and Approaches SL',
+    aihl: 'Applications and Interpretation HL',
+    aisl: 'Applications and Interpretation SL',
+  };
+  return aliases[courseCode] || query;
+}
+
 export default async function QuestionBankSearch({
   searchParams,
 }: {
@@ -19,19 +33,42 @@ export default async function QuestionBankSearch({
 }) {
   const { membership } = await requireMember();
   const params = await searchParams;
-  const query = String(params.q || '').trim();
-  const page = Math.max(1, Number(params.page || 1) || 1);
+  const query = String(params.q || '').trim().slice(0, 160);
+  const rawPage = Number(params.page || 1);
+  const page = Number.isFinite(rawPage)
+    ? Math.min(QUESTION_SEARCH_MAX_PAGE, Math.max(1, Math.floor(rawPage)))
+    : 1;
   const selectedSources = String(params.sources || '')
     .split(',')
     .map((value) => value.trim().toLowerCase())
-    .filter((value) => /^[a-z0-9_]+$/.test(value))
+    .filter((value, index, values) =>
+      /^[a-z0-9_]+$/.test(value) && values.indexOf(value) === index,
+    )
     .slice(0, 10);
   const client = await createClient();
-  const [{ data: sourceOptions = [] }, results] = await Promise.all([
-    client.rpc('dp_content_source_options'),
-    query.length >= 2 ? searchQuestionBank(query, page, selectedSources) : Promise.resolve([]),
-  ]);
-  const total = Number((results as any[])[0]?.total_count || 0);
+  const sourceOptionsPromise = client.rpc('dp_content_source_options');
+
+  let results: any[] = [];
+  let searchUnavailable = false;
+  if (query.length >= 2) {
+    try {
+      results = await searchQuestionBank(
+        canonicalQuestionSearchQuery(query),
+        page,
+        selectedSources,
+      );
+    } catch (error) {
+      searchUnavailable = true;
+      console.error('[question-bank-search] search failed', {
+        message: error instanceof Error ? error.message : String(error),
+        queryLength: query.length,
+        page,
+      });
+    }
+  }
+
+  const { data: sourceOptions = [] } = await sourceOptionsPromise;
+  const total = Number(results[0]?.total_count || 0);
   return (
     <>
       <Nav
@@ -71,10 +108,12 @@ export default async function QuestionBankSearch({
         <p className="mt-3 text-sm text-slate-600">
           {query.length < 2
             ? 'Enter at least two characters.'
-            : `${total.toLocaleString()} result${total === 1 ? '' : 's'} for “${query}”`}
+            : searchUnavailable
+              ? 'Search is temporarily unavailable. Please try again.'
+              : `${total.toLocaleString()} result${total === 1 ? '' : 's'} for “${query}”`}
         </p>
         <div className="mt-4 space-y-3">
-          {(results as any[]).map((row) => (
+          {results.map((row) => (
             <Link
               key={row.variant_id}
               href={`/question-bank/${row.subject_slug}/${row.course_slug}?question=${row.variant_id}`}
@@ -106,7 +145,11 @@ export default async function QuestionBankSearch({
               </small>
             </Link>
           ))}
-          {query.length >= 2 && !results.length ? (
+          {searchUnavailable ? (
+            <div className="dp-qb-empty" role="alert">
+              Question search could not be completed. Please try again.
+            </div>
+          ) : query.length >= 2 && !results.length ? (
             <div className="dp-qb-empty">No matching questions found.</div>
           ) : null}
         </div>

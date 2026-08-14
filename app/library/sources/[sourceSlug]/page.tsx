@@ -8,7 +8,13 @@ import { ResourceTypeIcon } from '@/components/resource-type-icon';
 import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import type { ResourceAttribution } from '@/lib/types';
-import { formatDate, formatSize, resourceUrl, typeLabel } from '@/lib/resource-utils';
+import {
+  formatDate,
+  formatSize,
+  normalizeResourceFilterTerm,
+  resourceUrl,
+  typeLabel,
+} from '@/lib/resource-utils';
 import { AppSelect } from '@/components/ui/app-select';
 
 const slugPattern = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
@@ -24,7 +30,8 @@ export default async function SourcePage({
   const { sourceSlug } = await params;
   if (!slugPattern.test(sourceSlug)) notFound();
   const queryParams = await searchParams;
-  const q = String(queryParams.q || '').trim().slice(0, 120);
+  const q = String(queryParams.q || '').trim().slice(0, 500);
+  const filterTerm = normalizeResourceFilterTerm(q, 120);
   const requestedType = String(queryParams.type || '').trim().slice(0, 60);
   const type = requestedType === 'all' ? '' : requestedType;
   const sort = ['name', 'modified', 'size', 'type'].includes(queryParams.sort || '')
@@ -44,14 +51,30 @@ export default async function SourcePage({
     .from('dp_resource_source_catalog')
     .select('*', { count: 'exact' })
     .eq('source_slug', sourceSlug);
-  if (q.length >= 2) catalog = catalog.or(`name.ilike.%${q.replaceAll(',', ' ')}%,path.ilike.%${q.replaceAll(',', ' ')}%`);
+  if (filterTerm.length >= 2)
+    catalog = catalog.or(
+      `name.ilike.%${filterTerm}%,path.ilike.%${filterTerm}%`,
+    );
   if (type && slugPattern.test(type)) catalog = catalog.eq('resource_type_slug', type);
-  if (sort === 'modified') catalog = catalog.order('modified_at', { ascending: false, nullsFirst: false });
-  else if (sort === 'size') catalog = catalog.order('size_bytes', { ascending: false, nullsFirst: false });
-  else if (sort === 'type') catalog = catalog.order('resource_type_name').order('name');
-  else catalog = catalog.order('is_folder', { ascending: false }).order('name');
+  if (sort === 'modified')
+    catalog = catalog.order('modified_at', {
+      ascending: false,
+      nullsFirst: false,
+    });
+  else if (sort === 'size')
+    catalog = catalog.order('size_bytes', {
+      ascending: false,
+      nullsFirst: false,
+    });
+  else if (sort === 'type')
+    catalog = catalog.order('resource_type_name').order('name');
+  else
+    catalog = catalog.order('is_folder', { ascending: false }).order('name');
   const pageSize = 60;
-  const { data: rawRows = [], count, error } = await catalog.range((page - 1) * pageSize, page * pageSize - 1);
+  const { data: rawRows = [], count, error } = await catalog.range(
+    (page - 1) * pageSize,
+    page * pageSize - 1,
+  );
   if (error) throw new Error(`Unable to load source collection: ${error.message}`);
   const seen = new Set<string>();
   const rows = (rawRows as any[]).filter((row) => {
@@ -67,29 +90,59 @@ export default async function SourcePage({
   const pages = Math.max(1, Math.ceil(Number(count || 0) / pageSize));
   return (
     <>
-      <Nav admin={membership.role === 'admin'} email={membership.email} userId={membership.id} />
+      <Nav
+        admin={membership.role === 'admin'}
+        email={membership.email}
+        userId={membership.id}
+      />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav className="flex flex-wrap gap-1 text-sm text-slate-500" aria-label="Source breadcrumb">
-          <Link href="/library" className="hover:underline">Library</Link><span>/</span>
-          <Link href="/library/sources" className="hover:underline">Browse by source</Link><span>/</span>
+        <nav
+          className="flex flex-wrap gap-1 text-sm text-slate-500"
+          aria-label="Source breadcrumb"
+        >
+          <Link href="/library" className="hover:underline">
+            Library
+          </Link>
+          <span>/</span>
+          <Link href="/library/sources" className="hover:underline">
+            Browse by source
+          </Link>
+          <span>/</span>
           <span aria-current="page">{source.display_name}</span>
         </nav>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-[color:var(--dp-navy)]">{source.display_name}</h1>
-            <p className="mt-1 max-w-3xl text-sm text-slate-600">{source.description}</p>
+            <h1 className="text-2xl font-semibold text-[color:var(--dp-navy)]">
+              {source.display_name}
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm text-slate-600">
+              {source.description}
+            </p>
           </div>
-          <Link href="/library" className="text-sm font-medium text-blue-700 hover:underline">Back to Library</Link>
+          <Link
+            href="/library"
+            className="text-sm font-medium text-blue-700 hover:underline"
+          >
+            Back to Library
+          </Link>
         </div>
         <form className="mt-5 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(220px,1fr)_200px_180px_auto]">
-          <input name="q" defaultValue={q} placeholder="Search within source" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Search within source"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+          />
           <AppSelect
             name="type"
             defaultValue={type || 'all'}
             placeholder="Resource type"
             options={[
               { value: 'all', label: 'All resource types' },
-              ...(resourceTypes as any[]).map((resourceType) => ({ value: resourceType.slug, label: resourceType.display_name })),
+              ...(resourceTypes as any[]).map((resourceType) => ({
+                value: resourceType.slug,
+                label: resourceType.display_name,
+              })),
             ]}
           />
           <AppSelect
@@ -103,38 +156,96 @@ export default async function SourcePage({
               { value: 'type', label: 'Resource type' },
             ]}
           />
-          <button className="rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-medium text-white">Apply</button>
+          <button className="rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-medium text-white">
+            Apply
+          </button>
         </form>
-        <p className="mt-3 text-sm text-slate-600">{Number(count || 0).toLocaleString()} indexed item{count === 1 ? '' : 's'}</p>
+        <p className="mt-3 text-sm text-slate-600">
+          {Number(count || 0).toLocaleString()} indexed item
+          {count === 1 ? '' : 's'}
+        </p>
         <div className="mt-3 border-y border-slate-200 bg-white">
           {rows.map((row) => {
             const attribution: ResourceAttribution = {
-              sources: [{
-                slug: source.slug, displayName: source.display_name, shortLabel: source.short_label,
-                attributionLabel: source.attribution_label, reviewStatus: row.source_review_status,
-                relationship: row.relationship, isPrimary: row.is_primary,
-              }],
-              resourceType: row.resource_type_slug ? {
-                slug: row.resource_type_slug, displayName: row.resource_type_name,
-                reviewStatus: row.type_review_status,
-              } : null,
+              sources: [
+                {
+                  slug: source.slug,
+                  displayName: source.display_name,
+                  shortLabel: source.short_label,
+                  attributionLabel: source.attribution_label,
+                  reviewStatus: row.source_review_status,
+                  relationship: row.relationship,
+                  isPrimary: row.is_primary,
+                },
+              ],
+              resourceType: row.resource_type_slug
+                ? {
+                    slug: row.resource_type_slug,
+                    displayName: row.resource_type_name,
+                    reviewStatus: row.type_review_status,
+                  }
+                : null,
             };
             return (
-              <Link key={row.drive_file_id} href={resourceUrl(row)} className="grid gap-2 border-b border-slate-100 px-3 py-3 text-sm last:border-0 hover:bg-slate-50 md:grid-cols-[minmax(280px,1fr)_minmax(220px,.8fr)_220px_100px] md:items-center">
-                <span className="flex min-w-0 items-center gap-3 font-medium"><ResourceTypeIcon item={{ isFolder: row.is_folder, mimeType: row.mime_type }} /><span className="truncate">{row.name}</span></span>
+              <Link
+                key={row.drive_file_id}
+                href={resourceUrl(row)}
+                className="grid gap-2 border-b border-slate-100 px-3 py-3 text-sm last:border-0 hover:bg-slate-50 md:grid-cols-[minmax(280px,1fr)_minmax(220px,.8fr)_220px_100px] md:items-center"
+              >
+                <span className="flex min-w-0 items-center gap-3 font-medium">
+                  <ResourceTypeIcon
+                    item={{ isFolder: row.is_folder, mimeType: row.mime_type }}
+                  />
+                  <span className="truncate">{row.name}</span>
+                </span>
                 <span className="truncate text-slate-500">{row.path}</span>
                 <ResourceAttributionBadges attribution={attribution} />
-                <span className="text-slate-500">{row.is_folder ? typeLabel(row.mime_type, true) : formatSize(row.size_bytes == null ? undefined : String(row.size_bytes))}</span>
+                <span className="text-slate-500">
+                  {row.is_folder
+                    ? typeLabel(row.mime_type, true)
+                    : formatSize(
+                        row.size_bytes == null
+                          ? undefined
+                          : String(row.size_bytes),
+                      )}
+                </span>
               </Link>
             );
           })}
-          {!rows.length ? <div className="p-8 text-center text-sm text-slate-600">No resources match these filters.</div> : null}
+          {!rows.length ? (
+            <div className="p-8 text-center text-sm text-slate-600">
+              No resources match these filters.
+            </div>
+          ) : null}
         </div>
         {pages > 1 ? (
-          <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Source pages">
-            {page > 1 ? <Link className="font-medium text-blue-700" href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page - 1) })}`}>← Previous</Link> : <span />}
-            <span className="text-slate-500">Page {page} of {pages}</span>
-            {page < pages ? <Link className="font-medium text-blue-700" href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page + 1) })}`}>Next →</Link> : <span />}
+          <nav
+            className="mt-4 flex items-center justify-between text-sm"
+            aria-label="Source pages"
+          >
+            {page > 1 ? (
+              <Link
+                className="font-medium text-blue-700"
+                href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page - 1) })}`}
+              >
+                ← Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="text-slate-500">
+              Page {page} of {pages}
+            </span>
+            {page < pages ? (
+              <Link
+                className="font-medium text-blue-700"
+                href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(type ? { type } : {}), sort, page: String(page + 1) })}`}
+              >
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
           </nav>
         ) : null}
       </main>
