@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerConfig } from '@/lib/supabase-config';
+import { hardenSupabaseCookieOptions } from '@/lib/supabase-cookie-security';
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/',
@@ -109,7 +110,11 @@ function clearSupabaseAuthCookies(request: NextRequest, supabaseUrl: string) {
 
   const cleanResponse = NextResponse.next({ request });
   authCookieNames.forEach((name) =>
-    cleanResponse.cookies.set(name, '', { maxAge: 0, path: '/' }),
+    cleanResponse.cookies.set(
+      name,
+      '',
+      hardenSupabaseCookieOptions({ maxAge: 0, path: '/' }),
+    ),
   );
   cleanResponse.headers.set('Cache-Control', 'private, no-store');
   return cleanResponse;
@@ -148,7 +153,11 @@ export async function middleware(request: NextRequest) {
         );
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
+          response.cookies.set(
+            name,
+            value,
+            hardenSupabaseCookieOptions(options),
+          ),
         );
       },
     },
