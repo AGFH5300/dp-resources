@@ -59,12 +59,13 @@ describe('signup enforcement wiring', () => {
 
   it('distinguishes moderated usernames from genuine duplicates without leaking policy details', () => {
     const firstUsernameRpc = availability.indexOf(
-      'dp_resource_is_username_available',
+      'dp_resource_username_availability_status',
     );
     const identityCheck = availability.indexOf(
       'validateUsernameIdentity(value)',
     );
     expect(identityCheck).toBeGreaterThanOrEqual(0);
+    expect(firstUsernameRpc).toBeGreaterThanOrEqual(0);
     expect(identityCheck).toBeLessThan(firstUsernameRpc);
     expect(availability).toContain(
       "return jsonResponse('invalid', false, 'Choose a different username.'",
