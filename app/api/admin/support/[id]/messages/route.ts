@@ -1,6 +1,10 @@
 import { sameOriginOrForbidden } from '@/lib/request-security';
 import { requireAdmin } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
+
+const MAX_ADMIN_REPLY_BODY_BYTES = 16 * 1024;
+const MAX_ADMIN_REPLY_LENGTH = 5000;
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -9,14 +13,42 @@ export async function POST(
   if (forbidden) return forbidden;
   const { user } = await requireAdmin();
   const { id } = await params;
-  const body = await req.json().catch(() => null);
+
+  const declaredLength = Number(req.headers.get('content-length') || 0);
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_ADMIN_REPLY_BODY_BYTES
+  ) {
+    return Response.json({ error: 'Request body is too large' }, { status: 413 });
+  }
+
+  const rawBody = await req.text();
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_ADMIN_REPLY_BODY_BYTES) {
+    return Response.json({ error: 'Request body is too large' }, { status: 413 });
+  }
+
+  let body: any;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return Response.json({ error: 'Expected JSON request body' }, { status: 400 });
+  }
+
   const text = String(body?.body || '').trim();
   const visibility = body?.visibility === 'internal' ? 'internal' : 'user';
-  if (!text)
+  if (!text) {
     return Response.json(
       { error: 'Message body is required' },
       { status: 400 },
     );
+  }
+  if (text.length > MAX_ADMIN_REPLY_LENGTH) {
+    return Response.json(
+      { error: `Message must be ${MAX_ADMIN_REPLY_LENGTH} characters or fewer` },
+      { status: 400 },
+    );
+  }
+
   const sb = createSupabaseAdminClient();
   const { data: message, error } = await sb
     .from('dp_support_ticket_messages')
@@ -29,7 +61,14 @@ export async function POST(
     })
     .select('*')
     .single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin-support-reply] insert failed', {
+      code: error.code,
+      message: error.message,
+    });
+    return Response.json({ error: 'Could not send support reply' }, { status: 500 });
+  }
+
   const update: any = { updated_at: new Date().toISOString() };
   if (visibility === 'user') {
     const { data: ticket } = await sb
@@ -39,6 +78,19 @@ export async function POST(
       .single();
     if (ticket?.status === 'open') update.status = 'in_review';
   }
-  await sb.from('dp_support_tickets').update(update).eq('id', id);
-  return Response.json({ message });
+  const { error: updateError } = await sb
+    .from('dp_support_tickets')
+    .update(update)
+    .eq('id', id);
+  if (updateError) {
+    console.error('[admin-support-reply] ticket timestamp update failed', {
+      code: updateError.code,
+      message: updateError.message,
+    });
+  }
+
+  return Response.json(
+    { message },
+    { headers: { 'Cache-Control': 'private, no-store' } },
+  );
 }
