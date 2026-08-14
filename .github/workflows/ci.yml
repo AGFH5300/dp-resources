@@ -23,16 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - name: Diagnose tests file-by-file
-        shell: bash
-        timeout-minutes: 10
-        run: |
-          set -euo pipefail
-          while IFS= read -r file; do
-            echo "::group::Vitest $file"
-            timeout --signal=TERM --kill-after=5s 30s npx vitest run "$file" --no-file-parallelism --reporter=verbose
-            echo "::endgroup::"
-          done < <(find tests -maxdepth 1 -type f \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.test.mjs' \) | sort)
+      - run: npm test
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
