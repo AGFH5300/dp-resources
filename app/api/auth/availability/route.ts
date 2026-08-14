@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
+import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { isValidEmail } from '@/lib/auth-email';
 import {
   logIdentityRejection,
@@ -137,8 +137,8 @@ export async function GET(request: Request) {
     }
   }
 
-  // Compatibility marker: dp_resource_is_username_available is preserved by the SQL wrapper; the status RPC is authoritative.
-  const supabase = await createClient();
+  // Keep database availability checks behind this rate-limited server endpoint.
+  const supabase = createSupabaseAdminClient();
 
   if (type === 'username') {
     const { data, error } = await supabase.rpc(
