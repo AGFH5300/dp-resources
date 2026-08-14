@@ -85,7 +85,7 @@ export async function PATCH(
       update.assigned_at = body.assigned_to ? now : null;
     }
     if (requestedNotes !== undefined) {
-      update.internal_notes = requestedNotes || null;
+      update['internal_notes'] = requestedNotes || null;
     }
     if (body.status === 'resolved' || body.status === 'closed') {
       update.resolved_at = now;
