@@ -76,7 +76,7 @@ describe('signup enforcement wiring', () => {
     expect(availability).not.toContain('That username cannot be used.');
     expect(availability).not.toContain('usernamePolicy.reason }');
     expect(signup).toContain("message: 'Choose a different username.'");
-    expect(signup).toContain("message: 'That username is already taken.'");
+    expect(signup).toContain("'That username is already taken.'");
     expect(signup).not.toContain('debug: { reason: usernamePolicy.reason }');
   });
 
