@@ -40,7 +40,7 @@ export default async function SearchPage({
     safe.length >= 2
       ? await sb.rpc('dp_search_resources', {
           search_query: safe,
-          result_limit: 50,
+          result_limit: 100,
         })
       : { data: [] as any[] };
   const data = Array.isArray(searchResult.data) ? searchResult.data : [];
