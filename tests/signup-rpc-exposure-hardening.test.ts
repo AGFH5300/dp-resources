@@ -24,7 +24,7 @@ describe('signup availability RPC exposure', () => {
 
   it('revokes direct anon/authenticated execution of signup SECURITY DEFINER RPCs', () => {
     const migration = read(
-      'supabase/migrations/20260814154800_lock_signup_availability_rpcs.sql',
+      'supabase/migrations/20260814155115_lock_signup_availability_rpcs.sql',
     );
 
     for (const rpc of [
