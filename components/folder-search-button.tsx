@@ -1,7 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 export function FolderSearchButton({
   folderId,
@@ -12,16 +12,59 @@ export function FolderSearchButton({
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const searchButton = buttonRef.current;
     const actionGroup = searchButton?.parentElement;
     const toolbar = actionGroup?.parentElement;
-    if (!searchButton || !actionGroup || !toolbar) return;
+    const toolbarParent = toolbar?.parentElement;
+    if (!searchButton || !actionGroup || !toolbar || !toolbarParent) return;
 
-    // Keep folder-scoped actions visually grouped on the right with the view
-    // controls. The left side of the Library already carries navigation/context.
-    const previousMarginLeft = actionGroup.style.marginLeft;
+    const backLinkCandidate = toolbar.previousElementSibling;
+    const backLink =
+      backLinkCandidate instanceof HTMLAnchorElement &&
+      backLinkCandidate.textContent?.trim().startsWith('Back to ')
+        ? backLinkCandidate
+        : null;
+
+    const previous = {
+      actionMarginLeft: actionGroup.style.marginLeft,
+      toolbarFlexWrap: toolbar.style.flexWrap,
+      toolbarPaddingLeft: toolbar.style.paddingLeft,
+      parentPosition: toolbarParent.style.position,
+      backPosition: backLink?.style.position ?? '',
+      backLeft: backLink?.style.left ?? '',
+      backTop: backLink?.style.top ?? '',
+      backZIndex: backLink?.style.zIndex ?? '',
+      backMarginTop: backLink?.style.marginTop ?? '',
+    };
+
+    // Keep folder-scoped actions visually grouped on the right. On desktop the
+    // parent-folder navigation shares this same row instead of consuming its own
+    // line and leaving a large empty gap above the folder contents.
     actionGroup.style.marginLeft = 'auto';
+    toolbar.style.flexWrap = 'wrap';
+
+    const alignBackLink = () => {
+      if (!backLink) return;
+      const desktop = window.matchMedia('(min-width: 768px)').matches;
+      if (!desktop) {
+        backLink.style.position = previous.backPosition;
+        backLink.style.left = previous.backLeft;
+        backLink.style.top = previous.backTop;
+        backLink.style.zIndex = previous.backZIndex;
+        backLink.style.marginTop = previous.backMarginTop;
+        toolbar.style.paddingLeft = previous.toolbarPaddingLeft;
+        return;
+      }
+
+      toolbarParent.style.position = 'relative';
+      backLink.style.position = 'absolute';
+      backLink.style.left = '0';
+      backLink.style.zIndex = '1';
+      backLink.style.marginTop = '0';
+      toolbar.style.paddingLeft = `${Math.ceil(backLink.getBoundingClientRect().width) + 16}px`;
+      backLink.style.top = `${toolbar.offsetTop + Math.max(0, (toolbar.offsetHeight - backLink.offsetHeight) / 2)}px`;
+    };
 
     const filterButton = Array.from(
       actionGroup.querySelectorAll<HTMLButtonElement>('button'),
@@ -30,7 +73,8 @@ export function FolderSearchButton({
 
     const alignFilterPanel = () => {
       const panel = Array.from(filterContainer?.children || []).find(
-        (child) => child instanceof HTMLElement && child.classList.contains('absolute'),
+        (child) =>
+          child instanceof HTMLElement && child.classList.contains('absolute'),
       );
       if (!(panel instanceof HTMLElement)) return;
       panel.style.right = '0';
@@ -38,12 +82,24 @@ export function FolderSearchButton({
     };
 
     alignFilterPanel();
+    alignBackLink();
+
     const filterObserver = filterContainer
-      ? new MutationObserver(alignFilterPanel)
+      ? new MutationObserver(() => {
+          alignFilterPanel();
+          alignBackLink();
+        })
       : null;
     if (filterContainer && filterObserver) {
       filterObserver.observe(filterContainer, { childList: true });
     }
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(alignBackLink)
+        : null;
+    resizeObserver?.observe(toolbar);
+    if (backLink) resizeObserver?.observe(backLink);
 
     const closeFilter = () => {
       if (filterButton?.getAttribute('aria-expanded') === 'true') {
@@ -69,12 +125,25 @@ export function FolderSearchButton({
 
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', alignBackLink);
 
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', alignBackLink);
       filterObserver?.disconnect();
-      actionGroup.style.marginLeft = previousMarginLeft;
+      resizeObserver?.disconnect();
+      actionGroup.style.marginLeft = previous.actionMarginLeft;
+      toolbar.style.flexWrap = previous.toolbarFlexWrap;
+      toolbar.style.paddingLeft = previous.toolbarPaddingLeft;
+      toolbarParent.style.position = previous.parentPosition;
+      if (backLink) {
+        backLink.style.position = previous.backPosition;
+        backLink.style.left = previous.backLeft;
+        backLink.style.top = previous.backTop;
+        backLink.style.zIndex = previous.backZIndex;
+        backLink.style.marginTop = previous.backMarginTop;
+      }
     };
   }, []);
 
