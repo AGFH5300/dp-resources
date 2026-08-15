@@ -32,34 +32,36 @@ describe('source UI and release notes', () => {
     expect(dialog).toContain('localStorage.getItem');
     expect(dialog).toContain('localStorage.setItem');
     expect(dialog).toContain('View full changelog');
-    expect(dialog).toContain('max-h-[55vh]');
+    expect(dialog).toContain('max-h-[min(52vh,28rem)]');
     expect(dialog).toContain('overflow-y-auto');
+    expect(dialog).toContain('overscroll-contain');
     expect(dialog).not.toContain('Sparkles');
     expect(accountMenu).toContain('dp:open-whats-new');
     expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new on the current exact dated release with the latest major highlights', () => {
+  it('keeps What’s new as a short hand-written 16 August release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-08-15-release-roundup'");
-    expect(whatsNew).toContain("dateLabel: '15 August 2026'");
+    expect(whatsNew).toContain("id: '2026-08-16-final-release'");
+    expect(whatsNew).toContain("dateLabel: '16 August 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'August 2026'");
     for (const highlight of [
-      'Maths search understands your shorthand',
-      'Library indexing is live and much faster',
-      'Folder controls are cleaner',
-      'Sources are built into Questions and Library',
-      'Search and sign-in are more reliable',
-      'The interface is more consistent',
+      'Maths search understands the way you type',
+      'Library folders are much cleaner',
+      'Finding resources feels more natural',
+      'Sources are easier to understand',
+      'Library updates are faster and more reliable',
+      'Search, sign-in, and dark mode are more polished',
     ]) {
       expect(whatsNew).toContain(highlight);
     }
   });
 
-  it('keeps the August 6-15 release window explicitly curated in the public changelog', () => {
+  it('keeps the August 6-16 release window explicitly curated in the public changelog', () => {
     const changelog = read('app/changelog/page.tsx');
     for (const date of [
+      '2026-08-16',
       '2026-08-15',
       '2026-08-14',
       '2026-08-13',
@@ -73,6 +75,7 @@ describe('source UI and release notes', () => {
     }
     expect(changelog).toContain('curatedDates');
     expect(changelog).toContain("!curatedDates.has(entry.date.slice(0, 10))");
+    expect(changelog).toContain('Made Library folder headers more compact');
     expect(changelog).toContain('Rebuilt the Admin Library index into a live command center');
     expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
     expect(changelog).toContain('Added unified content-source attribution');
