@@ -8,23 +8,12 @@ import { requireMember } from '@/lib/auth';
 import { questionPreview } from '@/lib/question-bank/content-normalization';
 import { marksLabel, taxonomyLabel } from '@/lib/question-bank/presentation';
 import { searchQuestionBank } from '@/lib/question-bank/queries';
+import { resolveQuestionSearchAlias } from '@/lib/question-bank/search-aliases';
 import { createClient } from '@/lib/supabase-server';
 import { QuestionSourceBadges } from '@/components/content-source-badge';
 import { SourceMultiFilter } from '@/components/question-bank/source-multi-filter';
 
 const QUESTION_SEARCH_MAX_PAGE = 1000;
-
-function canonicalQuestionSearchQuery(query: string) {
-  const compact = query.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const courseCode = compact.replace(/^(?:math|maths|mathematics)/, '');
-  const aliases: Record<string, string> = {
-    aahl: 'Analysis and Approaches HL',
-    aasl: 'Analysis and Approaches SL',
-    aihl: 'Applications and Interpretation HL',
-    aisl: 'Applications and Interpretation SL',
-  };
-  return aliases[courseCode] || query;
-}
 
 export default async function QuestionBankSearch({
   searchParams,
@@ -34,6 +23,7 @@ export default async function QuestionBankSearch({
   const { membership } = await requireMember();
   const params = await searchParams;
   const query = String(params.q || '').trim().slice(0, 160);
+  const searchAlias = resolveQuestionSearchAlias(query);
   const rawPage = Number(params.page || 1);
   const page = Number.isFinite(rawPage)
     ? Math.min(QUESTION_SEARCH_MAX_PAGE, Math.max(1, Math.floor(rawPage)))
@@ -53,7 +43,7 @@ export default async function QuestionBankSearch({
   if (query.length >= 2) {
     try {
       results = await searchQuestionBank(
-        canonicalQuestionSearchQuery(query),
+        searchAlias.query,
         page,
         selectedSources,
       );
@@ -112,6 +102,11 @@ export default async function QuestionBankSearch({
               ? 'Search is temporarily unavailable. Please try again.'
               : `${total.toLocaleString()} result${total === 1 ? '' : 's'} for “${query}”`}
         </p>
+        {searchAlias.label && !searchUnavailable ? (
+          <p className="mt-1 text-xs text-slate-500">
+            Recognized as {searchAlias.label}.
+          </p>
+        ) : null}
         <div className="mt-4 space-y-3">
           {results.map((row) => (
             <Link
