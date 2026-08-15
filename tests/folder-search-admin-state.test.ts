@@ -22,6 +22,14 @@ describe('folder-scoped library search', () => {
     expect(button).toContain('Search this folder');
   });
 
+  it('keeps folder actions on the right and dismisses Filter when clicking outside', () => {
+    expect(button).toContain("actionGroup.style.marginLeft = 'auto'");
+    expect(button).toContain("document.addEventListener('pointerdown', handlePointerDown)");
+    expect(button).toContain("filterButton?.getAttribute('aria-expanded') !== 'true'");
+    expect(button).toContain("target.closest('.dp-select-content')");
+    expect(button).toContain("event.key === 'Escape'");
+  });
+
   it('opens the shared search dialog with the current folder scope', () => {
     expect(search).toContain("addEventListener('dp:open-folder-search'");
     expect(search).toContain("params.set('folderId', scope.folderId)");
