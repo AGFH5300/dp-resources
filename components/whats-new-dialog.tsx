@@ -40,10 +40,16 @@ export function WhatsNewDialog() {
       title="What’s new"
       description={WHATS_NEW_RELEASE.dateLabel}
     >
-      <ul className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+      <ul
+        aria-label="Release highlights"
+        className="max-h-[min(52vh,28rem)] space-y-4 overflow-y-auto overscroll-contain pr-2"
+      >
         {WHATS_NEW_RELEASE.items.map((item) => (
           <li key={item.title} className="flex gap-3">
-            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />
+            <CheckCircle2
+              className="mt-0.5 size-5 shrink-0 text-emerald-600"
+              aria-hidden
+            />
             <span>
               <strong className="block text-sm text-[color:var(--dp-heading)]">
                 {item.title}
