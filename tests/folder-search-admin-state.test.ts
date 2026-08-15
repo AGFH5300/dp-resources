@@ -22,21 +22,24 @@ describe('folder-scoped library search', () => {
     expect(button).toContain('Search this folder');
   });
 
-  it('keeps folder actions on the right and dismisses Filter when clicking outside', () => {
-    expect(button).toContain("actionGroup.style.marginLeft = 'auto'");
+  it('keeps folder actions aligned and dismisses Filter when clicking outside', () => {
+    expect(button).toContain("toolbar.insertBefore(backLink, toolbar.firstChild)");
+    expect(button).toContain("backLink.style.marginRight = desktop ? 'auto' : '0'");
+    expect(button).toContain("actionGroup.style.marginLeft = '0'");
     expect(button).toContain("document.addEventListener('pointerdown', handlePointerDown)");
     expect(button).toContain("filterButton?.getAttribute('aria-expanded') !== 'true'");
     expect(button).toContain("target.closest('.dp-select-content')");
     expect(button).toContain("event.key === 'Escape'");
   });
 
-  it('aligns parent-folder navigation with the desktop folder toolbar', () => {
+  it('keeps the whole folder header compact without absolute-position gaps', () => {
     expect(browser).toContain("Back to{' '}");
-    expect(button).toContain("backLinkCandidate.textContent?.trim().startsWith('Back to ')");
-    expect(button).toContain("window.matchMedia('(min-width: 768px)').matches");
-    expect(button).toContain("backLink.style.position = 'absolute'");
-    expect(button).toContain('toolbar.style.paddingLeft');
-    expect(button).toContain('toolbar.offsetTop');
+    expect(button).toContain("titleBlock.style.marginTop = '0.5rem'");
+    expect(button).toContain("toolbar.style.marginTop = '0.5rem'");
+    expect(button).toContain("toolbar.style.paddingTop = '0.25rem'");
+    expect(button).toContain("contentAfterToolbar.style.marginTop = '0.5rem'");
+    expect(button).not.toContain("backLink.style.position = 'absolute'");
+    expect(button).not.toContain('toolbar.style.paddingLeft');
   });
 
   it('opens the shared search dialog with the current folder scope', () => {
