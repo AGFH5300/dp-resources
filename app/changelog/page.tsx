@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-15-maths-search-aliases',
+    summary:
+      'Made Question Bank Maths searches understand common AA and AI shorthand such as Math AAHL, AA/HL, Maths AI SL, and IB Mathematics AA HL, with exact course matching.',
+    date: '2026-08-15T13:58:00.000Z',
+  },
+  {
     id: 'release-2026-08-15-live-library-index',
     summary:
       'Rebuilt the Admin Library index into a live command center with real progress, current activity, throughput, ETA, safe pause and resume, and resumable refreshes.',
@@ -37,7 +43,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-14-qb-search-performance',
     summary:
-      'Made Question Bank global search more reliable and responsive, including faster reference lookup, common AA/AI course shorthand such as Math AAHL, and graceful timeout handling.',
+      'Made Question Bank global search more reliable and responsive, including faster reference lookup and graceful timeout handling.',
     date: '2026-08-14T15:20:00.000Z',
   },
   {
