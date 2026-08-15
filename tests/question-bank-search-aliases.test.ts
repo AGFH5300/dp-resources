@@ -27,6 +27,24 @@ describe('Question Bank Maths search aliases', () => {
     expect(resolveQuestionSearchAlias(input).label).not.toBeNull();
   });
 
+  it.each([
+    ['math aa', 'analysis-and-approaches'],
+    ['maths AA', 'analysis-and-approaches'],
+    ['IB Mathematics AA', 'analysis-and-approaches'],
+    ['math ai', 'applications-and-interpretation'],
+    ['maths AI', 'applications-and-interpretation'],
+  ])('resolves %s to the course family', (input, expected) => {
+    expect(resolveQuestionSearchAlias(input).query).toBe(expected);
+    expect(resolveQuestionSearchAlias(input).label).toContain('HL and SL');
+  });
+
+  it('does not reinterpret a bare AI search', () => {
+    expect(resolveQuestionSearchAlias('AI')).toEqual({
+      query: 'AI',
+      label: null,
+    });
+  });
+
   it('leaves ordinary searches unchanged', () => {
     expect(resolveQuestionSearchAlias('calculus integration')).toEqual({
       query: 'calculus integration',
