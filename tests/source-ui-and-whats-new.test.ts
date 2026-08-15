@@ -37,4 +37,25 @@ describe('source UI and release notes', () => {
     expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
     expect(accountMenu).not.toContain('Sparkles');
   });
+
+  it('keeps the August 6-15 release window explicitly curated in the public changelog', () => {
+    const changelog = read('app/changelog/page.tsx');
+    for (const date of [
+      '2026-08-15',
+      '2026-08-14',
+      '2026-08-13',
+      '2026-08-12',
+      '2026-08-11',
+      '2026-08-08',
+      '2026-08-07',
+      '2026-08-06',
+    ]) {
+      expect(changelog).toContain(date);
+    }
+    expect(changelog).toContain('curatedDates');
+    expect(changelog).toContain("!curatedDates.has(entry.date.slice(0, 10))");
+    expect(changelog).toContain('Rebuilt the Admin Library index into a live command center');
+    expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
+    expect(changelog).toContain('Added unified content-source attribution');
+  });
 });
