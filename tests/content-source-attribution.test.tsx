@@ -61,7 +61,7 @@ describe('unified content source attribution', () => {
     expect(output).toBe('');
 
     const migration = readFileSync(
-      'supabase/migrations/20260815193000_restore_library_structure_fallback.sql',
+      'supabase/migrations/20260815192958_restore_library_structure_fallback.sql',
       'utf8',
     );
     expect(migration).toContain("when index_row.is_folder then 'library_structure'");
