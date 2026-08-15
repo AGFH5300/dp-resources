@@ -17,6 +17,7 @@ export type DriveIndexWaveProgress = {
 };
 
 type DrivePageResult = {
+  taskId: number;
   folder: DriveIndexFolderCursor;
   page: Awaited<ReturnType<typeof listDriveIndexPage>>;
 };
@@ -87,20 +88,13 @@ export async function crawlDriveIndexChunkLive(options: {
   const launch = (folder: DriveIndexFolderCursor) => {
     const taskId = nextTaskId++;
     if (folder.pageToken) inFlightContinuationPages += 1;
-    const task = listDriveIndexPage(folder, 1000).then((page) => ({
-      folder,
-      page,
-    }));
-    inFlight.set(taskId, task);
-    void task.then(
-      () => {
-        inFlight.delete(taskId);
-        if (folder.pageToken) inFlightContinuationPages -= 1;
-      },
-      () => {
-        inFlight.delete(taskId);
-        if (folder.pageToken) inFlightContinuationPages -= 1;
-      },
+    inFlight.set(
+      taskId,
+      listDriveIndexPage(folder, 1000).then((page) => ({
+        taskId,
+        folder,
+        page,
+      })),
     );
   };
 
@@ -119,7 +113,9 @@ export async function crawlDriveIndexChunkLive(options: {
     }
   };
 
-  const consume = ({ folder, page }: DrivePageResult) => {
+  const consume = ({ taskId, folder, page }: DrivePageResult) => {
+    inFlight.delete(taskId);
+    if (folder.pageToken) inFlightContinuationPages -= 1;
     lastCurrentPath = folder.path;
     rows.push(...page.rows);
     for (const row of page.rows) {
