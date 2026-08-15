@@ -39,13 +39,13 @@ select distinct
   'primary',
   'unresolved',
   1,
-  null,
+  null::text,
   'reviewed',
   false,
   'library_structure_fallback_v1',
   'library_structure_fallback_v1',
   now(),
-  null,
+  null::uuid,
   now()
 from public.dp_resource_source_catalog catalog
 cross join public.dp_content_sources structure
@@ -126,14 +126,14 @@ begin
     true,
     'primary',
     'unresolved',
-    case when index_row.is_folder then 1 else null end,
-    null,
+    case when index_row.is_folder then 1::numeric else null::numeric end,
+    null::text,
     case when index_row.is_folder then 'reviewed' else 'under_review' end,
     false,
-    case when index_row.is_folder then 'library_structure_fallback_v1' else null end,
+    case when index_row.is_folder then 'library_structure_fallback_v1' else null::text end,
     'index_sync_v2',
     now(),
-    null,
+    null::uuid,
     now()
   from public.dp_resource_index index_row
   join public.dp_content_sources source
@@ -237,7 +237,7 @@ begin
     after_state,
     change_version
   ) values (
-    null,
+    null::uuid,
     'resource_library',
     'library',
     'restore_internal_library_structure_fallback',
