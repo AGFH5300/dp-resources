@@ -25,46 +25,74 @@ export function FolderSearchButton({
       backLinkCandidate.textContent?.trim().startsWith('Back to ')
         ? backLinkCandidate
         : null;
+    const titleBlock =
+      backLink?.previousElementSibling instanceof HTMLElement
+        ? backLink.previousElementSibling
+        : null;
+    const contentAfterToolbar =
+      toolbar.nextElementSibling instanceof HTMLElement
+        ? toolbar.nextElementSibling
+        : null;
+    const backOriginalParent = backLink?.parentElement ?? null;
+    const backOriginalNextSibling = backLink?.nextSibling ?? null;
 
     const previous = {
       actionMarginLeft: actionGroup.style.marginLeft,
       toolbarFlexWrap: toolbar.style.flexWrap,
-      toolbarPaddingLeft: toolbar.style.paddingLeft,
-      parentPosition: toolbarParent.style.position,
+      toolbarAlignItems: toolbar.style.alignItems,
+      toolbarJustifyContent: toolbar.style.justifyContent,
+      toolbarMarginTop: toolbar.style.marginTop,
+      toolbarPaddingTop: toolbar.style.paddingTop,
+      toolbarPaddingBottom: toolbar.style.paddingBottom,
+      titleMarginTop: titleBlock?.style.marginTop ?? '',
+      contentMarginTop: contentAfterToolbar?.style.marginTop ?? '',
       backPosition: backLink?.style.position ?? '',
       backLeft: backLink?.style.left ?? '',
       backTop: backLink?.style.top ?? '',
       backZIndex: backLink?.style.zIndex ?? '',
       backMarginTop: backLink?.style.marginTop ?? '',
+      backMarginRight: backLink?.style.marginRight ?? '',
+      backWidth: backLink?.style.width ?? '',
+      backDisplay: backLink?.style.display ?? '',
+      backAlignItems: backLink?.style.alignItems ?? '',
     };
 
-    // Keep folder-scoped actions visually grouped on the right. On desktop the
-    // parent-folder navigation shares this same row instead of consuming its own
-    // line and leaving a large empty gap above the folder contents.
-    actionGroup.style.marginLeft = 'auto';
+    // Keep the whole folder header compact. The parent-folder navigation is a
+    // real member of the toolbar row rather than being absolutely positioned,
+    // which avoids the large empty slot that used to remain in the header.
     toolbar.style.flexWrap = 'wrap';
+    toolbar.style.alignItems = 'center';
+    toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.marginTop = '0.5rem';
+    toolbar.style.paddingTop = '0.25rem';
+    toolbar.style.paddingBottom = '0.25rem';
+    if (titleBlock) titleBlock.style.marginTop = '0.5rem';
+    if (contentAfterToolbar) contentAfterToolbar.style.marginTop = '0.5rem';
 
-    const alignBackLink = () => {
-      if (!backLink) return;
-      const desktop = window.matchMedia('(min-width: 768px)').matches;
-      if (!desktop) {
-        backLink.style.position = previous.backPosition;
-        backLink.style.left = previous.backLeft;
-        backLink.style.top = previous.backTop;
-        backLink.style.zIndex = previous.backZIndex;
-        backLink.style.marginTop = previous.backMarginTop;
-        toolbar.style.paddingLeft = previous.toolbarPaddingLeft;
-        return;
-      }
-
-      toolbarParent.style.position = 'relative';
-      backLink.style.position = 'absolute';
-      backLink.style.left = '0';
-      backLink.style.zIndex = '1';
+    if (backLink) {
+      toolbar.insertBefore(backLink, toolbar.firstChild);
+      backLink.style.position = 'static';
+      backLink.style.left = '';
+      backLink.style.top = '';
+      backLink.style.zIndex = '';
       backLink.style.marginTop = '0';
-      toolbar.style.paddingLeft = `${Math.ceil(backLink.getBoundingClientRect().width) + 16}px`;
-      backLink.style.top = `${toolbar.offsetTop + Math.max(0, (toolbar.offsetHeight - backLink.offsetHeight) / 2)}px`;
+      backLink.style.display = 'inline-flex';
+      backLink.style.alignItems = 'center';
+    }
+
+    const media = window.matchMedia('(min-width: 768px)');
+    const applyResponsiveLayout = () => {
+      const desktop = media.matches;
+      if (backLink) {
+        backLink.style.width = desktop ? 'auto' : '100%';
+        backLink.style.marginRight = desktop ? 'auto' : '0';
+        actionGroup.style.marginLeft = '0';
+      } else {
+        actionGroup.style.marginLeft = 'auto';
+      }
     };
+    applyResponsiveLayout();
+    media.addEventListener('change', applyResponsiveLayout);
 
     const filterButton = Array.from(
       actionGroup.querySelectorAll<HTMLButtonElement>('button'),
@@ -82,24 +110,12 @@ export function FolderSearchButton({
     };
 
     alignFilterPanel();
-    alignBackLink();
-
     const filterObserver = filterContainer
-      ? new MutationObserver(() => {
-          alignFilterPanel();
-          alignBackLink();
-        })
+      ? new MutationObserver(alignFilterPanel)
       : null;
     if (filterContainer && filterObserver) {
       filterObserver.observe(filterContainer, { childList: true });
     }
-
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(alignBackLink)
-        : null;
-    resizeObserver?.observe(toolbar);
-    if (backLink) resizeObserver?.observe(backLink);
 
     const closeFilter = () => {
       if (filterButton?.getAttribute('aria-expanded') === 'true') {
@@ -125,24 +141,37 @@ export function FolderSearchButton({
 
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', alignBackLink);
 
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', alignBackLink);
+      media.removeEventListener('change', applyResponsiveLayout);
       filterObserver?.disconnect();
-      resizeObserver?.disconnect();
+
       actionGroup.style.marginLeft = previous.actionMarginLeft;
       toolbar.style.flexWrap = previous.toolbarFlexWrap;
-      toolbar.style.paddingLeft = previous.toolbarPaddingLeft;
-      toolbarParent.style.position = previous.parentPosition;
+      toolbar.style.alignItems = previous.toolbarAlignItems;
+      toolbar.style.justifyContent = previous.toolbarJustifyContent;
+      toolbar.style.marginTop = previous.toolbarMarginTop;
+      toolbar.style.paddingTop = previous.toolbarPaddingTop;
+      toolbar.style.paddingBottom = previous.toolbarPaddingBottom;
+      if (titleBlock) titleBlock.style.marginTop = previous.titleMarginTop;
+      if (contentAfterToolbar)
+        contentAfterToolbar.style.marginTop = previous.contentMarginTop;
+
       if (backLink) {
         backLink.style.position = previous.backPosition;
         backLink.style.left = previous.backLeft;
         backLink.style.top = previous.backTop;
         backLink.style.zIndex = previous.backZIndex;
         backLink.style.marginTop = previous.backMarginTop;
+        backLink.style.marginRight = previous.backMarginRight;
+        backLink.style.width = previous.backWidth;
+        backLink.style.display = previous.backDisplay;
+        backLink.style.alignItems = previous.backAlignItems;
+        if (backOriginalParent) {
+          backOriginalParent.insertBefore(backLink, backOriginalNextSibling);
+        }
       }
     };
   }, []);
