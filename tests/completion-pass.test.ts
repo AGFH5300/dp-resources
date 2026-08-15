@@ -10,7 +10,7 @@ describe('deployment completion pass', () => {
       '20260702050000_resource_index_sync_state.sql',
     );
     expect(migrations).toContain(
-      '20260815114500_index_sync_command_center.sql',
+      '20260815114655_index_sync_command_center.sql',
     );
     expect(migrations).not.toContain(
       '20260701123000_resource_workspace_v2.sql',
