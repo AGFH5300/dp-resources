@@ -15,7 +15,7 @@ export const WHATS_NEW_RELEASE = {
     {
       title: 'Folder controls are cleaner',
       description:
-        'Search this folder and Filter now sit together on the right, and Filter closes naturally when you click elsewhere or press Escape.',
+        'Parent-folder navigation now shares the action row with Filter, Search this folder, and the view controls; Filter also closes naturally when you click elsewhere or press Escape.',
     },
     {
       title: 'Sources are built into Questions and Library',

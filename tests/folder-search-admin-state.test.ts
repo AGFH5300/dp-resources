@@ -30,6 +30,15 @@ describe('folder-scoped library search', () => {
     expect(button).toContain("event.key === 'Escape'");
   });
 
+  it('aligns parent-folder navigation with the desktop folder toolbar', () => {
+    expect(browser).toContain("Back to{' '}");
+    expect(button).toContain("backLinkCandidate.textContent?.trim().startsWith('Back to ')");
+    expect(button).toContain("window.matchMedia('(min-width: 768px)').matches");
+    expect(button).toContain("backLink.style.position = 'absolute'");
+    expect(button).toContain('toolbar.style.paddingLeft');
+    expect(button).toContain('toolbar.offsetTop');
+  });
+
   it('opens the shared search dialog with the current folder scope', () => {
     expect(search).toContain("addEventListener('dp:open-folder-search'");
     expect(search).toContain("params.set('folderId', scope.folderId)");
