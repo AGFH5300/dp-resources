@@ -42,23 +42,40 @@ function compactSearch(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-function stripMathsPrefix(compact: string) {
-  return compact
-    .replace(/^ib/, '')
-    .replace(/^(?:mathematics|maths|math)/, '');
+function splitMathsPrefix(compact: string) {
+  const withoutIb = compact.replace(/^ib/, '');
+  const prefix = withoutIb.match(/^(mathematics|maths|math)/)?.[0] || null;
+  return {
+    hasMathsPrefix: Boolean(prefix),
+    courseCode: prefix ? withoutIb.slice(prefix.length) : withoutIb,
+  };
 }
 
 export function resolveQuestionSearchAlias(query: string): QuestionSearchAlias {
   const compact = compactSearch(query);
-  const courseCode = stripMathsPrefix(compact);
+  const { hasMathsPrefix, courseCode } = splitMathsPrefix(compact);
   const match = MATHS_COURSE_ALIASES[courseCode];
 
-  if (!match) {
-    return { query, label: null };
+  if (match) {
+    return {
+      query: match.slug,
+      label: match.label,
+    };
   }
 
-  return {
-    query: match.slug,
-    label: match.label,
-  };
+  if (hasMathsPrefix && courseCode === 'aa') {
+    return {
+      query: 'analysis-and-approaches',
+      label: 'Mathematics: Analysis and Approaches (HL and SL)',
+    };
+  }
+
+  if (hasMathsPrefix && courseCode === 'ai') {
+    return {
+      query: 'applications-and-interpretation',
+      label: 'Mathematics: Applications and Interpretation (HL and SL)',
+    };
+  }
+
+  return { query, label: null };
 }
