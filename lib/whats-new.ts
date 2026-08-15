@@ -20,7 +20,7 @@ export const WHATS_NEW_RELEASE = {
     {
       title: 'Sources are easier to understand',
       description:
-        'Question Bank and Library resources now show reviewed source information where it is useful, with source browsing and filters available when you need them.',
+        'Reviewed source information appears on actual resources where it is useful, while normal subject and navigation folders stay out of source browsing and no longer look like unresolved content.',
     },
     {
       title: 'Library updates are faster and more reliable',
