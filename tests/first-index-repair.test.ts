@@ -65,7 +65,7 @@ function defineReadOnlyTests() {
 
     it('adds the recursive parent lookup index used by source inheritance', () => {
       const migration = read(
-        'supabase/migrations/20260815114500_index_sync_command_center.sql',
+        'supabase/migrations/20260815114655_index_sync_command_center.sql',
       );
       expect(migration).toContain('dp_resource_index_parent_drive_file_id_idx');
       expect(migration).toContain('(parent_drive_file_id)');
