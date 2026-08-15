@@ -38,6 +38,23 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
+  it('keeps What’s new on the current exact dated release with the latest major highlights', () => {
+    const whatsNew = read('lib/whats-new.ts');
+    expect(whatsNew).toContain("id: '2026-08-15-release-roundup'");
+    expect(whatsNew).toContain("dateLabel: '15 August 2026'");
+    expect(whatsNew).not.toContain("dateLabel: 'August 2026'");
+    for (const highlight of [
+      'Maths search understands your shorthand',
+      'Library indexing is live and much faster',
+      'Folder controls are cleaner',
+      'Sources are built into Questions and Library',
+      'Search and sign-in are more reliable',
+      'The interface is more consistent',
+    ]) {
+      expect(whatsNew).toContain(highlight);
+    }
+  });
+
   it('keeps the August 6-15 release window explicitly curated in the public changelog', () => {
     const changelog = read('app/changelog/page.tsx');
     for (const date of [
@@ -57,5 +74,6 @@ describe('source UI and release notes', () => {
     expect(changelog).toContain('Rebuilt the Admin Library index into a live command center');
     expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
     expect(changelog).toContain('Added unified content-source attribution');
+    expect(changelog).toContain('Refreshed What’s new with an exact release date');
   });
 });
