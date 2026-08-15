@@ -29,12 +29,23 @@ export function FolderSearchButton({
       backLink?.previousElementSibling instanceof HTMLElement
         ? backLink.previousElementSibling
         : null;
+    const titleContent =
+      titleBlock?.firstElementChild instanceof HTMLElement
+        ? titleBlock.firstElementChild
+        : null;
+    const browseLinkCandidate = titleContent?.querySelector<HTMLAnchorElement>(
+      'a[href="/library/sources"]',
+    );
+    const browseLink = browseLinkCandidate ?? null;
     const contentAfterToolbar =
       toolbar.nextElementSibling instanceof HTMLElement
         ? toolbar.nextElementSibling
         : null;
+
     const backOriginalParent = backLink?.parentElement ?? null;
     const backOriginalNextSibling = backLink?.nextSibling ?? null;
+    const browseOriginalParent = browseLink?.parentElement ?? null;
+    const browseOriginalNextSibling = browseLink?.nextSibling ?? null;
 
     const previous = {
       actionMarginLeft: actionGroup.style.marginLeft,
@@ -46,50 +57,53 @@ export function FolderSearchButton({
       toolbarPaddingBottom: toolbar.style.paddingBottom,
       titleMarginTop: titleBlock?.style.marginTop ?? '',
       contentMarginTop: contentAfterToolbar?.style.marginTop ?? '',
-      backPosition: backLink?.style.position ?? '',
-      backLeft: backLink?.style.left ?? '',
-      backTop: backLink?.style.top ?? '',
-      backZIndex: backLink?.style.zIndex ?? '',
       backMarginTop: backLink?.style.marginTop ?? '',
       backMarginRight: backLink?.style.marginRight ?? '',
-      backWidth: backLink?.style.width ?? '',
       backDisplay: backLink?.style.display ?? '',
       backAlignItems: backLink?.style.alignItems ?? '',
+      browseMarginTop: browseLink?.style.marginTop ?? '',
+      browseMarginRight: browseLink?.style.marginRight ?? '',
+      browseDisplay: browseLink?.style.display ?? '',
+      browseAlignItems: browseLink?.style.alignItems ?? '',
     };
 
-    // Keep the whole folder header compact. The parent-folder navigation is a
-    // real member of the toolbar row rather than being absolutely positioned,
-    // which avoids the large empty slot that used to remain in the header.
+    // In folder views the navigation links and folder controls form one compact
+    // action row. This removes the disconnected Browse-by-source line and the
+    // large visual gap that used to sit above the folder controls.
     toolbar.style.flexWrap = 'wrap';
     toolbar.style.alignItems = 'center';
     toolbar.style.justifyContent = 'flex-start';
-    toolbar.style.marginTop = '0.5rem';
+    toolbar.style.marginTop = '0.25rem';
     toolbar.style.paddingTop = '0.25rem';
-    toolbar.style.paddingBottom = '0.25rem';
-    if (titleBlock) titleBlock.style.marginTop = '0.5rem';
-    if (contentAfterToolbar) contentAfterToolbar.style.marginTop = '0.5rem';
+    toolbar.style.paddingBottom = '0.375rem';
+    if (titleBlock) titleBlock.style.marginTop = '0.375rem';
+    if (contentAfterToolbar) contentAfterToolbar.style.marginTop = '0.375rem';
 
     if (backLink) {
       toolbar.insertBefore(backLink, toolbar.firstChild);
-      backLink.style.position = 'static';
-      backLink.style.left = '';
-      backLink.style.top = '';
-      backLink.style.zIndex = '';
       backLink.style.marginTop = '0';
+      backLink.style.marginRight = '0.75rem';
       backLink.style.display = 'inline-flex';
       backLink.style.alignItems = 'center';
+    }
+
+    if (browseLink) {
+      const insertBefore = backLink?.nextSibling ?? toolbar.firstChild;
+      toolbar.insertBefore(browseLink, insertBefore);
+      browseLink.style.marginTop = '0';
+      browseLink.style.display = 'inline-flex';
+      browseLink.style.alignItems = 'center';
     }
 
     const media = window.matchMedia('(min-width: 768px)');
     const applyResponsiveLayout = () => {
       const desktop = media.matches;
-      if (backLink) {
-        backLink.style.width = desktop ? 'auto' : '100%';
-        backLink.style.marginRight = desktop ? 'auto' : '0';
-        actionGroup.style.marginLeft = '0';
-      } else {
-        actionGroup.style.marginLeft = 'auto';
+      if (browseLink) {
+        browseLink.style.marginRight = desktop ? 'auto' : '0.75rem';
+      } else if (backLink) {
+        backLink.style.marginRight = desktop ? 'auto' : '0.75rem';
       }
+      actionGroup.style.marginLeft = '0';
     };
     applyResponsiveLayout();
     media.addEventListener('change', applyResponsiveLayout);
@@ -159,14 +173,19 @@ export function FolderSearchButton({
       if (contentAfterToolbar)
         contentAfterToolbar.style.marginTop = previous.contentMarginTop;
 
+      if (browseLink) {
+        browseLink.style.marginTop = previous.browseMarginTop;
+        browseLink.style.marginRight = previous.browseMarginRight;
+        browseLink.style.display = previous.browseDisplay;
+        browseLink.style.alignItems = previous.browseAlignItems;
+        if (browseOriginalParent) {
+          browseOriginalParent.insertBefore(browseLink, browseOriginalNextSibling);
+        }
+      }
+
       if (backLink) {
-        backLink.style.position = previous.backPosition;
-        backLink.style.left = previous.backLeft;
-        backLink.style.top = previous.backTop;
-        backLink.style.zIndex = previous.backZIndex;
         backLink.style.marginTop = previous.backMarginTop;
         backLink.style.marginRight = previous.backMarginRight;
-        backLink.style.width = previous.backWidth;
         backLink.style.display = previous.backDisplay;
         backLink.style.alignItems = previous.backAlignItems;
         if (backOriginalParent) {

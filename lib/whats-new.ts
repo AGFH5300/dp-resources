@@ -15,7 +15,7 @@ export const WHATS_NEW_RELEASE = {
     {
       title: 'Folder controls are cleaner',
       description:
-        'Folder headers are now compact, with parent navigation sharing the action row with Filter, Search this folder, and the view controls; Filter also closes naturally when you click elsewhere or press Escape.',
+        'Folder headers now keep Back navigation and Browse by source together in one compact action row, with Filter, Search this folder, and view controls aligned opposite; Filter also closes naturally when you click elsewhere or press Escape.',
     },
     {
       title: 'Sources are built into Questions and Library',
