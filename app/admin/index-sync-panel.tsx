@@ -103,6 +103,7 @@ function preserveCountsOnError(previous: Payload, next: Payload): Payload {
 
 function formatDuration(seconds: number | null) {
   if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
+  if (seconds === 0) return '0 sec';
   if (seconds < 60) return `${Math.max(1, Math.round(seconds))} sec`;
   if (seconds < 3600) {
     const minutes = Math.floor(seconds / 60);
@@ -208,9 +209,21 @@ export function IndexSyncPanel({ initial }: { initial: Payload }) {
       : effectiveSpeed.foldersPerSecond > 0
         ? estimatedFoldersRemaining / effectiveSpeed.foldersPerSecond
         : null;
+  const runEndMs =
+    status === 'complete' && state?.completed_at
+      ? new Date(state.completed_at).getTime()
+      : clock;
   const elapsedSeconds = state?.started_at
-    ? Math.max(0, (clock - new Date(state.started_at).getTime()) / 1000)
+    ? Math.max(0, (runEndMs - new Date(state.started_at).getTime()) / 1000)
     : null;
+  const completedAverageSpeed: Speed | null =
+    status === 'complete' && elapsedSeconds && elapsedSeconds > 0
+      ? {
+          itemsPerSecond: currentRunItems / elapsedSeconds,
+          foldersPerSecond: processedFolders / elapsedSeconds,
+        }
+      : null;
+  const displaySpeed = completedAverageSpeed || effectiveSpeed;
 
   const message = useMemo(() => {
     if (data.busy) return 'Another index worker is finishing its current batch.';
@@ -499,10 +512,11 @@ export function IndexSyncPanel({ initial }: { initial: Payload }) {
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 sm:min-w-44 lg:text-right">
             <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Throughput</p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-slate-950">
-              {formatRate(effectiveSpeed.itemsPerSecond)}
+              {formatRate(displaySpeed.itemsPerSecond)}
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              {formatRate(effectiveSpeed.foldersPerSecond)} folders
+              {formatRate(displaySpeed.foldersPerSecond)} folders
+              {status === 'complete' ? ' · run average' : ''}
             </p>
           </div>
         </div>
@@ -531,20 +545,27 @@ export function IndexSyncPanel({ initial }: { initial: Payload }) {
           {
             label: 'Estimated ETA',
             value: formatDuration(etaSeconds),
-            detail: etaSeconds === null ? 'Learning current speed' : 'Live estimate',
+            detail:
+              status === 'complete'
+                ? 'No work remaining'
+                : etaSeconds === null
+                  ? 'Learning current speed'
+                  : 'Live estimate',
             icon: Clock3,
           },
           {
-            label: 'Current speed',
-            value: formatRate(effectiveSpeed.itemsPerSecond),
+            label: status === 'complete' ? 'Run average' : 'Current speed',
+            value: formatRate(displaySpeed.itemsPerSecond),
             detail:
-              state?.last_batch_ms && state.last_batch_items
-                ? `Last batch ${state.last_batch_items.toLocaleString()} items / ${formatDuration(state.last_batch_ms / 1000)}`
-                : 'Waiting for first batch',
+              status === 'complete'
+                ? `${formatRate(displaySpeed.foldersPerSecond)} folders · whole run`
+                : state?.last_batch_ms && state.last_batch_items
+                  ? `Last batch ${state.last_batch_items.toLocaleString()} items / ${formatDuration(state.last_batch_ms / 1000)}`
+                  : 'Waiting for first batch',
             icon: Gauge,
           },
           {
-            label: 'Run elapsed',
+            label: status === 'complete' ? 'Run duration' : 'Run elapsed',
             value: formatDuration(elapsedSeconds),
             detail:
               status === 'complete'
