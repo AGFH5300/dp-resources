@@ -28,6 +28,23 @@ export function FolderSearchButton({
     ).find((button) => button.textContent?.trim() === 'Filter');
     const filterContainer = filterButton?.parentElement;
 
+    const alignFilterPanel = () => {
+      const panel = Array.from(filterContainer?.children || []).find(
+        (child) => child instanceof HTMLElement && child.classList.contains('absolute'),
+      );
+      if (!(panel instanceof HTMLElement)) return;
+      panel.style.right = '0';
+      panel.style.left = 'auto';
+    };
+
+    alignFilterPanel();
+    const filterObserver = filterContainer
+      ? new MutationObserver(alignFilterPanel)
+      : null;
+    if (filterContainer && filterObserver) {
+      filterObserver.observe(filterContainer, { childList: true });
+    }
+
     const closeFilter = () => {
       if (filterButton?.getAttribute('aria-expanded') === 'true') {
         filterButton.click();
@@ -56,6 +73,7 @@ export function FolderSearchButton({
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+      filterObserver?.disconnect();
       actionGroup.style.marginLeft = previousMarginLeft;
     };
   }, []);
