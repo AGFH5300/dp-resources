@@ -9,7 +9,7 @@ const UPSERT_BATCH_SIZE = 750;
 const WRITE_CONCURRENCY = 3;
 const CRAWL_CONCURRENCY = 8;
 const CRAWL_TIME_BUDGET_MS = 24_000;
-const CRAWL_MAX_FOLDERS = 240;
+const CRAWL_MAX_FOLDERS = 512;
 const CRAWL_MAX_ITEMS = 12_000;
 const HEARTBEAT_MIN_INTERVAL_MS = 800;
 
@@ -316,7 +316,7 @@ export async function runIndexSyncChunk() {
   const previousQueue = state.folder_queue || [];
   const startingNewRun =
     !state.sync_run_id ||
-    (state.status === 'complete' && previousQueue.length === 0);
+    (state.phase === 'complete' && previousQueue.length === 0);
   const resumeFinalization =
     !startingNewRun &&
     state.phase === 'finalizing' &&
