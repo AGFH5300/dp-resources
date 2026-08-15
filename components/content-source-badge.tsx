@@ -113,6 +113,7 @@ export function ResourceAttributionBadges({
     (source) =>
       source.reviewStatus === 'reviewed' &&
       source.slug !== 'unknown' &&
+      source.slug !== 'library_structure' &&
       !/under review/i.test(source.displayName),
   );
   const primary =

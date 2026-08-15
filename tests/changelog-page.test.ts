@@ -17,7 +17,8 @@ describe('public changelog page', () => {
     expect(page).toContain(
       'A listed record of all the features, improvements, and fixes',
     );
-    expect(page).toContain("date: '2026-08-16T00:12:00.000Z'");
+    expect(page).toContain("date: '2026-08-16T00:45:00.000Z'");
+    expect(page).toContain('Fixed Library source browsing so normal subject, level, assessment, and navigation folders');
     expect(page).toContain('Made Library folder headers more compact');
     expect(page).toContain('Refreshed What’s new with the final 16 August release highlights');
     expect(page).toContain("date: '2026-08-05T14:42:11.000Z'");

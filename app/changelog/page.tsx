@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-16-library-source-folders',
+    summary:
+      'Fixed Library source browsing so normal subject, level, assessment, and navigation folders no longer appear as Source under review, while reviewed source labels such as Padlet remain attached to the actual resources they describe.',
+    date: '2026-08-16T00:45:00.000Z',
+  },
+  {
     id: 'release-2026-08-16-library-folder-header',
     summary:
       'Made Library folder headers more compact by keeping Back navigation and Browse by source together beside the folder controls, removing the awkward empty space between the folder heading and its contents.',
