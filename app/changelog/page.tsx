@@ -17,9 +17,21 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-16-library-folder-header',
+    summary:
+      'Made Library folder headers more compact by keeping Back navigation and Browse by source together beside the folder controls, removing the awkward empty space between the folder heading and its contents.',
+    date: '2026-08-16T00:12:00.000Z',
+  },
+  {
+    id: 'release-2026-08-16-whats-new-final',
+    summary:
+      'Refreshed What’s new with the final 16 August release highlights, an exact release date, and a new once-per-release prompt while keeping the full changelog available for detailed updates.',
+    date: '2026-08-16T00:10:00.000Z',
+  },
+  {
     id: 'release-2026-08-15-library-folder-controls',
     summary:
-      'Refined folder controls in the Resource Library by grouping Search this folder and Filter on the right and making the Filter panel dismiss when clicking elsewhere or pressing Escape.',
+      'Improved folder controls in the Resource Library by grouping Search this folder and Filter with the view controls, and making Filter close naturally when clicking elsewhere or pressing Escape.',
     date: '2026-08-15T15:50:00.000Z',
   },
   {
@@ -55,7 +67,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-13-source-clarity',
     summary:
-      'Added visible Question Bank source summaries and filters, clearer Library attribution, consistent app dropdowns, and improved admin source review tools.',
+      'Added visible Question Bank source summaries and filters, clearer Library attribution, consistent app dropdowns, and improved source review tools.',
     date: '2026-08-13T12:00:00.000Z',
   },
   {
@@ -79,7 +91,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-12-frontend-secret-boundary',
     summary:
-      'Moved Supabase browser operations behind same-origin server routes, removed browser-exposed API-key dependencies, and added client-bundle secret checks.',
+      'Moved browser data access behind same-origin server routes, removed browser-exposed API-key dependencies, and added automatic client-bundle secret checks.',
     date: '2026-08-12T14:20:00.000Z',
   },
   {
