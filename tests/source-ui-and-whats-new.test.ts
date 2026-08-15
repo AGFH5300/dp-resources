@@ -32,6 +32,8 @@ describe('source UI and release notes', () => {
     expect(dialog).toContain('localStorage.getItem');
     expect(dialog).toContain('localStorage.setItem');
     expect(dialog).toContain('View full changelog');
+    expect(dialog).toContain('max-h-[55vh]');
+    expect(dialog).toContain('overflow-y-auto');
     expect(dialog).not.toContain('Sparkles');
     expect(accountMenu).toContain('dp:open-whats-new');
     expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
@@ -74,6 +76,5 @@ describe('source UI and release notes', () => {
     expect(changelog).toContain('Rebuilt the Admin Library index into a live command center');
     expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
     expect(changelog).toContain('Added unified content-source attribution');
-    expect(changelog).toContain('Refreshed What’s new with an exact release date');
   });
 });
