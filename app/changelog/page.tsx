@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-15-library-folder-controls',
+    summary:
+      'Refined folder controls in the Resource Library by grouping Search this folder and Filter on the right and making the Filter panel dismiss when clicking elsewhere or pressing Escape.',
+    date: '2026-08-15T15:50:00.000Z',
+  },
+  {
     id: 'release-2026-08-15-maths-search-aliases',
     summary:
       'Made Question Bank Maths searches understand common AA and AI shorthand such as Math AAHL, AA/HL, Maths AI SL, and IB Mathematics AA HL, with exact course matching.',
