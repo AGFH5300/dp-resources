@@ -102,11 +102,6 @@ export default async function QuestionBankSearch({
               ? 'Search is temporarily unavailable. Please try again.'
               : `${total.toLocaleString()} result${total === 1 ? '' : 's'} for “${query}”`}
         </p>
-        {searchAlias.label && !searchUnavailable ? (
-          <p className="mt-1 text-xs text-slate-500">
-            Recognized as {searchAlias.label}.
-          </p>
-        ) : null}
         <div className="mt-4 space-y-3">
           {results.map((row) => (
             <Link
