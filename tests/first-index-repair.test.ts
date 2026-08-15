@@ -48,7 +48,7 @@ function defineReadOnlyTests() {
       expect(sync).toContain(
         'const baseIndexedResources = startingNewRun',
       );
-      expect(sync).toContain("state.status === 'complete'");
+      expect(sync).toContain("state.phase === 'complete'");
     });
 
     it('runs stale cleanup and recursive source inheritance only in finalization', () => {
