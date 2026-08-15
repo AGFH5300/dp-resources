@@ -17,6 +17,9 @@ describe('public changelog page', () => {
     expect(page).toContain(
       'A listed record of all the features, improvements, and fixes',
     );
+    expect(page).toContain("date: '2026-08-16T00:12:00.000Z'");
+    expect(page).toContain('Made Library folder headers more compact');
+    expect(page).toContain('Refreshed What’s new with the final 16 August release highlights');
     expect(page).toContain("date: '2026-08-05T14:42:11.000Z'");
     expect(page).toContain('Moved ordinary Practice Builder sessions');
     expect(page).toContain('Reduced Question Bank storage use');
@@ -48,7 +51,7 @@ describe('public changelog page', () => {
     expect(source).not.toContain('GITHUB_TOKEN');
   });
 
-  it('keeps visible release notes focused on improvements users experience', () => {
+  it('keeps visible historical release notes focused on improvements users experience', () => {
     const source = read('lib/changelog.ts');
     const summaries = source.slice(
       source.indexOf('const historicalSummaries'),
