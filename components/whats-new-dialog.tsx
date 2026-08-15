@@ -40,7 +40,7 @@ export function WhatsNewDialog() {
       title="What’s new"
       description={WHATS_NEW_RELEASE.dateLabel}
     >
-      <ul className="space-y-4">
+      <ul className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
         {WHATS_NEW_RELEASE.items.map((item) => (
           <li key={item.title} className="flex gap-3">
             <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />

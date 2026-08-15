@@ -32,10 +32,29 @@ describe('source UI and release notes', () => {
     expect(dialog).toContain('localStorage.getItem');
     expect(dialog).toContain('localStorage.setItem');
     expect(dialog).toContain('View full changelog');
+    expect(dialog).toContain('max-h-[55vh]');
+    expect(dialog).toContain('overflow-y-auto');
     expect(dialog).not.toContain('Sparkles');
     expect(accountMenu).toContain('dp:open-whats-new');
     expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
     expect(accountMenu).not.toContain('Sparkles');
+  });
+
+  it('keeps What’s new on the current exact dated release with the latest major highlights', () => {
+    const whatsNew = read('lib/whats-new.ts');
+    expect(whatsNew).toContain("id: '2026-08-15-release-roundup'");
+    expect(whatsNew).toContain("dateLabel: '15 August 2026'");
+    expect(whatsNew).not.toContain("dateLabel: 'August 2026'");
+    for (const highlight of [
+      'Maths search understands your shorthand',
+      'Library indexing is live and much faster',
+      'Folder controls are cleaner',
+      'Sources are built into Questions and Library',
+      'Search and sign-in are more reliable',
+      'The interface is more consistent',
+    ]) {
+      expect(whatsNew).toContain(highlight);
+    }
   });
 
   it('keeps the August 6-15 release window explicitly curated in the public changelog', () => {
