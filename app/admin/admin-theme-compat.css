@@ -1,0 +1,57 @@
+/*
+ * Admin-only compatibility for composite Tailwind utilities that the global
+ * dark-theme bridge cannot match as plain background classes. Keep these
+ * semantic: map light utility intent onto the existing DP theme tokens rather
+ * than hardcoding a second admin colour system.
+ */
+
+html[data-theme='dark']
+  .bg-gradient-to-br.from-white.via-white.to-slate-50 {
+  background-image: linear-gradient(
+    to bottom right,
+    var(--dp-page),
+    var(--dp-page),
+    var(--dp-surface-muted)
+  );
+}
+
+html[data-theme='dark'] [class~='bg-slate-50/70'] {
+  background-color: color-mix(
+    in srgb,
+    var(--dp-surface-muted) 70%,
+    var(--dp-page)
+  );
+}
+
+html[data-theme='dark'] [class~='bg-rose-50'] {
+  background-color: rgb(136 19 55 / 0.2);
+}
+html[data-theme='dark'] [class~='border-rose-200'] {
+  border-color: #9f1239;
+}
+html[data-theme='dark'] [class~='text-rose-700'] {
+  color: #fecdd3;
+}
+
+html[data-theme='dark'] [class~='bg-sky-50'] {
+  background-color: rgb(3 105 161 / 0.2);
+}
+html[data-theme='dark'] [class~='border-sky-200'] {
+  border-color: #0369a1;
+}
+html[data-theme='dark'] [class~='text-sky-700'] {
+  color: #bae6fd;
+}
+
+/* The command-center progress fill starts at slate-950 in light mode. In dark
+   mode use the theme's blue ramp so it remains visible against the dark track. */
+html[data-theme='dark']
+  [role='progressbar']
+  > .from-slate-950.via-indigo-600.to-sky-500 {
+  background-image: linear-gradient(
+    to right,
+    var(--dp-progress-fill),
+    #818cf8,
+    #38bdf8
+  );
+}
