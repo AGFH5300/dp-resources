@@ -16,47 +16,18 @@ export type DriveIndexWaveProgress = {
   currentPath: string | null;
 };
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-) {
-  const results: R[] = [];
-  let next = 0;
-  let active = 0;
-
-  await new Promise<void>((resolve, reject) => {
-    let failed = false;
-    const launch = () => {
-      if (failed) return;
-      if (next >= items.length && active === 0) return resolve();
-      while (active < limit && next < items.length) {
-        const index = next++;
-        active += 1;
-        fn(items[index]).then(
-          (result) => {
-            results[index] = result;
-            active -= 1;
-            launch();
-          },
-          (error) => {
-            failed = true;
-            reject(error);
-          },
-        );
-      }
-    };
-    launch();
-  });
-
-  return results;
-}
+type DrivePageResult = {
+  taskId: number;
+  folder: DriveIndexFolderCursor;
+  page: Awaited<ReturnType<typeof listDriveIndexPage>>;
+};
 
 /**
  * Admin index crawler optimized for resumable background-like batches.
  *
- * It deliberately lives beside the legacy crawl helper so the admin sync can
- * expose wave-by-wave telemetry without changing ordinary Drive browsing.
+ * Unlike the legacy wave crawler, this keeps a continuous pool of Drive list
+ * requests busy. One slow folder therefore no longer stalls every other free
+ * request slot while the crawler waits for a whole wave to finish.
  */
 export async function crawlDriveIndexChunkLive(options: {
   queue: DriveIndexFolderCursor[];
@@ -79,49 +50,113 @@ export async function crawlDriveIndexChunkLive(options: {
   let files = 0;
   let folders = 0;
   let processedFolders = 0;
+  let nextTaskId = 0;
+  let lastProgressWrite = 0;
+  let lastCurrentPath: string | null = queue[0]?.path || null;
+  let telemetryInFlight: Promise<void> | null = null;
+  let inFlightContinuationPages = 0;
 
-  while (
-    queue.length &&
-    processedFolders < maxFolders &&
-    rows.length < maxItems &&
-    Date.now() < deadline
-  ) {
-    const wave = queue.splice(
-      0,
-      Math.min(concurrency, queue.length, maxFolders - processedFolders),
-    );
-    const pages = await mapWithConcurrency(wave, concurrency, (folder) =>
-      listDriveIndexPage(folder, 1000),
-    );
+  const inFlight = new Map<number, Promise<DrivePageResult>>();
 
-    for (let i = 0; i < pages.length; i += 1) {
-      const folder = wave[i];
-      const page = pages[i];
-      rows.push(...page.rows);
-      for (const row of page.rows) {
-        if (row.is_folder) folders += 1;
-        else files += 1;
-      }
-      queue.push(...page.childFolders);
-      if (page.nextPageToken) {
-        queue.push({ ...folder, pageToken: page.nextPageToken });
-      } else {
-        processedFolders += 1;
-      }
-    }
+  const progressSnapshot = (): DriveIndexWaveProgress => ({
+    rows: rows.length,
+    files,
+    folders,
+    processedFolders,
+    queueDepth: queue.length + inFlight.size,
+    continuationPages:
+      queue.filter((item) => item.pageToken).length + inFlightContinuationPages,
+    currentPath: lastCurrentPath,
+  });
 
-    if (options.onWave) {
-      await options.onWave({
-        rows: rows.length,
-        files,
-        folders,
-        processedFolders,
-        queueDepth: queue.length,
-        continuationPages: queue.filter((item) => item.pageToken).length,
-        currentPath: wave.at(-1)?.path || null,
+  const publishProgress = (force = false) => {
+    if (!options.onWave) return;
+    const now = Date.now();
+    if (!force && (telemetryInFlight || now - lastProgressWrite < 800)) return;
+    lastProgressWrite = now;
+    const snapshot = progressSnapshot();
+    telemetryInFlight = Promise.resolve(options.onWave(snapshot))
+      .catch(() => {
+        // Telemetry is observability, not indexing correctness. A transient
+        // heartbeat write must not discard an otherwise valid Drive batch.
+      })
+      .finally(() => {
+        telemetryInFlight = null;
       });
+  };
+
+  const launch = (folder: DriveIndexFolderCursor) => {
+    const taskId = nextTaskId++;
+    if (folder.pageToken) inFlightContinuationPages += 1;
+    inFlight.set(
+      taskId,
+      listDriveIndexPage(folder, 1000).then((page) => ({
+        taskId,
+        folder,
+        page,
+      })),
+    );
+  };
+
+  const canLaunch = () =>
+    queue.length > 0 &&
+    inFlight.size < concurrency &&
+    Date.now() < deadline &&
+    rows.length < maxItems &&
+    processedFolders + inFlight.size < maxFolders;
+
+  const fillWorkerPool = () => {
+    while (canLaunch()) {
+      const folder = queue.shift();
+      if (!folder) break;
+      launch(folder);
     }
+  };
+
+  const consume = ({ taskId, folder, page }: DrivePageResult) => {
+    inFlight.delete(taskId);
+    if (folder.pageToken) inFlightContinuationPages -= 1;
+    lastCurrentPath = folder.path;
+    rows.push(...page.rows);
+    for (const row of page.rows) {
+      if (row.is_folder) folders += 1;
+      else files += 1;
+    }
+    queue.push(...page.childFolders);
+    if (page.nextPageToken) {
+      queue.push({ ...folder, pageToken: page.nextPageToken });
+    } else {
+      processedFolders += 1;
+    }
+    publishProgress();
+  };
+
+  fillWorkerPool();
+
+  while (inFlight.size > 0) {
+    const result = await Promise.race(inFlight.values());
+    consume(result);
+
+    if (
+      Date.now() >= deadline ||
+      rows.length >= maxItems ||
+      processedFolders >= maxFolders
+    ) {
+      // Cursors already handed to Drive must be allowed to finish; otherwise a
+      // successful partial batch could return without those cursors in its
+      // resumable queue. Stop launching and drain only the few already active.
+      while (inFlight.size > 0) {
+        consume(await Promise.race(inFlight.values()));
+      }
+      break;
+    }
+
+    fillWorkerPool();
   }
+
+  if (telemetryInFlight) await telemetryInFlight;
+  publishProgress(true);
+  if (telemetryInFlight) await telemetryInFlight;
 
   return {
     rows,

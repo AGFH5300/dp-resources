@@ -43,6 +43,37 @@ html[data-theme='dark'] [class~='text-sky-700'] {
   color: #bae6fd;
 }
 
+/*
+ * The command-center metrics are one dashboard surface, not a spreadsheet.
+ * Tailwind's divide-slate-100 utility was not covered by the global border
+ * compatibility bridge and became an aggressive near-white grid in dark mode.
+ * Keep just a quiet structural hint in both themes.
+ */
+[class~='divide-slate-100'][class~='sm:divide-x'] > :not(:last-child) {
+  border-color: color-mix(in srgb, var(--dp-theme-border) 46%, transparent);
+}
+html[data-theme='dark']
+  [class~='divide-slate-100'][class~='sm:divide-x']
+  > :not(:last-child) {
+  border-color: color-mix(in srgb, var(--dp-theme-border) 34%, transparent);
+}
+
+/* The progress track should read as a track, not a white outlined input. */
+[role='progressbar'][class~='ring-slate-200'] {
+  --tw-ring-color: color-mix(
+    in srgb,
+    var(--dp-theme-border) 42%,
+    transparent
+  );
+}
+html[data-theme='dark'] [role='progressbar'][class~='ring-slate-200'] {
+  --tw-ring-color: color-mix(
+    in srgb,
+    var(--dp-theme-border) 28%,
+    transparent
+  );
+}
+
 /* The command-center progress fill starts at slate-950 in light mode. In dark
    mode use the theme's blue ramp so it remains visible against the dark track. */
 html[data-theme='dark']
