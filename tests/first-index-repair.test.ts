@@ -8,80 +8,94 @@ function read(path: string) {
 }
 
 function defineReadOnlyTests() {
-  describe('urgent first index performance repair', () => {
-    it('indexes one Drive list page up to 1000 items so folders with more than 500 direct children are not capped', () => {
+  describe('admin index performance architecture', () => {
+    it('indexes one Drive list page up to 1000 items so large folders are not capped at 500', () => {
       const drive = read('lib/drive.ts');
       expect(drive).toContain('pageSize = 1000');
       expect(drive).toContain('pageSize: Math.min(pageSize, 1000)');
       expect(drive).not.toContain('rows.length >= maxItems) break');
     });
 
-    it('preserves pagination cursors in the JSON folder queue', () => {
+    it('preserves pagination cursors in resumable queues', () => {
       const drive = read('lib/drive.ts');
+      const crawler = read('lib/index-crawler.ts');
       const sync = read('lib/index-sync.ts');
       expect(drive).toContain('pageToken?: string');
       expect(drive).toContain('pageToken: folder.pageToken');
-      expect(drive).toContain(
+      expect(crawler).toContain(
         'queue.push({ ...folder, pageToken: page.nextPageToken })',
       );
       expect(sync).toContain('pageToken?: string');
     });
 
-    it('trusts queued folders discovered from the configured root without repeated root assertions or folder views', () => {
-      const chunk = read('lib/drive.ts').slice(
-        read('lib/drive.ts').indexOf(
-          'export async function crawlDriveIndexChunk',
-        ),
-      );
-      expect(chunk).not.toContain('assertInsideRoot(');
-      expect(chunk).not.toContain('getFolderView(');
-      expect(chunk).toContain('listDriveIndexPage(folder, 1000)');
+    it('uses a dedicated live crawler with eight-way bounded Drive concurrency', () => {
+      const crawler = read('lib/index-crawler.ts');
+      const sync = read('lib/index-sync.ts');
+      expect(crawler).toContain('Math.min(Math.max(options.concurrency ?? 8, 1), 8)');
+      expect(crawler).toContain('listDriveIndexPage(folder, 1000)');
+      expect(crawler).toContain('onWave');
+      expect(sync).toContain('const CRAWL_CONCURRENCY = 8');
+      expect(sync).toContain('crawlDriveIndexChunkLive');
+      expect(sync).toContain('concurrency: CRAWL_CONCURRENCY');
     });
 
-    it('bounds crawler concurrency at 6', () => {
-      const drive = read('lib/drive.ts');
+    it('resumes a paused run with the existing queue and sync run id', () => {
       const sync = read('lib/index-sync.ts');
-      expect(drive).toContain('Math.min(options.concurrency ?? 6, 6)');
-      expect(sync).toContain('concurrency: initialRunIncomplete ? 6 : 2');
-    });
-
-    it('resumes a paused initial run with the existing queue and sync run id', () => {
-      const sync = read('lib/index-sync.ts');
+      expect(sync).toContain('state.folder_queue || []');
       expect(sync).toContain(
-        'const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id',
+        'const syncRunId = startingNewRun ? randomUUID() : state.sync_run_id!',
       );
-      expect(sync).toContain('state.folder_queue');
       expect(sync).toContain(
-        'const baseIndexedResources = startingNewRun ? 0 : state.indexed_resources || 0',
+        'const baseIndexedResources = startingNewRun',
       );
+      expect(sync).toContain("state.phase === 'complete'");
     });
 
-    it('deletes stale rows only after a genuinely complete sync', () => {
+    it('runs stale cleanup and recursive source inheritance only in finalization', () => {
       const sync = read('lib/index-sync.ts');
-      const completeBlock = sync.slice(
-        sync.indexOf('if (chunk.complete)'),
-        sync.indexOf('} else {', sync.indexOf('if (chunk.complete)')),
+      const finalizer = sync.slice(
+        sync.indexOf('async function finalizeIndexRun'),
+        sync.indexOf('export async function runIndexSyncChunk'),
       );
-      expect(completeBlock).toContain('delete()');
-      expect(completeBlock).toContain('last_seen_sync_run_id.neq');
+      const runLoop = sync.slice(sync.indexOf('export async function runIndexSyncChunk'));
+      expect(finalizer).toContain('last_seen_sync_run_id.neq');
+      expect(finalizer).toContain('dp_resolve_resource_source_inheritance');
+      expect(runLoop.match(/dp_resolve_resource_source_inheritance/g) || []).toHaveLength(0);
+    });
+
+    it('adds the recursive parent lookup index used by source inheritance', () => {
+      const migration = read(
+        'supabase/migrations/20260815114655_index_sync_command_center.sql',
+      );
+      expect(migration).toContain('dp_resource_index_parent_drive_file_id_idx');
+      expect(migration).toContain('(parent_drive_file_id)');
     });
   });
 
-  describe('admin index panel safety', () => {
+  describe('admin index panel live behavior', () => {
     it('does not parse empty or non-JSON error responses as JSON', () => {
       const panel = read('app/admin/index-sync-panel.tsx');
       expect(panel).toContain("contentType.includes('application/json')");
       expect(panel.indexOf('await response.text()')).toBeLessThan(
         panel.indexOf('await response.json()'),
       );
-      expect(panel).toContain('readIndexResponse(r)');
     });
 
-    it('keeps exactly one indexing request in flight and uses short successful retry delay', () => {
+    it('keeps POST chunks sequential while allowing GET polling during a POST', () => {
       const panel = read('app/admin/index-sync-panel.tsx');
-      expect(panel).toContain('if (inFlightRef.current) return');
-      expect(panel).toContain('inFlightRef.current = true');
-      expect(panel).toContain('setTimeout(runNextChunk, 250)');
+      expect(panel).toContain('postInFlightRef.current');
+      expect(panel).toContain('refreshInFlightRef.current');
+      expect(panel).toContain('if (postInFlightRef.current || !autoRunRef.current) return');
+      expect(panel).toContain("await fetch('/api/admin/index', { method: 'POST' })");
+      expect(panel).toContain('setInterval(refresh, active ? 1000 : 5000)');
+      expect(panel).toContain('setTimeout(runNextChunk, 120)');
+    });
+
+    it('persists automatic continuation across an admin page reload', () => {
+      const panel = read('app/admin/index-sync-panel.tsx');
+      expect(panel).toContain("sessionStorage.setItem('dp-index-autocontinue', '1')");
+      expect(panel).toContain("sessionStorage.getItem('dp-index-autocontinue')");
+      expect(panel).toContain('Pause after this batch');
     });
   });
 }
