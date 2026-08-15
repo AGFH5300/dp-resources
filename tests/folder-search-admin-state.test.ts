@@ -24,7 +24,7 @@ describe('folder-scoped library search', () => {
 
   it('keeps folder actions aligned and dismisses Filter when clicking outside', () => {
     expect(button).toContain("toolbar.insertBefore(backLink, toolbar.firstChild)");
-    expect(button).toContain("backLink.style.marginRight = desktop ? 'auto' : '0'");
+    expect(button).toContain("browseLink.style.marginRight = desktop ? 'auto' : '0.75rem'");
     expect(button).toContain("actionGroup.style.marginLeft = '0'");
     expect(button).toContain("document.addEventListener('pointerdown', handlePointerDown)");
     expect(button).toContain("filterButton?.getAttribute('aria-expanded') !== 'true'");
@@ -32,12 +32,13 @@ describe('folder-scoped library search', () => {
     expect(button).toContain("event.key === 'Escape'");
   });
 
-  it('keeps the whole folder header compact without absolute-position gaps', () => {
+  it('collapses folder navigation into one compact action row', () => {
     expect(browser).toContain("Back to{' '}");
-    expect(button).toContain("titleBlock.style.marginTop = '0.5rem'");
-    expect(button).toContain("toolbar.style.marginTop = '0.5rem'");
-    expect(button).toContain("toolbar.style.paddingTop = '0.25rem'");
-    expect(button).toContain("contentAfterToolbar.style.marginTop = '0.5rem'");
+    expect(button).toContain("'a[href=\"/library/sources\"]'");
+    expect(button).toContain('toolbar.insertBefore(browseLink, insertBefore)');
+    expect(button).toContain("toolbar.style.marginTop = '0.25rem'");
+    expect(button).toContain("titleBlock.style.marginTop = '0.375rem'");
+    expect(button).toContain("contentAfterToolbar.style.marginTop = '0.375rem'");
     expect(button).not.toContain("backLink.style.position = 'absolute'");
     expect(button).not.toContain('toolbar.style.paddingLeft');
   });
