@@ -53,6 +53,7 @@ export async function crawlDriveIndexChunkLive(options: {
   let lastProgressWrite = 0;
   let lastCurrentPath: string | null = queue[0]?.path || null;
   let telemetryInFlight: Promise<void> | null = null;
+  let inFlightContinuationPages = 0;
 
   const inFlight = new Map<number, Promise<DrivePageResult>>();
 
@@ -63,8 +64,7 @@ export async function crawlDriveIndexChunkLive(options: {
     processedFolders,
     queueDepth: queue.length + inFlight.size,
     continuationPages:
-      queue.filter((item) => item.pageToken).length +
-      [...inFlight.values()].length * 0,
+      queue.filter((item) => item.pageToken).length + inFlightContinuationPages,
     currentPath: lastCurrentPath,
   });
 
@@ -86,14 +86,22 @@ export async function crawlDriveIndexChunkLive(options: {
 
   const launch = (folder: DriveIndexFolderCursor) => {
     const taskId = nextTaskId++;
+    if (folder.pageToken) inFlightContinuationPages += 1;
     const task = listDriveIndexPage(folder, 1000).then((page) => ({
       folder,
       page,
     }));
     inFlight.set(taskId, task);
-    void task.finally(() => {
-      inFlight.delete(taskId);
-    });
+    void task.then(
+      () => {
+        inFlight.delete(taskId);
+        if (folder.pageToken) inFlightContinuationPages -= 1;
+      },
+      () => {
+        inFlight.delete(taskId);
+        if (folder.pageToken) inFlightContinuationPages -= 1;
+      },
+    );
   };
 
   const canLaunch = () =>
@@ -140,8 +148,7 @@ export async function crawlDriveIndexChunkLive(options: {
     ) {
       // Cursors already handed to Drive must be allowed to finish; otherwise a
       // successful partial batch could return without those cursors in its
-      // resumable queue. We stop launching new requests and drain only the
-      // small number already in flight.
+      // resumable queue. Stop launching and drain only the few already active.
       while (inFlight.size > 0) {
         consume(await Promise.race(inFlight.values()));
       }
