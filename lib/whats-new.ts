@@ -1,36 +1,36 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-08-15-release-roundup',
-  dateLabel: '15 August 2026',
+  id: '2026-08-16-final-release',
+  dateLabel: '16 August 2026',
   items: [
     {
-      title: 'Maths search understands your shorthand',
+      title: 'Maths search understands the way you type',
       description:
-        'Question Bank search now understands common AA and AI forms such as Math AAHL, AA/HL, Maths AI SL, and IB Mathematics AA HL.',
+        'Search with common shorthand such as Math AAHL, AA/HL, Maths AI SL, or IB Mathematics AA HL and DP Resources will match the right course automatically.',
     },
     {
-      title: 'Library indexing is live and much faster',
+      title: 'Library folders are much cleaner',
       description:
-        'Admins now get real progress, current activity, throughput, ETA, pause and resume, safer recovery, and a substantially faster Library sync.',
+        'Back navigation and Browse by source now sit together in a compact row, while Filter, Search this folder, and view controls stay neatly grouped on the other side.',
     },
     {
-      title: 'Folder controls are cleaner',
+      title: 'Finding resources feels more natural',
       description:
-        'Folder headers now keep Back navigation and Browse by source together in one compact action row, with Filter, Search this folder, and view controls aligned opposite; Filter also closes naturally when you click elsewhere or press Escape.',
+        'Folder search and filters are easier to reach, Filter closes when you click away or press Escape, and menus now follow the same design across the app.',
     },
     {
-      title: 'Sources are built into Questions and Library',
+      title: 'Sources are easier to understand',
       description:
-        'See reviewed source attribution, browse source collections, filter by source, and carry source choices into Practice Builder.',
+        'Question Bank and Library resources now show reviewed source information where it is useful, with source browsing and filters available when you need them.',
     },
     {
-      title: 'Search and sign-in are more reliable',
+      title: 'Library updates are faster and more reliable',
       description:
-        'Question Bank and Library search are more resilient and responsive, while sign-in sessions, HTTPS transport, and input handling have been strengthened.',
+        'The Library indexing system has been rebuilt so new and changed resources can be processed much faster, with safer recovery if a sync is interrupted.',
     },
     {
-      title: 'The interface is more consistent',
+      title: 'Search, sign-in, and dark mode are more polished',
       description:
-        'App-native dropdowns, dark-mode fixes, compact Library rows, cleaner toolbars, and refined Admin surfaces now behave more consistently across the site.',
+        'Recent reliability, security, dark-mode, dropdown, and layout fixes make the site feel more consistent without changing how you normally use it.',
     },
   ],
 } as const;
