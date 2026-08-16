@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migrationPath =
-  'supabase/migrations/20260816141000_free_plan_index_storage_reclaim.sql';
+  'supabase/migrations/20260816165508_free_plan_index_storage_reclaim.sql';
 const migration = readFileSync(migrationPath, 'utf8');
 
 function droppedIndexes(sql: string) {
