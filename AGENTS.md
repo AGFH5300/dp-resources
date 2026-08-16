@@ -7,7 +7,7 @@
 - Supabase Auth using `@supabase/ssr` and `@supabase/supabase-js`.
 - Supabase Postgres tables are defined in `supabase/schema.sql`.
 - Google Drive API access uses `googleapis` from server-only utilities.
-- Vercel is the deployment target.
+- Render is the production deployment target, using the repository Dockerfile. Do not configure or suggest Vercel for this project.
 
 ## Coding approach
 
