@@ -12,10 +12,10 @@ const backfill = readFileSync('scripts/backfill-pdf-search-manifests.mjs', 'utf8
 describe('PDF search object-storage migration bridge', () => {
   it('uses R2 first, private Supabase Storage second, and Postgres last', () => {
     expect(route).toContain('pdf-preview-search/${session.previewId}.json');
-    expect(route).toContain("'x-pdf-search-source': 'r2-manifest'");
-    expect(route).toContain(
-      "'x-pdf-search-source': 'supabase-storage-manifest'",
-    );
+    expect(route).toContain("source: 'r2-manifest' | 'supabase-storage-manifest'");
+    expect(route).toContain("'r2-manifest',");
+    expect(route).toContain("'supabase-storage-manifest',");
+    expect(route).toContain("'x-pdf-search-source': source");
     expect(route).toContain("sb.rpc('dp_search_pdf_preview'");
     expect(route).toContain("'x-pdf-search-source': 'postgres-fallback'");
   });
