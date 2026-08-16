@@ -3,6 +3,7 @@ services:
     name: dp-resources
     runtime: docker
     plan: starter
+    branch: main
     dockerfilePath: ./Dockerfile
     autoDeployTrigger: checksPass
     envVars:
