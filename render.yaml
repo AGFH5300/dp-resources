@@ -5,7 +5,7 @@ services:
     plan: starter
     branch: main
     dockerfilePath: ./Dockerfile
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: commit
     envVars:
       - key: NODE_ENV
         value: production
