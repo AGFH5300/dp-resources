@@ -1,10 +1,9 @@
-name: Verify production PDF search deployment
+name: Verify Render production PDF search deployment
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/verify-production-pdf-search-deployment.yml'
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -12,22 +11,29 @@ permissions:
 
 jobs:
   verify:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    env:
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Wait for production deployment marker
+      - name: Wait for exact Render production commit
         shell: bash
         run: |
           set -euo pipefail
           url='https://dp.resources.anshgupta.cc/api/health/pdf-search-storage'
-          for attempt in $(seq 1 40); do
+          for attempt in $(seq 1 60); do
             body="$(curl --silent --show-error --fail --max-time 15 --header 'Cache-Control: no-cache' "$url" || true)"
-            if printf '%s' "$body" | grep -Fq '"pdfSearchStorage":"dual-object-v1"'; then
-              printf 'Production marker verified on attempt %s: %s\n' "$attempt" "$body"
+            if printf '%s' "$body" | grep -Fq '"pdfSearchStorage":"dual-object-v1"' \
+              && printf '%s' "$body" | grep -Fq '"deploymentProvider":"render"' \
+              && printf '%s' "$body" | grep -Fq "\"renderCommit\":\"$EXPECTED_SHA\""; then
+              printf 'Exact Render production commit verified on attempt %s: %s\n' "$attempt" "$body"
               exit 0
             fi
-            printf 'Attempt %s: marker not live yet. Body: %.200s\n' "$attempt" "$body"
+            printf 'Attempt %s: expected Render commit %s is not live yet. Body: %.300s\n' "$attempt" "$EXPECTED_SHA" "$body"
             sleep 10
           done
-          echo 'Production deployment marker did not become live within the verification window.' >&2
+          echo "Render production did not reach expected commit $EXPECTED_SHA within the verification window." >&2
           exit 1

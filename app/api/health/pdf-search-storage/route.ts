@@ -6,6 +6,8 @@ export async function GET() {
     {
       ok: true,
       pdfSearchStorage: 'dual-object-v1',
+      deploymentProvider: process.env.RENDER === 'true' ? 'render' : 'unknown',
+      renderCommit: process.env.RENDER_GIT_COMMIT ?? null,
     },
     {
       headers: {
