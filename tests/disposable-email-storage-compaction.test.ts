@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(
-  'supabase/migrations/20260816143000_compact_disposable_email_domains.sql',
+  'supabase/migrations/20260816165554_compact_disposable_email_domains.sql',
   'utf8',
 );
 const suspensionRoute = readFileSync(
