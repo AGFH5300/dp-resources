@@ -12,6 +12,15 @@
 - `RESOURCE_LIBRARY_GOOGLE_SHEET_EMBED_URL` when the master workbook embed is enabled
 - Render/Next.js runtime variables required by the deployment environment
 
+## Render production deployment
+
+- DP Resources production is hosted on Render using the repository `Dockerfile`; do not use Vercel for this project.
+- The Render service is `DP Resources` / `dp-resources`, tracking the repository `main` branch.
+- Production Auto-Deploy is intentionally disabled. A GitHub merge does not prove that production has changed.
+- After the exact `main` commit has passed CI/security checks, open Render → DP Resources → Manual Deploy → Deploy latest commit.
+- For the PDF-search storage rollout, verify `/api/health/pdf-search-storage` returns `pdfSearchStorage: dual-object-v1`, `deploymentProvider: render`, and a `renderCommit` matching the intended `main` SHA before removing the PostgreSQL PDF-search fallback.
+- The GitHub workflow **Verify Render production PDF search deployment** is manual-on-demand and can verify an explicit expected SHA.
+
 ## Migration order
 
 1. Apply existing migrations in timestamp order.
