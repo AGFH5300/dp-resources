@@ -18,6 +18,10 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const PDF_SEARCH_FALLBACK_BUCKET =
+  process.env.PDF_SEARCH_MANIFEST_FALLBACK_BUCKET?.trim() ||
+  PDF_PREVIEW_BUCKET;
+
 async function getSupabaseObject(
   bucket: string,
   objectPath: string,
@@ -36,6 +40,35 @@ async function getSupabaseObject(
       Authorization: `Bearer ${serviceRoleKey}`,
     },
   }).catch(() => null);
+}
+
+function manifestSearchResponse(
+  payload: unknown,
+  documentId: string,
+  normalizedQuery: string,
+  pageCount: number,
+  source: 'r2-manifest' | 'supabase-storage-manifest',
+) {
+  const manifest = validatePdfSearchManifest(payload, documentId);
+  if (!manifest) return null;
+  return Response.json(
+    {
+      ready: true,
+      exactHighlightsReady: true,
+      results: searchPdfSearchManifest(
+        manifest,
+        normalizedQuery,
+        Math.min(Math.max(pageCount || 1, 1), 5000),
+      ),
+    },
+    {
+      headers: {
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+        'x-pdf-search-source': source,
+      },
+    },
+  );
 }
 
 export async function GET(
@@ -145,49 +178,56 @@ export async function GET(
     );
   }
 
-  // R2-backed previews can carry their page-level text index outside Postgres.
-  // During migration we retain the historical RPC as a complete fallback, so a
-  // missing/corrupt object never makes an existing searchable preview regress.
+  const manifestPath = `pdf-preview-search/${session.previewId}.json`;
+  const pageCount = Number(document.page_count || 1);
+
+  // R2 is the primary document-search index for R2-backed previews.
   if (storageProvider === 'r2') {
-    const manifestPath = `pdf-preview-search/${session.previewId}.json`;
+    const manifestR2Bucket =
+      process.env.R2_PDF_PREVIEW_BUCKET?.trim() || storageBucket;
     const manifestResponse = await getPrivateR2Object(
-      storageBucket,
+      manifestR2Bucket,
       manifestPath,
       req.signal,
     ).catch(() => null);
     if (manifestResponse?.ok) {
-      const manifest = validatePdfSearchManifest(
+      const response = manifestSearchResponse(
         await manifestResponse.json().catch(() => null),
         session.previewId,
+        normalizedQuery,
+        pageCount,
+        'r2-manifest',
       );
-      if (manifest) {
-        return Response.json(
-          {
-            ready: true,
-            exactHighlightsReady: true,
-            results: searchPdfSearchManifest(
-              manifest,
-              normalizedQuery,
-              Math.min(Math.max(Number(document.page_count || 1), 1), 5000),
-            ),
-          },
-          {
-            headers: {
-              'cache-control': 'private, no-store',
-              'x-content-type-options': 'nosniff',
-              'x-pdf-search-source': 'r2-manifest',
-            },
-          },
-        );
-      }
+      if (response) return response;
+    }
+
+    // Keep a second private object copy outside the database. This preserves
+    // search if R2 is temporarily unavailable without carrying the same text in
+    // PostgreSQL for every R2-backed page.
+    const fallbackResponse = await getSupabaseObject(
+      PDF_SEARCH_FALLBACK_BUCKET,
+      manifestPath,
+      req.signal,
+    );
+    if (fallbackResponse?.ok) {
+      const response = manifestSearchResponse(
+        await fallbackResponse.json().catch(() => null),
+        session.previewId,
+        normalizedQuery,
+        pageCount,
+        'supabase-storage-manifest',
+      );
+      if (response) return response;
     }
   }
 
+  // Legacy Supabase-storage previews and any object-mirror failure retain the
+  // historical PostgreSQL search path as a last-resort compatibility fallback.
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb.rpc('dp_search_pdf_preview', {
     p_document_id: session.previewId,
     p_query: normalizedQuery,
-    p_limit: Math.min(Math.max(Number(document.page_count || 1), 1), 5000),
+    p_limit: Math.min(Math.max(pageCount, 1), 5000),
   });
   if (error)
     return new Response('Unable to search PDF preview', { status: 502 });
