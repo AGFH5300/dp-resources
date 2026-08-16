@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 
 describe('Render production deployment contract', () => {
-  it('pins the production Blueprint to main and deploys only after CI passes', () => {
+  it('pins the production Blueprint to main and enables Git-backed auto-deploys', () => {
     const blueprint = readFileSync('render.yaml', 'utf8');
 
     expect(blueprint).toContain('name: dp-resources');
     expect(blueprint).toContain('runtime: docker');
     expect(blueprint).toContain('branch: main');
     expect(blueprint).toContain('dockerfilePath: ./Dockerfile');
-    expect(blueprint).toContain('autoDeployTrigger: checksPass');
+    expect(blueprint).toContain('autoDeployTrigger: commit');
   });
 
   it('does not retain the mistakenly added Vercel production workflow', () => {
