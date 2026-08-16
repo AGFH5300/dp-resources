@@ -8,9 +8,13 @@
 --
 -- The application-facing table name dp_resource_email_domain_rules is retained,
 -- so admin suspension/domain-block code does not need a deployment-order change.
+-- The complete swap is transactional. Existing policy reads can continue while
+-- the old table is held in SHARE mode, while concurrent admin writes wait until
+-- the compact replacement is committed.
 
-set lock_timeout = '5s';
-set statement_timeout = '180s';
+begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '180s';
 
 create table if not exists public.dp_resource_disposable_email_domains (
   domain text primary key,
@@ -39,6 +43,12 @@ create table if not exists public.dp_resource_email_domain_rules_compact (
       '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
   )
 );
+
+-- Freeze mutations to the source relation only after the replacement tables
+-- exist. SHARE mode permits ordinary policy SELECTs but prevents INSERT/UPDATE/
+-- DELETE from racing the verified copy. The later DROP lock upgrade is bounded
+-- by lock_timeout; any failure rolls the entire transaction back.
+lock table public.dp_resource_email_domain_rules in share mode;
 
 -- These five sources are the bulk imported disposable-domain corpus observed in
 -- production. Their source/reason strings are dataset metadata rather than
@@ -239,6 +249,21 @@ drop table public.dp_resource_email_domain_rules;
 alter table public.dp_resource_email_domain_rules_compact
   rename to dp_resource_email_domain_rules;
 
+-- Preserve the historical constraint/index names as well as the table name, so
+-- later migrations and operational tooling see the same schema contract.
+alter table public.dp_resource_email_domain_rules
+  rename constraint dp_resource_email_domain_rules_compact_pkey
+  to dp_resource_email_domain_rules_pkey;
+alter table public.dp_resource_email_domain_rules
+  rename constraint dp_resource_email_domain_rules_compact_action_valid
+  to dp_resource_email_domain_rules_action_valid;
+alter table public.dp_resource_email_domain_rules
+  rename constraint dp_resource_email_domain_rules_compact_normalized
+  to dp_resource_email_domain_rules_domain_normalized;
+alter table public.dp_resource_email_domain_rules
+  rename constraint dp_resource_email_domain_rules_compact_created_by_fkey
+  to dp_resource_email_domain_rules_created_by_fkey;
+
 -- Re-apply grants using the final relation name.
 revoke all on public.dp_resource_email_domain_rules
   from public, anon, authenticated;
@@ -326,3 +351,8 @@ comment on table public.dp_resource_disposable_email_domains is
   'Compact imported disposable-email blocklist. Bulk per-domain source/reason/timestamps are normalized away.';
 comment on table public.dp_resource_email_domain_rules is
   'Explicit protected/manual/admin email-domain policy rules with retained moderation provenance.';
+
+-- Ensure the REST schema cache sees the replacement relation immediately after
+-- commit. The NOTIFY is delivered only if the whole migration commits.
+notify pgrst, 'reload schema';
+commit;
