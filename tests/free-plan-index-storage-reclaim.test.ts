@@ -69,8 +69,10 @@ describe('Free plan index storage reclaim', () => {
     expect((migration.match(/\breindex\s+table\b/gi) || []).length).toBe(1);
   });
 
-  it('uses bounded lock and statement timeouts', () => {
-    expect(migration).toContain("set lock_timeout = '5s';");
-    expect(migration).toContain("set statement_timeout = '120s';");
+  it('is transactional with bounded local lock and statement timeouts', () => {
+    expect(migration).toContain('begin;');
+    expect(migration).toContain("set local lock_timeout = '5s';");
+    expect(migration).toContain("set local statement_timeout = '120s';");
+    expect(migration.trimEnd().endsWith('commit;')).toBe(true);
   });
 });
