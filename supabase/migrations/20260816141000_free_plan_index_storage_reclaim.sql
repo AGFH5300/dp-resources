@@ -2,7 +2,8 @@
 --
 -- Production audit on 2026-08-16 found the database at 539,151,507 bytes.
 -- These indexes are not constraints and had either zero planner scans since the
--- current PostgreSQL postmaster start or only non-runtime/audit ordering usage.
+-- current PostgreSQL postmaster start, were exact duplicates of a retained
+-- index, or only served non-runtime/audit ordering shapes.
 -- Critical Question Bank/Library search, uniqueness, primary-key and active
 -- filter indexes are intentionally retained.
 --
@@ -40,6 +41,14 @@ drop index if exists public.dp_resource_source_assignments_parent_idx;
 -- The asset optimizer reads optimization rows by asset_id and never filters by
 -- optimized_content_hash. The canonical optimization primary key is retained.
 drop index if exists public.dp_qb_asset_optimizations_hash_idx;
+
+-- Exact duplicate of dp_activity_user_created_idx. Keep the copy with recorded
+-- planner use and remove the zero-scan duplicate.
+drop index if exists public.dp_resource_activity_user_date_idx;
+
+-- Exact duplicate of dp_memberships_lower_email_idx. Keep one lower(email)
+-- lookup path while removing the redundant physical B-tree.
+drop index if exists public.dp_resource_memberships_email_idx;
 
 -- Pure bloat reclaim: rebuild all indexes on this table without changing rows,
 -- keys, constraints, RLS or the practice-sharing API.
