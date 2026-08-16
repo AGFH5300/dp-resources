@@ -9,10 +9,12 @@
 --
 -- The practice share item table was empty during the audit but retained about
 -- 3.25 MiB of historical B-tree pages. REINDEX preserves the sharing schema and
--- constraints while rebuilding those indexes compactly.
+-- constraints while rebuilding those indexes compactly. The entire reclaim is
+-- transactional so a lock/statement failure cannot leave a partial index set.
 
-set lock_timeout = '5s';
-set statement_timeout = '120s';
+begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '120s';
 
 -- Obsolete Question Bank browse shape. Runtime placement reads are keyed by
 -- variant_id; canonical subtopic mapping uses the separate subtopic/variant
@@ -53,3 +55,5 @@ drop index if exists public.dp_resource_memberships_email_idx;
 -- Pure bloat reclaim: rebuild all indexes on this table without changing rows,
 -- keys, constraints, RLS or the practice-sharing API.
 reindex table public.dp_qb_practice_share_items;
+
+commit;
