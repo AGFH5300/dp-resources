@@ -1,0 +1,33 @@
+name: Verify production PDF search deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-production-pdf-search-deployment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for production deployment marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://dp.resources.anshgupta.cc/api/health/pdf-search-storage'
+          for attempt in $(seq 1 40); do
+            body="$(curl --silent --show-error --fail --max-time 15 --header 'Cache-Control: no-cache' "$url" || true)"
+            if printf '%s' "$body" | grep -Fq '"pdfSearchStorage":"dual-object-v1"'; then
+              printf 'Production marker verified on attempt %s: %s\n' "$attempt" "$body"
+              exit 0
+            fi
+            printf 'Attempt %s: marker not live yet. Body: %.200s\n' "$attempt" "$body"
+            sleep 10
+          done
+          echo 'Production deployment marker did not become live within the verification window.' >&2
+          exit 1
