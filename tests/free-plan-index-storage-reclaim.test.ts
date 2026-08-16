@@ -14,7 +14,7 @@ function droppedIndexes(sql: string) {
 }
 
 describe('Free plan index storage reclaim', () => {
-  it('drops only the audited non-constraint indexes', () => {
+  it('drops only the audited non-constraint or exact-duplicate indexes', () => {
     expect(droppedIndexes(migration)).toEqual([
       'dp_qb_placements_browse_idx',
       'dp_qb_asset_sources_file_idx',
@@ -22,6 +22,8 @@ describe('Free plan index storage reclaim', () => {
       'dp_resource_index_path_idx',
       'dp_resource_source_assignments_parent_idx',
       'dp_qb_asset_optimizations_hash_idx',
+      'dp_resource_activity_user_date_idx',
+      'dp_resource_memberships_email_idx',
     ]);
   });
 
@@ -41,6 +43,8 @@ describe('Free plan index storage reclaim', () => {
       'dp_resource_source_assignment_identity_uidx',
       'dp_resource_source_assignments_file_idx',
       'dp_resource_source_assignments_source_idx',
+      'dp_activity_user_created_idx',
+      'dp_memberships_lower_email_idx',
     ];
 
     for (const index of protectedIndexes) {
