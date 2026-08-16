@@ -8,6 +8,7 @@
 - Supabase Postgres tables are defined in `supabase/schema.sql`.
 - Google Drive API access uses `googleapis` from server-only utilities.
 - Render is the production deployment target, using the repository Dockerfile. Do not configure or suggest Vercel for this project.
+- Production Render Auto-Deploy is intentionally disabled. Promote a tested `main` commit with Render → DP Resources → Manual Deploy → Deploy latest commit, then verify the deployed Git SHA before destructive production cleanup.
 
 ## Coding approach
 
