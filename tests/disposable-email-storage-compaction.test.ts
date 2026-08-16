@@ -90,6 +90,28 @@ describe('disposable-email storage compaction', () => {
     expect(migration).toContain("'matched_domain', v_match.matched_domain");
   });
 
+  it('makes the copy/swap atomic and prevents concurrent source-table writes', () => {
+    expect(migration).toContain('begin;');
+    expect(migration).toContain("set local lock_timeout = '5s';");
+    expect(migration).toContain("set local statement_timeout = '180s';");
+    expect(migration).toContain(
+      'lock table public.dp_resource_email_domain_rules in share mode;',
+    );
+    expect(migration).toContain("notify pgrst, 'reload schema';");
+    expect(migration.trimEnd().endsWith('commit;')).toBe(true);
+  });
+
+  it('preserves historical constraint names after replacing the physical table', () => {
+    for (const constraint of [
+      'dp_resource_email_domain_rules_pkey',
+      'dp_resource_email_domain_rules_action_valid',
+      'dp_resource_email_domain_rules_domain_normalized',
+      'dp_resource_email_domain_rules_created_by_fkey',
+    ]) {
+      expect(migration).toContain(`to ${constraint};`);
+    }
+  });
+
   it('keeps direct table access server-only', () => {
     expect(migration).toContain(
       'revoke all on public.dp_resource_disposable_email_domains',
