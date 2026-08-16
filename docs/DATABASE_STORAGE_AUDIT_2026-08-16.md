@@ -1,152 +1,150 @@
 # DP Resources database storage audit — 2026-08-16
 
-## Safety boundary
+## Current production status
 
-The production Supabase database was queried read-only for this audit. No
-production DDL, DML, VACUUM/REINDEX, statistics reset, configuration change,
-branch merge or production deployment was performed.
+The initial audit was read-only. After explicit owner approval on 2026-08-16,
+the two guarded storage migrations were applied to the production Supabase
+project with protected row-count and policy verification before/after each step.
 
-The implementation is isolated on `audit/free-plan-db-storage-20260816` and
-draft PR #269.
+Production database size changed from a pre-migration snapshot of
+**539,192,467 bytes** to **510,127,251 bytes** after both migrations, while the
+protected application row counts remained unchanged.
 
-## Live baseline
+The implementation branch remains `audit/free-plan-db-storage-20260816` / PR
+#269 until the backward-compatible PDF/R2 application bridge is merged and
+verified.
 
-`pg_database_size(current_database())` returned **539,151,507 bytes**
-(**514 MiB**). `default_transaction_read_only` was `off` at the time of the
-audit.
-
-The public schema accounted for approximately:
-
-- heap: 283,213,824 bytes
-- indexes: 215,572,480 bytes
-- TOAST: 20,799,488 bytes
-- total relations: 519,585,792 bytes
-
-The original relation-size export must not be summed directly because table
-relations reported with `pg_total_relation_size` include their indexes while the
-same indexes also appear as separate rows.
-
-A reusable SELECT-only snapshot is now checked in at
+A reusable SELECT-only snapshot is checked in at
 `scripts/database-storage-audit.sql`.
 
-## Phase 1: physical storage reclaim without deleting data
+## Protected pre-migration baseline
 
-The migration `20260816141000_free_plan_index_storage_reclaim.sql` removes six
-audited non-constraint indexes whose access paths are not needed by the current
-runtime, removes one copy from each of two exact duplicate-index pairs, and
-reindexes one empty practice-share table with historical index bloat.
+Captured immediately before production DDL:
 
-Audited major index sizes at the baseline:
+- memberships: **49**
+- Resource Library index rows: **16,945**
+- Resource Library source assignments: **34,571**
+- canonical Question Bank questions: **30,846**
+- Question Bank variants: **42,695**
+- Question Bank assets: **42,532**
+- Question Bank question-source rows: **32,263**
+- Question Bank variant-source rows: **43,069**
+- email-domain rules: **75,597**
+- PDF preview documents: **36**
+- PDF preview pages: **15,437**
+- practice-share items: **0**
 
-| Index | Bytes | Planner evidence / rationale |
+These protected counts were unchanged after both storage migrations.
+
+## Phase 1: physical storage reclaim without deleting data — APPLIED
+
+Production migration version:
+`20260816165508_free_plan_index_storage_reclaim.sql`.
+
+The migration removed six audited non-constraint indexes whose access paths were
+not needed by the current runtime, removed one copy from each of two exact
+duplicate-index pairs, and reindexed the empty practice-share table with
+historical index bloat.
+
+Major audited indexes removed:
+
+| Index | Baseline bytes | Rationale |
 | --- | ---: | --- |
-| `dp_qb_placements_browse_idx` | 5,046,272 | 0 scans; runtime placement reads filter by `variant_id`, while canonical subtopic mapping uses the separate `(subtopic_id, variant_id)` index. |
-| `dp_qb_asset_sources_file_idx` | 2,285,568 | 0 scans; runtime provenance lookup filters by `asset_id` and merely returns `source_file_id`. |
-| `dp_resource_index_normalized_name_idx` | 1,925,120 | 0 scans; `dp_search_resources` filters on `search_vector`, not `normalized_name`. |
-| `dp_resource_index_path_idx` | 5,054,464 | 3 incidental scans; current runtime search uses `search_vector`, while observed path predicates use `lower(path)` / `split_part(path, ...)`, which this raw B-tree cannot accelerate. |
-| `dp_resource_source_assignments_parent_idx` | 1,318,912 | 0 scans; current effective-source and inheritance logic does not locate rows by `inherited_from_drive_file_id`; the identity unique index remains. |
-| `dp_qb_asset_optimizations_hash_idx` | 1,286,144 | 0 scans; optimizer fetches/upserts by `asset_id` and does not filter by optimized hash. |
-| `dp_resource_activity_user_date_idx` | 90,112 | Exact duplicate of retained `dp_activity_user_created_idx`; duplicate had 0 scans while retained copy had recorded use. |
+| `dp_qb_placements_browse_idx` | 5,046,272 | 0 scans; runtime placement reads are keyed differently. |
+| `dp_qb_asset_sources_file_idx` | 2,285,568 | 0 scans; runtime provenance lookup filters by `asset_id`. |
+| `dp_resource_index_normalized_name_idx` | 1,925,120 | 0 scans; Resource Library search uses `search_vector`. |
+| `dp_resource_index_path_idx` | 5,054,464 | Raw B-tree does not accelerate the observed `lower(path)` / search-vector shapes. |
+| `dp_resource_source_assignments_parent_idx` | 1,318,912 | 0 scans; current effective-source/inheritance runtime does not locate rows through it. |
+| `dp_qb_asset_optimizations_hash_idx` | 1,286,144 | 0 scans; optimizer lookup is by `asset_id`. |
+| `dp_resource_activity_user_date_idx` | 90,112 | Exact duplicate of retained `dp_activity_user_created_idx`. |
 | `dp_resource_memberships_email_idx` | 16,384 | Exact duplicate of retained `dp_memberships_lower_email_idx`. |
 
-Those eight indexes total **17,022,976 bytes (~16.24 MiB)** at the audit
-baseline. Supabase's performance advisor independently reported the zero-scan
-major candidates and both duplicate pairs.
+`dp_qb_practice_share_items` had **0 rows** but retained approximately **3.4
+MB** of historical index allocation. Its indexes were rebuilt rather than the
+feature being removed.
 
-`dp_qb_practice_share_items` contained **0 rows** but retained **3,407,872
-bytes** of index files. Its three indexes are rebuilt rather than removed. With
-an empty table they should return close to their minimum physical size while
-preserving all keys and future sharing behavior.
+The migration was fully transactional with bounded lock/statement timeouts.
+Immediately afterward:
 
-Using the baseline relation sizes, Phase 1 is expected to reclaim roughly
-**20.4 MB**, putting the same database at approximately **494.7 MiB** before
-subsequent growth. This is an estimate; the authoritative post-migration check
-is always `pg_database_size`.
+- all eight targeted indexes were absent;
+- all protected row counts were unchanged;
+- database size fell from **539,192,467** to **518,737,043 bytes**;
+- physical reclaim was **20,455,424 bytes**.
 
-### Explicitly protected indexes
+### Explicitly retained indexes
 
-Phase 1 does **not** remove:
+The migration did not remove the Question Bank or Resource Library GIN search
+indexes, uniqueness/content-hash constraints, primary keys, active
+source-attribution lookup indexes, user progress/saved/practice indexes, or
+`dp_resource_index_modified_at_idx`.
 
-- `dp_qb_questions_search_idx`
-- `dp_resource_index_search_idx`
-- canonical content-hash/storage uniqueness indexes
-- primary keys
-- Question Bank variant/question lookup indexes
-- active source-attribution lookup indexes
-- Resource Library parent-folder lookup
-- `dp_resource_index_modified_at_idx`, despite zero observed scans, because
-  current Resource Library code still orders source pages by `modified_at`
-- user progress/saved/practice lookup indexes
+## Phase 2A: compact disposable-email domain storage — APPLIED
 
-## Phase 2A: compact disposable-email domain storage
+Production migration version:
+`20260816165554_compact_disposable_email_domains.sql`.
 
-The migration `20260816143000_compact_disposable_email_domains.sql` is now
-implemented on the audit branch.
+Before migration the single rule table contained **75,597** rows:
 
-At the baseline, `dp_resource_email_domain_rules` contained **75,597 rows** and
-occupied about **16 MiB**. The audited split was:
+- **75,559** creatorless imported bulk blocklist domains;
+- **38** protected/manual/migration exception rows.
 
-- **75,559** creatorless imported blocklist rows from five bulk sources
-- **38** protected/manual/migration exception rows retaining meaningful
-  per-domain metadata
+The pre-migration effective rule fingerprint was:
+`a7188a877c4cb0d19d132e4d2b84683c`.
 
-Logical repeated payload in the original relation included about 4.74 MB of
-`reason` strings and 2.20 MB of `source` strings, before tuple/index overhead.
-All 75,597 existing rows had `created_by IS NULL`; the bulk import timestamps
-were concentrated in a short import window rather than representing moderation
-history.
+The migration:
 
-The compact design:
-
-1. stores bulk disposable domains in
+1. moved the 75,559 imported bulk blocks into
    `dp_resource_disposable_email_domains(domain primary key)`;
-2. rebuilds the existing application-facing
-   `dp_resource_email_domain_rules` table with only exceptional/full-provenance
-   rules;
-3. keeps the existing admin route and auth RPC names unchanged;
-4. refuses to release the old relation unless old count equals compact count,
-   the two partitions do not overlap, and a full outer join proves identical
-   domain/action policy in both directions;
-5. replaces wildcard suffix scanning with exact candidate-domain primary-key
-   probes while preserving most-specific parent-domain semantics.
+2. retained the existing application-facing
+   `dp_resource_email_domain_rules` table name for the 38 full-provenance rules;
+3. preserved the historical constraint names and admin-write contract;
+4. replaced wildcard suffix scanning with indexed equality probes over exact and
+   parent-domain candidates;
+5. locked source-table mutations during the verified copy/swap while allowing
+   normal reads;
+6. refused to commit unless the partitions were non-overlapping and the complete
+   effective domain/action set matched;
+7. notified PostgREST to reload schema only after successful transaction commit.
 
-A deterministic read-only comparison against 500 exact/subdomain probes from
-production returned **0 policy mismatches**. An attempted exhaustive old-policy
-comparison hit the database statement timeout because the historical wildcard
-matching shape is expensive; it was stopped rather than increasing production
-load.
+After migration:
 
-The exact final physical size cannot be known until the migration is applied,
-but the domain-only corpus should materially reduce the roughly 16 MiB original
-relation. This is additional headroom beyond Phase 1.
+- compact full-provenance rules: **38**
+- bulk domain-only rules: **75,559**
+- total effective rules: **75,597**
+- allows: **37**
+- blocks: **75,560**
+- post-migration fingerprint:
+  `a7188a877c4cb0d19d132e4d2b84683c` — exact match
+- protected application row counts remained unchanged
+- database size fell from **518,737,043** to **510,127,251 bytes**
 
-## Phase 2B: move PDF document search payload toward R2
+## Phase 2B: move PDF document search payload toward R2 — APPLICATION BRIDGE READY
 
-`dp_pdf_preview_pages` was about **26 MiB** for 15,437 rows. Approximately
-**16.6 MB of logical column payload** was `search_text`.
+`dp_pdf_preview_pages` contains **15,437** rows and approximately **16.58 MB** of
+logical `search_text` payload. The current production split is:
 
-The branch now implements a backward-compatible bridge:
+- R2-backed searchable pages: **14,739**
+- Supabase-storage searchable pages: **698**
+- R2-backed `search_text` logical payload: approximately **15.34 MB**
 
-1. R2 preview workers best-effort mirror the normalized page text into a private
-   per-document object at `pdf-preview-search/<document-id>.json`;
-2. the existing PostgreSQL `dp_store_pdf_preview_text` write still happens, so a
-   failed mirror cannot make an otherwise successful preview job fail;
-3. document search prefers a validated private R2 manifest when present;
-4. missing, malformed or unavailable manifests fall back to the existing
+The branch implements a backward-compatible bridge:
+
+1. R2 preview workers best-effort mirror normalized page text into private
+   `pdf-preview-search/<document-id>.json` manifests;
+2. the existing PostgreSQL `dp_store_pdf_preview_text` write remains active;
+3. document search prefers a validated R2 manifest;
+4. missing, malformed or unavailable R2 manifests fall back to the current
    `dp_search_pdf_preview` PostgreSQL RPC;
-5. page-specific exact-highlight geometry remains on its existing private
-   object-storage path;
-6. `scripts/backfill-pdf-search-manifests.mjs` is dry-run by default and requires
-   explicit `--write --confirm-production` before it can write R2 objects; write
-   mode verifies the uploaded bytes by SHA.
+5. page-specific exact-highlight geometry is unchanged;
+6. `scripts/backfill-pdf-search-manifests.mjs` is dry-run by default and write
+   mode requires explicit `--write --confirm-production`, with SHA verification
+   of uploaded content.
 
-No existing `search_text` rows are removed in this PR. The final database
-payload should only be physically removed after every existing searchable R2
-preview has a verified manifest and the new read path has been observed in
-production. Dropping the column alone is not counted as quota reclaim because
-PostgreSQL may retain old physical pages until a controlled table rewrite.
+The PostgreSQL `search_text` payload must not be removed until all existing R2
+searchable documents have verified manifests and the deployed live API has been
+confirmed to serve search through the R2 path with PostgreSQL fallback working.
 
-## Phase 3: Question Bank provenance/metadata normalization
+## Phase 3: Question Bank provenance/metadata normalization — DEFERRED FOR SAFETY
 
 Logical JSON payload measured during the audit included approximately:
 
@@ -155,40 +153,35 @@ Logical JSON payload measured during the audit included approximately:
 - `dp_qb_variant_sources.source_metadata`: 9.0 MB
 - `dp_qb_question_sources.source_metadata`: 8.1 MB
 
-Every current canonical question has at least one `dp_qb_question_sources` row,
-and every current variant has at least one `dp_qb_variant_sources` row. Runtime
-database functions do not read the canonical/source `source_metadata` columns.
-However, import and audit provenance remains valuable, so this branch does not
-strip those fields from production. Future compaction should archive or
-normalize repeated importer evidence first, update importers, verify complete
-source-row coverage, and only then consider a controlled physical rewrite.
+Every current canonical question has at least one question-source row and every
+current variant has at least one variant-source row. Runtime database functions
+do not read the canonical/source `source_metadata` columns, but the metadata is
+valuable import/audit provenance. It is therefore not deleted merely to reduce
+quota. Any future compaction should first normalize/archive repeated importer
+evidence, update importers, verify source-row coverage, then perform a separately
+controlled physical rewrite.
 
 ## Advisor review
 
-Supabase performance and security advisors were reviewed read-only. Storage
-changes deliberately do not add the many suggested foreign-key indexes because
-the immediate constraint is database size and those indexes need query-specific
-justification. Security warnings such as server-only RLS tables with no client
-policy and intentionally authenticated SECURITY DEFINER RPCs were not blindly
-changed. Pre-existing mutable function `search_path` warnings and Auth leaked-
-password protection are separate hardening items to verify rather than mix into
-this storage migration.
+Supabase performance and security advisors were reviewed. Storage work did not
+blindly add suggested foreign-key indexes because the immediate constraint is
+size and every additional index requires query-specific justification. Likewise,
+server-only RLS/no-policy tables and deliberately authenticated SECURITY DEFINER
+RPCs were not changed without proving a security bug. Mutable function
+`search_path` warnings and Auth leaked-password protection remain separate
+hardening items rather than being mixed into this storage migration.
 
-## Deployment gate
+## Remaining production gates
 
-Before any part of this branch can be considered for production:
-
-1. CI must pass typecheck, tests, lint, build, client-bundle security scan,
-   dependency audit and CodeQL.
-2. Run `scripts/database-storage-audit.sql` again and compare against this
-   baseline.
-3. Capture protected production row counts for Question Bank, Resource Library,
-   users, progress, saved questions and source attribution.
-4. Apply only the intended migration(s) in a controlled deployment window; do
-   not run the PDF backfill write mode as part of the index/email migration.
-5. Immediately re-run protected row counts, email-domain policy checks and key
-   user flows.
-6. Measure `pg_database_size` again; do not infer success from relation sums.
-7. Keep PR #269 draft/unmerged until those gates are intentionally satisfied.
-
-No production migration is executed by this audit branch itself.
+1. Keep the GitHub migration filenames exactly aligned to the live Supabase
+   migration versions above.
+2. Require CI to pass typecheck, tests, lint, production build, client-bundle
+   security scan, dependency audit and CodeQL on the final branch head.
+3. Merge/deploy the backward-compatible PDF/R2 bridge.
+4. Verify production health and the protected baseline counts after deployment.
+5. Backfill R2 search manifests and verify object coverage/checksums.
+6. Exercise live PDF document search and confirm both R2-manifest and PostgreSQL
+   fallback paths.
+7. Only then design/apply the physical PostgreSQL `search_text` reclaim.
+8. Re-run the storage audit and Supabase security/performance advisors after the
+   final database change.
