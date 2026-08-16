@@ -7,6 +7,10 @@ import {
   normalizePdfSearchText,
   validatePdfSearchGeometry,
 } from '@/lib/pdf-search-geometry';
+import {
+  searchPdfSearchManifest,
+  validatePdfSearchManifest,
+} from '@/lib/pdf-search-manifest';
 import { pdfPreviewSessionFromRequest } from '@/lib/pdf-preview-session';
 import { getPrivateR2Object } from '@/lib/r2-s3';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
@@ -83,6 +87,12 @@ export async function GET(
     );
   }
 
+  const storageProvider = session.previewStorageProvider || 'supabase';
+  const storageBucket = session.previewStorageBucket || PDF_PREVIEW_BUCKET;
+  const storagePrefix =
+    session.previewStoragePrefix ||
+    `${session.fileId}/${session.previewVersionKey}`;
+
   const requestedPage = url.searchParams.get('page');
   if (requestedPage !== null) {
     const pageNumber = Number(requestedPage);
@@ -94,11 +104,6 @@ export async function GET(
       return new Response('Invalid PDF search page', { status: 400 });
     }
 
-    const storageProvider = session.previewStorageProvider || 'supabase';
-    const storageBucket = session.previewStorageBucket || PDF_PREVIEW_BUCKET;
-    const storagePrefix =
-      session.previewStoragePrefix ||
-      `${session.fileId}/${session.previewVersionKey}`;
     const objectPath = `${storagePrefix}/search/page-${pageNumber}.json`;
     const upstream =
       storageProvider === 'r2'
@@ -140,6 +145,44 @@ export async function GET(
     );
   }
 
+  // R2-backed previews can carry their page-level text index outside Postgres.
+  // During migration we retain the historical RPC as a complete fallback, so a
+  // missing/corrupt object never makes an existing searchable preview regress.
+  if (storageProvider === 'r2') {
+    const manifestPath = `pdf-preview-search/${session.previewId}.json`;
+    const manifestResponse = await getPrivateR2Object(
+      storageBucket,
+      manifestPath,
+      req.signal,
+    ).catch(() => null);
+    if (manifestResponse?.ok) {
+      const manifest = validatePdfSearchManifest(
+        await manifestResponse.json().catch(() => null),
+        session.previewId,
+      );
+      if (manifest) {
+        return Response.json(
+          {
+            ready: true,
+            exactHighlightsReady: true,
+            results: searchPdfSearchManifest(
+              manifest,
+              normalizedQuery,
+              Math.min(Math.max(Number(document.page_count || 1), 1), 5000),
+            ),
+          },
+          {
+            headers: {
+              'cache-control': 'private, no-store',
+              'x-content-type-options': 'nosniff',
+              'x-pdf-search-source': 'r2-manifest',
+            },
+          },
+        );
+      }
+    }
+  }
+
   const sb = createSupabaseAdminClient();
   const { data, error } = await sb.rpc('dp_search_pdf_preview', {
     p_document_id: session.previewId,
@@ -164,6 +207,7 @@ export async function GET(
       headers: {
         'cache-control': 'private, no-store',
         'x-content-type-options': 'nosniff',
+        'x-pdf-search-source': 'postgres-fallback',
       },
     },
   );
