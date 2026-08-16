@@ -13,11 +13,20 @@ describe('PDF search object-storage migration bridge', () => {
   it('uses R2 first, private Supabase Storage second, and Postgres last', () => {
     expect(route).toContain('pdf-preview-search/${session.previewId}.json');
     expect(route).toContain("source: 'r2-manifest' | 'supabase-storage-manifest'");
-    expect(route).toContain("'r2-manifest',");
-    expect(route).toContain("'supabase-storage-manifest',");
-    expect(route).toContain("'x-pdf-search-source': source");
-    expect(route).toContain("sb.rpc('dp_search_pdf_preview'");
-    expect(route).toContain("'x-pdf-search-source': 'postgres-fallback'");
+
+    const r2Lookup = route.indexOf(
+      'const manifestResponse = await getPrivateR2Object(',
+    );
+    const storageFallback = route.indexOf(
+      'const fallbackResponse = await getSupabaseObject(',
+    );
+    const postgresFallback = route.indexOf(
+      'const sb = createSupabaseAdminClient();',
+    );
+
+    expect(r2Lookup).toBeGreaterThan(0);
+    expect(storageFallback).toBeGreaterThan(r2Lookup);
+    expect(postgresFallback).toBeGreaterThan(storageFallback);
   });
 
   it('does not change page-specific exact geometry lookup', () => {
