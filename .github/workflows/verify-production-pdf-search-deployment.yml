@@ -1,23 +1,22 @@
 name: Verify Render production PDF search deployment
 
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Expected deployed main commit SHA (defaults to the selected ref SHA)'
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
     steps:
       - name: Wait for exact Render production commit
         shell: bash
