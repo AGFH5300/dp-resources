@@ -55,6 +55,40 @@ jobs:
           test -n "$PDF_SEARCH_MANIFEST_FALLBACK_BUCKET"
           test -n "$R2_ACCOUNT_ID" || test -n "$R2_ENDPOINT"
 
+      - name: Ensure private Supabase fallback bucket exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createClient } from '@supabase/supabase-js';
+
+          const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+          const bucket = process.env.PDF_SEARCH_MANIFEST_FALLBACK_BUCKET?.trim();
+          if (!url || !key || !bucket) throw new Error('Fallback bucket configuration is incomplete');
+
+          const supabase = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data, error } = await supabase.storage.getBucket(bucket);
+          if (!error && data) {
+            if (data.public) {
+              const { error: updateError } = await supabase.storage.updateBucket(bucket, { public: false });
+              if (updateError) throw updateError;
+            }
+            console.log(JSON.stringify({ event: 'pdf_search_fallback_bucket_ready', bucket, created: false }));
+            process.exit(0);
+          }
+
+          const message = String(error?.message || '');
+          const status = Number(error?.status || error?.statusCode || 0);
+          if (status !== 404 && !/bucket not found/i.test(message)) throw error;
+
+          const { error: createError } = await supabase.storage.createBucket(bucket, { public: false });
+          if (createError && !/already exists/i.test(String(createError.message || ''))) throw createError;
+          console.log(JSON.stringify({ event: 'pdf_search_fallback_bucket_ready', bucket, created: true }));
+          NODE
+
       - name: Verify private R2 read/write access
         run: node scripts/verify-r2-preview-storage.mjs
 
