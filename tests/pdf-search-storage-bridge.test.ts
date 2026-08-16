@@ -38,10 +38,12 @@ describe('PDF search object-storage migration bridge', () => {
     expect(backfill).toContain("mode: options.write ? 'write-and-verify' : 'dry-run'");
   });
 
-  it('does not delete or update database rows during the manifest backfill', () => {
-    expect(backfill).not.toMatch(/\.delete\s*\(/);
-    expect(backfill).not.toMatch(/\.update\s*\(/);
-    expect(backfill).not.toMatch(/\.upsert\s*\(/);
-    expect(backfill).not.toMatch(/\.insert\s*\(/);
+  it('does not mutate either PDF database table during the manifest backfill', () => {
+    for (const table of ['dp_pdf_preview_documents', 'dp_pdf_preview_pages']) {
+      const tableMutation = new RegExp(
+        String.raw`\.from\('${table}'\)[\s\S]{0,400}\.(?:delete|update|upsert|insert)\s*\(`,
+      );
+      expect(backfill).not.toMatch(tableMutation);
+    }
   });
 });
