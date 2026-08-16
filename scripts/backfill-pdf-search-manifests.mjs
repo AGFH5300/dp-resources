@@ -43,6 +43,9 @@ const supabase = createClient(
   required('SUPABASE_SERVICE_ROLE_KEY'),
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
+const r2Bucket = required('R2_PDF_PREVIEW_BUCKET');
+const fallbackBucket =
+  process.env.PDF_SEARCH_MANIFEST_FALLBACK_BUCKET?.trim() || 'pdf-previews';
 
 const sha256 = (body) => createHash('sha256').update(body).digest('hex');
 
@@ -110,16 +113,45 @@ function buildManifest(document, rows) {
   return Buffer.from(JSON.stringify({ v: 1, d: document.id, p: pages }), 'utf8');
 }
 
-async function existingManifest(document) {
-  const key = `pdf-preview-search/${document.id}.json`;
+async function existingR2Manifest(documentId) {
+  const key = `pdf-preview-search/${documentId}.json`;
   const response = await getPrivateR2Object({
-    bucket: document.storage_bucket,
+    bucket: r2Bucket,
     key,
     signal: AbortSignal.timeout(60_000),
   });
   if (response.status === 404) return null;
+  if (!response.ok)
+    throw new Error(`R2 manifest read failed (${response.status}) for ${documentId}`);
   const body = Buffer.from(await response.arrayBuffer());
   return { key, body };
+}
+
+async function existingFallbackManifest(documentId) {
+  const key = `pdf-preview-search/${documentId}.json`;
+  const { data, error } = await supabase.storage
+    .from(fallbackBucket)
+    .download(key);
+  if (error) {
+    const status = Number(error.status || error.statusCode || 0);
+    const message = String(error.message || '');
+    if (status === 404 || /not found/i.test(message)) return null;
+    throw new Error(`Supabase fallback manifest read failed for ${documentId}: ${message}`);
+  }
+  const body = Buffer.from(await data.arrayBuffer());
+  return { key, body };
+}
+
+async function putFallbackManifest(key, body) {
+  const { error } = await supabase.storage
+    .from(fallbackBucket)
+    .upload(key, body, {
+      contentType: 'application/json',
+      cacheControl: '31536000',
+      upsert: true,
+    });
+  if (error)
+    throw new Error(`Supabase fallback manifest upload failed: ${error.message}`);
 }
 
 async function processDocument(document) {
@@ -139,8 +171,15 @@ async function processDocument(document) {
     };
   }
 
-  const existing = await existingManifest(document);
-  if (existing && !options.force && sha256(existing.body) === digest) {
+  const [existingR2, existingFallback] = await Promise.all([
+    existingR2Manifest(document.id),
+    existingFallbackManifest(document.id),
+  ]);
+  const r2Current = existingR2 && sha256(existingR2.body) === digest;
+  const fallbackCurrent =
+    existingFallback && sha256(existingFallback.body) === digest;
+
+  if (!options.force && r2Current && fallbackCurrent) {
     return {
       documentId: document.id,
       driveFileId: document.drive_file_id,
@@ -151,19 +190,42 @@ async function processDocument(document) {
     };
   }
 
-  await putPrivateR2Object({
-    bucket: document.storage_bucket,
-    key,
-    body,
-    contentType: 'application/json',
-    cacheControl: 'private, max-age=31536000, immutable',
-    sha256Metadata: digest,
-    signal: AbortSignal.timeout(90_000),
-  });
+  let created = false;
+  let replaced = false;
+  const writes = [];
+  if (options.force || !r2Current) {
+    created ||= !existingR2;
+    replaced ||= Boolean(existingR2);
+    writes.push(
+      putPrivateR2Object({
+        bucket: r2Bucket,
+        key,
+        body,
+        contentType: 'application/json',
+        cacheControl: 'private, max-age=31536000, immutable',
+        sha256Metadata: digest,
+        signal: AbortSignal.timeout(90_000),
+      }),
+    );
+  }
+  if (options.force || !fallbackCurrent) {
+    created ||= !existingFallback;
+    replaced ||= Boolean(existingFallback);
+    writes.push(putFallbackManifest(key, body));
+  }
+  await Promise.all(writes);
 
-  const verified = await existingManifest(document);
-  if (!verified || sha256(verified.body) !== digest) {
-    throw new Error(`R2 verification failed for ${document.id}`);
+  const [verifiedR2, verifiedFallback] = await Promise.all([
+    existingR2Manifest(document.id),
+    existingFallbackManifest(document.id),
+  ]);
+  if (
+    !verifiedR2 ||
+    !verifiedFallback ||
+    sha256(verifiedR2.body) !== digest ||
+    sha256(verifiedFallback.body) !== digest
+  ) {
+    throw new Error(`Dual manifest verification failed for ${document.id}`);
   }
 
   return {
@@ -172,7 +234,11 @@ async function processDocument(document) {
     pages: rows.length,
     bytes: body.length,
     sha256: digest,
-    action: existing ? 'replaced-and-verified' : 'created-and-verified',
+    action: replaced
+      ? 'replaced-and-verified'
+      : created
+        ? 'created-and-verified'
+        : 'already-current',
   };
 }
 
@@ -184,12 +250,14 @@ async function main() {
     try {
       const result = await processDocument(document);
       results.push(result);
-      console.log(JSON.stringify({
-        event: 'pdf_search_manifest_backfill',
-        current: index + 1,
-        total: documents.length,
-        ...result,
-      }));
+      console.log(
+        JSON.stringify({
+          event: 'pdf_search_manifest_backfill',
+          current: index + 1,
+          total: documents.length,
+          ...result,
+        }),
+      );
     } catch (error) {
       failures += 1;
       const failure = {
@@ -199,12 +267,14 @@ async function main() {
         error: error instanceof Error ? error.message : String(error),
       };
       results.push(failure);
-      console.error(JSON.stringify({
-        event: 'pdf_search_manifest_backfill_failed',
-        current: index + 1,
-        total: documents.length,
-        ...failure,
-      }));
+      console.error(
+        JSON.stringify({
+          event: 'pdf_search_manifest_backfill_failed',
+          current: index + 1,
+          total: documents.length,
+          ...failure,
+        }),
+      );
     }
   }
 
@@ -217,7 +287,9 @@ async function main() {
       0,
     ),
   };
-  console.log(JSON.stringify({ event: 'pdf_search_manifest_summary', ...summary }));
+  console.log(
+    JSON.stringify({ event: 'pdf_search_manifest_summary', ...summary }),
+  );
   if (failures) process.exitCode = 1;
 }
 
