@@ -1,0 +1,34 @@
+name: Temporary Render live verification 2026-08-17
+
+on:
+  push:
+    branches: ['verify/render-live-20260817']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify exact Render production SHA
+        shell: bash
+        env:
+          EXPECTED_SHA: 5ff2afa54f4412cea13a49e4ab38c4ddf84b74dc
+        run: |
+          set -euo pipefail
+          url='https://dp.resources.anshgupta.cc/api/health/pdf-search-storage'
+          for attempt in $(seq 1 60); do
+            body="$(curl --silent --show-error --fail --max-time 15 --header 'Cache-Control: no-cache' "$url" || true)"
+            echo "Attempt $attempt: ${body:0:400}"
+            if printf '%s' "$body" | grep -Fq '"pdfSearchStorage":"dual-object-v1"' \
+              && printf '%s' "$body" | grep -Fq '"deploymentProvider":"render"' \
+              && printf '%s' "$body" | grep -Fq "\"renderCommit\":\"$EXPECTED_SHA\""; then
+              echo "Verified exact Render production SHA: $EXPECTED_SHA"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Expected Render SHA not live" >&2
+          exit 1
