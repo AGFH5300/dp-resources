@@ -17,6 +17,9 @@ describe('public changelog page', () => {
     expect(page).toContain(
       'A listed record of all the features, improvements, and fixes',
     );
+    expect(page).toContain("date: '2026-08-24T09:16:00.000Z'");
+    expect(page).toContain('Fixed duplicate Question Bank topics and subtopics across subjects');
+    expect(page).toContain('Fixed the Question Bank course search field in dark mode');
     expect(page).toContain("date: '2026-08-16T00:45:00.000Z'");
     expect(page).toContain('Fixed Library source browsing so normal subject, level, assessment, and navigation folders');
     expect(page).toContain('Made Library folder headers more compact');
