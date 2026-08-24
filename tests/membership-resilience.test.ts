@@ -54,11 +54,11 @@ describe('missing membership repair fallback', () => {
 });
 
 describe('middleware missing configuration resilience', () => {
-  it('returns before creating a Supabase SSR client when public configuration is absent', () => {
+  it('returns a secured response before creating a Supabase SSR client when public configuration is absent', () => {
     const configIndex = middlewareSource.indexOf('getSupabaseServerConfig()');
     const guardIndex = middlewareSource.indexOf('!supabaseUrl || !supabaseKey');
     const returnIndex = middlewareSource.indexOf(
-      'return NextResponse.next()',
+      'return securedNextResponse(request, nonce, csp)',
       guardIndex,
     );
     const createClientIndex = middlewareSource.indexOf('createServerClient(');
