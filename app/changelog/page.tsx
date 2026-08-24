@@ -17,6 +17,18 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-08-24-question-bank-topic-dedupe',
+    summary:
+      'Fixed duplicate Question Bank topics and subtopics across subjects by normalizing provider and syllabus prefixes consistently, including coded and lettered topic labels.',
+    date: '2026-08-24T09:16:00.000Z',
+  },
+  {
+    id: 'release-2026-08-24-question-bank-dark-search',
+    summary:
+      'Fixed the Question Bank course search field in dark mode so it uses the themed search surface instead of showing a white inner input.',
+    date: '2026-08-24T09:08:00.000Z',
+  },
+  {
     id: 'release-2026-08-16-library-source-folders',
     summary:
       'Fixed Library source browsing so normal subject, level, assessment, and navigation folders no longer appear as Source under review, while reviewed source labels such as Padlet remain attached to the actual resources they describe.',
