@@ -5,6 +5,9 @@ import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
 
 export const dynamic = 'force-dynamic';
 
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
@@ -48,6 +51,11 @@ export async function POST(request: Request) {
     typeof body.sessionId === 'string' && body.sessionId.trim()
       ? body.sessionId.trim()
       : null;
+  if (sessionId && !UUID.test(sessionId))
+    return noStore(
+      { error: 'Practice session ID is invalid.' },
+      { status: 400 },
+    );
 
   try {
     const shared = await createPracticeShare({
@@ -63,12 +71,7 @@ export async function POST(request: Request) {
       message: error instanceof Error ? error.message : String(error),
     });
     return noStore(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unable to create this practice-set code.',
-      },
+      { error: 'Unable to create this practice-set code.' },
       { status: 400 },
     );
   }
