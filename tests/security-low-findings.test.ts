@@ -8,15 +8,16 @@ describe('practice share error disclosure hardening', () => {
   it('keeps database failures server-side while preserving safe input validation', () => {
     const route = read('app/api/question-bank/practice-shares/route.ts');
     const createShareCatch = route.split('} catch (error) {').at(-1) || '';
+    const clientReturn = createShareCatch.split('return noStore(').at(-1) || '';
 
     expect(route).toContain("{ error: 'Practice session ID is invalid.' }");
     expect(createShareCatch).toContain(
       "message: error instanceof Error ? error.message : String(error)",
     );
-    expect(createShareCatch).toContain(
+    expect(clientReturn).toContain(
       "{ error: 'Unable to create this practice-set code.' }",
     );
-    expect(createShareCatch).not.toContain('? error.message');
+    expect(clientReturn).not.toContain('error.message');
   });
 });
 
@@ -65,7 +66,7 @@ describe('production container privilege hardening', () => {
     const commandIndex = dockerfile.lastIndexOf('\nCMD [');
 
     expect(dockerfile.startsWith('# syntax=docker/dockerfile:1\n')).toBe(true);
-    expect(dockerfile).toContain('COPY --chown=node:node --from=builder /app/.next ./.next');
+    expect(dockerfile).toContain('RUN chown -R node:node /app/.next');
     expect(userIndex).toBeGreaterThan(0);
     expect(commandIndex).toBeGreaterThan(userIndex);
     expect(dockerfile.slice(userIndex)).not.toContain('USER root');
