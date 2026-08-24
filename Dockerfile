@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile=1
 
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
@@ -29,13 +29,15 @@ RUN apt-get update \
       poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/next.config.* ./
+COPY --chown=node:node --from=builder /app/.next ./.next
+COPY --chown=node:node --from=builder /app/public ./public
+COPY --chown=node:node --from=builder /app/scripts ./scripts
+COPY --chown=node:node --from=builder /app/next.config.* ./
+
+USER node
 
 EXPOSE 10000
 
