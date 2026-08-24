@@ -29,14 +29,17 @@ RUN apt-get update \
       poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --chown=node:node package.json package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --chown=node:node --from=builder /app/.next ./.next
-COPY --chown=node:node --from=builder /app/public ./public
-COPY --chown=node:node --from=builder /app/scripts ./scripts
-COPY --chown=node:node --from=builder /app/next.config.* ./
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/next.config.* ./
 
+# Next.js may update runtime cache files under .next. Keep the existing image
+# layout intact, but give only that application-owned tree to the runtime user.
+RUN chown -R node:node /app/.next
 USER node
 
 EXPOSE 10000
