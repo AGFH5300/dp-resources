@@ -64,6 +64,7 @@ describe('production container privilege hardening', () => {
     const userIndex = dockerfile.lastIndexOf('\nUSER node\n');
     const commandIndex = dockerfile.lastIndexOf('\nCMD [');
 
+    expect(dockerfile.startsWith('# syntax=docker/dockerfile:1\n')).toBe(true);
     expect(dockerfile).toContain('COPY --chown=node:node --from=builder /app/.next ./.next');
     expect(userIndex).toBeGreaterThan(0);
     expect(commandIndex).toBeGreaterThan(userIndex);
