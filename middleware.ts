@@ -1,5 +1,7 @@
+import { randomBytes } from 'node:crypto';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { getSupabaseServerConfig } from '@/lib/supabase-config';
 import { hardenSupabaseCookieOptions } from '@/lib/supabase-cookie-security';
 
@@ -100,7 +102,27 @@ export function isRecoverableSupabaseAuthError(error: unknown) {
   );
 }
 
-function clearSupabaseAuthCookies(request: NextRequest, supabaseUrl: string) {
+function securedNextResponse(
+  request: NextRequest,
+  nonce: string,
+  csp: string,
+) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  // Next.js reads the request CSP nonce and applies it to framework-generated
+  // inline/bootstrap scripts. The response carries the same policy for browsers.
+  requestHeaders.set('Content-Security-Policy', csp);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set('Content-Security-Policy', csp);
+  return response;
+}
+
+function clearSupabaseAuthCookies(
+  request: NextRequest,
+  supabaseUrl: string,
+  nonce: string,
+  csp: string,
+) {
   const authCookieNames = request.cookies
     .getAll()
     .map(({ name }) => name)
@@ -108,7 +130,7 @@ function clearSupabaseAuthCookies(request: NextRequest, supabaseUrl: string) {
 
   authCookieNames.forEach((name) => request.cookies.delete(name));
 
-  const cleanResponse = NextResponse.next({ request });
+  const cleanResponse = securedNextResponse(request, nonce, csp);
   authCookieNames.forEach((name) =>
     cleanResponse.cookies.set(
       name,
@@ -121,27 +143,29 @@ function clearSupabaseAuthCookies(request: NextRequest, supabaseUrl: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  if (
-    shouldBypassSupabaseMiddleware(request.nextUrl.pathname) ||
-    process.env.NODE_ENV === 'development'
-  ) {
-    return NextResponse.next();
+  if (process.env.NODE_ENV === 'development') return NextResponse.next();
+
+  const nonce = randomBytes(16).toString('base64');
+  const csp = contentSecurityPolicy(nonce);
+
+  if (shouldBypassSupabaseMiddleware(request.nextUrl.pathname)) {
+    return securedNextResponse(request, nonce, csp);
   }
 
   const { supabaseUrl, supabaseKey } = getSupabaseServerConfig();
 
   if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.next();
+    return securedNextResponse(request, nonce, csp);
   }
 
   const requestCookieNames = request.cookies.getAll().map(({ name }) => name);
   if (!hasSupabaseAuthCookie(requestCookieNames, supabaseUrl)) {
-    const signedOutResponse = NextResponse.next({ request });
+    const signedOutResponse = securedNextResponse(request, nonce, csp);
     signedOutResponse.headers.set('Cache-Control', 'private, no-store');
     return signedOutResponse;
   }
 
-  let response = NextResponse.next({ request });
+  let response = securedNextResponse(request, nonce, csp);
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -151,7 +175,7 @@ export async function middleware(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value),
         );
-        response = NextResponse.next({ request });
+        response = securedNextResponse(request, nonce, csp);
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(
             name,
@@ -172,7 +196,7 @@ export async function middleware(request: NextRequest) {
         code: error.code,
       });
     } else if (error && isRecoverableSupabaseAuthError(error)) {
-      return clearSupabaseAuthCookies(request, supabaseUrl);
+      return clearSupabaseAuthCookies(request, supabaseUrl, nonce, csp);
     } else if (error) {
       console.error('Supabase middleware session validation failed', error);
     }
@@ -180,7 +204,7 @@ export async function middleware(request: NextRequest) {
     if (isTransientSupabaseAuthError(error)) {
       console.warn('Supabase middleware observed a concurrent token refresh');
     } else if (isRecoverableSupabaseAuthError(error)) {
-      return clearSupabaseAuthCookies(request, supabaseUrl);
+      return clearSupabaseAuthCookies(request, supabaseUrl, nonce, csp);
     } else {
       console.error('Supabase middleware session validation failed', error);
     }
