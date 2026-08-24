@@ -38,8 +38,9 @@ describe('nonce-based content security policy', () => {
     );
   });
 
-  it('passes the same nonce policy to Next.js and the browser response', () => {
+  it('passes the same nonce policy to Next.js, the root bootstrap, and the browser response', () => {
     const middleware = read('middleware.ts');
+    const layout = read('app/layout.tsx');
     const nextConfig = read('next.config.mjs');
 
     expect(middleware).toContain("randomBytes(16).toString('base64')");
@@ -50,6 +51,9 @@ describe('nonce-based content security policy', () => {
     expect(middleware).toContain(
       "response.headers.set('Content-Security-Policy', csp)",
     );
+    expect(layout).toContain("import { headers } from 'next/headers'");
+    expect(layout).toContain("(await headers()).get('x-nonce')");
+    expect(layout).toContain('<script nonce={nonce} dangerouslySetInnerHTML=');
     expect(nextConfig).not.toContain("key: 'Content-Security-Policy'");
   });
 });
