@@ -229,8 +229,8 @@ describe('question-bank taxonomy grouping', () => {
       name: 'Anthropometrics',
       canonicalKey: 'anthropometrics',
       ids: expect.arrayContaining([
-        'subtopic-water-numbered',
-        'subtopic-water-plain',
+        'anthropometrics-coded',
+        'anthropometrics-plain',
       ]),
     });
     expect(groups[0].subtopics[2]).toMatchObject({
