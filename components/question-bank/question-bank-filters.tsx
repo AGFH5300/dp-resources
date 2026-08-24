@@ -152,6 +152,7 @@ export function QuestionBankFilters({
               onChange={(event) => setSearch(event.target.value)}
               maxLength={160}
               placeholder="Search reference or question text"
+              style={{ border: 0, background: 'transparent', paddingLeft: 0 }}
             />
           </span>
         </label>

@@ -105,6 +105,60 @@ describe('question-bank taxonomy grouping', () => {
     });
   });
 
+  it('merges the official Physics theme letters with unprefixed copies', () => {
+    const groups = groupCourseTopics([
+      {
+        id: 'physics-space-lettered',
+        name: 'A Space Time and Motion',
+        sort_order: 1,
+      },
+      {
+        id: 'physics-space-plain',
+        name: 'Space Time and Motion',
+        sort_order: 2,
+      },
+      {
+        id: 'physics-fields-lettered',
+        name: 'D Fields',
+        sort_order: 3,
+      },
+      {
+        id: 'physics-fields-plain',
+        name: 'Fields',
+        sort_order: 4,
+      },
+      {
+        id: 'ordinary-article',
+        name: 'A Theory of Knowledge',
+        sort_order: 5,
+      },
+    ]);
+
+    expect(groups).toHaveLength(3);
+    expect(groups[0]).toMatchObject({
+      id: 'physics-space-plain',
+      name: 'Space Time and Motion',
+      canonicalKey: 'space time and motion',
+      ids: expect.arrayContaining([
+        'physics-space-lettered',
+        'physics-space-plain',
+      ]),
+    });
+    expect(groups[1]).toMatchObject({
+      id: 'physics-fields-plain',
+      name: 'Fields',
+      canonicalKey: 'fields',
+      ids: expect.arrayContaining([
+        'physics-fields-lettered',
+        'physics-fields-plain',
+      ]),
+    });
+    expect(groups[2]).toMatchObject({
+      name: 'A Theory of Knowledge',
+      canonicalKey: 'a theory of knowledge',
+    });
+  });
+
   it('does not interpret Unity, Units, or UNITED as Unit-prefixed taxonomy labels', () => {
     const groups = groupCourseTopics([
       {
