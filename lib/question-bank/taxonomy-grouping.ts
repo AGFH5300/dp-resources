@@ -36,15 +36,38 @@ export type GroupedTopic = {
   subtopics: GroupedSubtopic[];
 };
 
+const TAXONOMY_PREFIXES = [
+  /^(?:topic|unit|chapter|theme|option)\s+(?:\d+(?:\.\d+)*|[a-z](?:\.\d+)*|[ivxlcdm]+)(?:\s*[:.)\]-]\s*|\s+)/i,
+  /^(?:sl|hl|ahl)\s+\d+(?:\.\d+)*(?:[a-z])?(?:\s+\d+)?(?:\s*[:.)\]-]\s*|\s+)/i,
+  /^(?:[a-z]\s*)\d+(?:\.\d+)+(?:[a-z])?(?:\s+\d+)?(?:\s*[:.)\]-]\s*|\s+)/i,
+  /^\d+(?:\.\d+)+(?:[a-z])?(?:\s*[:.)\]-]\s*|\s+)/i,
+  /^(?:\d+|[ivxlcdm]+)\s*[:.)\]-]\s*/i,
+];
+
 function canonicalLabel(value: unknown) {
-  return String(value || '')
+  let label = String(value || '')
     .normalize('NFKC')
     .replace(/\s+/g, ' ')
-    .trim()
-    .replace(
-      /^(?:(?:[a-d]\s+(?=(?:unity and diversity|form and function|interaction and interdependence|continuity and change)(?:\s|$)))|(?:[a-e]\s+(?=(?:space,? time and motion|the particulate nature of matter|wave behavio(?:u)?r|fields|nuclear and quantum physics)(?:\s|$)))|(?:(?:topic|unit|chapter|theme|option)\s+)(?:\d+(?:\.\d+)*|[a-z](?:\.\d+)*|[ivxlcdm]+)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+(?:\.\d+)+[a-z])\s+|(?:\d+(?:\.\d+)+|[a-z]\.\d+(?:\.\d+)*)(?:\s*[:.)\]-]\s*|\s+)|(?:\d+|[a-z]|[ivxlcdm]+)\s*[:.)\]-]\s*)/i,
-      '',
-    )
+    .trim();
+
+  // Different providers encode the same IB taxonomy with different syllabus
+  // prefixes (for example B2.1, A1.3.2, SL 5.4, Topic 2, etc.). Strip only
+  // code-shaped prefixes here; standalone theme letters are handled
+  // contextually below so ordinary titles such as "A Theory of Knowledge" are
+  // never damaged just because they begin with an article.
+  for (let pass = 0; pass < 3; pass += 1) {
+    const previous = label;
+    for (const pattern of TAXONOMY_PREFIXES) {
+      const next = label.replace(pattern, '').trim();
+      if (next !== label) {
+        label = next;
+        break;
+      }
+    }
+    if (label === previous) break;
+  }
+
+  return label
     .replace(/&/g, ' and ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -76,6 +99,14 @@ function rowKey(row: {
   return String(row.canonical_key || fallbackKey(rowName(row))).trim();
 }
 
+function standaloneLetterAliasKey(row: {
+  name: string;
+  canonical_name?: string | null;
+}) {
+  const match = rowName(row).match(/^[a-z]\s+(.+)$/i);
+  return match ? fallbackKey(match[1]) : null;
+}
+
 function sortOrder(row: { sort_order?: number | null }) {
   const value = Number(row.sort_order);
   return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
@@ -103,22 +134,51 @@ function compareRows<
   return left.id.localeCompare(right.id);
 }
 
+function groupedKey<
+  T extends {
+    id: string;
+    name: string;
+    canonical_name?: string | null;
+    canonical_key?: string | null;
+  },
+>(row: T, availableKeys: Set<string>) {
+  const key = rowKey(row) || row.id;
+  const letterAlias = standaloneLetterAliasKey(row);
+
+  // A/B/C/D/E-style theme letters are ambiguous in isolation. Only remove a
+  // standalone leading letter when the same collection also contains the
+  // unlettered label. This makes the rule provider-agnostic across subjects
+  // without turning ordinary article-led names into false duplicates.
+  return letterAlias && availableKeys.has(letterAlias) ? letterAlias : key;
+}
+
+function primaryForGroup<
+  T extends {
+    id: string;
+    name: string;
+    canonical_name?: string | null;
+    canonical_key?: string | null;
+  },
+>(rows: T[], canonicalKey: string) {
+  return rows.find((row) => rowKey(row) === canonicalKey) || rows[0];
+}
+
 function groupSubtopics(topics: TaxonomyTopic[]) {
+  const subtopics = topics.flatMap((topic) => topic.subtopics || []);
+  const availableKeys = new Set(subtopics.map((subtopic) => rowKey(subtopic)));
   const groups = new Map<string, TaxonomySubtopic[]>();
 
-  for (const topic of topics) {
-    for (const subtopic of topic.subtopics || []) {
-      const key = rowKey(subtopic) || subtopic.id;
-      const rows = groups.get(key);
-      if (rows) rows.push(subtopic);
-      else groups.set(key, [subtopic]);
-    }
+  for (const subtopic of subtopics) {
+    const key = groupedKey(subtopic, availableKeys);
+    const rows = groups.get(key);
+    if (rows) rows.push(subtopic);
+    else groups.set(key, [subtopic]);
   }
 
   return Array.from(groups.entries())
-    .map(([canonicalKey, subtopics]): GroupedSubtopic => {
-      const ordered = [...subtopics].sort(compareRows);
-      const primary = ordered[0];
+    .map(([canonicalKey, groupedSubtopics]): GroupedSubtopic => {
+      const ordered = [...groupedSubtopics].sort(compareRows);
+      const primary = primaryForGroup(ordered, canonicalKey);
       return {
         id: primary.id,
         ids: ordered.map((subtopic) => subtopic.id),
@@ -137,10 +197,11 @@ function groupSubtopics(topics: TaxonomyTopic[]) {
 }
 
 export function groupCourseTopics(topics: TaxonomyTopic[]) {
+  const availableKeys = new Set(topics.map((topic) => rowKey(topic)));
   const groups = new Map<string, TaxonomyTopic[]>();
 
   for (const topic of topics) {
-    const key = rowKey(topic) || topic.id;
+    const key = groupedKey(topic, availableKeys);
     const rows = groups.get(key);
     if (rows) rows.push(topic);
     else groups.set(key, [topic]);
@@ -153,7 +214,7 @@ export function groupCourseTopics(topics: TaxonomyTopic[]) {
           (right.subtopics?.length || 0) - (left.subtopics?.length || 0);
         return subtopicDifference || compareRows(left, right);
       });
-      const primary = ordered[0];
+      const primary = primaryForGroup(ordered, canonicalKey);
       return {
         id: primary.id,
         ids: ordered.map((topic) => topic.id),

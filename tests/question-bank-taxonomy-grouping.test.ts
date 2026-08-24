@@ -79,81 +79,122 @@ describe('question-bank taxonomy grouping', () => {
     expect(groups[1].ids).toHaveLength(3);
   });
 
-  it('merges the four official Biology theme letters without stripping ordinary articles', () => {
+  it('deduplicates provider syllabus prefixes without subject-specific rules', () => {
+    const groups = groupCourseTopics([
+      {
+        id: 'biology-membranes-coded',
+        name: 'B2.1 Membranes and Membrane Transport',
+        sort_order: 1,
+      },
+      {
+        id: 'biology-membranes-plain',
+        name: 'Membranes and Membrane Transport',
+        sort_order: 2,
+      },
+      {
+        id: 'biology-transport-coded',
+        name: 'B3.2 Transport',
+        sort_order: 3,
+      },
+      {
+        id: 'biology-transport-plain',
+        name: 'Transport',
+        sort_order: 4,
+      },
+      {
+        id: 'biology-water-coded',
+        name: 'B3.2 7 Transport of Water From Roots to Leaves During Transpiration',
+        sort_order: 5,
+      },
+      {
+        id: 'math-integration-coded',
+        name: 'SL 5.4 Integration',
+        sort_order: 6,
+      },
+      {
+        id: 'math-integration-plain',
+        name: 'Integration',
+        sort_order: 7,
+      },
+      {
+        id: 'chemistry-stoichiometry-coded',
+        name: 'A1.3.2 Stoichiometry',
+        sort_order: 8,
+      },
+      {
+        id: 'chemistry-stoichiometry-plain',
+        name: 'Stoichiometry',
+        sort_order: 9,
+      },
+    ]);
+
+    expect(groups).toHaveLength(5);
+    expect(groups[0]).toMatchObject({
+      name: 'Membranes and Membrane Transport',
+      canonicalKey: 'membranes and membrane transport',
+      ids: expect.arrayContaining([
+        'biology-membranes-coded',
+        'biology-membranes-plain',
+      ]),
+    });
+    expect(groups[1]).toMatchObject({
+      name: 'Transport',
+      canonicalKey: 'transport',
+      ids: expect.arrayContaining([
+        'biology-transport-coded',
+        'biology-transport-plain',
+      ]),
+    });
+    expect(groups[2]).toMatchObject({
+      name: 'Transport of Water From Roots to Leaves During Transpiration',
+      canonicalKey: 'transport of water from roots to leaves during transpiration',
+    });
+    expect(groups[3]).toMatchObject({
+      name: 'Integration',
+      canonicalKey: 'integration',
+      ids: expect.arrayContaining([
+        'math-integration-coded',
+        'math-integration-plain',
+      ]),
+    });
+    expect(groups[4]).toMatchObject({
+      name: 'Stoichiometry',
+      canonicalKey: 'stoichiometry',
+      ids: expect.arrayContaining([
+        'chemistry-stoichiometry-coded',
+        'chemistry-stoichiometry-plain',
+      ]),
+    });
+  });
+
+  it('merges standalone theme letters only when an unlettered copy exists', () => {
     const groups = groupCourseTopics([
       { id: 'theme-a', name: 'A Unity and Diversity', sort_order: 1 },
       { id: 'theme-a-plain', name: 'Unity and Diversity', sort_order: 2 },
-      { id: 'theme-b', name: 'B Form and Function', sort_order: 3 },
-      { id: 'theme-b-plain', name: 'Form and Function', sort_order: 4 },
-      { id: 'ordinary-article', name: 'A Theory of Knowledge', sort_order: 5 },
+      { id: 'theme-d', name: 'D Fields', sort_order: 3 },
+      { id: 'theme-d-plain', name: 'Fields', sort_order: 4 },
+      { id: 'theme-c', name: 'C Global Interactions', sort_order: 5 },
+      { id: 'theme-c-plain', name: 'Global Interactions', sort_order: 6 },
+      { id: 'ordinary-article', name: 'A Theory of Knowledge', sort_order: 7 },
     ]);
 
-    expect(groups).toHaveLength(3);
+    expect(groups).toHaveLength(4);
     expect(groups[0]).toMatchObject({
       name: 'Unity and Diversity',
       canonicalKey: 'unity and diversity',
       ids: expect.arrayContaining(['theme-a', 'theme-a-plain']),
     });
     expect(groups[1]).toMatchObject({
-      name: 'Form and Function',
-      canonicalKey: 'form and function',
-      ids: expect.arrayContaining(['theme-b', 'theme-b-plain']),
-    });
-    expect(groups[2]).toMatchObject({
-      name: 'A Theory of Knowledge',
-      canonicalKey: 'a theory of knowledge',
-    });
-  });
-
-  it('merges the official Physics theme letters with unprefixed copies', () => {
-    const groups = groupCourseTopics([
-      {
-        id: 'physics-space-lettered',
-        name: 'A Space Time and Motion',
-        sort_order: 1,
-      },
-      {
-        id: 'physics-space-plain',
-        name: 'Space Time and Motion',
-        sort_order: 2,
-      },
-      {
-        id: 'physics-fields-lettered',
-        name: 'D Fields',
-        sort_order: 3,
-      },
-      {
-        id: 'physics-fields-plain',
-        name: 'Fields',
-        sort_order: 4,
-      },
-      {
-        id: 'ordinary-article',
-        name: 'A Theory of Knowledge',
-        sort_order: 5,
-      },
-    ]);
-
-    expect(groups).toHaveLength(3);
-    expect(groups[0]).toMatchObject({
-      id: 'physics-space-plain',
-      name: 'Space Time and Motion',
-      canonicalKey: 'space time and motion',
-      ids: expect.arrayContaining([
-        'physics-space-lettered',
-        'physics-space-plain',
-      ]),
-    });
-    expect(groups[1]).toMatchObject({
-      id: 'physics-fields-plain',
       name: 'Fields',
       canonicalKey: 'fields',
-      ids: expect.arrayContaining([
-        'physics-fields-lettered',
-        'physics-fields-plain',
-      ]),
+      ids: expect.arrayContaining(['theme-d', 'theme-d-plain']),
     });
     expect(groups[2]).toMatchObject({
+      name: 'Global Interactions',
+      canonicalKey: 'global interactions',
+      ids: expect.arrayContaining(['theme-c', 'theme-c-plain']),
+    });
+    expect(groups[3]).toMatchObject({
       name: 'A Theory of Knowledge',
       canonicalKey: 'a theory of knowledge',
     });
