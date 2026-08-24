@@ -152,6 +152,17 @@ function groupedKey<
   return letterAlias && availableKeys.has(letterAlias) ? letterAlias : key;
 }
 
+function primaryForGroup<
+  T extends {
+    id: string;
+    name: string;
+    canonical_name?: string | null;
+    canonical_key?: string | null;
+  },
+>(rows: T[], canonicalKey: string) {
+  return rows.find((row) => rowKey(row) === canonicalKey) || rows[0];
+}
+
 function groupSubtopics(topics: TaxonomyTopic[]) {
   const subtopics = topics.flatMap((topic) => topic.subtopics || []);
   const availableKeys = new Set(subtopics.map((subtopic) => rowKey(subtopic)));
@@ -167,7 +178,7 @@ function groupSubtopics(topics: TaxonomyTopic[]) {
   return Array.from(groups.entries())
     .map(([canonicalKey, groupedSubtopics]): GroupedSubtopic => {
       const ordered = [...groupedSubtopics].sort(compareRows);
-      const primary = ordered[0];
+      const primary = primaryForGroup(ordered, canonicalKey);
       return {
         id: primary.id,
         ids: ordered.map((subtopic) => subtopic.id),
@@ -203,7 +214,7 @@ export function groupCourseTopics(topics: TaxonomyTopic[]) {
           (right.subtopics?.length || 0) - (left.subtopics?.length || 0);
         return subtopicDifference || compareRows(left, right);
       });
-      const primary = ordered[0];
+      const primary = primaryForGroup(ordered, canonicalKey);
       return {
         id: primary.id,
         ids: ordered.map((topic) => topic.id),
