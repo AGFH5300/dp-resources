@@ -1,3 +1,7 @@
+// Content-Security-Policy is emitted per request by middleware.ts so every
+// rendered page can receive a fresh nonce. The runtime policy retains
+// frame-ancestors 'none' and permits only the required frames via:
+// frame-src 'self' blob: https://docs.google.com https://drive.google.com https://player.vimeo.com
 const securityHeaders = [
   {
     key: 'Strict-Transport-Security',
