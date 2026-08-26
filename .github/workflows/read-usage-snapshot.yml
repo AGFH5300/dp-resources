@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           mkdir -p tmp
           node <<'NODE'
-          const fs = require('fs');
+          const fs = await import('node:fs');
 
           const base = process.env.SUPABASE_URL.replace(/\/$/, '');
           const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
