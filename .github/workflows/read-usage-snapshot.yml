@@ -1,0 +1,223 @@
+name: Read-only DP Resources usage snapshot
+
+on:
+  push:
+    branches:
+      - chatgpt/usage-analytics-readonly
+    paths:
+      - .github/workflows/read-usage-snapshot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v5
+        with:
+          ref: chatgpt/usage-analytics-readonly
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+
+      - name: Query aggregate analytics read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp
+          node <<'NODE'
+          const fs = require('fs');
+
+          const base = process.env.SUPABASE_URL.replace(/\/$/, '');
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+          async function getJson(url, extraHeaders = {}) {
+            const res = await fetch(url, { headers: { ...headers, ...extraHeaders } });
+            if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+            return res.json();
+          }
+
+          async function fetchAll(table, select, order = null) {
+            const rows = [];
+            const pageSize = 1000;
+            for (let start = 0; ; start += pageSize) {
+              const end = start + pageSize - 1;
+              let url = `${base}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
+              if (order) url += `&order=${encodeURIComponent(order)}`;
+              const res = await fetch(url, {
+                headers: {
+                  ...headers,
+                  Range: `${start}-${end}`,
+                  'Range-Unit': 'items',
+                },
+              });
+              if (!res.ok) throw new Error(`${table}: ${res.status} ${await res.text()}`);
+              const batch = await res.json();
+              rows.push(...batch);
+              if (batch.length < pageSize) break;
+            }
+            return rows;
+          }
+
+          async function fetchAuthUsers() {
+            const users = [];
+            const perPage = 1000;
+            for (let page = 1; ; page++) {
+              const data = await getJson(`${base}/auth/v1/admin/users?page=${page}&per_page=${perPage}`);
+              const batch = data.users || [];
+              users.push(...batch);
+              if (batch.length < perPage) break;
+            }
+            return users;
+          }
+
+          function sinceDays(dateString, days, now) {
+            if (!dateString) return false;
+            return new Date(dateString).getTime() >= now.getTime() - days * 86400000;
+          }
+
+          function quantile(values, q) {
+            if (!values.length) return 0;
+            const a = [...values].sort((x, y) => x - y);
+            const pos = (a.length - 1) * q;
+            const lo = Math.floor(pos), hi = Math.ceil(pos);
+            if (lo === hi) return a[lo];
+            return a[lo] + (a[hi] - a[lo]) * (pos - lo);
+          }
+
+          const now = new Date();
+          const [authUsers, profiles, memberships, sessions, favorites] = await Promise.all([
+            fetchAuthUsers(),
+            fetchAll('dp_resource_profiles', 'id,created_at'),
+            fetchAll('dp_resource_memberships', 'id,role,is_approved'),
+            fetchAll('dp_resource_usage_sessions', 'id,user_id,file_id,started_at,last_heartbeat_at,ended_at,active_seconds,heartbeat_count'),
+            fetchAll('dp_resource_favorites', 'id,user_id,drive_file_id,created_at'),
+          ]);
+
+          const activeUsersByLastSignIn = (days) => authUsers.filter(u => sinceDays(u.last_sign_in_at, days, now)).length;
+          const newUsers = (days) => authUsers.filter(u => sinceDays(u.created_at, days, now)).length;
+          const verifiedUsers = authUsers.filter(u => u.email_confirmed_at || u.confirmed_at).length;
+
+          function usageWindow(days = null) {
+            const rows = days == null ? sessions : sessions.filter(s => sinceDays(s.started_at, days, now));
+            const users = new Set(rows.map(s => s.user_id));
+            const files = new Set(rows.map(s => s.file_id));
+            const totalSeconds = rows.reduce((sum, s) => sum + Number(s.active_seconds || 0), 0);
+            const seconds = rows.map(s => Number(s.active_seconds || 0));
+            const heartbeats = rows.reduce((sum, s) => sum + Number(s.heartbeat_count || 0), 0);
+            return {
+              sessions: rows.length,
+              unique_users: users.size,
+              unique_resources: files.size,
+              total_active_seconds: totalSeconds,
+              total_active_hours: Number((totalSeconds / 3600).toFixed(2)),
+              avg_active_seconds_per_session: rows.length ? Number((totalSeconds / rows.length).toFixed(1)) : 0,
+              median_active_seconds_per_session: Number(quantile(seconds, 0.5).toFixed(1)),
+              p75_active_seconds_per_session: Number(quantile(seconds, 0.75).toFixed(1)),
+              sessions_per_active_user: users.size ? Number((rows.length / users.size).toFixed(2)) : 0,
+              total_heartbeats: heartbeats,
+            };
+          }
+
+          const usageByUser = new Map();
+          for (const s of sessions) {
+            const r = usageByUser.get(s.user_id) || { sessions: 0, active_seconds: 0, resources: new Set() };
+            r.sessions += 1;
+            r.active_seconds += Number(s.active_seconds || 0);
+            r.resources.add(s.file_id);
+            usageByUser.set(s.user_id, r);
+          }
+          const perUser = [...usageByUser.values()].map(r => ({
+            sessions: r.sessions,
+            active_seconds: r.active_seconds,
+            resources: r.resources.size,
+          }));
+
+          const daily = {};
+          for (const s of sessions) {
+            const d = String(s.started_at).slice(0, 10);
+            if (!daily[d]) daily[d] = { sessions: 0, users: new Set(), resources: new Set(), active_seconds: 0 };
+            daily[d].sessions += 1;
+            daily[d].users.add(s.user_id);
+            daily[d].resources.add(s.file_id);
+            daily[d].active_seconds += Number(s.active_seconds || 0);
+          }
+          const daily_usage = Object.entries(daily)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .slice(-21)
+            .map(([date, v]) => ({
+              date,
+              sessions: v.sessions,
+              unique_users: v.users.size,
+              unique_resources: v.resources.size,
+              active_minutes: Number((v.active_seconds / 60).toFixed(1)),
+            }));
+
+          const report = {
+            generated_at: now.toISOString(),
+            note: 'Aggregate read-only snapshot. No email addresses, names, IDs, or secret values are included.',
+            users: {
+              auth_total: authUsers.length,
+              profiles_total: profiles.length,
+              memberships_total: memberships.length,
+              approved_memberships: memberships.filter(m => m.is_approved).length,
+              admin_memberships: memberships.filter(m => m.role === 'admin').length,
+              verified_users: verifiedUsers,
+              new_last_1d: newUsers(1),
+              new_last_7d: newUsers(7),
+              new_last_14d: newUsers(14),
+              active_last_sign_in_1d: activeUsersByLastSignIn(1),
+              active_last_sign_in_7d: activeUsersByLastSignIn(7),
+              active_last_sign_in_30d: activeUsersByLastSignIn(30),
+            },
+            resource_usage: {
+              last_1d: usageWindow(1),
+              last_7d: usageWindow(7),
+              last_14d: usageWindow(14),
+              last_30d: usageWindow(30),
+              all_time: usageWindow(null),
+              users_with_any_resource_session: usageByUser.size,
+              median_sessions_per_resource_user_all_time: Number(quantile(perUser.map(x => x.sessions), 0.5).toFixed(1)),
+              median_resources_per_resource_user_all_time: Number(quantile(perUser.map(x => x.resources), 0.5).toFixed(1)),
+              median_active_minutes_per_resource_user_all_time: Number((quantile(perUser.map(x => x.active_seconds), 0.5) / 60).toFixed(1)),
+            },
+            favorites: {
+              total: favorites.length,
+              unique_users: new Set(favorites.map(f => f.user_id)).size,
+              unique_resources: new Set(favorites.map(f => f.drive_file_id)).size,
+            },
+            daily_usage,
+          };
+
+          fs.writeFileSync('tmp/usage-analytics-snapshot.json', JSON.stringify(report, null, 2) + '\n');
+          console.log(JSON.stringify({
+            users: report.users.auth_total,
+            resource_sessions_7d: report.resource_usage.last_7d.sessions,
+            resource_users_7d: report.resource_usage.last_7d.unique_users,
+          }));
+          NODE
+
+      - name: Commit aggregate snapshot to temporary branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tmp/usage-analytics-snapshot.json
+          if git diff --cached --quiet; then
+            echo "No snapshot change to commit."
+            exit 0
+          fi
+          git commit -m "Record read-only usage analytics snapshot"
+          git push origin HEAD:chatgpt/usage-analytics-readonly
