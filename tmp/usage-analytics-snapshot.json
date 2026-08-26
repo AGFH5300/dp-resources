@@ -1,0 +1,238 @@
+{
+  "generated_at": "2026-08-26T17:58:13.397Z",
+  "note": "Aggregate read-only snapshot. No email addresses, names, IDs, or secret values are included.",
+  "users": {
+    "auth_total": 50,
+    "profiles_total": 42,
+    "memberships_total": 50,
+    "approved_memberships": 50,
+    "admin_memberships": 1,
+    "verified_users": 42,
+    "new_last_1d": 0,
+    "new_last_7d": 1,
+    "new_last_14d": 6,
+    "active_last_sign_in_1d": 1,
+    "active_last_sign_in_7d": 4,
+    "active_last_sign_in_30d": 16
+  },
+  "resource_usage": {
+    "last_1d": {
+      "sessions": 0,
+      "unique_users": 0,
+      "unique_resources": 0,
+      "total_active_seconds": 0,
+      "total_active_hours": 0,
+      "avg_active_seconds_per_session": 0,
+      "median_active_seconds_per_session": 0,
+      "p75_active_seconds_per_session": 0,
+      "sessions_per_active_user": 0,
+      "total_heartbeats": 0
+    },
+    "last_7d": {
+      "sessions": 34,
+      "unique_users": 5,
+      "unique_resources": 27,
+      "total_active_seconds": 1891,
+      "total_active_hours": 0.53,
+      "avg_active_seconds_per_session": 55.6,
+      "median_active_seconds_per_session": 17.5,
+      "p75_active_seconds_per_session": 42.8,
+      "sessions_per_active_user": 6.8,
+      "total_heartbeats": 2801
+    },
+    "last_14d": {
+      "sessions": 58,
+      "unique_users": 10,
+      "unique_resources": 39,
+      "total_active_seconds": 2936,
+      "total_active_hours": 0.82,
+      "avg_active_seconds_per_session": 50.6,
+      "median_active_seconds_per_session": 14.5,
+      "p75_active_seconds_per_session": 38,
+      "sessions_per_active_user": 5.8,
+      "total_heartbeats": 3688
+    },
+    "last_30d": {
+      "sessions": 154,
+      "unique_users": 22,
+      "unique_resources": 70,
+      "total_active_seconds": 9772,
+      "total_active_hours": 2.71,
+      "avg_active_seconds_per_session": 63.5,
+      "median_active_seconds_per_session": 12,
+      "p75_active_seconds_per_session": 35,
+      "sessions_per_active_user": 7,
+      "total_heartbeats": 11609
+    },
+    "all_time": {
+      "sessions": 396,
+      "unique_users": 30,
+      "unique_resources": 128,
+      "total_active_seconds": 14291,
+      "total_active_hours": 3.97,
+      "avg_active_seconds_per_session": 36.1,
+      "median_active_seconds_per_session": 10,
+      "p75_active_seconds_per_session": 30,
+      "sessions_per_active_user": 13.2,
+      "total_heartbeats": 15084
+    },
+    "users_with_any_resource_session": 30,
+    "median_sessions_per_resource_user_all_time": 5,
+    "median_resources_per_resource_user_all_time": 3,
+    "median_active_minutes_per_resource_user_all_time": 1.1
+  },
+  "favorites": {
+    "total": 16,
+    "unique_users": 5,
+    "unique_resources": 13
+  },
+  "daily_usage": [
+    {
+      "date": "2026-08-04",
+      "sessions": 5,
+      "unique_users": 2,
+      "unique_resources": 5,
+      "active_minutes": 20.3
+    },
+    {
+      "date": "2026-08-05",
+      "sessions": 5,
+      "unique_users": 1,
+      "unique_resources": 2,
+      "active_minutes": 1.1
+    },
+    {
+      "date": "2026-08-06",
+      "sessions": 9,
+      "unique_users": 2,
+      "unique_resources": 7,
+      "active_minutes": 2.5
+    },
+    {
+      "date": "2026-08-07",
+      "sessions": 5,
+      "unique_users": 2,
+      "unique_resources": 2,
+      "active_minutes": 34.1
+    },
+    {
+      "date": "2026-08-08",
+      "sessions": 10,
+      "unique_users": 4,
+      "unique_resources": 7,
+      "active_minutes": 2.5
+    },
+    {
+      "date": "2026-08-09",
+      "sessions": 2,
+      "unique_users": 1,
+      "unique_resources": 1,
+      "active_minutes": 9.7
+    },
+    {
+      "date": "2026-08-10",
+      "sessions": 2,
+      "unique_users": 2,
+      "unique_resources": 2,
+      "active_minutes": 2
+    },
+    {
+      "date": "2026-08-11",
+      "sessions": 2,
+      "unique_users": 2,
+      "unique_resources": 2,
+      "active_minutes": 0.3
+    },
+    {
+      "date": "2026-08-12",
+      "sessions": 6,
+      "unique_users": 4,
+      "unique_resources": 5,
+      "active_minutes": 3.3
+    },
+    {
+      "date": "2026-08-13",
+      "sessions": 3,
+      "unique_users": 3,
+      "unique_resources": 3,
+      "active_minutes": 2
+    },
+    {
+      "date": "2026-08-14",
+      "sessions": 8,
+      "unique_users": 2,
+      "unique_resources": 4,
+      "active_minutes": 2.8
+    },
+    {
+      "date": "2026-08-15",
+      "sessions": 3,
+      "unique_users": 2,
+      "unique_resources": 2,
+      "active_minutes": 1.9
+    },
+    {
+      "date": "2026-08-16",
+      "sessions": 8,
+      "unique_users": 3,
+      "unique_resources": 6,
+      "active_minutes": 8.6
+    },
+    {
+      "date": "2026-08-17",
+      "sessions": 1,
+      "unique_users": 1,
+      "unique_resources": 1,
+      "active_minutes": 0.5
+    },
+    {
+      "date": "2026-08-18",
+      "sessions": 1,
+      "unique_users": 1,
+      "unique_resources": 1,
+      "active_minutes": 1.6
+    },
+    {
+      "date": "2026-08-20",
+      "sessions": 14,
+      "unique_users": 3,
+      "unique_resources": 12,
+      "active_minutes": 19.9
+    },
+    {
+      "date": "2026-08-21",
+      "sessions": 1,
+      "unique_users": 1,
+      "unique_resources": 1,
+      "active_minutes": 0
+    },
+    {
+      "date": "2026-08-22",
+      "sessions": 2,
+      "unique_users": 1,
+      "unique_resources": 2,
+      "active_minutes": 0.4
+    },
+    {
+      "date": "2026-08-23",
+      "sessions": 2,
+      "unique_users": 1,
+      "unique_resources": 1,
+      "active_minutes": 0.5
+    },
+    {
+      "date": "2026-08-24",
+      "sessions": 13,
+      "unique_users": 1,
+      "unique_resources": 10,
+      "active_minutes": 9.6
+    },
+    {
+      "date": "2026-08-25",
+      "sessions": 2,
+      "unique_users": 2,
+      "unique_resources": 2,
+      "active_minutes": 1.1
+    }
+  ]
+}
