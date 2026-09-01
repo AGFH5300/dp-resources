@@ -76,25 +76,25 @@ export function AdminActivityUserLinksBridge() {
   useEffect(() => {
     const params = new URLSearchParams(search);
     const section = params.get('section') || 'index';
+    const storedReturn = window.sessionStorage.getItem(RETURN_KEY);
 
     if (section === 'users' && !params.get('userUsageId')) {
-      const target = validActivityReturnTarget(
-        window.sessionStorage.getItem(RETURN_KEY),
-        pathname,
-      );
-      if (target) {
-        window.sessionStorage.removeItem(RETURN_KEY);
-        router.replace(target);
-      } else if (window.sessionStorage.getItem(RETURN_KEY)) {
-        window.sessionStorage.removeItem(RETURN_KEY);
-      }
+      const target = validActivityReturnTarget(storedReturn, pathname);
+      window.sessionStorage.removeItem(RETURN_KEY);
+      if (target) router.replace(target);
       return;
     }
 
     if (section !== 'activity') return;
 
+    const currentActivityUrl = search ? `${pathname}?${search}` : pathname;
+    if (
+      validActivityReturnTarget(storedReturn, pathname) === currentActivityUrl
+    ) {
+      window.sessionStorage.removeItem(RETURN_KEY);
+    }
+
     let disposed = false;
-    const returnUrl = search ? `${pathname}?${search}` : pathname;
 
     const enhance = () => {
       if (disposed) return;
@@ -136,12 +136,16 @@ export function AdminActivityUserLinksBridge() {
             );
             if (!user?.id) throw new Error('User not found');
 
+            const liveSearch = window.location.search.replace(/^\?/, '');
+            const liveReturnUrl = `${pathname}${window.location.search}`;
             const stored: StoredReturn = {
-              url: returnUrl,
+              url: liveReturnUrl,
               createdAt: Date.now(),
             };
             window.sessionStorage.setItem(RETURN_KEY, JSON.stringify(stored));
-            router.push(buildActivityUserModalUrl(pathname, search, user.id));
+            router.push(
+              buildActivityUserModalUrl(pathname, liveSearch, user.id),
+            );
           } catch (error) {
             console.error('Could not open Activity user analytics.', error);
             toast.error('Could not open this user’s resource analytics.');
