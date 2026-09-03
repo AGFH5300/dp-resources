@@ -4,19 +4,24 @@ import fs from 'node:fs';
 const read = (p: string) => fs.readFileSync(p, 'utf8');
 
 describe('performance pass regressions', () => {
-  it('library navigation avoids document reloads and uses router push', () => {
-    const src = read('app/library/library-browser.tsx');
-    expect(src).toContain('useRouter()');
-    expect(src).toContain('router.push(href)');
-    expect(src).not.toContain('window.location.href=href');
+  it('folder navigation swaps cached views without an App Router round trip', () => {
+    const src = read('app/library/instant-library-browser.tsx');
+    expect(src).toContain('window.history.pushState');
+    expect(src).toContain("window.addEventListener('popstate'");
+    expect(src).toContain("fetch('/api/library/folder-window'");
+    expect(src).toContain('cacheRef.current.get(folderId)');
+    expect(src).toContain('if (item.isFolder)');
+    expect(src).toContain('openFolder(item)');
+    expect(src).not.toContain('router.push(hrefForFolder');
   });
 
-  it('library route prefetch only prefetches page routes after a delay', () => {
-    const src = read('app/library/library-browser.tsx');
+  it('folder hover warms targeted JSON windows instead of prefetching every RSC route', () => {
+    const src = read('app/library/instant-library-browser.tsx');
+    expect(src).toContain('hydrateFolderWindow');
+    expect(src).toContain("fetch('/api/library/folder-window'");
     expect(src).toContain('setTimeout');
-    expect(src).toContain('150');
-    expect(src).toContain('router.prefetch(href)');
-    expect(src).not.toContain('/api/resource/${fileId}/content');
+    expect(src).toContain('100');
+    expect(src).toContain('router.prefetch(hrefFor(item, rootId))');
   });
 
   it('incomplete index does not claim complete', () => {
@@ -27,9 +32,9 @@ describe('performance pass regressions', () => {
     expect(read('lib/index-sync.ts')).toContain("status: 'paused'");
   });
 
-  it('complete index is attempted before live Drive browsing', () => {
+  it('complete index window is attempted before live Drive browsing', () => {
     const src = read('app/library/page.tsx');
-    expect(src.indexOf('getIndexedFolderView(folder)')).toBeLessThan(
+    expect(src.indexOf('getIndexedFolderWindow(folder)')).toBeLessThan(
       src.indexOf('getFolderView(folder)'),
     );
   });
