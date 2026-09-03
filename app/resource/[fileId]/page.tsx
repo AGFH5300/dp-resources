@@ -16,18 +16,12 @@ import { ResourceUsageTracker } from './usage-tracker';
 import { privatePageMetadata } from '@/lib/seo';
 import { RecentResourceRecorder } from '@/components/recent-resource-recorder';
 import { ResourceAttributionBadges } from '@/components/content-source-badge';
+import {
+  ResourceFolderBreadcrumbFallback,
+  ResourceFolderBreadcrumbLinks,
+} from './resource-breadcrumbs';
 
 export const metadata: Metadata = privatePageMetadata('Resource');
-
-function indexedFolderNames(path: string | undefined, resourceName: string) {
-  const parts = String(path || '')
-    .split(' / ')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts[0] === 'Library') parts.shift();
-  if (parts.at(-1) === resourceName) parts.pop();
-  return parts;
-}
 
 function NotFound({
   admin,
@@ -139,7 +133,6 @@ export default async function Page({
     );
 
   const resourcePath = indexedMeta?.path || 'Library';
-  const folderNames = indexedFolderNames(indexedMeta?.path, meta.name);
   const isPdf =
     meta.mimeType === 'application/pdf' ||
     meta.name.toLowerCase().endsWith('.pdf');
@@ -163,15 +156,19 @@ export default async function Page({
             >
               Library
             </Link>
-            {folderNames.map((folderName, index) => (
-              <span
-                key={`${folderName}-${index}`}
-                className="inline-flex items-center gap-1"
-              >
-                <span>/</span>
-                <span className="font-medium">{folderName}</span>
-              </span>
-            ))}
+            <Suspense
+              fallback={
+                <ResourceFolderBreadcrumbFallback
+                  path={indexedMeta?.path}
+                  resourceName={meta.name}
+                />
+              }
+            >
+              <ResourceFolderBreadcrumbLinks
+                path={indexedMeta?.path}
+                resourceName={meta.name}
+              />
+            </Suspense>
             <span>/</span>
             <span className="truncate font-medium text-slate-700">
               {meta.name}

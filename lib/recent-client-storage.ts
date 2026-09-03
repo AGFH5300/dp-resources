@@ -25,4 +25,11 @@ export function rememberRecentResource(resource: RecentResource) {
   const recent = mergeRecentResources([resource], readRecentResources());
   localStorage.setItem(STORAGE_KEY, JSON.stringify(recent));
   window.dispatchEvent(new Event('dp:recent-updated'));
+  if (!resource.isFolder) {
+    window.dispatchEvent(
+      new CustomEvent<RecentResource>('dp:resource-opening', {
+        detail: resource,
+      }),
+    );
+  }
 }
