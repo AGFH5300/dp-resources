@@ -9,6 +9,7 @@ import { getIndexedFolderWindow } from '@/lib/indexed-folder-view';
 import { devTiming, nowMs } from '@/lib/perf';
 import { getFavoriteIdSet } from '@/lib/favorites';
 import { FavoritesProvider } from '@/components/favorites-provider';
+import { LibraryResourceOpeningOverlay } from '@/components/library-resource-opening-overlay';
 
 export default async function Library({
   searchParams,
@@ -83,6 +84,7 @@ export default async function Library({
           </div>
         ) : crumbs.length ? (
           <FavoritesProvider initialSavedIds={favoriteIds}>
+            <LibraryResourceOpeningOverlay />
             <InstantLibraryBrowser
               items={displayItems}
               crumbs={crumbs}
