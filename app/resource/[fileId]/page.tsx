@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
@@ -45,21 +46,68 @@ function NotFound({
   );
 }
 
+function ResourceActionsFallback() {
+  return (
+    <div className="flex gap-2" aria-label="Loading resource actions">
+      <span className="h-9 w-20 animate-pulse rounded-md bg-slate-200" />
+      <span className="h-9 w-20 animate-pulse rounded-md bg-slate-200" />
+    </div>
+  );
+}
+
+async function ResourceActionsWithFavorite({
+  userId,
+  fileId,
+  resourceName,
+  resourcePath,
+  mimeType,
+  isPdf,
+  sourceLabel,
+  resourceTypeLabel,
+}: {
+  userId: string;
+  fileId: string;
+  resourceName: string;
+  resourcePath: string;
+  mimeType: string;
+  isPdf: boolean;
+  sourceLabel?: string;
+  resourceTypeLabel?: string;
+}) {
+  const favoriteIds = Array.from<string>(
+    await getFavoriteIdSet(userId, [fileId]),
+  );
+  return (
+    <FavoritesProvider initialSavedIds={favoriteIds}>
+      <ResourceActions
+        resource={{
+          driveFileId: fileId,
+          resourceName,
+          resourcePath,
+          mimeType,
+          sourceLabel,
+          resourceTypeLabel,
+        }}
+        downloadHref={
+          !isPdf ? `/api/files/${fileId}/download` : undefined
+        }
+        initialSaved={favoriteIds.includes(fileId)}
+      />
+    </FavoritesProvider>
+  );
+}
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ fileId: string }>;
 }) {
-  const [{ user, membership }, { fileId }] = await Promise.all([
+  const { fileId } = await params;
+  // Resource metadata is independent of authentication. Resolve both at once so
+  // the dynamic route pays only the slower of the two operations, not their sum.
+  const [{ user, membership }, indexedMeta] = await Promise.all([
     requireMember(),
-    params,
-  ]);
-
-  // The Library has usually primed this exact shell already. Start the only
-  // user-specific query in parallel so it does not sit behind resource lookup.
-  const [indexedMeta, favoriteSet] = await Promise.all([
     getIndexedResourceShell(fileId),
-    getFavoriteIdSet(user.id, [fileId]),
   ]);
 
   let meta = indexedMeta;
@@ -88,7 +136,6 @@ export default async function Page({
       />
     );
 
-  const favoriteIds = Array.from<string>(favoriteSet);
   const resourcePath = indexedMeta?.path || 'Library';
   const folderNames = indexedFolderNames(indexedMeta?.path, meta.name);
   const isPdf =
@@ -140,25 +187,20 @@ export default async function Page({
                 <ResourceAttributionBadges attribution={indexedMeta?.attribution} />
               </span>
             </div>
-            <FavoritesProvider initialSavedIds={favoriteIds}>
-              <ResourceActions
-                resource={{
-                  driveFileId: fileId,
-                  resourceName: meta.name,
-                  resourcePath,
-                  mimeType: meta.mimeType,
-                  sourceLabel: indexedMeta?.attribution?.sources[0]?.shortLabel,
-                  resourceTypeLabel:
-                    indexedMeta?.attribution?.resourceType?.displayName,
-                }}
-                downloadHref={
-                  !meta.isFolder && !isPdf
-                    ? `/api/files/${fileId}/download`
-                    : undefined
+            <Suspense fallback={<ResourceActionsFallback />}>
+              <ResourceActionsWithFavorite
+                userId={user.id}
+                fileId={fileId}
+                resourceName={meta.name}
+                resourcePath={resourcePath}
+                mimeType={meta.mimeType}
+                isPdf={isPdf}
+                sourceLabel={indexedMeta?.attribution?.sources[0]?.shortLabel}
+                resourceTypeLabel={
+                  indexedMeta?.attribution?.resourceType?.displayName
                 }
-                initialSaved={favoriteIds.includes(fileId)}
               />
-            </FavoritesProvider>
+            </Suspense>
           </div>
         </div>
         {!meta.isFolder && (
