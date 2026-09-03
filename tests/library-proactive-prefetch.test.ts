@@ -29,11 +29,13 @@ describe('Library proactive loading', () => {
     expect(route).toContain("'Cache-Control': 'no-store'");
   });
 
-  it('warms the Library root from normal authenticated navigation without looping inside Library', () => {
+  it('warms the Library root from normal authenticated navigation and the signed-in homepage', () => {
     const nav = read('components/nav.tsx');
+    const home = read('app/page.tsx');
     const warmup = read('components/library-route-warmup.tsx');
 
     expect(nav).toContain('<LibraryRouteWarmup />');
+    expect(home).toContain('{isSignedIn ? <LibraryRouteWarmup /> : null}');
     expect(warmup).toContain("pathname.startsWith('/library')");
     expect(warmup).toContain("router.prefetch('/library')");
     expect(warmup).toContain("fetch('/api/library/warm'");
