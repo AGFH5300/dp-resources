@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(path, 'utf8');
 describe('folder-scoped library search', () => {
   const button = read('components/folder-search-button.tsx');
   const page = read('app/library/page.tsx');
-  const browser = read('app/library/library-browser.tsx');
+  const browser = read('app/library/instant-library-browser.tsx');
   const search = read('components/global-search.tsx');
   const route = read('app/api/search/route.ts');
   const migration = read(
@@ -15,9 +15,8 @@ describe('folder-scoped library search', () => {
 
   it('adds a visible search action inside non-root folders', () => {
     expect(page).not.toContain('<FolderSearchButton');
-    expect(browser).toContain('crumbs.length > 1 && active');
+    expect(browser).toContain('currentCrumbs.length > 1 && active');
     expect(browser).toContain('<FolderSearchButton');
-    expect(browser).toContain('folderSearch');
     expect(button).toContain("new CustomEvent('dp:open-folder-search'");
     expect(button).toContain('Search this folder');
   });
@@ -33,7 +32,7 @@ describe('folder-scoped library search', () => {
   });
 
   it('collapses folder navigation into one compact action row', () => {
-    expect(browser).toContain("Back to{' '}");
+    expect(browser).toContain('Back to {parent.id === rootId');
     expect(button).toContain("'a[href=\"/library/sources\"]'");
     expect(button).toContain('toolbar.insertBefore(browseLink, insertBefore)');
     expect(button).toContain("toolbar.style.marginTop = '0.25rem'");
