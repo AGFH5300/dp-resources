@@ -6,12 +6,15 @@ import { getResourceAttributionMap } from './content-attribution';
 
 export type IndexedResourceShell = DriveItem & { path?: string };
 
+type HotShell = {
+  value: IndexedResourceShell;
+  expiresAt: number;
+  full: boolean;
+};
+
 const HOT_TTL_MS = 90_000;
 const HOT_MAX = 768;
-const hotShells = new Map<
-  string,
-  { value: IndexedResourceShell; expiresAt: number }
->();
+const hotShells = new Map<string, HotShell>();
 
 function syncComplete(state: any) {
   return (
@@ -58,7 +61,7 @@ function shellFromRow(
   };
 }
 
-function readHot(fileId: string) {
+function readHot(fileId: string): HotShell | null {
   const hit = hotShells.get(fileId);
   if (!hit) return null;
   if (hit.expiresAt <= Date.now()) {
@@ -68,13 +71,14 @@ function readHot(fileId: string) {
   // Refresh recency so the map behaves like a tiny LRU.
   hotShells.delete(fileId);
   hotShells.set(fileId, hit);
-  return hit.value;
+  return hit;
 }
 
-function writeHot(value: IndexedResourceShell) {
+function writeHot(value: IndexedResourceShell, full: boolean) {
   hotShells.delete(value.id);
   hotShells.set(value.id, {
     value,
+    full,
     expiresAt: Date.now() + HOT_TTL_MS,
   });
   while (hotShells.size > HOT_MAX) {
@@ -90,10 +94,29 @@ export function primeIndexedResourceShellRows(
 ) {
   for (const row of rows) {
     if (row.is_folder) continue;
-    writeHot({
-      ...shellFromRow(row),
-      attribution: attribution.get(row.drive_file_id),
-    });
+    writeHot(
+      {
+        ...shellFromRow(row),
+        attribution: attribution.get(row.drive_file_id),
+      },
+      true,
+    );
+  }
+}
+
+export function primeIndexedResourceShellItems(items: DriveItem[]) {
+  for (const item of items) {
+    if (item.isFolder) continue;
+    const existing = readHot(item.id);
+    writeHot(
+      {
+        ...existing?.value,
+        ...item,
+        path: item.path || existing?.value.path,
+        attribution: item.attribution ?? existing?.value.attribution,
+      },
+      true,
+    );
   }
 }
 
@@ -119,9 +142,9 @@ export async function getIndexedResourceCore(
   fileId: string,
 ): Promise<IndexedResourceShell | null> {
   const hot = readHot(fileId);
-  if (hot) return hot;
+  if (hot) return hot.value;
   const core = await getIndexedResourceCoreCached(fileId);
-  if (core) writeHot(core);
+  if (core) writeHot(core, false);
   return core;
 }
 
@@ -143,8 +166,8 @@ export async function getIndexedResourceShell(
   fileId: string,
 ): Promise<IndexedResourceShell | null> {
   const hot = readHot(fileId);
-  if (hot?.attribution) return hot;
+  if (hot?.full) return hot.value;
   const shell = await getIndexedResourceShellCached(fileId);
-  if (shell) writeHot(shell);
+  if (shell) writeHot(shell, true);
   return shell;
 }
