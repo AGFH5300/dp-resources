@@ -11,11 +11,34 @@ describe('resource open performance', () => {
     expect(indexedResource).toContain('const hotShells = new Map');
     expect(indexedResource).toContain('primeIndexedResourceShellRows');
     expect(indexedResource).toContain('primeIndexedResourceShellItems');
-    expect(indexedResource).toContain("['indexed-resource-core-v2']");
-    expect(indexedResource).toContain("['indexed-resource-shell-v2']");
-    expect(indexedFolder).toContain('primeIndexedResourceShellRows(allRows, attribution)');
-    expect(indexedFolder).toContain('primeIndexedResourceShellItems([');
-    expect(indexedFolder).toContain("['indexed-folder-window-v2']");
+    expect(indexedResource).toContain("['indexed-resource-core-v3']");
+    expect(indexedResource).toContain("['indexed-resource-shell-v3']");
+    expect(indexedFolder).toContain(
+      'primeIndexedResourceShellRows(allRows, attribution, indexRevision)',
+    );
+    expect(indexedFolder).toContain('primeIndexedResourceShellItems(');
+    expect(indexedFolder).toContain("['indexed-folder-window-v3']");
+  });
+
+  it('binds all hot/cached resource authorization to a fresh completed index revision', () => {
+    const indexedResource = read('lib/indexed-resource.ts');
+    const indexedFolder = read('lib/indexed-folder-view.ts');
+
+    expect(indexedResource).toContain('getResourceIndexSnapshot');
+    expect(indexedResource).toContain(".select('status,completed_at,folder_queue')");
+    expect(indexedResource).not.toContain('indexed-resource-ready-v1');
+    expect(indexedResource).toContain('hit.revision !== revision');
+    expect(indexedResource).toContain('readHot(fileId, snapshot.revision)');
+    expect(indexedResource).toContain(
+      'getIndexedResourceCoreCached(fileId, snapshot.revision)',
+    );
+    expect(indexedResource).toContain(
+      'getIndexedResourceShellCached(fileId, snapshot.revision)',
+    );
+    expect(indexedFolder).toContain('getResourceIndexSnapshot()');
+    expect(indexedFolder).toContain(
+      'getIndexedFolderWindowCached(folderId, snapshot.revision)',
+    );
   });
 
   it('does not wait on Google Drive breadcrumbs or favourite state before starting the resource page', () => {
@@ -42,13 +65,13 @@ describe('resource open performance', () => {
     }
   });
 
-  it('shows an immediate resource-specific transition shell', () => {
+  it('shows an immediate generic transition shell without exposing prior-user resource metadata', () => {
     const loading = read('app/resource/[fileId]/loading.tsx');
-    const identity = read('app/resource/[fileId]/resource-loading-identity.tsx');
 
-    expect(loading).toContain('<ResourceLoadingIdentity />');
     expect(loading).toContain('aria-busy="true"');
-    expect(identity).toContain("localStorage.getItem('dp_recent')");
-    expect(identity).toContain('Opening resource');
+    expect(loading).toContain('Opening resource');
+    expect(loading).not.toContain('localStorage');
+    expect(loading).not.toContain('dp_recent');
+    expect(loading).not.toContain('ResourceLoadingIdentity');
   });
 });
