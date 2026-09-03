@@ -67,6 +67,13 @@ function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function activityUserCell(target: EventTarget | null) {
+  if (!(target instanceof Element)) return null;
+  return target.closest<HTMLTableCellElement>(
+    'td[data-dp-activity-user-link="true"]',
+  );
+}
+
 export function AdminActivityUserLinksBridge() {
   const pathname = usePathname();
   const router = useRouter();
@@ -108,62 +115,88 @@ export function AdminActivityUserLinksBridge() {
         const email = cell.textContent?.trim() || '';
         if (!isEmail(email)) return;
 
+        // Only annotate React-owned DOM. Never replace/remove its children: doing
+        // so can make React later try to remove a node that is no longer there.
         cell.dataset.dpActivityUserLink = 'true';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = email;
-        button.className =
-          'text-left font-medium text-[color:var(--dp-blue)] hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--dp-blue)] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60';
-        button.title = `View resource analytics for ${email}`;
-        button.setAttribute('aria-label', `View resource analytics for ${email}`);
-
-        button.addEventListener('click', async () => {
-          if (button.disabled) return;
-          button.disabled = true;
-          try {
-            const response = await fetch(
-              `/api/admin/users/search?q=${encodeURIComponent(email)}`,
-              { cache: 'no-store' },
-            );
-            const payload = await response.json().catch(() => ({ users: [] }));
-            if (!response.ok) throw new Error('User lookup failed');
-            const users = Array.isArray(payload.users)
-              ? (payload.users as UserLookupResult[])
-              : [];
-            const user = users.find(
-              (candidate) =>
-                candidate.email?.trim().toLowerCase() === email.toLowerCase(),
-            );
-            if (!user?.id) throw new Error('User not found');
-
-            const liveSearch = window.location.search.replace(/^\?/, '');
-            const liveReturnUrl = `${pathname}${window.location.search}`;
-            const stored: StoredReturn = {
-              url: liveReturnUrl,
-              createdAt: Date.now(),
-            };
-            window.sessionStorage.setItem(RETURN_KEY, JSON.stringify(stored));
-            router.push(
-              buildActivityUserModalUrl(pathname, liveSearch, user.id),
-            );
-          } catch (error) {
-            console.error('Could not open Activity user analytics.', error);
-            toast.error('Could not open this user’s resource analytics.');
-            button.disabled = false;
-          }
-        });
-
-        cell.replaceChildren(button);
+        cell.tabIndex = 0;
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('aria-label', `View resource analytics for ${email}`);
+        cell.title = `View resource analytics for ${email}`;
+        cell.classList.add(
+          'cursor-pointer',
+          'text-[color:var(--dp-blue)]',
+          'hover:underline',
+          'focus-visible:outline-none',
+          'focus-visible:ring-2',
+          'focus-visible:ring-[color:var(--dp-blue)]',
+          'focus-visible:ring-inset',
+        );
       });
+    };
+
+    const openCell = async (cell: HTMLTableCellElement) => {
+      if (cell.dataset.dpActivityUserBusy === 'true') return;
+      const email = cell.textContent?.trim() || '';
+      if (!isEmail(email)) return;
+
+      cell.dataset.dpActivityUserBusy = 'true';
+      cell.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch(
+          `/api/admin/users/search?q=${encodeURIComponent(email)}`,
+          { cache: 'no-store' },
+        );
+        const payload = await response.json().catch(() => ({ users: [] }));
+        if (!response.ok) throw new Error('User lookup failed');
+        const users = Array.isArray(payload.users)
+          ? (payload.users as UserLookupResult[])
+          : [];
+        const user = users.find(
+          (candidate) =>
+            candidate.email?.trim().toLowerCase() === email.toLowerCase(),
+        );
+        if (!user?.id) throw new Error('User not found');
+
+        const liveSearch = window.location.search.replace(/^\?/, '');
+        const liveReturnUrl = `${pathname}${window.location.search}`;
+        const stored: StoredReturn = {
+          url: liveReturnUrl,
+          createdAt: Date.now(),
+        };
+        window.sessionStorage.setItem(RETURN_KEY, JSON.stringify(stored));
+        router.push(buildActivityUserModalUrl(pathname, liveSearch, user.id));
+      } catch (error) {
+        console.error('Could not open Activity user analytics.', error);
+        toast.error('Could not open this user’s resource analytics.');
+        cell.dataset.dpActivityUserBusy = 'false';
+        cell.removeAttribute('aria-busy');
+      }
+    };
+
+    const onClick = (event: MouseEvent) => {
+      const cell = activityUserCell(event.target);
+      if (!cell) return;
+      void openCell(cell);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const cell = activityUserCell(event.target);
+      if (!cell) return;
+      event.preventDefault();
+      void openCell(cell);
     };
 
     enhance();
     const observer = new MutationObserver(enhance);
     observer.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKeyDown);
 
     return () => {
       disposed = true;
       observer.disconnect();
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, [pathname, router, search]);
 
