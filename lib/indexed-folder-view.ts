@@ -171,10 +171,10 @@ const getIndexedFolderWindowCached = unstable_cache(
     }
 
     const childRows = (childData || []) as ResourceIndex[];
-    const prefetchFolderIds = childRows
+    const currentFolderIds = childRows
       .filter((row) => row.is_folder)
-      .slice(0, MAX_PREFETCH_FOLDERS)
       .map((row) => row.drive_file_id);
+    const prefetchFolderIds = currentFolderIds.slice(0, MAX_PREFETCH_FOLDERS);
 
     const grandchildrenPromise = prefetchFolderIds.length
       ? sb
@@ -190,16 +190,12 @@ const getIndexedFolderWindowCached = unstable_cache(
     const grandchildRows = (grandchildData || []) as ResourceIndex[];
     const allRows = [...childRows, ...grandchildRows];
     const allIds = [...new Set(allRows.map((row) => row.drive_file_id))];
-    const allFolderIds = [
-      ...new Set(
-        allRows
-          .filter((row) => row.is_folder)
-          .map((row) => row.drive_file_id),
-      ),
-    ];
 
+    // Folder-size aggregation is the expensive descendant scan. Keep it scoped
+    // to the rows the user can see now; a child window will calculate its own
+    // visible folder sizes when that window is hydrated.
     const [folderSummaries, featured, attribution] = await Promise.all([
-      getIndexedFolderSizeSummaries(allFolderIds, { indexReady: true }),
+      getIndexedFolderSizeSummaries(currentFolderIds, { indexReady: true }),
       getFeaturedResourceMap(allIds),
       getResourceAttributionMap(allIds),
     ]);
