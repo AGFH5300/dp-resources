@@ -3,11 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
-import {
-  assertInsideRoot,
-  breadcrumbsToRoot,
-  getDriveMetadata,
-} from '@/lib/drive';
+import { assertInsideRoot, getDriveMetadata } from '@/lib/drive';
 import { getIndexedResourceShell } from '@/lib/indexed-resource';
 import { typeLabel } from '@/lib/resource-utils';
 import { ResourceActions } from '@/components/resource-actions';
@@ -22,47 +18,83 @@ import { ResourceAttributionBadges } from '@/components/content-source-badge';
 
 export const metadata: Metadata = privatePageMetadata('Resource');
 
+function indexedFolderNames(path: string | undefined, resourceName: string) {
+  const parts = String(path || '')
+    .split(' / ')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts[0] === 'Library') parts.shift();
+  if (parts.at(-1) === resourceName) parts.pop();
+  return parts;
+}
+
+function NotFound({
+  admin,
+  email,
+  userId,
+}: {
+  admin: boolean;
+  email?: string | null;
+  userId?: string | null;
+}) {
+  return (
+    <>
+      <Nav admin={admin} email={email} userId={userId} />
+      <main className="p-8">Not found</main>
+    </>
+  );
+}
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ fileId: string }>;
 }) {
-  const { user, membership } = await requireMember();
-  const { fileId } = await params;
-  const indexedMeta = await getIndexedResourceShell(fileId);
-  const insideRoot = indexedMeta ? true : await assertInsideRoot(fileId);
-  if (!insideRoot)
-    return (
-      <>
-        <Nav
+  const [{ user, membership }, { fileId }] = await Promise.all([
+    requireMember(),
+    params,
+  ]);
+
+  // The Library has usually primed this exact shell already. Start the only
+  // user-specific query in parallel so it does not sit behind resource lookup.
+  const [indexedMeta, favoriteSet] = await Promise.all([
+    getIndexedResourceShell(fileId),
+    getFavoriteIdSet(user.id, [fileId]),
+  ]);
+
+  let meta = indexedMeta;
+  if (!meta) {
+    const [insideRoot, driveMeta] = await Promise.all([
+      assertInsideRoot(fileId),
+      getDriveMetadata(fileId),
+    ]);
+    if (!insideRoot || !driveMeta)
+      return (
+        <NotFound
           admin={membership.role === 'admin'}
           email={membership.email}
           userId={membership.id}
         />
-        <main className="p-8">Not found</main>
-      </>
-    );
-  const meta = indexedMeta || (await getDriveMetadata(fileId));
+      );
+    meta = driveMeta;
+  }
+
   if (!meta)
     return (
-      <>
-        <Nav
-          admin={membership.role === 'admin'}
-          email={membership.email}
-          userId={membership.id}
-        />
-        <main className="p-8">Not found</main>
-      </>
+      <NotFound
+        admin={membership.role === 'admin'}
+        email={membership.email}
+        userId={membership.id}
+      />
     );
-  const favoriteIds = Array.from<string>(
-    await getFavoriteIdSet(user.id, [fileId]),
-  );
-  const crumbs = await breadcrumbsToRoot(fileId).catch(() => []);
-  const folderCrumbs = crumbs.filter((crumb) => crumb.isFolder);
+
+  const favoriteIds = Array.from<string>(favoriteSet);
   const resourcePath = indexedMeta?.path || 'Library';
+  const folderNames = indexedFolderNames(indexedMeta?.path, meta.name);
   const isPdf =
     meta.mimeType === 'application/pdf' ||
     meta.name.toLowerCase().endsWith('.pdf');
+
   return (
     <>
       <Nav
@@ -82,15 +114,13 @@ export default async function Page({
             >
               Library
             </Link>
-            {folderCrumbs.slice(1).map((crumb) => (
-              <span key={crumb.id} className="inline-flex items-center gap-1">
+            {folderNames.map((folderName, index) => (
+              <span
+                key={`${folderName}-${index}`}
+                className="inline-flex items-center gap-1"
+              >
                 <span>/</span>
-                <Link
-                  href={`/library?folder=${encodeURIComponent(crumb.id)}`}
-                  className="font-medium text-[color:var(--dp-blue)] hover:underline"
-                >
-                  {crumb.name}
-                </Link>
+                <span className="font-medium">{folderName}</span>
               </span>
             ))}
             <span>/</span>
@@ -118,7 +148,8 @@ export default async function Page({
                   resourcePath,
                   mimeType: meta.mimeType,
                   sourceLabel: indexedMeta?.attribution?.sources[0]?.shortLabel,
-                  resourceTypeLabel: indexedMeta?.attribution?.resourceType?.displayName,
+                  resourceTypeLabel:
+                    indexedMeta?.attribution?.resourceType?.displayName,
                 }}
                 downloadHref={
                   !meta.isFolder && !isPdf
