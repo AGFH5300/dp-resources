@@ -10,19 +10,25 @@ describe('resource open performance', () => {
 
     expect(indexedResource).toContain('const hotShells = new Map');
     expect(indexedResource).toContain('primeIndexedResourceShellRows');
+    expect(indexedResource).toContain('primeIndexedResourceShellItems');
     expect(indexedResource).toContain("['indexed-resource-core-v2']");
     expect(indexedResource).toContain("['indexed-resource-shell-v2']");
     expect(indexedFolder).toContain('primeIndexedResourceShellRows(allRows, attribution)');
+    expect(indexedFolder).toContain('primeIndexedResourceShellItems([');
+    expect(indexedFolder).toContain("['indexed-folder-window-v2']");
   });
 
-  it('does not wait on Google Drive breadcrumbs for normal indexed resource pages', () => {
+  it('does not wait on Google Drive breadcrumbs or favourite state before starting the resource page', () => {
     const page = read('app/resource/[fileId]/page.tsx');
 
     expect(page).not.toContain('breadcrumbsToRoot');
-    expect(page).toContain('Promise.all([');
     expect(page).toContain('getIndexedResourceShell(fileId)');
-    expect(page).toContain('getFavoriteIdSet(user.id, [fileId])');
     expect(page).toContain('indexedFolderNames(indexedMeta?.path, meta.name)');
+    expect(page).toContain('<Suspense fallback={<ResourceActionsFallback />}');
+    expect(page).toContain('getFavoriteIdSet(userId,[fileId])');
+    expect(page.indexOf('getIndexedResourceShell(fileId)')).toBeGreaterThan(
+      page.indexOf('Promise.all(['),
+    );
   });
 
   it('uses the light indexed core for preview authorization and parallelizes validation', () => {
