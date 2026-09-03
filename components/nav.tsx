@@ -1,4 +1,5 @@
 import { AppHeader } from './app-header';
+import { LibraryRouteWarmup } from './library-route-warmup';
 
 // AppTopbar retired; integrated header owns "Search the library" via dp:open-search and var(--dp-navy) visual tokens.
 export function Nav({
@@ -9,5 +10,10 @@ export function Nav({
   email?: string | null;
   userId?: string | null;
 }) {
-  return <AppHeader admin={admin} userId={userId} />;
+  return (
+    <>
+      <LibraryRouteWarmup />
+      <AppHeader admin={admin} userId={userId} />
+    </>
+  );
 }
