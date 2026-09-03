@@ -21,25 +21,19 @@ describe('folder-scoped library search', () => {
     expect(button).toContain('Search this folder');
   });
 
-  it('keeps folder actions aligned and dismisses Filter when clicking outside', () => {
-    expect(button).toContain("toolbar.insertBefore(backLink, toolbar.firstChild)");
-    expect(button).toContain("browseLink.style.marginRight = desktop ? 'auto' : '0.75rem'");
-    expect(button).toContain("actionGroup.style.marginLeft = '0'");
-    expect(button).toContain("document.addEventListener('pointerdown', handlePointerDown)");
-    expect(button).toContain("filterButton?.getAttribute('aria-expanded') !== 'true'");
-    expect(button).toContain("target.closest('.dp-select-content')");
-    expect(button).toContain("event.key === 'Escape'");
+  it('keeps folder search declarative instead of moving React-owned DOM nodes', () => {
+    expect(button).not.toContain('useLayoutEffect');
+    expect(button).not.toContain('insertBefore(');
+    expect(button).not.toContain('previousElementSibling');
+    expect(button).not.toContain('MutationObserver');
+    expect(button).not.toContain('nextSibling');
   });
 
-  it('collapses folder navigation into one compact action row', () => {
+  it('keeps Back, Browse by source, Filter and folder search in the Library UI', () => {
     expect(browser).toContain('Back to {parent.id === rootId');
-    expect(button).toContain("'a[href=\"/library/sources\"]'");
-    expect(button).toContain('toolbar.insertBefore(browseLink, insertBefore)');
-    expect(button).toContain("toolbar.style.marginTop = '0.25rem'");
-    expect(button).toContain("titleBlock.style.marginTop = '0.375rem'");
-    expect(button).toContain("contentAfterToolbar.style.marginTop = '0.375rem'");
-    expect(button).not.toContain("backLink.style.position = 'absolute'");
-    expect(button).not.toContain('toolbar.style.paddingLeft');
+    expect(browser).toContain('href="/library/sources"');
+    expect(browser).toContain('Filters');
+    expect(browser).toContain('<FolderSearchButton');
   });
 
   it('opens the shared search dialog with the current folder scope', () => {
