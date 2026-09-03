@@ -7,6 +7,18 @@ import { getFeaturedResourceMap } from './featured-resources';
 import { getIndexedFolderSizeSummaries } from './folder-summaries';
 import { getResourceAttributionMap } from './content-attribution';
 
+const MAX_PREFETCH_FOLDERS = 32;
+
+type IndexedFolderView = {
+  items: DriveItem[];
+  crumbs: DriveItem[];
+};
+
+export type IndexedFolderWindow = {
+  view: IndexedFolderView;
+  prefetched: Record<string, DriveItem[]>;
+};
+
 function toDriveItem(row: ResourceIndex): DriveItem {
   return {
     id: row.drive_file_id,
@@ -27,19 +39,113 @@ function syncComplete(state: any) {
   );
 }
 
-const getIndexedFolderViewCached = unstable_cache(
-  async (folderId: string) => {
+const indexReadyCached = unstable_cache(
+  async () => {
     const sb = createSupabaseAdminClient();
     const { data: state } = await sb
       .from('dp_resource_index_sync_state')
       .select('status,completed_at,folder_queue')
       .limit(1)
       .maybeSingle();
-    if (!syncComplete(state)) return null;
+    return syncComplete(state);
+  },
+  ['resource-index-ready-v1'],
+  { revalidate: 30 },
+);
 
+function rootCrumb(): DriveItem {
+  return {
+    id: rootFolderId(),
+    name: 'Library',
+    mimeType: 'application/vnd.google-apps.folder',
+    isFolder: true,
+  };
+}
+
+async function getCrumbs(
+  sb: ReturnType<typeof createSupabaseAdminClient>,
+  folderRow: ResourceIndex | null,
+) {
+  const crumbs: DriveItem[] = [rootCrumb()];
+  if (!folderRow) return crumbs;
+
+  const parts = String(folderRow.path || '')
+    .split(' / ')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts[0] !== 'Library') {
+    crumbs.push(toDriveItem(folderRow));
+    return crumbs;
+  }
+
+  const paths: string[] = [];
+  let path = 'Library';
+  for (const part of parts.slice(1)) {
+    path += ` / ${part}`;
+    paths.push(path);
+  }
+  if (!paths.length) return crumbs;
+
+  const { data, error } = await sb
+    .from('dp_resource_index')
+    .select('*')
+    .eq('is_folder', true)
+    .in('path', paths);
+  if (error || !data?.length) {
+    crumbs.push(toDriveItem(folderRow));
+    return crumbs;
+  }
+
+  const byPath = new Map(
+    (data as ResourceIndex[]).map((row) => [row.path, row] as const),
+  );
+  for (const ancestorPath of paths) {
+    const row = byPath.get(ancestorPath);
+    if (row) crumbs.push(toDriveItem(row));
+  }
+  if (crumbs.at(-1)?.id !== folderRow.drive_file_id) {
+    crumbs.push(toDriveItem(folderRow));
+  }
+  return crumbs;
+}
+
+function decorateRows(
+  rows: ResourceIndex[],
+  folderSummaries: Map<string, number>,
+  featured: Awaited<ReturnType<typeof getFeaturedResourceMap>>,
+  attribution: Awaited<ReturnType<typeof getResourceAttributionMap>>,
+) {
+  return rows
+    .map((row) => {
+      const hit = featured.get(row.drive_file_id);
+      const base = toDriveItem(row);
+      base.attribution = attribution.get(row.drive_file_id);
+      const withSize =
+        row.is_folder && folderSummaries.has(row.drive_file_id)
+          ? { ...base, estimatedSize: folderSummaries.get(row.drive_file_id) }
+          : base;
+      return hit
+        ? {
+            ...withSize,
+            featuredLabel: hit.label,
+            featuredPriority: hit.priority,
+          }
+        : withSize;
+    })
+    .sort(
+      (a, b) =>
+        Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name),
+    );
+}
+
+const getIndexedFolderWindowCached = unstable_cache(
+  async (folderId: string): Promise<IndexedFolderWindow | null> => {
+    if (!(await indexReadyCached())) return null;
+
+    const sb = createSupabaseAdminClient();
     const folderRowPromise =
       folderId === rootFolderId()
-        ? Promise.resolve({ data: null, error: null } as any)
+        ? Promise.resolve({ data: null, error: null } as const)
         : sb
             .from('dp_resource_index')
             .select('*')
@@ -52,89 +158,78 @@ const getIndexedFolderViewCached = unstable_cache(
       .eq('parent_drive_file_id', folderId)
       .order('is_folder', { ascending: false })
       .order('name');
-    const [{ data: folderRow }, { data: rows, error }] = await Promise.all([
-      folderRowPromise,
-      childrenPromise,
-    ]);
+
+    const [{ data: folderData, error: folderError }, { data: childData, error }] =
+      await Promise.all([folderRowPromise, childrenPromise]);
+    const folderRow = (folderData as ResourceIndex | null) ?? null;
     if (
       error ||
-      (folderId !== rootFolderId() && !folderRow) ||
-      (!rows?.length && folderId !== rootFolderId() && !folderRow)
-    )
+      folderError ||
+      (folderId !== rootFolderId() && !folderRow)
+    ) {
       return null;
-
-    const crumbs: DriveItem[] = [
-      {
-        id: rootFolderId(),
-        name: 'Library',
-        mimeType: 'application/vnd.google-apps.folder',
-        isFolder: true,
-      },
-    ];
-
-    if (folderRow) {
-      const chain: ResourceIndex[] = [];
-      let current: ResourceIndex | null = folderRow as ResourceIndex;
-      while (
-        current &&
-        current.drive_file_id !== rootFolderId() &&
-        chain.length < 25
-      ) {
-        chain.unshift(current);
-        if (
-          !current.parent_drive_file_id ||
-          current.parent_drive_file_id === rootFolderId()
-        )
-          break;
-        const parentId: string = current.parent_drive_file_id;
-        const parentQuery = sb
-          .from('dp_resource_index')
-          .select('*')
-          .eq('drive_file_id', parentId)
-          .maybeSingle();
-        const { data: parentData } = await parentQuery;
-        current = (parentData as ResourceIndex | null) ?? null;
-      }
-      for (const row of chain) crumbs.push(toDriveItem(row));
     }
 
-    const childRows = (rows || []) as ResourceIndex[];
-    const childIds = childRows.map((row) => row.drive_file_id);
-    const folderIds = childRows.filter((r) => r.is_folder).map((r) => r.drive_file_id);
+    const childRows = (childData || []) as ResourceIndex[];
+    const prefetchFolderIds = childRows
+      .filter((row) => row.is_folder)
+      .slice(0, MAX_PREFETCH_FOLDERS)
+      .map((row) => row.drive_file_id);
+
+    const grandchildrenPromise = prefetchFolderIds.length
+      ? sb
+          .from('dp_resource_index')
+          .select('*')
+          .in('parent_drive_file_id', prefetchFolderIds)
+      : Promise.resolve({ data: [], error: null } as const);
+    const crumbsPromise = getCrumbs(sb, folderRow);
+    const [{ data: grandchildData }, crumbs] = await Promise.all([
+      grandchildrenPromise,
+      crumbsPromise,
+    ]);
+    const grandchildRows = (grandchildData || []) as ResourceIndex[];
+    const allRows = [...childRows, ...grandchildRows];
+    const allIds = [...new Set(allRows.map((row) => row.drive_file_id))];
+    const allFolderIds = [
+      ...new Set(
+        allRows
+          .filter((row) => row.is_folder)
+          .map((row) => row.drive_file_id),
+      ),
+    ];
 
     const [folderSummaries, featured, attribution] = await Promise.all([
-      getIndexedFolderSizeSummaries(folderIds),
-      getFeaturedResourceMap(childIds),
-      getResourceAttributionMap(childIds),
+      getIndexedFolderSizeSummaries(allFolderIds, { indexReady: true }),
+      getFeaturedResourceMap(allIds),
+      getResourceAttributionMap(allIds),
     ]);
 
-    const items = childRows
-      .map((row) => {
-        const hit = featured.get(row.drive_file_id);
-        const base = toDriveItem(row);
-        base.attribution = attribution.get(row.drive_file_id);
-        const withSize =
-          row.is_folder && folderSummaries.has(row.drive_file_id)
-            ? { ...base, estimatedSize: folderSummaries.get(row.drive_file_id) }
-            : base;
-        return hit
-          ? {
-              ...withSize,
-              featuredLabel: hit.label,
-              featuredPriority: hit.priority,
-            }
-          : withSize;
-      })
-      .sort(
-        (a, b) =>
-          Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name),
+    const view = {
+      items: decorateRows(childRows, folderSummaries, featured, attribution),
+      crumbs,
+    };
+    const prefetched: Record<string, DriveItem[]> = {};
+    for (const prefetchedFolderId of prefetchFolderIds) {
+      prefetched[prefetchedFolderId] = decorateRows(
+        grandchildRows.filter(
+          (row) => row.parent_drive_file_id === prefetchedFolderId,
+        ),
+        folderSummaries,
+        featured,
+        attribution,
       );
-    return { items, crumbs };
+    }
+
+    return { view, prefetched };
   },
-  ['indexed-folder-view-v2'],
+  ['indexed-folder-window-v1'],
   { revalidate: 60 },
 );
 
+export async function getIndexedFolderWindow(folderId = rootFolderId()) {
+  return getIndexedFolderWindowCached(folderId);
+}
+
 export async function getIndexedFolderView(folderId = rootFolderId()) {
-  return getIndexedFolderViewCached(folderId);
+  return (await getIndexedFolderWindow(folderId))?.view ?? null;
 }
