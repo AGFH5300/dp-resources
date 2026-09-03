@@ -1,6 +1,7 @@
 import './globals.css';
 import { AppToaster } from '@/components/sonner-provider';
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import { GlobalSearch } from '@/components/global-search';
 import { SiteFooter } from '@/components/site-footer';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
@@ -108,15 +109,19 @@ html[data-theme='dark'] .bg-blue-50.text-blue-950 .text-blue-900 {
 }
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Reading the request nonce opts the App Router tree into dynamic rendering,
+  // which is required for a fresh nonce to reach every rendered page.
+  const nonce = (await headers()).get('x-nonce') || undefined;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
         <style dangerouslySetInnerHTML={{ __html: questionBankAdminContrast }} />
       </head>
       <body>

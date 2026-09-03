@@ -37,6 +37,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/next.config.* ./
 
+# Next.js may update runtime cache files under .next. Keep the existing image
+# layout intact, but give only that application-owned tree to the runtime user.
+RUN chown -R node:node /app/.next
+USER node
+
 EXPOSE 10000
 
 CMD ["sh", "-c", "npm run start -- -H 0.0.0.0 -p ${PORT:-10000}"]
