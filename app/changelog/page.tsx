@@ -17,6 +17,18 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-03-library-proactive-loading',
+    summary:
+      'Made the Resource Library feel much faster by warming the Library before it is opened, preloading likely next folders in the background, and showing an immediate compact loading state instead of leaving users wondering whether a click worked.',
+    date: '2026-09-03T05:20:00.000Z',
+  },
+  {
+    id: 'release-2026-09-03-library-hydration-reliability',
+    summary:
+      'Fixed an intermittent first-load Library failure caused by server and browser date rendering differences, and reduced folder wait time with cached indexed folder views and parallel metadata loading.',
+    date: '2026-09-03T04:55:00.000Z',
+  },
+  {
     id: 'release-2026-08-24-question-bank-topic-dedupe',
     summary:
       'Fixed duplicate Question Bank topics and subtopics across subjects by normalizing provider and syllabus prefixes consistently, including coded and lettered topic labels.',
