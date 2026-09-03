@@ -111,11 +111,10 @@ describe('remaining library regressions repair', () => {
   it('visible-folder batching and no-estimate behavior are preserved', () => {
     const indexed = read('lib/indexed-folder-view.ts');
     const summaries = read('lib/folder-summaries.ts');
-    expect(indexed.includes('const visibleFolderIds = childRows')).toBe(true);
-    expect(indexed.includes('getIndexedFolderSizeSummaries(visibleFolderIds')).toBe(
-      true,
-    );
-    expect(summaries.includes('new Map<string, number>()')).toBe(true);
-    expect(summaries.includes('if (total > 0) result.set')).toBe(true);
+    expect(indexed).toContain('const currentFolderIds = childRows');
+    expect(indexed).toContain('getIndexedFolderSizeSummaries(currentFolderIds');
+    expect(indexed).toContain('visible folder sizes when that window is hydrated');
+    expect(summaries).toContain('new Map<string, number>()');
+    expect(summaries).toContain('if (total > 0) result.set');
   });
 });
