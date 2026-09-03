@@ -17,6 +17,24 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-03-resource-click-instant-breadcrumbs',
+    summary:
+      'Made Library file clicks respond immediately and restored clickable folder breadcrumbs, so opening a resource no longer appears to pause while its preview starts.',
+    date: '2026-09-03T09:28:47.000Z',
+  },
+  {
+    id: 'release-2026-09-03-resource-open-performance',
+    summary:
+      'Made resource files open significantly faster by reusing Library metadata that is already loaded, starting preview work earlier, and reducing repeated server lookups without weakening access checks.',
+    date: '2026-09-03T09:04:23.000Z',
+  },
+  {
+    id: 'release-2026-09-03-library-instant-navigation',
+    summary:
+      'Made Library folder navigation near-instant with in-place cached transitions, improved Back and Forward navigation, and fixed transition crashes and excessive background loading requests.',
+    date: '2026-09-03T07:15:51.000Z',
+  },
+  {
     id: 'release-2026-09-03-admin-activity-user-links',
     summary:
       'Made user emails in Admin Activity clickable so admins can open the existing user resource-analytics view directly without losing their current Activity filters or page.',
