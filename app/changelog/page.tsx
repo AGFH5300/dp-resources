@@ -17,6 +17,18 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-03-admin-activity-user-links',
+    summary:
+      'Made user emails in Admin Activity clickable so admins can open the existing user resource-analytics view directly without losing their current Activity filters or page.',
+    date: '2026-09-03T05:55:24.000Z',
+  },
+  {
+    id: 'release-2026-09-03-security-low-findings',
+    summary:
+      'Strengthened site security with safer error handling, tighter browser script protections, a non-root production runtime, and pinned build automation dependencies.',
+    date: '2026-09-03T05:55:16.000Z',
+  },
+  {
     id: 'release-2026-09-03-library-proactive-loading',
     summary:
       'Made the Resource Library feel much faster by warming the Library before it is opened, preloading likely next folders in the background, and showing an immediate compact loading state instead of leaving users wondering whether a click worked.',
