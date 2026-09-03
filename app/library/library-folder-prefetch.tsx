@@ -8,6 +8,7 @@ const NEXT_BATCH_SIZE = 4;
 const START_DELAY_MS = 90;
 const NEXT_BATCH_DELAY_MS = 450;
 const warmedFolderIds = new Set<string>();
+const warmingFolderIds = new Set<string>();
 
 type ConnectionInfo = {
   saveData?: boolean;
@@ -36,7 +37,11 @@ export function LibraryFolderPrefetch({
   const pending = useMemo(
     () =>
       [...new Set(folderIds)].filter(
-        (folderId) => folderId && folderId !== rootId && !warmedFolderIds.has(folderId),
+        (folderId) =>
+          folderId &&
+          folderId !== rootId &&
+          !warmedFolderIds.has(folderId) &&
+          !warmingFolderIds.has(folderId),
       ),
     [folderIds, rootId],
   );
@@ -57,19 +62,24 @@ export function LibraryFolderPrefetch({
       cursor += batch.length;
 
       for (const folderId of batch) {
-        warmedFolderIds.add(folderId);
+        warmingFolderIds.add(folderId);
         router.prefetch(`/library?folder=${encodeURIComponent(folderId)}`);
       }
 
       controller = new AbortController();
       try {
-        await fetch('/api/library/warm', {
+        const response = await fetch('/api/library/warm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folderIds: batch }),
           signal: controller.signal,
         });
+        for (const folderId of batch) {
+          warmingFolderIds.delete(folderId);
+          if (response.ok) warmedFolderIds.add(folderId);
+        }
       } catch {
+        for (const folderId of batch) warmingFolderIds.delete(folderId);
         // Navigation still works normally if background warming is unavailable.
       }
 
