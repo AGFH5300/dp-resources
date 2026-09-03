@@ -6,7 +6,7 @@ import {
   isDriveConfigured,
   safeDownloadName,
 } from '@/lib/drive';
-import { getIndexedResourceShell } from '@/lib/indexed-resource';
+import { getIndexedResourceCore } from '@/lib/indexed-resource';
 import { fetchDriveMediaResponse } from '@/lib/media-range';
 import { recordFileOpenedOnce } from '@/lib/activity';
 import { devTiming, etagFor, nowMs, serverTiming } from '@/lib/perf';
@@ -95,33 +95,40 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> },
 ) {
   const authStart = nowMs();
-  const { user } = await requireMember();
+  const [{ user }, { fileId }] = await Promise.all([requireMember(), params]);
   const authMs = nowMs() - authStart;
   if (!isDriveConfigured())
     return new Response('Resources are not yet available', { status: 503 });
-  const { fileId } = await params;
+
   const requestedRange = req.headers.get('range');
   const isRangeRequest = Boolean(requestedRange);
   const rateScope = isRangeRequest
     ? 'resource-content-range'
     : 'resource-content';
-  const limited = await rateLimit(
-    privacySafeRequestKey(req, rateScope),
-    isRangeRequest ? 600 : 120,
-    10 * 60 * 1000,
-    rateScope,
-  );
+
+  const validateStart = nowMs();
+  // Validation work is independent: rate limiting and the indexed shell can be
+  // resolved together instead of serially on every image/document/PDF request.
+  const [limited, indexedMeta] = await Promise.all([
+    rateLimit(
+      privacySafeRequestKey(req, rateScope),
+      isRangeRequest ? 600 : 120,
+      10 * 60 * 1000,
+      rateScope,
+    ),
+    getIndexedResourceCore(fileId),
+  ]);
   if (!limited.ok)
     return new Response('Too many requests. Please try again later.', {
       status: 429,
     });
-  const validateStart = nowMs();
-  const indexedMeta = await getIndexedResourceShell(fileId);
+
   if (!indexedMeta && !(await assertInsideRoot(fileId)))
     return new Response('Not found', { status: 404 });
   const meta = indexedMeta || (await getDriveMetadata(fileId));
   const validateMs = nowMs() - validateStart;
   if (!meta || meta.isFolder) return new Response('Not found', { status: 404 });
+
   const etag = etagFor([fileId, meta.modifiedTime, meta.size]);
   const headers = new Headers({
     etag: etag,
