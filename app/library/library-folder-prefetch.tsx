@@ -52,7 +52,6 @@ export function LibraryFolderPrefetch({
     let cancelled = false;
     let cursor = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let controller: AbortController | null = null;
 
     const warmNextBatch = async () => {
       if (cancelled || cursor >= pending.length) return;
@@ -66,13 +65,12 @@ export function LibraryFolderPrefetch({
         router.prefetch(`/library?folder=${encodeURIComponent(folderId)}`);
       }
 
-      controller = new AbortController();
       try {
         const response = await fetch('/api/library/warm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folderIds: batch }),
-          signal: controller.signal,
+          keepalive: true,
         });
         for (const folderId of batch) {
           warmingFolderIds.delete(folderId);
@@ -93,7 +91,6 @@ export function LibraryFolderPrefetch({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
-      controller?.abort();
     };
   }, [pending, router]);
 
