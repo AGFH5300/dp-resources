@@ -1,5 +1,4 @@
 import { Nav } from '@/components/nav';
-import { ResourceLoadingIdentity } from './resource-loading-identity';
 
 export default function LoadingResource() {
   return (
@@ -12,7 +11,13 @@ export default function LoadingResource() {
       >
         <div className="mb-3 border-b border-slate-200 pb-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <ResourceLoadingIdentity />
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Opening resource
+              </p>
+              <div className="mt-2 h-5 w-52 animate-pulse rounded bg-slate-200" />
+              <div className="mt-2 h-4 w-20 animate-pulse rounded bg-slate-100" />
+            </div>
             <div className="flex gap-2" aria-hidden="true">
               <div className="h-9 w-20 animate-pulse rounded-md bg-slate-200" />
               <div className="h-9 w-20 animate-pulse rounded-md bg-slate-200" />
