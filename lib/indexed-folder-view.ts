@@ -6,9 +6,12 @@ import { rootFolderId } from './drive';
 import { getFeaturedResourceMap } from './featured-resources';
 import { getIndexedFolderSizeSummaries } from './folder-summaries';
 import { getResourceAttributionMap } from './content-attribution';
-import { primeIndexedResourceShellRows } from './indexed-resource';
+import {
+  primeIndexedResourceShellItems,
+  primeIndexedResourceShellRows,
+} from './indexed-resource';
 
-const MAX_PREFETCH_FOLDERS = 32;
+const MAX_PREFETCH_FOLDERS = 64;
 
 type IndexedFolderView = {
   items: DriveItem[];
@@ -28,6 +31,7 @@ function toDriveItem(row: ResourceIndex): DriveItem {
     size: row.size_bytes == null ? undefined : String(row.size_bytes),
     modifiedTime: row.modified_at || undefined,
     isFolder: row.is_folder,
+    path: row.path,
   };
 }
 
@@ -60,6 +64,7 @@ function rootCrumb(): DriveItem {
     name: 'Library',
     mimeType: 'application/vnd.google-apps.folder',
     isFolder: true,
+    path: 'Library',
   };
 }
 
@@ -224,12 +229,22 @@ const getIndexedFolderWindowCached = unstable_cache(
 
     return { view, prefetched };
   },
-  ['indexed-folder-window-v1'],
+  ['indexed-folder-window-v2'],
   { revalidate: 60 },
 );
 
 export async function getIndexedFolderWindow(folderId = rootFolderId()) {
-  return getIndexedFolderWindowCached(folderId);
+  const window = await getIndexedFolderWindowCached(folderId);
+  if (window) {
+    // unstable_cache can satisfy this call without executing its callback. Prime
+    // the process-local resource cache from the cached payload as well, so a
+    // click immediately after any Library render still has a hot file shell.
+    primeIndexedResourceShellItems([
+      ...window.view.items,
+      ...Object.values(window.prefetched).flat(),
+    ]);
+  }
+  return window;
 }
 
 export async function getIndexedFolderView(folderId = rootFolderId()) {
