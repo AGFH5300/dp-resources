@@ -14,6 +14,7 @@ describe('Library proactive loading', () => {
     expect(prefetch).toContain('const NEXT_BATCH_SIZE = 4;');
     expect(prefetch).toContain("fetch('/api/library/warm'");
     expect(prefetch).toContain('router.prefetch(`/library?folder=${encodeURIComponent(folderId)}`)');
+    expect(prefetch).toContain('keepalive: true');
     expect(prefetch).toContain("connection?.effectiveType === '2g'");
     expect(prefetch).toContain('connection?.saveData');
   });
@@ -36,7 +37,9 @@ describe('Library proactive loading', () => {
     expect(warmup).toContain("pathname.startsWith('/library')");
     expect(warmup).toContain("router.prefetch('/library')");
     expect(warmup).toContain("fetch('/api/library/warm'");
+    expect(warmup).toContain('keepalive: true');
     expect(warmup).toContain('const WARM_TTL_MS = 45_000;');
+    expect(warmup).not.toContain('controller.abort()');
   });
 
   it('shows the current compact Library shape immediately while uncached data is loading', () => {
