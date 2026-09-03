@@ -61,6 +61,7 @@ async function ResourceActionsWithFavorite({
   resourceName,
   resourcePath,
   mimeType,
+  isFolder,
   isPdf,
   sourceLabel,
   resourceTypeLabel,
@@ -70,6 +71,7 @@ async function ResourceActionsWithFavorite({
   resourceName: string;
   resourcePath: string;
   mimeType: string;
+  isFolder: boolean;
   isPdf: boolean;
   sourceLabel?: string;
   resourceTypeLabel?: string;
@@ -89,7 +91,7 @@ async function ResourceActionsWithFavorite({
           resourceTypeLabel,
         }}
         downloadHref={
-          !isPdf ? `/api/files/${fileId}/download` : undefined
+          !isFolder && !isPdf ? `/api/files/${fileId}/download` : undefined
         }
         initialSaved={favoriteIds.includes(fileId)}
       />
@@ -194,6 +196,7 @@ export default async function Page({
                 resourceName={meta.name}
                 resourcePath={resourcePath}
                 mimeType={meta.mimeType}
+                isFolder={meta.isFolder}
                 isPdf={isPdf}
                 sourceLabel={indexedMeta?.attribution?.sources[0]?.shortLabel}
                 resourceTypeLabel={
