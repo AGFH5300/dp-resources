@@ -3,10 +3,9 @@ export const dynamic = 'force-dynamic';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { getFolderView, isDriveConfigured, rootFolderId } from '@/lib/drive';
-import { LibraryBrowser } from './library-browser';
-import { LibraryFolderPrefetch } from './library-folder-prefetch';
+import { InstantLibraryBrowser } from './instant-library-browser';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
-import { getIndexedFolderView } from '@/lib/indexed-folder-view';
+import { getIndexedFolderWindow } from '@/lib/indexed-folder-view';
 import { devTiming, nowMs } from '@/lib/perf';
 import { getFavoriteIdSet } from '@/lib/favorites';
 import { FavoritesProvider } from '@/components/favorites-provider';
@@ -19,17 +18,20 @@ export default async function Library({
   const authStart = nowMs();
   const { user, membership } = await requireMember();
   devTiming('library.auth', { ms: nowMs() - authStart });
+
   const sp = await searchParams;
   const folder = sp.folder || rootFolderId();
   const configured = isDriveConfigured();
   const lookupStart = nowMs();
-  const indexed = configured ? await getIndexedFolderView(folder) : null;
+  const indexedWindow = configured ? await getIndexedFolderWindow(folder) : null;
+  const indexed = indexedWindow?.view ?? null;
   const live = !indexed && configured ? await getFolderView(folder) : null;
   const { items, crumbs } = indexed || live || { items: [], crumbs: [] };
   devTiming('library.folder_lookup', {
     ms: nowMs() - lookupStart,
     source: indexed ? 'index' : 'drive',
   });
+
   const featuredStart = nowMs();
   const featured = indexed
     ? new Map()
@@ -46,11 +48,15 @@ export default async function Library({
             }
           : item;
       });
-  const favoriteIds = Array.from<string>(
-    await getFavoriteIdSet(
-      user.id,
-      displayItems.map((item) => item.id),
+  const prefetchedFolders = indexedWindow?.prefetched ?? {};
+  const favoriteCandidateIds = [
+    ...displayItems.map((item) => item.id),
+    ...Object.values(prefetchedFolders).flatMap((folderItems) =>
+      folderItems.map((item) => item.id),
     ),
+  ];
+  const favoriteIds = Array.from<string>(
+    await getFavoriteIdSet(user.id, favoriteCandidateIds),
   );
   devTiming('library.featured', {
     ms: nowMs() - featuredStart,
@@ -77,17 +83,12 @@ export default async function Library({
           </div>
         ) : crumbs.length ? (
           <FavoritesProvider initialSavedIds={favoriteIds}>
-            <LibraryFolderPrefetch
-              folderIds={displayItems
-                .filter((item) => item.isFolder)
-                .map((item) => item.id)}
-              rootId={rootFolderId()}
-            />
-            <LibraryBrowser
+            <InstantLibraryBrowser
               items={displayItems}
               crumbs={crumbs}
               rootId={rootFolderId()}
               admin={membership.role === 'admin'}
+              prefetchedFolders={prefetchedFolders}
             />
           </FavoritesProvider>
         ) : (
