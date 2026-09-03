@@ -35,7 +35,8 @@ describe('library clarity repair', () => {
   });
   it('root hides breadcrumb while nested folder shows breadcrumb plus heading', () => {
     const s = read('app/library/instant-library-browser.tsx');
-    expect(s).toContain('{currentCrumbs.length > 1 && (');
+    expect(s).toContain('currentCrumbs.length > 1');
+    expect(s).toContain('aria-label="Breadcrumb"');
     expect(s).toContain("{active?.name || 'Library'}");
   });
   it('featured-resource admin wording is non-destructive', () => {
