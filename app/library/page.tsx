@@ -4,6 +4,7 @@ import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { getFolderView, isDriveConfigured, rootFolderId } from '@/lib/drive';
 import { LibraryBrowser } from './library-browser';
+import { LibraryFolderPrefetch } from './library-folder-prefetch';
 import { getFeaturedResourceMap } from '@/lib/featured-resources';
 import { getIndexedFolderView } from '@/lib/indexed-folder-view';
 import { devTiming, nowMs } from '@/lib/perf';
@@ -76,6 +77,12 @@ export default async function Library({
           </div>
         ) : crumbs.length ? (
           <FavoritesProvider initialSavedIds={favoriteIds}>
+            <LibraryFolderPrefetch
+              folderIds={displayItems
+                .filter((item) => item.isFolder)
+                .map((item) => item.id)}
+              rootId={rootFolderId()}
+            />
             <LibraryBrowser
               items={displayItems}
               crumbs={crumbs}
