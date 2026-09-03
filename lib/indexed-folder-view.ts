@@ -100,9 +100,7 @@ const getIndexedFolderViewCached = unstable_cache(
 
     const childRows = (rows || []) as ResourceIndex[];
     const childIds = childRows.map((row) => row.drive_file_id);
-    const folderIds = childRows
-      .filter((row) => row.is_folder)
-      .map((row) => row.drive_file_id);
+    const folderIds = childRows.filter((r) => r.is_folder).map((r) => r.drive_file_id);
 
     const [folderSummaries, featured, attribution] = await Promise.all([
       getIndexedFolderSizeSummaries(folderIds),
