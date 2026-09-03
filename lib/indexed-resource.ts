@@ -43,8 +43,10 @@ export async function getResourceIndexSnapshot(): Promise<ResourceIndexSnapshot>
     .select('status,completed_at,folder_queue')
     .limit(1)
     .maybeSingle();
-  if (error || !syncComplete(state)) return { ready: false, revision: null };
-  return { ready: true, revision: String(state.completed_at) };
+  const revision = state?.completed_at ? String(state.completed_at) : null;
+  if (error || !syncComplete(state) || !revision)
+    return { ready: false, revision: null };
+  return { ready: true, revision };
 }
 
 function shellFromRow(
