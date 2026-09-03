@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { RecentResource } from '@/lib/recent-resources';
 import { typeLabel } from '@/lib/resource-utils';
@@ -18,12 +18,23 @@ function folderNames(path: string, resourceName: string) {
 
 export function LibraryResourceOpeningOverlay() {
   const [opening, setOpening] = useState<RecentResource | null>(null);
+  const suppressNextOpeningRef = useRef(false);
 
   useEffect(() => {
     let timeout: number | null = null;
+    const noteModifiedClick = (event: MouseEvent) => {
+      suppressNextOpeningRef.current =
+        event.button === 1 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey;
+    };
     const handleOpening = (event: Event) => {
       const resource = (event as CustomEvent<RecentResource>).detail;
-      if (!resource || resource.isFolder) return;
+      const suppressed = suppressNextOpeningRef.current;
+      suppressNextOpeningRef.current = false;
+      if (!resource || resource.isFolder || suppressed) return;
       if (timeout) window.clearTimeout(timeout);
       // This event fires synchronously before router.push(). Commit the visual
       // transition now so the click can never appear to hang while the RSC route
@@ -32,8 +43,12 @@ export function LibraryResourceOpeningOverlay() {
       timeout = window.setTimeout(() => setOpening(null), 15_000);
     };
 
+    document.addEventListener('click', noteModifiedClick, true);
+    document.addEventListener('auxclick', noteModifiedClick, true);
     window.addEventListener('dp:resource-opening', handleOpening);
     return () => {
+      document.removeEventListener('click', noteModifiedClick, true);
+      document.removeEventListener('auxclick', noteModifiedClick, true);
       window.removeEventListener('dp:resource-opening', handleOpening);
       if (timeout) window.clearTimeout(timeout);
     };
