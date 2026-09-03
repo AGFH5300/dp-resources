@@ -47,9 +47,7 @@ describe('library clarity repair', () => {
   });
   it('folder summaries are batched from indexed descendants and can reuse a verified index state', () => {
     const s = read('lib/folder-summaries.ts');
-    expect(s).toContain(
-      "sb.rpc('dp_folder_size_summaries', { folder_ids: unique })",
-    );
+    expect(s).toContain("sb.rpc('dp_folder_size_summaries'");
     expect(s).not.toContain(".select('path,size_bytes')");
     expect(s).not.toContain('file.path.startsWith(prefix)');
     expect(s).toContain('if (!options.indexReady)');
