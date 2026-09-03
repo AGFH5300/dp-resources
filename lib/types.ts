@@ -80,27 +80,64 @@ export type ResourceFavorite = {
 };
 export type ResourceReport = {
   id: string;
-  user_id: string;
-  user_email: string;
-  drive_file_id: string;
-  resource_name: string;
-  resource_path: string;
-  reason: string;
-  details: string | null;
-  status: 'open' | 'resolved';
+  reporter_id: string;
+  reporter_email: string;
+  drive_file_id: string | null;
+  resource_name: string | null;
+  resource_path: string | null;
+  category: string;
+  message: string;
+  status: 'open' | 'in_review' | 'resolved' | 'closed';
+  assigned_to?: string | null;
+  assigned_at?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+  internal_notes?: string | null;
   created_at: string;
-  resolved_at: string | null;
-  resolved_by: string | null;
+  updated_at: string;
 };
-export type ResourceSuggestion = {
+export type SupportTicket = {
   id: string;
-  user_id: string;
-  user_email: string;
-  title: string;
-  url: string | null;
-  notes: string | null;
-  status: 'open' | 'resolved';
+  reporter_id: string;
+  reporter_email: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_review' | 'resolved' | 'closed';
+  assigned_to?: string | null;
+  assigned_at?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+  internal_notes?: string | null;
   created_at: string;
-  resolved_at: string | null;
-  resolved_by: string | null;
+  updated_at: string;
+};
+
+export type NotificationKind =
+  | 'support_ticket_created'
+  | 'resource_report_created'
+  | 'ticket_reply'
+  | 'ticket_status';
+
+export type AppNotification = {
+  id: string;
+  recipient_id: string;
+  audience: 'user' | 'admin';
+  kind: NotificationKind;
+  title: string;
+  message: string;
+  href: string;
+  support_ticket_id: string | null;
+  resource_report_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
+
+export type NotificationSummary = {
+  unread: number;
+  adminTickets: number;
+  adminReports: number;
+  userTickets: number;
 };
