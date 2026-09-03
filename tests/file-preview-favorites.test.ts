@@ -8,9 +8,9 @@ const read = (p: string) => readFileSync(p, 'utf8');
 describe('file preview compatibility and favourite reliability', () => {
   it('uses server-batched favourite state and a shared client store, avoiding SaveButton mount fetch flash', () => {
     expect(read('lib/favorites.ts')).toContain(".in('drive_file_id', ids)");
-    expect(read('app/resource/[fileId]/page.tsx')).toContain(
-      'getFavoriteIdSet(user.id,[fileId])',
-    );
+    const resourcePage = read('app/resource/[fileId]/page.tsx');
+    expect(resourcePage).toContain('getFavoriteIdSet(userId,[fileId])');
+    expect(resourcePage).toContain('<Suspense fallback={<ResourceActionsFallback />}');
     expect(read('app/library/page.tsx')).toContain(
       'getFavoriteIdSet(user.id, favoriteCandidateIds)',
     );

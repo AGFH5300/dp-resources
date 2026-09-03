@@ -25,10 +25,16 @@ describe('performance pass regressions', () => {
   });
 
   it('incomplete index does not claim complete', () => {
-    const src = read('lib/indexed-folder-view.ts');
+    const src = read('lib/indexed-resource.ts');
     expect(src).toContain("state?.status === 'complete'");
     expect(src).toContain('Boolean(state?.completed_at)');
-    expect(src).toContain('queued === 0');
+    expect(src).toContain(
+      '!Array.isArray(state?.folder_queue) || state.folder_queue.length === 0',
+    );
+    expect(src).toContain('getResourceIndexSnapshot');
+    expect(read('lib/indexed-folder-view.ts')).toContain(
+      'if (!snapshot.ready || !snapshot.revision) return null',
+    );
     expect(read('lib/index-sync.ts')).toContain("status: 'paused'");
   });
 

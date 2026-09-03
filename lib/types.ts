@@ -30,6 +30,7 @@ export type DriveItem = {
   size?: string;
   modifiedTime?: string;
   isFolder: boolean;
+  path?: string;
   featuredLabel?: string;
   featuredPriority?: number;
   estimatedSize?: number;

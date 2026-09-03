@@ -5,7 +5,7 @@ import {
   isDriveConfigured,
 } from '@/lib/drive';
 import { recordFileOpenedOnce } from '@/lib/activity';
-import { getIndexedResourceShell } from '@/lib/indexed-resource';
+import { getIndexedResourceCore } from '@/lib/indexed-resource';
 import {
   getPdfPreviewDocument,
   isPdfPreviewViewable,
@@ -25,17 +25,21 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ fileId: string }> },
 ) {
-  const { user } = await requireMember();
+  const [{ user }, { fileId }] = await Promise.all([requireMember(), params]);
   if (!isDriveConfigured())
     return new Response('Resources are not yet available', { status: 503 });
 
-  const { fileId } = await params;
-  const limited = await rateLimit(
-    privacySafeRequestKey(req, `pdf-preview-session:${user.id}`),
-    60,
-    10 * 60 * 1000,
-    'pdf-preview-session',
-  );
+  // Rate limiting and indexed metadata are independent. Running them together
+  // removes a full serialized server round trip from every PDF open.
+  const [limited, indexedMeta] = await Promise.all([
+    rateLimit(
+      privacySafeRequestKey(req, `pdf-preview-session:${user.id}`),
+      60,
+      10 * 60 * 1000,
+      'pdf-preview-session',
+    ),
+    getIndexedResourceCore(fileId),
+  ]);
   if (!limited.ok)
     return new Response(
       'Too many preview requests. Please try again shortly.',
@@ -44,7 +48,6 @@ export async function POST(
 
   // Prefer the completed resource index, just like the normal content route. This avoids
   // rejecting valid indexed files when a live parent-chain lookup is temporarily unavailable.
-  const indexedMeta = await getIndexedResourceShell(fileId);
   if (!indexedMeta && !(await assertInsideRoot(fileId)))
     return new Response('Not found', { status: 404 });
   const meta = indexedMeta || (await getDriveMetadata(fileId));

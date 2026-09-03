@@ -90,7 +90,8 @@ describe('private PDF preview derivatives', () => {
   it('removes the duplicate PDF download and doubled fallback strip', () => {
     const page = read('app/resource/[fileId]/page.tsx');
     const preview = read('app/resource/[fileId]/resource-preview.tsx');
-    expect(page).toContain('downloadHref={!meta.isFolder&&!isPdf?');
+    expect(page).toContain('!isFolder && !isPdf');
+    expect(page).toContain('`/api/files/${fileId}/download`');
     expect(preview).toContain(
       "if (cap.previewMode === 'pdf') return <PdfViewer",
     );
@@ -119,7 +120,8 @@ describe('private PDF preview derivatives', () => {
     expect(sessionRoute).not.toContain('ensurePdfPreviewDocument');
     expect(sessionRoute).toContain('assertInsideRoot');
     expect(sessionRoute).toContain('getDriveMetadata');
-    expect(sessionRoute).toContain('getIndexedResourceShell');
+    expect(sessionRoute).toContain('getIndexedResourceCore');
+    expect(sessionRoute).not.toContain('getIndexedResourceShell');
     expect(sessionRoute).toContain(
       'previewStorageProvider: preview.storage_provider',
     );

@@ -6,8 +6,13 @@ import { rootFolderId } from './drive';
 import { getFeaturedResourceMap } from './featured-resources';
 import { getIndexedFolderSizeSummaries } from './folder-summaries';
 import { getResourceAttributionMap } from './content-attribution';
+import {
+  getResourceIndexSnapshot,
+  primeIndexedResourceShellItems,
+  primeIndexedResourceShellRows,
+} from './indexed-resource';
 
-const MAX_PREFETCH_FOLDERS = 32;
+const MAX_PREFETCH_FOLDERS = 64;
 
 type IndexedFolderView = {
   items: DriveItem[];
@@ -17,6 +22,7 @@ type IndexedFolderView = {
 export type IndexedFolderWindow = {
   view: IndexedFolderView;
   prefetched: Record<string, DriveItem[]>;
+  indexRevision: string;
 };
 
 function toDriveItem(row: ResourceIndex): DriveItem {
@@ -27,31 +33,9 @@ function toDriveItem(row: ResourceIndex): DriveItem {
     size: row.size_bytes == null ? undefined : String(row.size_bytes),
     modifiedTime: row.modified_at || undefined,
     isFolder: row.is_folder,
+    path: row.path,
   };
 }
-
-function syncComplete(state: any) {
-  const queued = Array.isArray(state?.folder_queue)
-    ? state.folder_queue.length
-    : 0;
-  return (
-    state?.status === 'complete' && Boolean(state?.completed_at) && queued === 0
-  );
-}
-
-const indexReadyCached = unstable_cache(
-  async () => {
-    const sb = createSupabaseAdminClient();
-    const { data: state } = await sb
-      .from('dp_resource_index_sync_state')
-      .select('status,completed_at,folder_queue')
-      .limit(1)
-      .maybeSingle();
-    return syncComplete(state);
-  },
-  ['resource-index-ready-v1'],
-  { revalidate: 30 },
-);
 
 function rootCrumb(): DriveItem {
   return {
@@ -59,6 +43,7 @@ function rootCrumb(): DriveItem {
     name: 'Library',
     mimeType: 'application/vnd.google-apps.folder',
     isFolder: true,
+    path: 'Library',
   };
 }
 
@@ -139,9 +124,10 @@ function decorateRows(
 }
 
 const getIndexedFolderWindowCached = unstable_cache(
-  async (folderId: string): Promise<IndexedFolderWindow | null> => {
-    if (!(await indexReadyCached())) return null;
-
+  async (
+    folderId: string,
+    indexRevision: string,
+  ): Promise<IndexedFolderWindow | null> => {
     const sb = createSupabaseAdminClient();
     const folderRowPromise =
       folderId === rootFolderId()
@@ -200,6 +186,11 @@ const getIndexedFolderWindowCached = unstable_cache(
       getResourceAttributionMap(allIds),
     ]);
 
+    // Reuse the metadata this exact completed index revision already loaded.
+    // Resource authorization independently re-reads the current revision before
+    // it accepts any hot entry, so a new/active sync cannot inherit stale access.
+    primeIndexedResourceShellRows(allRows, attribution, indexRevision);
+
     const view = {
       items: decorateRows(childRows, folderSummaries, featured, attribution),
       crumbs,
@@ -216,14 +207,32 @@ const getIndexedFolderWindowCached = unstable_cache(
       );
     }
 
-    return { view, prefetched };
+    return { view, prefetched, indexRevision };
   },
-  ['indexed-folder-window-v1'],
+  ['indexed-folder-window-v3'],
   { revalidate: 60 },
 );
 
 export async function getIndexedFolderWindow(folderId = rootFolderId()) {
-  return getIndexedFolderWindowCached(folderId);
+  // This snapshot is deliberately fresh. Passing the completed-at revision into
+  // the cache key invalidates old folder/resource data as soon as a sync starts
+  // or a newly completed index becomes authoritative.
+  const snapshot = await getResourceIndexSnapshot();
+  if (!snapshot.ready || !snapshot.revision) return null;
+
+  const window = await getIndexedFolderWindowCached(folderId, snapshot.revision);
+  if (window) {
+    // unstable_cache can satisfy this call without executing its callback. Prime
+    // the process-local file cache from the cached payload as well.
+    primeIndexedResourceShellItems(
+      [
+        ...window.view.items,
+        ...Object.values(window.prefetched).flat(),
+      ],
+      window.indexRevision,
+    );
+  }
+  return window;
 }
 
 export async function getIndexedFolderView(folderId = rootFolderId()) {
