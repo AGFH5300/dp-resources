@@ -86,12 +86,14 @@ const getIndexedFolderViewCached = unstable_cache(
           current.parent_drive_file_id === rootFolderId()
         )
           break;
-        const parentResult = await sb
+        const parentId: string = current.parent_drive_file_id;
+        const parentQuery = sb
           .from('dp_resource_index')
           .select('*')
-          .eq('drive_file_id', current.parent_drive_file_id)
+          .eq('drive_file_id', parentId)
           .maybeSingle();
-        current = (parentResult.data as ResourceIndex | null) ?? null;
+        const { data: parentData } = await parentQuery;
+        current = (parentData as ResourceIndex | null) ?? null;
       }
       for (const row of chain) crumbs.push(toDriveItem(row));
     }
