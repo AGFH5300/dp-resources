@@ -14,7 +14,10 @@ function syncComplete(state: any) {
   );
 }
 
-export async function getIndexedFolderSizeSummaries(folderIds: string[]) {
+export async function getIndexedFolderSizeSummaries(
+  folderIds: string[],
+  options: { indexReady?: boolean } = {},
+) {
   const unique = [...new Set(folderIds.filter(Boolean))];
   if (!unique.length) return new Map<string, number>();
   const key = unique.slice().sort().join('|');
@@ -22,17 +25,20 @@ export async function getIndexedFolderSizeSummaries(folderIds: string[]) {
   if (hit && Date.now() - hit.at < TTL_MS)
     return hit.values ? new Map(hit.values) : new Map<string, number>();
 
-  const sb = createSupabaseAdminClient();
-  const { data: state } = await sb
-    .from('dp_resource_index_sync_state')
-    .select('status,completed_at,folder_queue')
-    .limit(1)
-    .maybeSingle();
-  if (!syncComplete(state)) {
-    cache.set(key, { at: Date.now(), values: null });
-    return new Map<string, number>();
+  if (!options.indexReady) {
+    const sb = createSupabaseAdminClient();
+    const { data: state } = await sb
+      .from('dp_resource_index_sync_state')
+      .select('status,completed_at,folder_queue')
+      .limit(1)
+      .maybeSingle();
+    if (!syncComplete(state)) {
+      cache.set(key, { at: Date.now(), values: null });
+      return new Map<string, number>();
+    }
   }
 
+  const sb = createSupabaseAdminClient();
   const { data: summaries = [] } = await sb.rpc('dp_folder_size_summaries', {
     folder_ids: unique,
   });
