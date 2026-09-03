@@ -41,17 +41,33 @@ describe('resource open performance', () => {
     );
   });
 
-  it('does not wait on Google Drive breadcrumbs or favourite state before starting the resource page', () => {
+  it('does not wait on Drive breadcrumbs or favourite state before starting the resource page', () => {
     const page = read('app/resource/[fileId]/page.tsx');
+    const breadcrumbs = read('app/resource/[fileId]/resource-breadcrumbs.tsx');
 
     expect(page).not.toContain('breadcrumbsToRoot');
     expect(page).toContain('getIndexedResourceShell(fileId)');
-    expect(page).toContain('indexedFolderNames(indexedMeta?.path, meta.name)');
+    expect(page).toContain('<ResourceFolderBreadcrumbLinks');
+    expect(page).toContain('<ResourceFolderBreadcrumbFallback');
     expect(page).toContain('<Suspense fallback={<ResourceActionsFallback />}');
     expect(page).toContain('getFavoriteIdSet(userId,[fileId])');
     expect(page.indexOf('getIndexedResourceShell(fileId)')).toBeGreaterThan(
       page.indexOf('Promise.all(['),
     );
+    expect(breadcrumbs).toContain(".in('path', paths)");
+    expect(breadcrumbs).toContain('/library?folder=');
+  });
+
+  it('commits a resource-shaped transition before the route push can appear stalled', () => {
+    const recent = read('lib/recent-client-storage.ts');
+    const overlay = read('components/library-resource-opening-overlay.tsx');
+    const library = read('app/library/page.tsx');
+
+    expect(recent).toContain("new CustomEvent<RecentResource>('dp:resource-opening'");
+    expect(overlay).toContain("window.addEventListener('dp:resource-opening'");
+    expect(overlay).toContain('flushSync(() => setOpening(resource))');
+    expect(overlay).toContain('aria-label={`Opening ${opening.name}`}');
+    expect(library).toContain('<LibraryResourceOpeningOverlay />');
   });
 
   it('uses the light indexed core for preview authorization and parallelizes validation', () => {
