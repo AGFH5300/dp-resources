@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { BookOpenCheck } from 'lucide-react';
 import { BrandWordmark } from '@/components/brand-wordmark';
 import { BrandMark } from '@/components/brand-mark';
+import { LibraryRouteWarmup } from '@/components/library-route-warmup';
 import { publicPageMetadata } from '@/lib/seo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
@@ -46,6 +47,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-[#f6f1e8] text-[#10243f]">
+      {isSignedIn ? <LibraryRouteWarmup /> : null}
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-8">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d9ccba] pb-5 sm:flex-nowrap sm:gap-4">
           <BrandWordmark href="/" className="text-base sm:text-xl" />
