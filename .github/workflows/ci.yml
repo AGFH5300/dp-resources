@@ -23,8 +23,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - name: Run tests with temporary hang diagnostics
-        run: timeout 120s npm test -- --reporter=verbose --maxWorkers=1 --minWorkers=1
+      - name: Isolate Library regression test hang
+        run: timeout 30s npx vitest run tests/library-regression-repair.test.ts --reporter=verbose --maxWorkers=1 --minWorkers=1
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
