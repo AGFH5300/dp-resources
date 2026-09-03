@@ -39,10 +39,6 @@ export function LibraryRouteWarmup() {
     const timer = setTimeout(() => {
       router.prefetch('/library');
       sessionStorage.setItem(WARMED_AT_KEY, String(Date.now()));
-      void fetch('/api/library/warm', {
-        method: 'POST',
-        keepalive: true,
-      }).catch(() => undefined);
     }, START_DELAY_MS);
 
     return () => clearTimeout(timer);

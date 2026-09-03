@@ -1,11 +1,15 @@
 'use client';
 import React, { createContext, useContext, useMemo, useState } from 'react';
+
 type Ctx = {
   saved: Set<string>;
   setSaved: (id: string, next: boolean) => void;
+  mergeSaved: (ids: string[]) => void;
   isSaved: (id: string) => boolean;
 };
+
 const FavoriteContext = createContext<Ctx | null>(null);
+
 export function FavoritesProvider({
   initialSavedIds,
   children,
@@ -24,6 +28,13 @@ export function FavoritesProvider({
           next ? n.add(id) : n.delete(id);
           return n;
         }),
+      mergeSaved: (incoming: string[]) =>
+        setIds((prev) => {
+          if (!incoming.some((id) => !prev.has(id))) return prev;
+          const next = new Set(prev);
+          incoming.forEach((id) => next.add(id));
+          return next;
+        }),
     }),
     [ids],
   );
@@ -33,6 +44,11 @@ export function FavoritesProvider({
     </FavoriteContext.Provider>
   );
 }
+
+export function useFavorites() {
+  return useContext(FavoriteContext);
+}
+
 export function useFavoriteState(id: string, initialSaved?: boolean) {
   const ctx = useContext(FavoriteContext);
   if (!ctx) {

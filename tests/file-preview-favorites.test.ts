@@ -12,10 +12,13 @@ describe('file preview compatibility and favourite reliability', () => {
       'getFavoriteIdSet(user.id,[fileId])',
     );
     expect(read('app/library/page.tsx')).toContain(
-      'getFavoriteIdSet(user.id, displayItems.map',
+      'getFavoriteIdSet(user.id, favoriteCandidateIds)',
     );
-    expect(read('components/favorites-provider.tsx')).toContain(
-      'createContext',
+    const provider = read('components/favorites-provider.tsx');
+    expect(provider).toContain('createContext');
+    expect(provider).toContain('mergeSaved');
+    expect(read('app/library/instant-library-browser.tsx')).toContain(
+      'favorites?.mergeSaved(payload.favoriteIds || [])',
     );
     expect(read('components/resource-actions.tsx')).not.toContain(
       "fetch('/api/favorites').then",
