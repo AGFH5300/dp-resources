@@ -59,7 +59,10 @@ describe('Library proactive loading', () => {
     expect(indexed).not.toContain('while (');
     expect(indexed).toContain('indexReadyCached');
     expect(indexed).toContain(
-      'getIndexedFolderSizeSummaries(allFolderIds, { indexReady: true })',
+      'getIndexedFolderSizeSummaries(currentFolderIds, { indexReady: true })',
+    );
+    expect(indexed).not.toContain(
+      'getIndexedFolderSizeSummaries(allFolderIds',
     );
     expect(summaries).toContain('options: { indexReady?: boolean } = {}');
   });
