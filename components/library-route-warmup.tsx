@@ -36,20 +36,16 @@ export function LibraryRouteWarmup() {
       return;
     }
 
-    const controller = new AbortController();
     const timer = setTimeout(() => {
       router.prefetch('/library');
       sessionStorage.setItem(WARMED_AT_KEY, String(Date.now()));
       void fetch('/api/library/warm', {
         method: 'POST',
-        signal: controller.signal,
+        keepalive: true,
       }).catch(() => undefined);
     }, START_DELAY_MS);
 
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
+    return () => clearTimeout(timer);
   }, [pathname, router]);
 
   return null;
