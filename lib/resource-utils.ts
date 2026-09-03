@@ -15,6 +15,13 @@ export type ResourceRecord = {
 
 export { FOLDER_MIME, typeLabel } from './resource-capabilities';
 
+const RESOURCE_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
 export function normalizeResourceName(value: string) {
   return value
     .toLowerCase()
@@ -47,13 +54,9 @@ export function formatSize(size?: string | number | null) {
 }
 
 export function formatDate(value?: string | null) {
-  return value
-    ? new Date(value).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '—';
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : RESOURCE_DATE_FORMATTER.format(date);
 }
 
 export function itemToResource(item: DriveItem, path: string): ResourceRecord {
