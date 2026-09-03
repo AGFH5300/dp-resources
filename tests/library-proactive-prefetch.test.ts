@@ -51,18 +51,22 @@ describe('Library proactive loading', () => {
     expect(warmup).toContain('const WARM_TTL_MS = 45_000;');
   });
 
-  it('collapses breadcrumb ancestry and duplicate sync-state work', () => {
+  it('collapses breadcrumb ancestry and uses one fresh revision guard for cached folder data', () => {
     const indexed = read('lib/indexed-folder-view.ts');
     const summaries = read('lib/folder-summaries.ts');
 
     expect(indexed).toContain(".in('path', paths)");
     expect(indexed).not.toContain('while (');
-    expect(indexed).toContain('indexReadyCached');
+    expect(indexed).toContain('getResourceIndexSnapshot');
+    expect(indexed).not.toContain('indexReadyCached');
     expect(indexed).toContain(
       'getIndexedFolderSizeSummaries(currentFolderIds, { indexReady: true })',
     );
     expect(indexed).not.toContain(
       'getIndexedFolderSizeSummaries(allFolderIds',
+    );
+    expect(indexed).toContain(
+      'getIndexedFolderWindowCached(folderId, snapshot.revision)',
     );
     expect(summaries).toContain('options: { indexReady?: boolean } = {}');
   });
