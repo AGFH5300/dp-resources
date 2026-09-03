@@ -8,15 +8,14 @@ describe('standard PDF fallback', () => {
     const route = read('app/api/resource/[fileId]/pdf-session/route.ts');
 
     expect(route).toContain(
-      "import { getIndexedResourceShell } from '@/lib/indexed-resource'",
+      "import { getIndexedResourceCore } from '@/lib/indexed-resource'",
     );
+    expect(route).toContain('getIndexedResourceCore(fileId)');
     expect(route).toContain(
-      'const indexedMeta = await getIndexedResourceShell(fileId)',
-    );
-    expect(route).toContain(
-      'const meta = indexedMeta || await getDriveMetadata(fileId)',
+      'const meta = indexedMeta || (await getDriveMetadata(fileId))',
     );
     expect(route).toContain('getPdfPreviewDocument');
+    expect(route).not.toContain('getIndexedResourceShell');
     expect(route).not.toContain('ensurePdfPreviewDocument');
     expect(route).not.toContain('dp_queue_pdf_preview');
   });
