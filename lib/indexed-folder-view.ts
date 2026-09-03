@@ -6,6 +6,7 @@ import { rootFolderId } from './drive';
 import { getFeaturedResourceMap } from './featured-resources';
 import { getIndexedFolderSizeSummaries } from './folder-summaries';
 import { getResourceAttributionMap } from './content-attribution';
+import { primeIndexedResourceShellRows } from './indexed-resource';
 
 const MAX_PREFETCH_FOLDERS = 32;
 
@@ -199,6 +200,11 @@ const getIndexedFolderWindowCached = unstable_cache(
       getFeaturedResourceMap(allIds),
       getResourceAttributionMap(allIds),
     ]);
+
+    // The Library has already paid for the exact indexed rows and attribution
+    // that a subsequent resource page would otherwise query again. Keep a tiny
+    // hot server cache so opening a visible file can reuse that work immediately.
+    primeIndexedResourceShellRows(allRows, attribution);
 
     const view = {
       items: decorateRows(childRows, folderSummaries, featured, attribution),
