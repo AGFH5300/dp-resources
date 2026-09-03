@@ -64,15 +64,18 @@ describe('Admin Activity user links', () => {
     ).toBeNull();
   });
 
-  it('reuses the existing admin user lookup and enhances only Activity user cells', () => {
+  it('reuses the existing admin lookup without replacing React-owned table children', () => {
     expect(bridgeSource).toContain('/api/admin/users/search?q=');
     expect(bridgeSource).toContain("heading.textContent?.trim() === 'Activity'");
     expect(bridgeSource).toContain('row.children.item(1)');
     expect(bridgeSource).toContain('candidate.email?.trim().toLowerCase()');
     expect(bridgeSource).toContain("cell.dataset.dpActivityUserLink = 'true'");
-    expect(bridgeSource).toContain("button.type = 'button'");
+    expect(bridgeSource).toContain("cell.setAttribute('role', 'button')");
     expect(bridgeSource).toContain('new MutationObserver(enhance)');
+    expect(bridgeSource).toContain("document.addEventListener('click', onClick)");
     expect(bridgeSource).toContain('window.sessionStorage.setItem(RETURN_KEY');
+    expect(bridgeSource).not.toContain('replaceChildren(');
+    expect(bridgeSource).not.toContain('document.createElement(');
   });
 
   it('mounts the bridge behind Suspense in the shared Admin layout', () => {
