@@ -4,61 +4,73 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('Library proactive loading', () => {
-  it('warms only visible child folders in bounded background batches', () => {
+  it('ships current and one-hop child folder data with the initial Library view', () => {
     const page = read('app/library/page.tsx');
-    const prefetch = read('app/library/library-folder-prefetch.tsx');
+    const indexed = read('lib/indexed-folder-view.ts');
 
-    expect(page).toContain('<LibraryFolderPrefetch');
-    expect(page).toContain('.filter((item) => item.isFolder)');
-    expect(prefetch).toContain('const FIRST_BATCH_SIZE = 6;');
-    expect(prefetch).toContain('const NEXT_BATCH_SIZE = 4;');
-    expect(prefetch).toContain("fetch('/api/library/warm'");
-    expect(prefetch).toContain('router.prefetch(`/library?folder=${encodeURIComponent(folderId)}`)');
-    expect(prefetch).toContain('keepalive: true');
-    expect(prefetch).toContain("connection?.effectiveType === '2g'");
-    expect(prefetch).toContain('connection?.saveData');
+    expect(page).toContain('getIndexedFolderWindow(folder)');
+    expect(page).toContain('<InstantLibraryBrowser');
+    expect(page).toContain('prefetchedFolders={prefetchedFolders}');
+    expect(page).not.toContain('<LibraryFolderPrefetch');
+    expect(indexed).toContain('const MAX_PREFETCH_FOLDERS = 32;');
+    expect(indexed).toContain(".in('parent_drive_file_id', prefetchFolderIds)");
+    expect(indexed).toContain('prefetched[prefetchedFolderId]');
   });
 
-  it('warms the shared indexed-folder cache behind authenticated access', () => {
-    const route = read('app/api/library/warm/route.ts');
+  it('loads missing folder windows through one authenticated JSON endpoint', () => {
+    const route = read('app/api/library/folder-window/route.ts');
+    const browser = read('app/library/instant-library-browser.tsx');
 
     expect(route).toContain('await requireMember();');
-    expect(route).toContain('const MAX_FOLDER_IDS = 18;');
-    expect(route).toContain('const WARM_CONCURRENCY = 2;');
-    expect(route).toContain('getIndexedFolderView(folderId)');
-    expect(route).toContain("'Cache-Control': 'no-store'");
+    expect(route).toContain('getIndexedFolderWindow(folderId)');
+    expect(route).toContain('favoriteIds');
+    expect(route).toContain("'Cache-Control': 'private, no-store'");
+    expect(browser).toContain("fetch('/api/library/folder-window'");
+    expect(browser).toContain('inFlightRef.current');
+    expect(browser).toContain('cacheRef.current');
   });
 
-  it('warms the Library root from normal authenticated navigation and the signed-in homepage', () => {
-    const nav = read('components/nav.tsx');
-    const home = read('app/page.tsx');
+  it('uses native history for instant folder transitions and supports browser back/forward', () => {
+    const browser = read('app/library/instant-library-browser.tsx');
+
+    expect(browser).toContain('window.history.pushState');
+    expect(browser).toContain("window.addEventListener('popstate'");
+    expect(browser).toContain("historyMode: 'push' | 'none'");
+    expect(browser).toContain('setLocalItems(cached.items)');
+    expect(browser).toContain('<FolderLoadingRows />');
+  });
+
+  it('does not launch the previous route-prefetch plus warm-request storm', () => {
+    const page = read('app/library/page.tsx');
     const warmup = read('components/library-route-warmup.tsx');
 
-    expect(nav).toContain('<LibraryRouteWarmup />');
-    expect(home).toContain('{isSignedIn ? <LibraryRouteWarmup /> : null}');
-    expect(warmup).toContain("pathname.startsWith('/library')");
+    expect(page).not.toContain('LibraryFolderPrefetch');
     expect(warmup).toContain("router.prefetch('/library')");
-    expect(warmup).toContain("fetch('/api/library/warm'");
-    expect(warmup).toContain('keepalive: true');
+    expect(warmup).not.toContain("fetch('/api/library/warm'");
+    expect(warmup).not.toContain('keepalive: true');
     expect(warmup).toContain('const WARM_TTL_MS = 45_000;');
-    expect(warmup).not.toContain('controller.abort()');
   });
 
-  it('shows the current compact Library shape immediately while uncached data is loading', () => {
+  it('collapses breadcrumb ancestry and duplicate sync-state work', () => {
+    const indexed = read('lib/indexed-folder-view.ts');
+    const summaries = read('lib/folder-summaries.ts');
+
+    expect(indexed).toContain(".in('path', paths)");
+    expect(indexed).not.toContain('while (');
+    expect(indexed).toContain('indexReadyCached');
+    expect(indexed).toContain(
+      'getIndexedFolderSizeSummaries(allFolderIds, { indexReady: true })',
+    );
+    expect(summaries).toContain('options: { indexReady?: boolean } = {}');
+  });
+
+  it('shows a compact stable folder shape while truly uncached data is loading', () => {
     const loading = read('app/library/loading.tsx');
+    const browser = read('app/library/instant-library-browser.tsx');
 
     expect(loading).toContain('aria-busy="true"');
     expect(loading).toContain('Array.from({ length: 8 })');
-    expect(loading).toContain('Loading Library');
-    expect(loading).toContain('grid-cols-[minmax(260px,1fr)_220px_120px_120px_90px_56px]');
-  });
-
-  it('records the 3 September reliability and proactive-loading release in the changelog', () => {
-    const changelog = read('app/changelog/page.tsx');
-
-    expect(changelog).toContain('release-2026-09-03-library-proactive-loading');
-    expect(changelog).toContain('preloading likely next folders in the background');
-    expect(changelog).toContain('release-2026-09-03-library-hydration-reliability');
-    expect(changelog).toContain('intermittent first-load Library failure');
+    expect(browser).toContain('aria-label="Loading folder"');
+    expect(browser).toContain('Array.from({ length: 6 })');
   });
 });
