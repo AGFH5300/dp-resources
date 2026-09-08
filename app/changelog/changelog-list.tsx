@@ -1,4 +1,5 @@
 import type { ChangelogEntry } from '@/lib/changelog';
+import { publicChangelogEntries } from '@/lib/public-changelog';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'long',
@@ -14,7 +15,7 @@ function dateKey(date: string) {
 export function ChangelogList({ entries }: { entries: ChangelogEntry[] }) {
   const groups: Array<{ date: string; entries: ChangelogEntry[] }> = [];
 
-  for (const entry of entries) {
+  for (const entry of publicChangelogEntries(entries)) {
     const key = dateKey(entry.date);
     const current = groups[groups.length - 1];
     if (current?.date === key) current.entries.push(entry);
