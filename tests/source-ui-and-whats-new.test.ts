@@ -58,8 +58,11 @@ describe('source UI and release notes', () => {
     }
   });
 
-  it('keeps the August 6-16 release window explicitly curated in the public changelog', () => {
+  it('keeps the August 6-16 release window curated and filters public notes to user-facing changes', () => {
     const changelog = read('app/changelog/page.tsx');
+    const changelogList = read('app/changelog/changelog-list.tsx');
+    const publicFilter = read('lib/public-changelog.ts');
+
     for (const date of [
       '2026-08-16',
       '2026-08-15',
@@ -76,8 +79,11 @@ describe('source UI and release notes', () => {
     expect(changelog).toContain('curatedDates');
     expect(changelog).toContain("!curatedDates.has(entry.date.slice(0, 10))");
     expect(changelog).toContain('Made Library folder headers more compact');
-    expect(changelog).toContain('Rebuilt the Admin Library index into a live command center');
     expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
     expect(changelog).toContain('Added unified content-source attribution');
+    expect(changelogList).toContain('publicChangelogEntries(entries)');
+    expect(publicFilter).toContain('INTERNAL_ONLY_PATTERNS');
+    expect(publicFilter).toContain('production runtime');
+    expect(publicFilter).toContain('library[-\\s]+index');
   });
 });
