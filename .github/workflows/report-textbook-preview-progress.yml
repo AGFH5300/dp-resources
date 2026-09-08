@@ -1,0 +1,29 @@
+name: Report textbook preview progress
+
+on:
+  push:
+    branches:
+      - ops/textbook-library-finalize-2026-09-08
+    paths:
+      - .github/workflows/report-textbook-preview-progress.yml
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      R2_PDF_PREVIEW_BUCKET: ${{ secrets.R2_PDF_PREVIEW_BUCKET }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Read current preview state
+        run: node scripts/ops-report-textbook-preview-progress.mjs
