@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   finalize-textbook-library:
-    name: Finalize textbook library, index, and previews
+    name: Finalize textbook library, index, and previews (retry)
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -58,6 +58,9 @@ jobs:
 
       - name: Verify private R2 read and write access
         run: node scripts/verify-r2-preview-storage.mjs
+
+      - name: Diagnose any remaining old ESS source
+        run: node scripts/ops-locate-old-ess.mjs
 
       - name: Verify Drive placements, clean obsolete previews, and refresh index
         run: node scripts/ops-finalize-textbook-library.mjs
