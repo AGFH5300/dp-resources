@@ -86,6 +86,7 @@ export default async function Library({
           <FavoritesProvider initialSavedIds={favoriteIds}>
             <LibraryResourceOpeningOverlay />
             <InstantLibraryBrowser
+              key={folder}
               items={displayItems}
               crumbs={crumbs}
               rootId={rootFolderId()}
