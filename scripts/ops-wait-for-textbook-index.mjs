@@ -36,23 +36,43 @@ async function snapshot() {
   };
 }
 
+function targetedMigrationReady(current) {
+  return Boolean(
+    current.placementsReady &&
+    current.placementCount === PLACEMENT_IDS.length &&
+    current.oldIndexCount === 0 &&
+    current.oldPreviewCount === 0
+  );
+}
+
 const deadline = Date.now() + 60 * 60 * 1000;
 while (Date.now() < deadline) {
   const current = await snapshot();
   console.log(JSON.stringify({ event: 'textbook_index_wait', ...current }));
+
   if (
     current.state?.status === 'complete' &&
     !current.state?.lock_token &&
-    current.placementsReady &&
-    current.oldIndexCount === 0 &&
-    current.oldPreviewCount === 0
+    targetedMigrationReady(current)
   ) {
-    console.log(JSON.stringify({ event: 'textbook_index_ready_for_parallel_previews', ...current }, null, 2));
+    console.log(JSON.stringify({ event: 'textbook_index_ready_for_parallel_previews', mode: 'full-index-complete', ...current }, null, 2));
     process.exit(0);
   }
+
   if (current.state?.status === 'failed') {
-    throw new Error(`DP Resources index failed: ${current.state.error_message || 'unknown error'}`);
+    if (targetedMigrationReady(current)) {
+      console.warn(JSON.stringify({
+        event: 'textbook_index_partial_failure_but_targeted_migration_ready',
+        reason: current.state.error_message || 'unknown error',
+        placementCount: current.placementCount,
+        obsoleteIndexRows: current.oldIndexCount,
+        obsoletePreviewRows: current.oldPreviewCount,
+      }, null, 2));
+      process.exit(0);
+    }
+    throw new Error(`DP Resources index failed before the textbook migration rows were ready: ${current.state.error_message || 'unknown error'}`);
   }
+
   await sleep(5000);
 }
 throw new Error('Timed out waiting for the refreshed DP Resources index');
