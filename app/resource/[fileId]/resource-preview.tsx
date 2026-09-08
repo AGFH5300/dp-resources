@@ -186,29 +186,30 @@ export function ResourcePreview({
   name: string;
   sheetEmbedUrl?: string;
 }) {
-  const url = `/api/resource/${fileId}/content`;
+  const streamUrl = `/api/resource/${fileId}/content`;
+  const bufferedUrl = `/api/resource/${fileId}/buffered-content`;
   const cap = getResourceCapability(mimeType, name, false, fileId);
   if (cap.previewMode === 'pdf')
-    return <PdfViewer url={url} fileId={fileId} name={name} />;
+    return <PdfViewer url={bufferedUrl} fileId={fileId} name={name} />;
   if (cap.previewMode === 'image')
-    return <ImagePreview url={url} name={name} />;
+    return <ImagePreview url={streamUrl} name={name} />;
   if (cap.previewMode === 'master-xlsx')
     return <SpreadsheetPreview sheetEmbedUrl={sheetEmbedUrl} />;
   if (cap.previewMode === 'xlsx')
-    return <WorkbookPreview url={url} name={name} />;
+    return <WorkbookPreview url={bufferedUrl} name={name} />;
   if (cap.previewMode === 'audio')
-    return <MediaPreview kind="audio" url={url} name={name} fileId={fileId} />;
+    return <MediaPreview kind="audio" url={streamUrl} name={name} fileId={fileId} />;
   if (cap.previewMode === 'video')
-    return <MediaPreview kind="video" url={url} name={name} fileId={fileId} />;
+    return <MediaPreview kind="video" url={streamUrl} name={name} fileId={fileId} />;
   if (cap.previewMode === 'text')
     return mimeType.includes('csv') || name.match(/\.csv$/i) ? (
-      <CsvTable url={url} />
+      <CsvTable url={bufferedUrl} />
     ) : (
-      <TextPreview url={url} />
+      <TextPreview url={bufferedUrl} />
     );
-  if (cap.previewMode === 'docx') return <DocxPreview url={url} />;
+  if (cap.previewMode === 'docx') return <DocxPreview url={bufferedUrl} />;
   if (cap.previewMode === 'pptx')
-    return <PresentationViewer url={url} fileId={fileId} name={name} />;
+    return <PresentationViewer url={bufferedUrl} fileId={fileId} name={name} />;
   return <Unsupported mimeType={mimeType} name={name} fileId={fileId} />;
 }
 
