@@ -85,11 +85,17 @@ describe('search consistency and PPTX viewer regressions', () => {
     );
   });
 
-  it('PPTX viewer uses the authenticated content endpoint, client renderer, cleanup controls, and no server PDF polling', () => {
+  it('PPTX viewer uses resilient authenticated content delivery, client renderer, cleanup controls, and no server PDF polling', () => {
     const resourcePreview = read('app/resource/[fileId]/resource-preview.tsx');
+    const resilientRoute = read(
+      'app/api/resource/[fileId]/buffered-content/route.ts',
+    );
     const viewer = read('app/resource/[fileId]/presentation-viewer.tsx');
     expect(resourcePreview).toContain(
-      'return <PresentationViewer url={url} fileId={fileId} name={name} />',
+      'return <PresentationViewer url={bufferedUrl} fileId={fileId} name={name} />',
+    );
+    expect(resilientRoute).toContain(
+      "import { GET as getContent } from '../content/route'",
     );
     expect(resourcePreview).not.toContain(
       'PresentationViewer url={`/api/resource/${fileId}/presentation-pdf`}',
