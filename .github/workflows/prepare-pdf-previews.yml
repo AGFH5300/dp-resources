@@ -15,6 +15,7 @@ concurrency:
   group: textbook-preview-acceleration
   cancel-in-progress: true
 
+# Final accelerated pass after the manual admin index populated all textbook migration rows.
 jobs:
   prepare:
     name: Wait for index and retire sequential preview run
