@@ -44,7 +44,7 @@ describe('standard PDF fallback', () => {
 
     expect(route).toContain("mode: 'standard'");
     expect(route).toContain(
-      'standardUrl: `/api/resource/${encodeURIComponent(fileId)}/content`',
+      'standardUrl: `/api/resource/${encodeURIComponent(fileId)}/buffered-content`',
     );
     expect(route).toContain('if (!preview || !isPdfPreviewViewable(preview))');
     expect(route).toContain("mode: 'prepared'");
