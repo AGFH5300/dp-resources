@@ -17,6 +17,18 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-08-resource-preview-reliability',
+    summary:
+      'Improved resource preview reliability so intermittent connection failures are retried automatically instead of frequently requiring a manual Retry on the first open.',
+    date: '2026-09-08T11:13:44.000Z',
+  },
+  {
+    id: 'release-2026-09-08-global-search-library-navigation',
+    summary:
+      'Fixed global search results opening Library folders so selecting a result now changes both the URL and the displayed folder instead of leaving the previous page on screen.',
+    date: '2026-09-08T10:57:03.000Z',
+  },
+  {
     id: 'release-2026-09-03-resource-click-instant-breadcrumbs',
     summary:
       'Made Library file clicks respond immediately and restored clickable folder breadcrumbs, so opening a resource no longer appears to pause while its preview starts.',
