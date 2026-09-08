@@ -73,6 +73,33 @@ async function getSupabasePrivateObject({ bucket, key, signal }) {
   );
 }
 
+async function markSearchTextReady(documentId, signal) {
+  const readyAt = new Date().toISOString();
+  const response = await nativeFetch(
+    `${supabaseUrl}/rest/v1/dp_pdf_preview_documents?id=eq.${encodeURIComponent(documentId)}`,
+    {
+      method: 'PATCH',
+      signal,
+      headers: {
+        apikey: supabaseServiceRoleKey,
+        Authorization: `Bearer ${supabaseServiceRoleKey}`,
+        'content-type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        text_ready_at: readyAt,
+        updated_at: readyAt,
+      }),
+    },
+  );
+  if (!response.ok) {
+    const message = await response.text().catch(() => '');
+    throw new Error(
+      `Unable to persist mirrored PDF search readiness (${response.status})${message ? `: ${message.slice(0, 200)}` : ''}`,
+    );
+  }
+}
+
 async function mirrorPdfSearchManifest(input, init, requestUrl) {
   try {
     const sourceBody =
@@ -151,6 +178,11 @@ async function mirrorPdfSearchManifest(input, init, requestUrl) {
       throw new Error('PDF search manifest verification hash mismatch');
     }
 
+    // The historical PostgreSQL RPC marks text_ready_at. When R2 mode replaces
+    // that RPC with verified object-backed search manifests, preserve the same
+    // readiness contract explicitly so the app and orchestration can advance.
+    await markSearchTextReady(documentId, init.signal);
+
     console.log(
       JSON.stringify({
         event: 'pdf_preview_search_manifest_dual_mirrored',
@@ -158,12 +190,13 @@ async function mirrorPdfSearchManifest(input, init, requestUrl) {
         pages: pages.length,
         bytes: manifest.length,
         sha256: expectedSha,
+        readinessPersisted: true,
       }),
     );
     return { pageCount: pages.length };
   } catch (error) {
-    // Fail-safe: if either private object copy cannot be written and verified,
-    // preserve the historical PostgreSQL RPC below for this job.
+    // Fail-safe: if either private object copy or readiness update cannot be
+    // written and verified, preserve the historical PostgreSQL RPC below.
     console.warn(
       JSON.stringify({
         event: 'pdf_preview_search_manifest_mirror_failed',
@@ -193,8 +226,8 @@ globalThis.fetch = async (input, init = {}) => {
     const mirrored = await mirrorPdfSearchManifest(input, init, requestUrl);
     if (mirrored) {
       // supabase-js expects the RPC to return the number of stored pages. Once
-      // both object copies have been SHA-verified, return the same contract
-      // without duplicating that page text into PostgreSQL.
+      // both object copies have been SHA-verified and readiness persisted,
+      // return the same contract without duplicating page text into PostgreSQL.
       return new Response(JSON.stringify(mirrored.pageCount), {
         status: 200,
         headers: { 'content-type': 'application/json' },
