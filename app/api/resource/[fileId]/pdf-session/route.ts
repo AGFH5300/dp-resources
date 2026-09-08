@@ -92,7 +92,7 @@ export async function POST(
         pagesReady: preview?.pages_ready || 0,
         manifestUrl: null,
         statusUrl: null,
-        standardUrl: `/api/resource/${encodeURIComponent(fileId)}/content`,
+        standardUrl: `/api/resource/${encodeURIComponent(fileId)}/buffered-content`,
       },
       {
         headers: {
