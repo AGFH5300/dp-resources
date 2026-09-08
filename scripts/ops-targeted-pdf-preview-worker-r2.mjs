@@ -20,6 +20,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function normalizeModifiedTime(value) {
   const trimmed = value?.trim() || '';
@@ -111,14 +112,30 @@ async function queueExactDocument(file) {
 }
 
 async function exactDocument(version) {
-  const { data, error } = await supabase
-    .from('dp_pdf_preview_documents')
-    .select('*')
-    .eq('drive_file_id', driveFileId)
-    .eq('version_key', version)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data || null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    try {
+      const { data, error } = await supabase
+        .from('dp_pdf_preview_documents')
+        .select('*')
+        .eq('drive_file_id', driveFileId)
+        .eq('version_key', version)
+        .maybeSingle();
+      if (!error) return data || null;
+      lastError = error;
+    } catch (error) {
+      lastError = error;
+    }
+    const message = lastError?.message || String(lastError);
+    console.warn(JSON.stringify({
+      event: 'ops_targeted_preview_status_retry',
+      driveFileId,
+      attempt,
+      message,
+    }));
+    if (attempt < 8) await sleep(Math.min(10_000, 750 * 2 ** (attempt - 1)));
+  }
+  throw new Error(`Unable to read targeted preview status after retries: ${lastError?.message || String(lastError)}`);
 }
 
 async function main() {
@@ -188,7 +205,7 @@ async function main() {
     if (current?.status === 'failed') {
       throw new Error(`Targeted preview failed for ${file.name}: ${current.last_error || 'unknown error'}`);
     }
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await sleep(3000);
   }
   throw new Error(`Timed out waiting for targeted preview: ${file.name}`);
 }
