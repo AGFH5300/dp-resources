@@ -44,8 +44,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for the current safe Drive/index cleanup to finish
-        run: node scripts/ops-parallel-textbook-previews.mjs --mode=wait-index
+      - name: Wait for the refreshed production resource index
+        run: node scripts/ops-wait-for-textbook-index.mjs
 
       - name: Verify private R2 access before parallel work
         run: node scripts/verify-r2-preview-storage.mjs
