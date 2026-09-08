@@ -3,8 +3,14 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 export async function GET(req: Request) {
   await requireAdmin();
   const q = (new URL(req.url).searchParams.get('q') || '').trim();
-  if (q.length < 2) return Response.json({ users: [] });
   const sb = createSupabaseAdminClient();
+  if (q.length < 2) {
+    const { count, error } = await sb
+      .from('dp_resource_memberships')
+      .select('id', { count: 'exact', head: true });
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ users: [], total: count || 0 });
+  }
   const { data, error } = await sb
     .from('dp_resource_memberships')
     .select(
