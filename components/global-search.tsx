@@ -214,11 +214,15 @@ export function GlobalSearch() {
       drive_file_id: r.drive_file_id,
       is_folder: r.is_folder,
     });
+    const sameLibraryPath = r.is_folder && pathname === '/library';
     setOpeningId(r.drive_file_id);
     setRoutePending(true);
     startTransition(() => {
       router.push(href);
-      setTimeout(() => setOpen(false), 80);
+      setTimeout(() => {
+        if (sameLibraryPath) resetSearch();
+        else setOpen(false);
+      }, 80);
     });
   };
   if (!open)
