@@ -41,7 +41,10 @@ create table if not exists public.dp_resource_user_settings (
 );
 
 create or replace function public.dp_resource_user_settings_set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+set search_path = public
+as $$
 begin
   new.updated_at = now();
   return new;
