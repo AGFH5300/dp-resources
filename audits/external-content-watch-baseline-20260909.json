@@ -1,0 +1,80 @@
+{
+  "audit": "external_content_watch_baseline_v1",
+  "date": "2026-09-09",
+  "purpose": "Stable comparison baseline for recurring DP Resources source watches. This file records metadata and source URLs only; it does not contain third-party question text, markschemes, notes, or protected assets.",
+  "policy": {
+    "deduplicate_before_import": true,
+    "preserve_provenance": true,
+    "production_imports_additive_only": true,
+    "protected_external_content": "metadata_or_link_only_unless_authorised",
+    "required_gates": ["audit", "dry-run", "post-import verification"]
+  },
+  "sources": {
+    "exam_mate": {
+      "reviewed_capture_date": "2026-07-29",
+      "captured_questions": 14199,
+      "importable_questions": 14128,
+      "quarantined_questions": 71,
+      "current_delta_status": "no_verified_post_capture_delta",
+      "next_action": "fresh authorised capture then existing Exam-Mate audit/dry-run/import pipeline"
+    },
+    "revision_village": {
+      "reviewed_capture_date": "2026-07-27",
+      "verified_new_or_changed": [
+        {
+          "kind": "prediction_exams",
+          "cohort": "November 2026",
+          "url": "https://www.revisionvillage.com/prediction-exams/",
+          "subjects_observed": ["Mathematics", "Biology", "Chemistry", "Physics", "ESS", "Psychology", "Business Management", "Economics", "English"]
+        },
+        {
+          "kind": "ia_resources",
+          "url": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
+          "subjects_observed": ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Economics"]
+        }
+      ],
+      "next_action": "fresh authorised archive then existing Revision Village idempotent importer"
+    },
+    "revision_town": {
+      "reviewed_capture_identifier": "processed-20260721-222121",
+      "reviewed_capture_date": "2026-07-21",
+      "question_cores": 5135,
+      "variants": 12212,
+      "current_observation": "public IB pages refreshed in September 2026; exact item-level delta not yet verified",
+      "urls": [
+        "https://revisiontown.com/ib/",
+        "https://revisiontown.com/ib-mathematics/"
+      ],
+      "next_action": "capture and compare source IDs, IB references and canonical content fingerprints against verified July batch"
+    },
+    "mortar_and_pestle": {
+      "internal_provider_slug": "pestle",
+      "reviewed_capture_date": "2026-07-23",
+      "baseline_raw_banks": 18,
+      "baseline_entries": 6456,
+      "current_bank_count_observed": 18,
+      "url": "https://pestle.pirateib.su/app/",
+      "restriction": "Hosting site self-identifies as distributing pirated IB resources. Do not ingest newly discovered copyrighted content from this source without a lawful/authorised source path.",
+      "next_action": "metadata/fingerprint comparison only unless authorised content is supplied"
+    },
+    "save_my_exams": {
+      "library_source_evidence_date": "2026-08-08",
+      "existing_attributed_drive_files": 641,
+      "current_catalog_urls": [
+        "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/",
+        "https://www.savemyexams.com/dp/maths/mock-exams/",
+        "https://www.savemyexams.com/dp/business/ib/management/24/mock-exams/",
+        "https://www.savemyexams.com/dp/chemistry/ib/23/mock-exams/",
+        "https://www.savemyexams.com/dp/biology/mock-exams/",
+        "https://www.savemyexams.com/dp/economics/ib/22/mock-exams",
+        "https://www.savemyexams.com/dp/environmental-systems-and-societies-ess/mock-exams/"
+      ],
+      "catalog_observations": {
+        "math_aa": "Sets A, B and C visible; HL Papers 1/2/3 where applicable and SL Papers 1/2",
+        "business_management": "Set A visible; HL Papers 1/2/3 and SL Papers 1/2",
+        "chemistry": "Sets A, B and C visible; HL/SL Paper 1A, Paper 1B and Paper 2"
+      },
+      "next_action": "compare individual resource identifiers against existing Drive/source evidence; import only user-owned/licensed files and otherwise retain metadata/source links"
+    }
+  }
+}
