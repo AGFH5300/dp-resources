@@ -1,0 +1,42 @@
+name: Changelog sync
+
+on:
+  push:
+    branches:
+      - feature/settings-account-centre
+    paths:
+      - .github/workflows/changelog-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: feature/settings-account-centre
+          fetch-depth: 0
+      - name: Add September 9 public changelog entries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('lib/changelog.ts')
+          text = path.read_text()
+          marker = "const historicalSummaries: Record<string, string[]> = {\n"
+          block = """  '2026-09-09': [\n    'Added a complete Settings & Account Centre for profile details, private profile pictures, IB subjects and HL/SL levels, exam session and year, email and password changes, notification controls, privacy information, and DP Resources display preferences.',\n    'Added per-user controls for Library source tags, Library resource-type labels, Question Bank source tags, expanded source information, support notifications, and automatic What’s new release highlights.',\n    'Strengthened account security with current-password verification for sensitive changes, private avatar storage, safer account data synchronization, and refreshed production dependencies to clear high and critical security audit findings.',\n  ],\n"""
+          if block not in text:
+              if marker not in text:
+                  raise SystemExit('Changelog insertion marker not found')
+              text = text.replace(marker, marker + block, 1)
+              path.write_text(text)
+          PY
+      - name: Commit changelog and remove one-time workflow
+        run: |
+          git rm .github/workflows/changelog-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/changelog.ts
+          git commit -m "Record Settings Centre release in public changelog"
+          git push origin HEAD:feature/settings-account-centre
