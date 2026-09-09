@@ -1,16 +1,24 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CircleUserRound, LogOut, UserStar } from 'lucide-react';
+import {
+  ChevronDown,
+  CircleUserRound,
+  LogOut,
+  Settings,
+  UserStar,
+} from 'lucide-react';
 import { WHATS_NEW_RELEASE } from '@/lib/whats-new';
 import { NotificationBadge } from './notification-center';
 
 export function AccountMenu({
   username,
+  avatarUrl,
   admin,
   adminUnread = 0,
 }: {
   username?: string | null;
+  avatarUrl?: string | null;
   admin?: boolean;
   adminUnread?: number;
 }) {
@@ -44,7 +52,17 @@ export function AccountMenu({
         className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"
         title={accountLabel}
       >
-        <CircleUserRound className="size-5 text-slate-600" />
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt=""
+            className="size-5 rounded-full object-cover"
+            aria-hidden="true"
+          />
+        ) : (
+          <CircleUserRound className="size-5 text-slate-600" />
+        )}
         <span className="hidden max-w-44 truncate lg:inline">
           {accountLabel}
         </span>
@@ -63,6 +81,15 @@ export function AccountMenu({
               {accountLabel}
             </p>
           </div>
+          <Link
+            role="menuitem"
+            href="/settings"
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50"
+            onClick={() => setOpen(false)}
+          >
+            <Settings className="size-4" />
+            Settings
+          </Link>
           {admin && (
             <Link
               role="menuitem"
