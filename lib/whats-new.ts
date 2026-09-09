@@ -1,36 +1,36 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-08-16-final-release',
-  dateLabel: '16 August 2026',
+  id: '2026-09-09-settings-account-centre',
+  dateLabel: '9 September 2026',
   items: [
     {
-      title: 'Maths search understands the way you type',
+      title: 'A new Settings & Account Centre',
       description:
-        'Search with common shorthand such as Math AAHL, AA/HL, Maths AI SL, or IB Mathematics AA HL and DP Resources will match the right course automatically.',
+        'Manage your DP Resources profile, username, profile picture, email, password, academic details, notifications, privacy and display preferences from one place.',
     },
     {
-      title: 'Library folders are much cleaner',
+      title: 'Save your IB academic profile',
       description:
-        'Back navigation and Browse by source now sit together in a compact row, while Filter, Search this folder, and view controls stay neatly grouped on the other side.',
+        'Add your Diploma Programme subjects, choose HL or SL for each one, and save your May or November exam session and exam year.',
     },
     {
-      title: 'Finding resources feels more natural',
+      title: 'Choose how source information appears',
       description:
-        'Folder search and filters are easier to reach, Filter closes when you click away or press Escape, and menus now follow the same design across the app.',
+        'You can independently show or hide Library source tags, Library resource-type labels, Question Bank source tags and expanded Question Bank source information.',
     },
     {
-      title: 'Sources are easier to understand',
+      title: 'More control over notifications',
       description:
-        'Reviewed source information appears on actual resources where it is useful, while normal subject and navigation folders stay out of source browsing and no longer look like unresolved content.',
+        'Support-ticket notifications and automatic What’s new release pop-ups can now be controlled from your account preferences.',
     },
     {
-      title: 'Library updates are faster and more reliable',
+      title: 'Profile pictures now appear in your account menu',
       description:
-        'The Library indexing system has been rebuilt so new and changed resources can be processed much faster, with safer recovery if a sync is interrupted.',
+        'Upload a private JPG, PNG or WebP profile picture and DP Resources will use it in your signed-in account menu.',
     },
     {
-      title: 'Search, sign-in, and dark mode are more polished',
+      title: 'Account security has been strengthened',
       description:
-        'Recent reliability, security, dark-mode, dropdown, and layout fixes make the site feel more consistent without changing how you normally use it.',
+        'Sensitive email and password changes require your current password, and the production dependency set has been refreshed against current security advisories.',
     },
   ],
 } as const;
