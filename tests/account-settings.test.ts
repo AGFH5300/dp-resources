@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 
-const migration = read(
-  'supabase/migrations/20260909111409_settings_account_centre.sql',
-);
+const migrationPath =
+  'supabase/migrations/20260909111409_settings_account_centre.sql';
+const migration = read(migrationPath);
 const schema = read('supabase/schema.sql');
 const settingsRoute = read('app/api/account/settings/route.ts');
 const securityRoute = read('app/api/account/security/route.ts');
@@ -20,6 +20,10 @@ const whatsNew = read('lib/whats-new.ts');
 const packageJson = read('package.json');
 
 describe('Settings & Account Centre', () => {
+  it('tracks the exact migration version applied to production', () => {
+    expect(migrationPath).toContain('20260909111409_settings_account_centre.sql');
+  });
+
   it('keeps account settings additive, private and represented in the canonical schema', () => {
     for (const source of [migration, schema]) {
       expect(source).toContain('public.dp_resource_user_settings');
