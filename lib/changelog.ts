@@ -27,6 +27,11 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-09': [
+    'Added a complete Settings & Account Centre for profile details, private profile pictures, IB subjects and HL/SL levels, exam session and year, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
+    'Added per-user controls for Library source tags, Library resource-type labels, Question Bank source tags, expanded source information, support notifications, and automatic What’s new release highlights.',
+    'Strengthened account security with current-password verification for sensitive changes, private avatar storage, safer account data synchronization, and refreshed production dependencies to clear high and critical security audit findings.',
+  ],
   '2026-08-04': [
     'Reduced very large Practice Builder session creation from minutes to seconds with compact fixed queues, contained selected content to the complete natural settings-and-summary height, and added one-click subject removal.',
     'Matched the Practice Builder selection panel to the complete natural-height settings and summary column, and cut very large session preparation to compact, cached 10,000-question batches.',
