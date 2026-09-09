@@ -15,6 +15,9 @@ const accountMenu = read('components/account-menu.tsx');
 const appHeader = read('components/app-header.tsx');
 const attribution = read('components/content-source-badge.tsx');
 const notifications = read('app/api/notifications/route.ts');
+const changelog = read('lib/changelog.ts');
+const whatsNew = read('lib/whats-new.ts');
+const packageJson = read('package.json');
 
 describe('Settings & Account Centre', () => {
   it('keeps account settings additive, private and represented in the canonical schema', () => {
@@ -31,6 +34,8 @@ describe('Settings & Account Centre', () => {
       expect(source).toContain('exam_session');
       expect(source).toContain('dp-resource-avatars');
       expect(source).toContain('enable row level security');
+      expect(source).toContain('dp_resource_user_settings_set_updated_at');
+      expect(source).toContain('set search_path = public');
     }
     expect(migration).toContain('auth.uid() = id');
     expect(migration).toContain('dp_resources_sync_auth_email');
@@ -80,5 +85,18 @@ describe('Settings & Account Centre', () => {
     expect(notifications).toContain('userTicketKinds');
     expect(notifications).toContain('hiddenUnread');
     expect(notifications).toContain('Math.max(0, (unread.count || 0) - hiddenUnread)');
+  });
+
+  it('records the release in both the public changelog and What’s new', () => {
+    expect(changelog).toContain("'2026-09-09': [");
+    expect(changelog).toContain('Added a complete Settings & Account Centre');
+    expect(changelog).toContain('refreshed production dependencies');
+    expect(whatsNew).toContain("id: '2026-09-09-settings-account-centre'");
+    expect(whatsNew).toContain('A new Settings & Account Centre');
+  });
+
+  it('pins production dependencies above the resolved high and critical advisory ranges', () => {
+    expect(packageJson).toContain('"next": "^15.5.24"');
+    expect(packageJson).toContain('"sharp": "0.35.4"');
   });
 });
