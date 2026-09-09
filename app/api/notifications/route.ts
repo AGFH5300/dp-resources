@@ -13,6 +13,8 @@ const categoryKinds = {
   user_tickets: ['ticket_reply', 'ticket_status'],
 } as const;
 
+const userTicketKinds = new Set<string>(categoryKinds.user_tickets);
+
 function noStore(payload: unknown, init?: ResponseInit) {
   const response = Response.json(payload, init);
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
@@ -23,7 +25,7 @@ export async function GET() {
   const { user } = await requireMember();
   const sb = createSupabaseAdminClient();
 
-  const [feed, unread, adminTickets, adminReports, userTickets] =
+  const [feed, unread, adminTickets, adminReports, userTickets, settings] =
     await Promise.all([
       sb
         .from('dp_notifications')
@@ -56,6 +58,11 @@ export async function GET() {
         .eq('recipient_id', user.id)
         .in('kind', categoryKinds.user_tickets)
         .is('read_at', null),
+      sb
+        .from('dp_resource_user_settings')
+        .select('support_notifications')
+        .eq('id', user.id)
+        .maybeSingle<{ support_notifications: boolean }>(),
     ]);
 
   const error =
@@ -63,16 +70,25 @@ export async function GET() {
     unread.error ||
     adminTickets.error ||
     adminReports.error ||
-    userTickets.error;
+    userTickets.error ||
+    settings.error;
   if (error) return noStore({ error: error.message }, { status: 500 });
 
+  const supportNotifications = settings.data?.support_notifications !== false;
+  const notifications = supportNotifications
+    ? feed.data || []
+    : (feed.data || []).filter(
+        (notification) => !userTicketKinds.has(notification.kind),
+      );
+  const hiddenUnread = supportNotifications ? 0 : userTickets.count || 0;
+
   return noStore({
-    notifications: feed.data || [],
+    notifications,
     summary: {
-      unread: unread.count || 0,
+      unread: Math.max(0, (unread.count || 0) - hiddenUnread),
       adminTickets: adminTickets.count || 0,
       adminReports: adminReports.count || 0,
-      userTickets: userTickets.count || 0,
+      userTickets: supportNotifications ? userTickets.count || 0 : 0,
     },
   });
 }
