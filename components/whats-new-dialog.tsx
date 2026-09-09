@@ -9,19 +9,21 @@ import { WHATS_NEW_RELEASE } from '@/lib/whats-new';
 
 const STORAGE_KEY = `dp-whats-new:${WHATS_NEW_RELEASE.id}`;
 
-export function WhatsNewDialog() {
+export function WhatsNewDialog({ autoOpen = true }: { autoOpen?: boolean }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const show = () => setOpen(true);
     window.addEventListener('dp:open-whats-new', show);
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY) !== 'seen') setOpen(true);
-    } catch {
-      setOpen(true);
+    if (autoOpen) {
+      try {
+        if (window.localStorage.getItem(STORAGE_KEY) !== 'seen') setOpen(true);
+      } catch {
+        setOpen(true);
+      }
     }
     return () => window.removeEventListener('dp:open-whats-new', show);
-  }, []);
+  }, [autoOpen]);
 
   const dismiss = () => {
     try {
