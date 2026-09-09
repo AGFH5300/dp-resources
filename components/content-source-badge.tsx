@@ -1,6 +1,9 @@
+'use client';
+
 import type { ResourceAttribution } from '@/lib/types';
 import type { QuestionPublicSource } from '@/lib/question-bank/types';
 import React from 'react';
+import { useAccountPreferences } from '@/lib/account-preferences-client';
 
 const SOURCE_TOOLTIP =
   'Source identifies the collection or provider through which this resource was added to DP Resources and may not identify the original copyright owner.';
@@ -31,6 +34,9 @@ export function QuestionSourceBadges({
   sources?: QuestionPublicSource[];
   className?: string;
 }) {
+  const preferences = useAccountPreferences();
+  if (!preferences.showQuestionBankSourceTags) return null;
+
   const safeSources = publicQuestionSources(sources);
   const variantSources = safeSources.filter((source) => source.isVariantSource);
   const display = variantSources.length ? variantSources : safeSources;
@@ -54,6 +60,9 @@ export function QuestionSourceInformation({
 }: {
   sources?: QuestionPublicSource[];
 }) {
+  const preferences = useAccountPreferences();
+  if (!preferences.showExpandedSourceAttribution) return null;
+
   const safeSources = publicQuestionSources(sources);
   const indexed = [
     ...new Map(
@@ -108,7 +117,9 @@ export function ResourceAttributionBadges({
 }: {
   attribution?: ResourceAttribution;
 }) {
+  const preferences = useAccountPreferences();
   if (!attribution) return null;
+
   const applicableSources = attribution.sources.filter(
     (source) =>
       source.reviewStatus === 'reviewed' &&
@@ -119,10 +130,13 @@ export function ResourceAttributionBadges({
   const primary =
     applicableSources.find((source) => source.isPrimary) ?? applicableSources[0];
   const type = attribution.resourceType;
-  if (!primary && !type) return null;
+  const showPrimary = preferences.showLibrarySourceTags && Boolean(primary);
+  const showType = preferences.showLibraryResourceTypeLabels && Boolean(type);
+  if (!showPrimary && !showType) return null;
+
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-1 text-xs text-slate-500">
-      {primary ? (
+      {showPrimary && primary ? (
         <span
           className="max-w-48 truncate rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 dark:border-slate-700 dark:bg-slate-900"
           title={SOURCE_TOOLTIP}
@@ -131,7 +145,7 @@ export function ResourceAttributionBadges({
           {primary.shortLabel}
         </span>
       ) : null}
-      {type ? (
+      {showType && type ? (
         <span
           className="max-w-40 truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 dark:border-slate-700 dark:bg-slate-950"
           aria-label={`Resource type: ${type.displayName}`}
