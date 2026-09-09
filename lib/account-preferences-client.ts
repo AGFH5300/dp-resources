@@ -122,6 +122,7 @@ export function publishAccountPreferences(next: AccountPreferences) {
   setSnapshot(normalizeAccountPreferences(next));
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('dp:account-preferences-changed'));
+    window.dispatchEvent(new Event('dp:notifications-changed'));
   }
 }
 
