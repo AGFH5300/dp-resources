@@ -1,9 +1,10 @@
 {
   "schema": "dp_external_content_index_state_v1",
-  "updatedAt": "2026-09-09T04:38:31.451Z",
+  "updatedAt": "2026-09-09T04:40:46.931Z",
   "signalIds": [
     "exam-mate-topical-count-238260",
     "exam-mate-topical-count-238265",
+    "exam-mate-topical-count-238270",
     "exam-mate-yearly-count-49135",
     "mortar-pestle-page-fd227d709609ba18",
     "revision-town-page-date-09-sep-2026",
@@ -11,7 +12,7 @@
   ],
   "sources": {
     "exam_mate": {
-      "scannedAt": "2026-09-09T04:38:29.713Z",
+      "scannedAt": "2026-09-09T04:40:45.280Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -20,7 +21,7 @@
           "status": 200,
           "etag": null,
           "lastModified": null,
-          "htmlSha256": "d87bff01784f3c5012dffd473aa36c6ce229c2c5dd0bde35329b467bcaa3a531",
+          "htmlSha256": "646bc4ed8439dba9f031512ec1e8ce76b0b8fe0d8bbb5980c545cd454b728382",
           "catalogFingerprint": "2dfa32140fd0b44c9b0af64c6474d3a6ebf6a3f5b6f891b2f5f611e678e00107",
           "itemCount": 8
         }
@@ -93,7 +94,7 @@
       ]
     },
     "revision_village": {
-      "scannedAt": "2026-09-09T04:38:30.226Z",
+      "scannedAt": "2026-09-09T04:40:45.708Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -705,7 +706,7 @@
       ]
     },
     "revision_town": {
-      "scannedAt": "2026-09-09T04:38:30.429Z",
+      "scannedAt": "2026-09-09T04:40:45.977Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -2357,7 +2358,7 @@
       ]
     },
     "mortar_and_pestle": {
-      "scannedAt": "2026-09-09T04:38:30.484Z",
+      "scannedAt": "2026-09-09T04:40:46.045Z",
       "captureMode": "fingerprint-only",
       "pages": [
         {
@@ -2366,7 +2367,7 @@
           "status": 200,
           "etag": null,
           "lastModified": "Wed, 09 Sep 2026 04:32:44 GMT",
-          "htmlSha256": "fde6120120d8d1e94061cb56029dfc33d5a9d2bad9a461130a3fdcd12bc0e921",
+          "htmlSha256": "c079e53fa48b7a2b853be52766ed916b457a1480e6ca47c9836ea78b8a78c149",
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
           "itemCount": 0
         }
@@ -2374,7 +2375,7 @@
       "items": []
     },
     "save_my_exams": {
-      "scannedAt": "2026-09-09T04:38:31.449Z",
+      "scannedAt": "2026-09-09T04:40:46.930Z",
       "captureMode": "metadata-only",
       "pages": [
         {
