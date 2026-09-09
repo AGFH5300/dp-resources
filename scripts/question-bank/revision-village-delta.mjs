@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 
 export const JULY_BASE_ARCHIVE_SHA256 =
-  'fc93fd8129ba7e945e11249c12fba08c565b2923074413a5835ce8935dafa5e9';
+  'dfba86298dce681ba02d6a5a54fdea20d48253d0117afec945df9a7aea6c7a14';
 
 export const RV_INDEXER_V141_SHA256 =
   '53dd97bc5c6eeddb6e7fb6c063f79717c95b7b6a97d65de98933aad46fe3272a';
