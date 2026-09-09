@@ -25,7 +25,7 @@ jobs:
       - name: Refresh lockfile to patched compatible versions
         run: |
           npm install --package-lock-only --ignore-scripts
-          npm audit fix --package-lock-only --omit=dev --ignore-scripts
+          npm audit fix --package-lock-only --omit=dev --ignore-scripts || true
       - name: Verify production audit
         run: npm audit --omit=dev --audit-level=high
       - name: Commit refreshed lockfile
