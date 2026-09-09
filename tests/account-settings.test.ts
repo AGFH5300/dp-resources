@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 const migration = read(
-  'supabase/migrations/20260909123000_settings_account_centre.sql',
+  'supabase/migrations/20260909111409_settings_account_centre.sql',
 );
 const schema = read('supabase/schema.sql');
 const settingsRoute = read('app/api/account/settings/route.ts');
