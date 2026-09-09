@@ -22,6 +22,7 @@ const serverSnapshot: AccountPreferenceState = {
 
 let snapshot: AccountPreferenceState = serverSnapshot;
 let remoteLoad: Promise<void> | null = null;
+let initializationStarted = false;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -90,6 +91,13 @@ async function loadRemotePreferences() {
   return remoteLoad;
 }
 
+function initializePreferences() {
+  if (initializationStarted) return;
+  initializationStarted = true;
+  hydrateLocalPreferences();
+  void loadRemotePreferences();
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -103,8 +111,7 @@ function usePreferenceState() {
   );
 
   useEffect(() => {
-    hydrateLocalPreferences();
-    void loadRemotePreferences();
+    initializePreferences();
   }, []);
 
   return state;
