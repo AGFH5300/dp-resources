@@ -1,0 +1,112 @@
+{
+  "audit": "external_content_watch_baseline_v2",
+  "date": "2026-09-09",
+  "purpose": "Stable machine-readable comparison baseline for recurring DP Resources external source watches. Metadata/provenance only; no third-party protected question text, markschemes, notes, or assets.",
+  "policy": {
+    "deduplicate_before_import": true,
+    "preserve_provenance": true,
+    "production_imports_additive_only": true,
+    "protected_external_content": "metadata_or_link_only_unless_authorised",
+    "required_gates": ["audit", "dry-run", "post-import verification"]
+  },
+  "sources": {
+    "exam_mate": {
+      "reviewed_capture_date": "2026-07-29",
+      "captured_questions": 14199,
+      "importable_questions": 14128,
+      "quarantined_questions": 71,
+      "current_delta_status": "no_verified_post_capture_delta",
+      "next_action": "fresh authorised capture then existing Exam-Mate audit/dry-run/import pipeline"
+    },
+    "revision_village": {
+      "reviewed_capture_date": "2026-07-27",
+      "last_checked": "2026-09-09",
+      "verified_new_or_changed": [
+        {
+          "kind": "prediction_exams",
+          "cohort": "November 2026",
+          "url": "https://www.revisionvillage.com/prediction-exams/",
+          "subjects_observed": ["Mathematics", "Biology", "Chemistry", "Physics", "ESS", "Psychology", "Business Management", "Economics", "English"]
+        },
+        {
+          "kind": "ia_resources",
+          "url": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
+          "subjects_observed": ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Economics"]
+        },
+        {
+          "kind": "official_2026_trial_exams",
+          "status_label": "New",
+          "observed_examples": [
+            "IB Chemistry HL",
+            "IB Spanish B SL",
+            "IB English B HL",
+            "IB English Language & Literature HL",
+            "IB ESS HL"
+          ],
+          "example_urls": [
+            "https://www.revisionvillage.com/ib-chemistry/hl/practice-exams/",
+            "https://www.revisionvillage.com/ib-spanish-b/sl/practice-exams/mock-exams/",
+            "https://www.revisionvillage.com/ib-english-b/hl/practice-exams/",
+            "https://www.revisionvillage.com/ib-english/language-and-literature-hl/practice-exams/mock-exams/",
+            "https://www.revisionvillage.com/ib-ess/hl/practice-exams/mock-exams/"
+          ],
+          "index_action": "metadata_only_pending_authorised_archive"
+        },
+        {
+          "kind": "summary_notes",
+          "status_label": "New",
+          "observed_examples": ["IB Biology SL", "IB English B HL"],
+          "example_urls": [
+            "https://www.revisionvillage.com/ib-biology/sl/questionbank/",
+            "https://www.revisionvillage.com/ib-english-b/hl/practice-exams/"
+          ],
+          "index_action": "metadata_only_pending_authorised_access_and_redistribution_rights"
+        }
+      ],
+      "next_action": "fresh authorised archive then existing Revision Village idempotent importer; compare source IDs/fingerprints to July capture"
+    },
+    "revision_town": {
+      "reviewed_capture_identifier": "processed-20260721-222121",
+      "reviewed_capture_date": "2026-07-21",
+      "question_cores": 5135,
+      "variants": 12212,
+      "last_checked": "2026-09-09",
+      "current_observation": "Public IB hub and mathematics pages were crawled as refreshed on 7-8 Sep 2026, but surfaced content is not sufficient to prove an item-level delta against the July capture. No new question/paper/note item imported on this run.",
+      "urls": [
+        "https://revisiontown.com/ib/",
+        "https://revisiontown.com/ib-mathematics/",
+        "https://revisiontown.com/ib-maths-ia-60-examples-and-guidance/"
+      ],
+      "next_action": "capture source IDs, download identifiers and canonical content fingerprints and compare against verified July batch before import"
+    },
+    "mortar_and_pestle": {
+      "internal_provider_slug": "pestle",
+      "reviewed_capture_date": "2026-07-23",
+      "baseline_raw_banks": 18,
+      "baseline_entries": 6456,
+      "current_bank_count_observed": 18,
+      "url": "https://pestle.pirateib.su/app/",
+      "restriction": "Do not ingest newly discovered copyrighted content from this source without a lawful/authorised source path.",
+      "next_action": "metadata/fingerprint comparison only unless authorised content is supplied"
+    },
+    "save_my_exams": {
+      "library_source_evidence_date": "2026-08-08",
+      "existing_attributed_drive_files": 641,
+      "current_catalog_urls": [
+        "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/",
+        "https://www.savemyexams.com/dp/maths/mock-exams/",
+        "https://www.savemyexams.com/dp/business/ib/management/24/mock-exams/",
+        "https://www.savemyexams.com/dp/chemistry/ib/23/mock-exams/",
+        "https://www.savemyexams.com/dp/biology/mock-exams/",
+        "https://www.savemyexams.com/dp/economics/ib/22/mock-exams",
+        "https://www.savemyexams.com/dp/environmental-systems-and-societies-ess/mock-exams/"
+      ],
+      "catalog_observations": {
+        "math_aa": "Sets A, B and C visible; HL Papers 1/2/3 where applicable and SL Papers 1/2",
+        "business_management": "Set A visible; HL Papers 1/2/3 and SL Papers 1/2",
+        "chemistry": "Sets A, B and C visible; HL/SL Paper 1A, Paper 1B and Paper 2"
+      },
+      "next_action": "compare individual resource identifiers against existing Drive/source evidence; import only user-owned/licensed files and otherwise retain metadata/source links"
+    }
+  }
+}
