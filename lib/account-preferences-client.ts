@@ -10,7 +10,17 @@ import {
 
 const STORAGE_KEY = 'dp-account-preferences-v1';
 
-let snapshot: AccountPreferences = DEFAULT_ACCOUNT_PREFERENCES;
+type AccountPreferenceState = {
+  preferences: AccountPreferences;
+  ready: boolean;
+};
+
+const serverSnapshot: AccountPreferenceState = {
+  preferences: DEFAULT_ACCOUNT_PREFERENCES,
+  ready: false,
+};
+
+let snapshot: AccountPreferenceState = serverSnapshot;
 let remoteLoad: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -18,11 +28,20 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
-function setSnapshot(next: AccountPreferences, persist = true) {
-  snapshot = normalizeAccountPreferences(next);
+function setSnapshot(
+  next: AccountPreferences,
+  { persist = true, ready = true }: { persist?: boolean; ready?: boolean } = {},
+) {
+  snapshot = {
+    preferences: normalizeAccountPreferences(next),
+    ready,
+  };
   if (persist && typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(snapshot.preferences),
+      );
     } catch {
       // Preferences remain usable in-memory when browser storage is unavailable.
     }
@@ -30,15 +49,22 @@ function setSnapshot(next: AccountPreferences, persist = true) {
   emit();
 }
 
+function markReady() {
+  if (snapshot.ready) return;
+  snapshot = { ...snapshot, ready: true };
+  emit();
+}
+
 function hydrateLocalPreferences() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
+    if (!stored) return false;
     const parsed = JSON.parse(stored) as Partial<AccountPreferences>;
-    setSnapshot(normalizeAccountPreferences(parsed), false);
+    setSnapshot(normalizeAccountPreferences(parsed), { persist: false, ready: true });
+    return true;
   } catch {
-    // Ignore malformed or inaccessible local preference state.
+    return false;
   }
 }
 
@@ -58,7 +84,9 @@ async function loadRemotePreferences() {
       }
     })
     .catch(() => undefined)
-    .then(() => undefined);
+    .finally(() => {
+      markReady();
+    });
   return remoteLoad;
 }
 
@@ -67,11 +95,11 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-export function useAccountPreferences() {
-  const preferences = useSyncExternalStore(
+function usePreferenceState() {
+  const state = useSyncExternalStore(
     subscribe,
     () => snapshot,
-    () => DEFAULT_ACCOUNT_PREFERENCES,
+    () => serverSnapshot,
   );
 
   useEffect(() => {
@@ -79,7 +107,15 @@ export function useAccountPreferences() {
     void loadRemotePreferences();
   }, []);
 
-  return preferences;
+  return state;
+}
+
+export function useAccountPreferences() {
+  return usePreferenceState().preferences;
+}
+
+export function useAccountPreferenceState() {
+  return usePreferenceState();
 }
 
 export function publishAccountPreferences(next: AccountPreferences) {
