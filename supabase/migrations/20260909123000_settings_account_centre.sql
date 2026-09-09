@@ -1,3 +1,6 @@
+-- Applied to production as Supabase migration 20260909111409 (settings_account_centre).
+-- The repository filename remains date-scoped for source history; SQL below is the applied definition.
+
 alter table public.dp_resource_profiles
   add column if not exists avatar_path text,
   add column if not exists academic_subjects jsonb not null default '[]'::jsonb,
