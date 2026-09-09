@@ -1,0 +1,56 @@
+name: External DP Content Index
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 3 * * *'
+  push:
+    paths:
+      - 'scripts/external-content-indexer.mjs'
+      - '.github/workflows/external-content-index.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: external-dp-content-index
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Syntax check
+        run: node --check scripts/external-content-indexer.mjs
+
+      - name: Scan all monitored DP sources
+        run: >-
+          node scripts/external-content-indexer.mjs
+          --mode scan
+          --write-state
+          --report audits/external-content-delta-latest.json
+          --state audits/external-content-index-state.json
+
+      - name: Persist metadata index and delta
+        run: |
+          if git diff --quiet -- audits/external-content-index-state.json audits/external-content-delta-latest.json; then
+            echo 'No index changes to commit.'
+            exit 0
+          fi
+          git config user.name 'dp-resources-content-indexer'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add audits/external-content-index-state.json audits/external-content-delta-latest.json
+          git commit -m 'chore: refresh external DP content index [skip ci]'
+          git push origin HEAD:main
