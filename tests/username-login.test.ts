@@ -30,15 +30,17 @@ describe('username or email login', () => {
 });
 
 describe('username account display', () => {
-  it('loads the signed-in profile username through the client-safe header', () => {
+  it('loads the signed-in profile username and avatar through the client-safe header', () => {
     expect(nav).toContain('<AppHeader admin={admin} userId={userId} />');
     expect(nav).not.toContain('createSupabaseServerClient');
     expect(appHeader).toContain("fetch('/api/account/profile'");
     expect(appHeader).not.toContain('@supabase/');
     expect(profileRoute).toContain("from('dp_resource_profiles')");
-    expect(profileRoute).toContain(".select('username')");
+    expect(profileRoute).toContain(".select('username,avatar_path')");
+    expect(profileRoute).toContain('signedAccountAvatarUrl');
     expect(profileRoute).toContain('requireApiMember');
     expect(appHeader).toContain('username={username}');
+    expect(appHeader).toContain('avatarUrl={avatarUrl}');
   });
 
   it('shows the username instead of the account email', () => {

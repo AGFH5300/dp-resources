@@ -41,18 +41,18 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 16 August release summary', () => {
+  it('keeps What’s new as a short hand-written 9 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-08-16-final-release'");
-    expect(whatsNew).toContain("dateLabel: '16 August 2026'");
-    expect(whatsNew).not.toContain("dateLabel: 'August 2026'");
+    expect(whatsNew).toContain("id: '2026-09-09-settings-account-centre'");
+    expect(whatsNew).toContain("dateLabel: '9 September 2026'");
+    expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     for (const highlight of [
-      'Maths search understands the way you type',
-      'Library folders are much cleaner',
-      'Finding resources feels more natural',
-      'Sources are easier to understand',
-      'Library updates are faster and more reliable',
-      'Search, sign-in, and dark mode are more polished',
+      'A new Settings & Account Centre',
+      'Save your IB academic profile',
+      'Choose how source information appears',
+      'More control over notifications',
+      'Profile pictures now appear in your account menu',
+      'Account security has been strengthened',
     ]) {
       expect(whatsNew).toContain(highlight);
     }

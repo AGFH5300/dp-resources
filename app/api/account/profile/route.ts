@@ -1,3 +1,4 @@
+import { signedAccountAvatarUrl } from '@/lib/account-avatar';
 import { requireApiMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
@@ -9,9 +10,9 @@ export async function GET() {
 
   const { data, error } = await createSupabaseAdminClient()
     .from('dp_resource_profiles')
-    .select('username')
+    .select('username,avatar_path')
     .eq('id', context.user.id)
-    .maybeSingle<{ username: string | null }>();
+    .maybeSingle<{ username: string | null; avatar_path: string | null }>();
   if (error) {
     return Response.json(
       { error: 'Unable to load account profile.' },
@@ -19,7 +20,10 @@ export async function GET() {
     );
   }
   return Response.json(
-    { username: data?.username?.trim() || null },
+    {
+      username: data?.username?.trim() || null,
+      avatarUrl: await signedAccountAvatarUrl(data?.avatar_path),
+    },
     { headers: { 'Cache-Control': 'private, no-store' } },
   );
 }
