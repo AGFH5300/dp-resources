@@ -12,7 +12,7 @@ import {
   Star,
 } from 'lucide-react';
 
-import { useAccountPreferences } from '@/lib/account-preferences-client';
+import { useAccountPreferenceState } from '@/lib/account-preferences-client';
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
 import { SuspensionWatcher } from './suspension-watcher';
@@ -35,7 +35,7 @@ export function AppHeader({
   userId?: string | null;
 }) {
   const pathname = usePathname();
-  const preferences = useAccountPreferences();
+  const { preferences, ready: preferencesReady } = useAccountPreferenceState();
   const [shortcutModifier, setShortcutModifier] = useState('Ctrl');
   const [username, setUsername] = useState(initialUsername?.trim() || null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -111,7 +111,11 @@ export function AppHeader({
   return (
     <>
       <SuspensionWatcher userId={userId} />
-      {userId ? <WhatsNewDialog autoOpen={preferences.showWhatsNew} /> : null}
+      {userId ? (
+        <WhatsNewDialog
+          autoOpen={preferencesReady && preferences.showWhatsNew}
+        />
+      ) : null}
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-[color:var(--dp-warm-surface)]/95 backdrop-blur">
         <div className="flex h-16 items-center gap-3 px-4 sm:gap-5 sm:px-6 lg:px-8">
