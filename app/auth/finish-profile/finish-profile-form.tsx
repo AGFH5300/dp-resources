@@ -103,7 +103,7 @@ export function FinishSocialProfileForm({
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch('/api/auth/oauth/finish-profile', {
+      const response = await fetch('/api/auth/social/finish-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), fullName: fullName.trim() }),
