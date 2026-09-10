@@ -48,6 +48,14 @@ function ProviderIcon({ provider }: { provider: SocialAuthProviderKey }) {
   );
 }
 
+function socialErrorMessage(error: string, label: string) {
+  if (error === 'not_configured') return `${label} sign-in is not available yet.`;
+  if (error === 'no_account') return `No DP Resources account is connected to that ${label} account yet. Sign up first.`;
+  if (error === 'account_suspended') return 'This DP Resources account is suspended.';
+  if (error === 'cancelled') return `${label} sign-in was cancelled.`;
+  return `${label} sign-in could not be completed. Please try again.`;
+}
+
 export function SocialAuthButtons({ mode }: { mode: SocialAuthMode }) {
   const [nextPath, setNextPath] = useState('/library');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,11 +70,7 @@ export function SocialAuthButtons({ mode }: { mode: SocialAuthMode }) {
         providerKey && SOCIAL_AUTH_PROVIDERS[providerKey]
           ? SOCIAL_AUTH_PROVIDERS[providerKey].label
           : 'That provider';
-      setErrorMessage(
-        socialError === 'not_configured'
-          ? `${label} sign-in is not available yet.`
-          : `${label} sign-in could not be completed. Please try again.`,
-      );
+      setErrorMessage(socialErrorMessage(socialError, label));
     }
   }, []);
 
@@ -80,15 +84,24 @@ export function SocialAuthButtons({ mode }: { mode: SocialAuthMode }) {
       <div className="grid gap-2">
         {SOCIAL_AUTH_PROVIDER_KEYS.map((key) => {
           const provider = SOCIAL_AUTH_PROVIDERS[key];
-          const query = new URLSearchParams({
-            provider: key,
-            mode,
-            next: nextPath,
-          });
+          if (key === 'apple') {
+            return (
+              <div
+                key={key}
+                aria-disabled="true"
+                className="flex h-10 w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-md border border-[#d8dadd] bg-[#fafafa] px-4 text-sm font-semibold text-[#8a8d91]"
+                title="Sign in with Apple will be added later."
+              >
+                <ProviderIcon provider={key} />
+                Apple · later
+              </div>
+            );
+          }
+          const query = new URLSearchParams({ mode, next: nextPath });
           return (
             <a
               key={key}
-              href={`/api/auth/oauth/start?${query.toString()}`}
+              href={`/api/auth/social/${key}/start?${query.toString()}`}
               className="flex h-10 w-full items-center justify-center gap-2.5 rounded-md border border-[#c3c6ce] bg-white px-4 text-sm font-semibold text-[#1b1c19] transition hover:border-[#8b9099] hover:bg-[#faf9f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00152a]/20"
             >
               <ProviderIcon provider={key} />
