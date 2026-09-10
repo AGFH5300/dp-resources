@@ -115,6 +115,7 @@ function securedNextResponse(
   requestHeaders.set('x-nonce', nonce);
   // Next.js reads the request CSP nonce and applies it to framework-generated
   // inline/bootstrap scripts. The response carries the same policy for browsers.
+  requestHeaders.set('Content-Security-Policy', csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
   return response;
