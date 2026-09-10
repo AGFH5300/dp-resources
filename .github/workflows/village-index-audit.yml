@@ -50,6 +50,8 @@ jobs:
               .map((m) => new URL(m[1], appUrl).href)
               .filter(allowed);
             const hints = [];
+            const contexts = [];
+            const sourceMaps = [];
             for (const scriptUrl of [...new Set(scripts)]) {
               const response = await fetch(scriptUrl);
               const source = await response.text();
@@ -61,14 +63,44 @@ jobs:
                 if (value.includes('<') || value.includes('>')) continue;
                 hints.push(value);
               }
-              for (const match of source.matchAll(/(?:fetch|axios\.(?:get|post)|XMLHttpRequest)\s*\(([^)]{1,240})\)/g)) {
-                hints.push(`CALL:${match[1].replace(/\s+/g, ' ').slice(0, 220)}`);
+              for (const needle of ['.questionData.js', 'questionData', 'assets.revisionvillage.com', 'XMLHttpRequest', 'fetch(']) {
+                let from = 0;
+                for (let count = 0; count < 20; count += 1) {
+                  const at = source.indexOf(needle, from);
+                  if (at < 0) break;
+                  contexts.push({
+                    script: scriptUrl,
+                    needle,
+                    offset: at,
+                    context: source.slice(Math.max(0, at - 350), Math.min(source.length, at + needle.length + 500)).replace(/\s+/g, ' '),
+                  });
+                  from = at + needle.length;
+                }
+              }
+              const marker = 'sourceMappingURL=data:application/json;base64,';
+              const markerAt = source.lastIndexOf(marker);
+              if (markerAt >= 0) {
+                const encoded = source.slice(markerAt + marker.length).split(/\r?\n/, 1)[0].trim();
+                try {
+                  const map = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+                  sourceMaps.push({
+                    script: scriptUrl,
+                    file: map.file || null,
+                    source_count: Array.isArray(map.sources) ? map.sources.length : 0,
+                    sources: Array.isArray(map.sources) ? map.sources.slice(0, 2000) : [],
+                  });
+                } catch (error) {
+                  sourceMaps.push({ script: scriptUrl, error: error.message });
+                }
               }
               hints.push(`SCRIPT_SHA256:${scriptUrl}:${crypto.createHash('sha256').update(source).digest('hex')}`);
             }
             const unique = [...new Set(hints)].sort();
-            fs.writeFileSync(`${process.env.RUNNER_TEMP}/village-index/source/network-hints.json`, JSON.stringify(unique, null, 2) + '\n');
-            console.log(`Captured ${unique.length} safe network/source hints.`);
+            const root = `${process.env.RUNNER_TEMP}/village-index/source`;
+            fs.writeFileSync(`${root}/network-hints.json`, JSON.stringify(unique, null, 2) + '\n');
+            fs.writeFileSync(`${root}/loader-contexts.json`, JSON.stringify(contexts, null, 2) + '\n');
+            fs.writeFileSync(`${root}/source-map-sources.json`, JSON.stringify(sourceMaps, null, 2) + '\n');
+            console.log(`Captured ${unique.length} safe network/source hints and ${contexts.length} loader contexts.`);
           })().catch((error) => {
             console.error(error);
             process.exitCode = 1;
@@ -108,6 +140,8 @@ jobs:
             ${{ runner.temp }}/village-index/source/source-manifest.json
             ${{ runner.temp }}/village-index/source/json-candidates.json
             ${{ runner.temp }}/village-index/source/network-hints.json
+            ${{ runner.temp }}/village-index/source/loader-contexts.json
+            ${{ runner.temp }}/village-index/source/source-map-sources.json
             ${{ runner.temp }}/village-index/index/questions.ndjson
             ${{ runner.temp }}/village-index/index/source-summary.json
             ${{ runner.temp }}/village-index/index/failures.json
