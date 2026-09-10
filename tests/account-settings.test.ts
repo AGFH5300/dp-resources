@@ -9,7 +9,8 @@ const migration = read(migrationPath);
 const schema = read('supabase/schema.sql');
 const settingsRoute = read('app/api/account/settings/route.ts');
 const securityRoute = read('app/api/account/security/route.ts');
-const avatarRoute = read('pages/api/account/avatar.ts');
+const avatarRoute = read('app/api/account/avatar/route.ts');
+const middleware = read('middleware.ts');
 const settingsPage = read('app/settings/settings-centre.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const appHeader = read('components/app-header.tsx');
@@ -52,12 +53,10 @@ describe('Settings & Account Centre', () => {
   });
 
   it('protects settings, security and avatar mutations on the server', () => {
-    for (const route of [settingsRoute, securityRoute]) {
+    for (const route of [settingsRoute, securityRoute, avatarRoute]) {
       expect(route).toContain('requireApiMember');
       expect(route).toContain('sameOriginOrForbidden');
     }
-    expect(avatarRoute).toContain('sameOrigin(req)');
-    expect(avatarRoute).toContain('authenticatedUser(req, res)');
     expect(securityRoute).toContain('currentPassword');
     expect(securityRoute).toContain('signInWithPassword');
     expect(securityRoute).toContain('rateLimit');
@@ -65,13 +64,13 @@ describe('Settings & Account Centre', () => {
     expect(avatarRoute).toContain('hasExpectedMagicBytes');
   });
 
-  it('handles avatar bytes through a raw Node API stream instead of the App Router request adapter', () => {
+  it('preserves avatar binary request bodies through production middleware', () => {
     expect(settingsPage).toContain("headers: { 'Content-Type': file.type }");
     expect(settingsPage).toContain('body: file');
-    expect(avatarRoute).toContain('bodyParser: false');
-    expect(avatarRoute).toContain('for await (const chunk of req)');
-    expect(avatarRoute).toContain(".upload(path, bytes");
-    expect(avatarRoute).not.toContain('request.arrayBuffer()');
+    expect(avatarRoute).toContain('request.arrayBuffer()');
+    expect(middleware).toContain("pathname === '/api/account/avatar'");
+    expect(middleware).toContain('shouldPreserveRawRequestBody');
+    expect(middleware).toContain('return NextResponse.next();');
     expect(avatarRoute).not.toContain('request.formData()');
   });
 
