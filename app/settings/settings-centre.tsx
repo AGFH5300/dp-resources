@@ -294,16 +294,14 @@ export function SettingsCentre() {
         `/api/auth/availability?type=username&value=${encodeURIComponent(trimmed)}`,
         { cache: 'no-store', credentials: 'same-origin' },
       );
-      const payload = (await response.json().catch(() => null)) as
-        | AvailabilityResponse
-        | null;
+      const payload = (await response.json().catch(() => ({}))) as AvailabilityResponse;
 
       if (requestId !== usernameRequestId.current) return false;
 
       const message =
-        payload?.reason || payload?.message || 'Could not validate username right now.';
+        payload.reason || payload.message || 'Could not validate username right now.';
 
-      if (!response.ok || payload?.status === 'error') {
+      if (!response.ok || payload.status === 'error') {
         setUsernameCheck({ status: 'error', message });
         return false;
       }
