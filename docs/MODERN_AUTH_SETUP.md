@@ -1,74 +1,151 @@
 # DP Resources Modern Sign-In setup
 
-This document covers the infrastructure that must be configured before the social-auth feature is promoted to production. Do not store provider secrets in this repository.
+DP Resources owns the browser-facing OAuth flow. Supabase stays on the existing plan and remains the account/session/database backend; provider callbacks do **not** use a `*.supabase.co` URL.
 
-## Target public identity
+Do not store provider secrets in this repository.
+
+## Public identity
 
 - Product/app name: `DP Resources`
-- Website: `https://dp.resources.anshgupta.cc`
-- Target Auth domain: `https://auth.dp.resources.anshgupta.cc`
-- OAuth callback after the custom domain is active: `https://auth.dp.resources.anshgupta.cc/auth/v1/callback`
+- Production website: `https://dp.resources.anshgupta.cc`
+- Production callbacks:
+  - Google: `https://dp.resources.anshgupta.cc/api/auth/social/google/callback`
+  - Microsoft: `https://dp.resources.anshgupta.cc/api/auth/social/microsoft/callback`
+  - GitHub: `https://dp.resources.anshgupta.cc/api/auth/social/github/callback`
+- `DP_AUTH_ORIGIN` controls the callback origin for a test environment. If omitted, production falls back to the DP Resources site URL and development falls back to the request origin.
 
-Supabase remains the underlying Auth service but should not be the user-facing application identity.
+The provider sees DP Resources as the OAuth application. After provider verification, DP Resources creates the normal Supabase session server-side using the existing service-role secret. No Supabase Auth custom domain or paid add-on is required.
 
-## Order of operations
+## Current Replit test origin
 
-1. Upgrade the Supabase organization/project to a plan that supports Custom Domains and add the Custom Domain add-on.
-2. Add `auth.dp.resources.anshgupta.cc` as the Supabase custom domain.
-3. Add the DNS ownership records Supabase provides, verify them, and activate the custom domain.
-4. Keep the original `https://vwreomwieplqqdrmjcuc.supabase.co/auth/v1/callback` registered temporarily during the cutover. Add the branded callback before removing the old one.
-5. Configure the production DP Resources URL as the Auth Site URL and keep the required callback/preview URLs in Supabase's redirect allow list.
-6. Enable manual identity linking in Supabase Authentication provider configuration before exposing Connected Accounts.
-7. Create and brand the provider applications below as `DP Resources`.
-8. Enter provider credentials into Supabase Authentication -> Providers. Never put client secrets in GitHub or browser environment variables.
-9. Apply `20260910103500_social_auth_identity_compatibility.sql` only when the social flow is ready for controlled testing.
-10. Test each provider with a new user, an existing same-email user, explicit different-email linking, unlinking, suspension, and sign-out before production promotion.
+`https://1f806117-49b4-4e7c-b45c-e34372f0773b-00-2km0swa6qb34h.sisko.replit.dev`
 
-## Google
+Set this Replit secret/environment variable:
 
-Create a Google OAuth web application/consent configuration branded `DP Resources` with the DP Resources logo, homepage, privacy policy and terms. Register the active Supabase Auth callback URL. Configure its client ID and secret in Supabase's Google provider.
+`DP_AUTH_ORIGIN=https://1f806117-49b4-4e7c-b45c-e34372f0773b-00-2km0swa6qb34h.sisko.replit.dev`
 
-Expected user-facing provider identity: Google should present DP Resources as the application requesting authentication/consent. The provider controls the exact wording of its screen.
+The current Google test callback is therefore:
 
-## Microsoft
+`https://1f806117-49b4-4e7c-b45c-e34372f0773b-00-2km0swa6qb34h.sisko.replit.dev/api/auth/social/google/callback`
 
-Create a Microsoft Entra application registration named `DP Resources`. Configure the web redirect URI to the active Supabase Auth callback and enter the client ID/secret in Supabase's Azure provider. DP Resources explicitly requests the `email` scope in addition to the provider defaults.
+If the Replit public hostname changes, update both `DP_AUTH_ORIGIN` and the provider's registered test callback.
 
-## GitHub
+## Provider environment variables
 
-Create a GitHub OAuth App named `DP Resources`, set the homepage to the production DP Resources website, and register the active Supabase Auth callback. Configure the client ID/secret in Supabase's GitHub provider.
+### Google
+
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+
+Requested scopes: `openid email profile` only.
+
+### Microsoft
+
+- `MICROSOFT_OAUTH_CLIENT_ID`
+- `MICROSOFT_OAUTH_CLIENT_SECRET`
+
+Requested scopes: `openid profile email User.Read`.
+
+### GitHub
+
+- `GITHUB_OAUTH_CLIENT_ID`
+- `GITHUB_OAUTH_CLIENT_SECRET`
+
+Requested scopes: `read:user user:email` so DP Resources can obtain a verified email even when the GitHub profile hides it.
+
+### Optional transaction-signing secret
+
+- `DP_SOCIAL_AUTH_SECRET`
+
+If this is omitted, server-side OAuth handoff cookies are signed with the existing `SUPABASE_SERVICE_ROLE_KEY`. The service-role value is never sent to the browser.
+
+## Google first
+
+Create a Google OAuth **Web application** branded `DP Resources`.
+
+For Replit testing register exactly:
+
+`https://1f806117-49b4-4e7c-b45c-e34372f0773b-00-2km0swa6qb34h.sisko.replit.dev/api/auth/social/google/callback`
+
+Use the production homepage/privacy/terms pages for branding:
+
+- Homepage: `https://dp.resources.anshgupta.cc`
+- Privacy: `https://dp.resources.anshgupta.cc/privacy`
+- Terms: `https://dp.resources.anshgupta.cc/terms`
+
+Keep the Google app in Testing while the Replit flow is being verified and add only intended test users. Put the returned client ID and client secret in Replit Secrets, never in GitHub.
+
+For production, use a separate Google production OAuth client with the production callback URL.
+
+## Microsoft and GitHub
+
+The DP Resources code uses the same state + PKCE + server callback architecture for both providers. Once Google is proven, only their one-time provider registrations and environment variables need to be added.
+
+For production, register the Microsoft and GitHub callback URLs shown above. Keep development/test credentials separate from production credentials where the provider permits it.
 
 ## Apple
 
-Configure Sign in with Apple for the web using an App ID, Services ID and signing key. The Services ID should represent DP Resources and use the active Auth domain/callback. Apple OAuth client secrets require periodic rotation; keep the signing key secure and track the rotation deadline. DP Resources intentionally asks first-time Apple social users to finish their local profile because Apple web OAuth does not reliably provide a reusable full name.
+Apple remains represented in the UI as a later provider. Web Sign in with Apple requires Apple Developer configuration and is intentionally not part of the zero-cost launch path.
 
-## Account-linking rules
+## Account and duplicate-prevention model
 
-- Supabase automatic identity linking is relied on only for identities with the same verified email address.
-- Different-email providers are linked only after the user is already authenticated and explicitly chooses Connect in Settings.
-- DP Resources never merges accounts based on display name or username similarity.
-- A user cannot unlink their only remaining identity.
-- Existing DP Resources profile rows are never overwritten merely because a new OAuth identity is attached.
+`public.dp_resource_social_identities` maps each provider's stable account subject to one existing DP Resources `auth.users.id`.
+
+Rules:
+
+- A provider subject can belong to only one DP Resources user.
+- A DP Resources user can connect at most one account from each provider.
+- A verified provider email matching an existing DP Resources profile automatically attaches to that existing user instead of creating a duplicate.
+- Display names and usernames are never used to infer account ownership.
+- Explicit linking from Settings is bound to the already authenticated DP Resources user.
+- If a provider email already belongs to a different DP Resources user, linking is rejected rather than merging accounts.
+- Social access tokens are used only during the callback and are not stored.
 
 ## First-time social signup
 
-A successful social authentication can create the underlying `auth.users` record before the user has chosen a DP Resources username. The compatibility migration keeps the existing strict validation for email/password signups while allowing trusted OAuth users to reach the one-time DP Resources profile-completion screen. Profile-row validation remains strict.
+For a brand-new provider email, DP Resources does **not** create an incomplete Supabase user before onboarding. Instead:
+
+1. The provider verifies the user.
+2. DP Resources stores a short-lived, signed, HttpOnly onboarding handoff.
+3. The user chooses the normal DP Resources full name and username.
+4. Existing username, identity and disposable-email checks run.
+5. The complete Supabase user/profile is created with the same validation rules as the existing site.
+6. The provider identity is attached and DP Resources establishes the normal Supabase session server-side.
+
+This avoids weakening the existing `auth.users` validation trigger.
+
+## Connected Accounts
+
+Settings reads DP Resources' own provider mappings, not Supabase social identities. Connect uses the same DP Resources callback route in `mode=link`. Disconnect removes only the DP Resources mapping; provider access tokens are not retained.
+
+`public.dp_resource_auth_methods` records whether an account has a DP Resources password so a social-only account cannot disconnect its last usable social sign-in method.
+
+## Database migration
+
+`20260910103500_social_auth_identity_compatibility.sql` now only adds the two server-only tables needed for direct social identity mappings and password-method tracking. It does not change Supabase OAuth provider configuration and does not relax the existing identity validation trigger.
+
+Apply it only immediately before controlled Replit end-to-end testing.
 
 ## Testing checklist
 
-For each enabled provider, verify:
+For each enabled provider:
 
-1. New user -> provider -> DP Resources profile completion -> Library.
-2. Existing password user with the same verified email -> provider -> same existing DP Resources account and data.
-3. Existing user -> Settings -> Connect provider using a different email -> same DP Resources user ID.
-4. Disconnect provider when another identity exists.
-5. Attempt to remove the last identity is blocked.
-6. Suspended account cannot bypass suspension through social sign-in.
-7. Cancelled/failed OAuth returns a generic DP Resources error without exposing secrets or internal provider errors.
-8. `next` redirects cannot leave DP Resources.
+1. New signup -> provider -> DP Resources profile completion -> Library.
+2. Existing password user with the same verified email -> provider -> same existing DP Resources user/data.
+3. Login with an unregistered provider email -> clear `no account` message rather than silent signup.
+4. Existing user -> Settings -> Connect provider -> same DP Resources user ID.
+5. Attempt to connect a provider account already owned by another DP Resources user -> blocked.
+6. Disconnect provider while another usable sign-in method remains.
+7. Social-only account cannot remove its final provider.
+8. Suspended account cannot bypass suspension through social sign-in.
+9. Cancelled/failed OAuth returns to DP Resources without exposing provider tokens or internal errors.
+10. State mismatch/expired handoff fails closed.
+11. `next` redirects cannot leave DP Resources.
+12. Provider access tokens are not persisted in cookies, local storage or database rows.
 
 ## Later phases
 
-- TOTP authenticator MFA and AAL2 enforcement for sensitive account operations.
+- Apple, if/when Apple Developer access is available.
+- TOTP authenticator MFA and stronger verification for sensitive account operations.
 - Session/device management and sign-out controls.
-- ManageBac/Faria SSO after partner/SSO credentials and product terms are confirmed.
+- ManageBac/Faria SSO after partner/SSO credentials and terms are confirmed.
