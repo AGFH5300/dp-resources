@@ -8,7 +8,7 @@ export function contentSecurityPolicy(nonce: string) {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval' blob:`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://upload.wikimedia.org",
+    "img-src 'self' data: blob: https://upload.wikimedia.org https://*.supabase.co",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co blob:",
     "media-src 'self' blob:",
