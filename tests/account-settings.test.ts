@@ -15,7 +15,6 @@ const accountMenu = read('components/account-menu.tsx');
 const appHeader = read('components/app-header.tsx');
 const attribution = read('components/content-source-badge.tsx');
 const notifications = read('app/api/notifications/route.ts');
-const changelog = read('lib/changelog.ts');
 const whatsNew = read('lib/whats-new.ts');
 const packageJson = read('package.json');
 
@@ -24,7 +23,7 @@ describe('Settings & Account Centre', () => {
     expect(migrationPath).toContain('20260909111409_settings_account_centre.sql');
   });
 
-  it('keeps account settings additive, private and represented in the canonical schema', () => {
+  it('keeps account settings private and represented in the canonical schema', () => {
     for (const source of [migration, schema]) {
       expect(source).toContain('public.dp_resource_user_settings');
       expect(source).toContain('show_library_source_tags');
@@ -33,9 +32,6 @@ describe('Settings & Account Centre', () => {
       expect(source).toContain('show_expanded_source_attribution');
       expect(source).toContain('support_notifications');
       expect(source).toContain('show_whats_new');
-      expect(source).toContain('academic_subjects');
-      expect(source).toContain('exam_year');
-      expect(source).toContain('exam_session');
       expect(source).toContain('dp-resource-avatars');
       expect(source).toContain('enable row level security');
       expect(source).toContain('dp_resource_user_settings_set_updated_at');
@@ -43,6 +39,16 @@ describe('Settings & Account Centre', () => {
     }
     expect(migration).toContain('auth.uid() = id');
     expect(migration).toContain('dp_resources_sync_auth_email');
+  });
+
+  it('removes the academic profile from the account-centre UI and API', () => {
+    expect(settingsPage).toContain("type TabId = 'profile' | 'preferences' | 'security'");
+    expect(settingsPage).not.toContain("id: 'academic'");
+    expect(settingsPage).not.toContain('Academic profile');
+    expect(settingsPage).not.toContain('<AppSelect');
+    expect(settingsRoute).not.toContain('availableSubjects');
+    expect(settingsRoute).not.toContain('body.academic');
+    expect(settingsRoute).not.toContain('dp_qb_subjects');
   });
 
   it('protects settings, security and avatar mutations on the server', () => {
@@ -57,15 +63,40 @@ describe('Settings & Account Centre', () => {
     expect(avatarRoute).toContain('hasExpectedMagicBytes');
   });
 
-  it('provides profile, academic, preference and security UI with app-native selects', () => {
-    expect(settingsPage).toContain("type TabId = 'profile' | 'academic' | 'preferences' | 'security'");
-    expect(settingsPage).toContain('<AppSelect');
+  it('uploads avatars as a raw image body instead of multipart form data', () => {
+    expect(settingsPage).toContain("headers: { 'Content-Type': file.type }");
+    expect(settingsPage).toContain('body: file');
+    expect(avatarRoute).toContain('request.arrayBuffer()');
+    expect(avatarRoute).not.toContain('request.formData()');
+    expect(avatarRoute).not.toContain('instanceof File');
+  });
+
+  it('uses the signup username availability endpoint with live debounce feedback', () => {
+    expect(settingsPage).toContain('USERNAME_DEBOUNCE_MS = 600');
+    expect(settingsPage).toContain('/api/auth/availability?type=username&value=');
+    expect(settingsPage).toContain('Username is available.');
+    expect(settingsPage).toContain('<CheckCircle2');
+    expect(settingsPage).toContain('<AlertCircle');
+    expect(settingsPage).toContain('<Spinner');
+  });
+
+  it('keeps preference switch thumbs inside their tracks', () => {
+    expect(settingsPage).toContain('absolute left-0.5 top-0.5');
+    expect(settingsPage).toContain("checked ? 'translate-x-5' : 'translate-x-0'");
+  });
+
+  it('provides profile, preference and security UI', () => {
     expect(settingsPage).toContain("fetch('/api/account/settings'");
     expect(settingsPage).toContain("fetch('/api/account/security'");
     expect(settingsPage).toContain("fetch('/api/account/avatar'");
     expect(settingsPage).toContain('Library source tags');
     expect(settingsPage).toContain('Question Bank source tags');
     expect(settingsPage).toContain('Expanded source attribution');
+  });
+
+  it('adds username fields to password forms for password-manager accessibility', () => {
+    expect(settingsPage.match(/name="username"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(settingsPage).toContain('autoComplete="username"');
   });
 
   it('adds the account centre and avatar to the existing account menu', () => {
@@ -88,15 +119,15 @@ describe('Settings & Account Centre', () => {
     expect(notifications).toContain('support_notifications');
     expect(notifications).toContain('userTicketKinds');
     expect(notifications).toContain('hiddenUnread');
-    expect(notifications).toContain('Math.max(0, (unread.count || 0) - hiddenUnread)');
+    expect(notifications).toContain(
+      'Math.max(0, (unread.count || 0) - hiddenUnread)',
+    );
   });
 
-  it('records the release in both the public changelog and What’s new', () => {
-    expect(changelog).toContain("'2026-09-09': [");
-    expect(changelog).toContain('Added a complete Settings & Account Centre');
-    expect(changelog).toContain('refreshed production dependencies');
-    expect(whatsNew).toContain("id: '2026-09-09-settings-account-centre'");
-    expect(whatsNew).toContain('A new Settings & Account Centre');
+  it('updates the unreleased What’s New entry to the final Settings scope', () => {
+    expect(whatsNew).toContain("id: '2026-09-10-settings-account-centre'");
+    expect(whatsNew).toContain('Username availability is checked automatically');
+    expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 
   it('pins production dependencies above the resolved high and critical advisory ranges', () => {
