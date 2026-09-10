@@ -441,12 +441,12 @@ export function SettingsCentre() {
     if (!AVATAR_TYPES.has(file.type)) {
       toast.error('Use a JPG, PNG, or WebP image.');
       if (avatarInputRef.current) avatarInputRef.current.value = '';
-      return;
+      return false;
     }
     if (file.size < 1 || file.size > AVATAR_MAX_BYTES) {
       toast.error('Profile images must be 2 MB or smaller.');
       if (avatarInputRef.current) avatarInputRef.current.value = '';
-      return;
+      return false;
     }
 
     setSaving('avatar');
