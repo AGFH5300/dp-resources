@@ -18,6 +18,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { AvatarEditor } from '@/components/account/avatar-editor';
 import { Spinner } from '@/components/ui/spinner';
 import {
   DEFAULT_ACCOUNT_PREFERENCES,
@@ -88,6 +89,7 @@ const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/;
 const USERNAME_REPEATED_UNDERSCORE_PATTERN = /__/;
 const USERNAME_DEBOUNCE_MS = 600;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_SOURCE_MAX_BYTES = 12 * 1024 * 1024;
 const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const fieldClass =
@@ -209,6 +211,7 @@ export function SettingsCentre() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [avatarEditorFile, setAvatarEditorFile] = useState<File | null>(null);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const originalUsernameRef = useRef('');
@@ -415,8 +418,25 @@ export function SettingsCentre() {
     }
   }
 
-  async function uploadAvatar(file: File | undefined) {
+  function selectAvatarFile(file: File | undefined) {
     if (!file) return;
+
+    if (!AVATAR_TYPES.has(file.type)) {
+      toast.error('Use a JPG, PNG, or WebP image.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+    if (file.size < 1 || file.size > AVATAR_SOURCE_MAX_BYTES) {
+      toast.error('Choose an image that is 12 MB or smaller.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+
+    setAvatarEditorFile(file);
+  }
+
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return false;
 
     if (!AVATAR_TYPES.has(file.type)) {
       toast.error('Use a JPG, PNG, or WebP image.');
@@ -457,10 +477,12 @@ export function SettingsCentre() {
       );
       window.dispatchEvent(new Event('dp:profile-changed'));
       toast.success('Profile image updated.');
+      return true;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Unable to upload profile image.',
       );
+      return false;
     } finally {
       if (avatarInputRef.current) avatarInputRef.current.value = '';
       setSaving(null);
@@ -670,7 +692,7 @@ export function SettingsCentre() {
                   Profile picture
                 </p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  JPG, PNG or WebP. Maximum 2 MB.
+                  Choose a JPG, PNG or WebP up to 12 MB. Crop, zoom and rotate it before saving.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <input
@@ -679,7 +701,7 @@ export function SettingsCentre() {
                     className="sr-only"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={(event) =>
-                      void uploadAvatar(event.target.files?.[0])
+                      selectAvatarFile(event.target.files?.[0])
                     }
                   />
                   <button
@@ -1061,6 +1083,16 @@ export function SettingsCentre() {
           </div>
         )}
       </section>
+
+      <AvatarEditor
+        file={avatarEditorFile}
+        busy={saving === 'avatar'}
+        onCancel={() => {
+          setAvatarEditorFile(null);
+          if (avatarInputRef.current) avatarInputRef.current.value = '';
+        }}
+        onSave={uploadAvatar}
+      />
     </div>
   );
 }
