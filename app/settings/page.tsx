@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+import { ConnectedAccounts } from '@/components/account/connected-accounts';
 import { Nav } from '@/components/nav';
 import { requireMember } from '@/lib/auth';
 import { SettingsCentre } from './settings-centre';
@@ -29,6 +30,7 @@ export default async function SettingsPage() {
           </p>
         </div>
         <SettingsCentre />
+        <ConnectedAccounts />
       </main>
     </>
   );
