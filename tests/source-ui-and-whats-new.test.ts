@@ -47,11 +47,12 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain("dateLabel: '10 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
+    expect(whatsNew).toContain('reposition, zoom and rotate');
     for (const highlight of [
       'A new Settings & Account Centre',
       'Choose how source information appears',
       'More control over notifications',
-      'Profile pictures now appear in your account menu',
+      'Crop and adjust your profile picture',
       'Username availability is checked automatically',
       'Account security has been strengthened',
     ]) {

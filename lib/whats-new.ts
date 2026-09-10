@@ -18,9 +18,9 @@ export const WHATS_NEW_RELEASE = {
         'Support-ticket notifications and automatic What’s new release pop-ups can now be controlled from your account preferences.',
     },
     {
-      title: 'Profile pictures now appear in your account menu',
+      title: 'Crop and adjust your profile picture',
       description:
-        'Upload a private JPG, PNG or WebP profile picture and DP Resources will use it in your signed-in account menu.',
+        'Choose a private JPG, PNG or WebP image, then reposition, zoom and rotate it with a circular preview before saving it to your account.',
     },
     {
       title: 'Username availability is checked automatically',
