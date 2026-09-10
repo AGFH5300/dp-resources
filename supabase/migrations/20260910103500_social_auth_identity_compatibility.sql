@@ -1,64 +1,50 @@
--- Allow trusted OAuth providers to create auth.users before a DP Resources
--- username/full name has been chosen. Email/password signups keep the existing
--- strict metadata requirements. Profile rows remain fully validated by
--- dp_identity_enforce_profile when social users finish onboarding.
+-- Direct social sign-in for DP Resources.
+--
+-- OAuth is handled by DP Resources itself so provider callbacks never need to
+-- expose the hosted Supabase project URL. Supabase remains the account/session
+-- backend. Only server-side service-role code can read or modify these tables.
 
-create or replace function public.dp_identity_enforce_auth_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  reason text;
-  auth_provider text;
-  metadata_username text;
-  metadata_full_name text;
-begin
-  auth_provider := coalesce(nullif(new.raw_app_meta_data->>'provider', ''), 'email');
-  metadata_username := new.raw_user_meta_data->>'username';
-  metadata_full_name := new.raw_user_meta_data->>'full_name';
+begin;
 
-  if auth_provider = 'email' then
-    reason := public.dp_identity_validate_username(metadata_username);
-    if reason is not null then
-      raise exception 'identity_not_allowed' using errcode = '23514';
-    end if;
+create table if not exists public.dp_resource_social_identities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text not null check (provider in ('google', 'microsoft', 'github', 'apple')),
+  provider_subject text not null,
+  provider_email text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_used_at timestamptz not null default now(),
+  constraint dp_resource_social_identities_provider_subject_key
+    unique (provider, provider_subject),
+  constraint dp_resource_social_identities_user_provider_key
+    unique (user_id, provider)
+);
 
-    reason := public.dp_identity_validate_full_name(metadata_full_name);
-    if reason is not null then
-      raise exception 'identity_not_allowed' using errcode = '23514';
-    end if;
-  else
-    -- OAuth providers create auth.users before DP Resources gets a chance to
-    -- ask for its own username. Validate provider-supplied/user-supplied values
-    -- when present, but do not require them until the profile row is created.
-    if metadata_username is not null and length(trim(metadata_username)) > 0 then
-      reason := public.dp_identity_validate_username(metadata_username);
-      if reason is not null then
-        raise exception 'identity_not_allowed' using errcode = '23514';
-      end if;
-    end if;
+create index if not exists dp_resource_social_identities_user_idx
+  on public.dp_resource_social_identities (user_id, created_at desc);
 
-    if metadata_full_name is not null and length(trim(metadata_full_name)) > 0 then
-      reason := public.dp_identity_validate_full_name(metadata_full_name);
-      if reason is not null then
-        raise exception 'identity_not_allowed' using errcode = '23514';
-      end if;
-    end if;
-  end if;
+alter table public.dp_resource_social_identities enable row level security;
+revoke all on public.dp_resource_social_identities from public, anon, authenticated;
+grant select, insert, update, delete on public.dp_resource_social_identities to service_role;
 
-  -- Every account, including OAuth accounts, must still have an acceptable
-  -- email local part. Disposable-domain policy is enforced by the app before a
-  -- new social profile can be completed.
-  reason := public.dp_identity_validate_email_local_part(new.email);
-  if reason is not null then
-    raise exception 'identity_not_allowed' using errcode = '23514';
-  end if;
+create table if not exists public.dp_resource_auth_methods (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  password_enabled boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-  return new;
-end;
-$$;
+alter table public.dp_resource_auth_methods enable row level security;
+revoke all on public.dp_resource_auth_methods from public, anon, authenticated;
+grant select, insert, update, delete on public.dp_resource_auth_methods to service_role;
 
-revoke execute on function public.dp_identity_enforce_auth_user()
-  from public, anon, authenticated;
+-- Every account that predates this migration came through the existing
+-- email/password flow. New social-only accounts are inserted after this
+-- migration and remain password_enabled=false until they explicitly set one.
+insert into public.dp_resource_auth_methods (user_id, password_enabled)
+select id, true
+from auth.users
+on conflict (user_id) do nothing;
+
+commit;
