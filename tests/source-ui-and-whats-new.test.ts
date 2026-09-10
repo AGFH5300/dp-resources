@@ -41,17 +41,18 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 9 September release summary', () => {
+  it('keeps What’s new as a short hand-written 10 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-09-09-settings-account-centre'");
-    expect(whatsNew).toContain("dateLabel: '9 September 2026'");
+    expect(whatsNew).toContain("id: '2026-09-10-settings-account-centre'");
+    expect(whatsNew).toContain("dateLabel: '10 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
+    expect(whatsNew).not.toContain('Save your IB academic profile');
     for (const highlight of [
       'A new Settings & Account Centre',
-      'Save your IB academic profile',
       'Choose how source information appears',
       'More control over notifications',
       'Profile pictures now appear in your account menu',
+      'Username availability is checked automatically',
       'Account security has been strengthened',
     ]) {
       expect(whatsNew).toContain(highlight);

@@ -24,8 +24,8 @@ export default async function SettingsPage() {
             Settings &amp; Account Centre
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Manage your profile, IB academic details, DP Resources display preferences,
-            notifications, and account security.
+            Manage your profile, DP Resources display preferences, notifications, and
+            account security.
           </p>
         </div>
         <SettingsCentre />
