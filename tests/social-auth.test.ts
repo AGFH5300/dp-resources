@@ -87,7 +87,7 @@ describe('modern social authentication', () => {
     expect(identities).toContain('sameOriginOrForbidden');
   });
 
-  it('supports Connected Accounts without depending on Supabase social identities', () => {
+  it('presents Connected Accounts as a polished Account & sign-in section without depending on Supabase social identities', () => {
     const route = read('app/api/account/identities/route.ts');
     const panel = read('components/account/connected-accounts.tsx');
     const settings = read('app/settings/page.tsx');
@@ -97,10 +97,15 @@ describe('modern social authentication', () => {
     expect(route).not.toContain('unlinkIdentity');
     expect(route).toContain("mode: 'link'");
     expect(route).toContain('password_enabled');
-    expect(panel).toContain('Connected accounts');
-    expect(panel).toContain('Confirm disconnect');
+    expect(panel).toContain('Account &amp; sign-in');
+    expect(panel).toContain('One DP Resources account. Your choice of sign-in.');
+    expect(panel).toContain('Sign-in methods');
+    expect(panel).toContain('ProviderLogo');
+    expect(panel).toContain('Disconnect ${confirmDisconnect.label}?');
+    expect(panel).toContain('Sign-in security');
     expect(panel).toContain('ManageBac / Faria');
     expect(settings).toContain('<ConnectedAccounts />');
+    expect(settings.indexOf('<ConnectedAccounts />')).toBeLessThan(settings.indexOf('<SettingsCentre />'));
   });
 
   it('does not weaken the existing auth-user identity validation trigger', () => {
