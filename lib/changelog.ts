@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-10': [
+    'Added a read-only Village question completeness indexer that discovers question-bank sources, records source IDs and content fingerprints without storing question text or media, and can compare the current index with existing Revision Village Question Bank provenance.',
+  ],
   '2026-09-09': [
     'Added a complete Settings & Account Centre for profile details, private profile pictures, IB subjects and HL/SL levels, exam session and year, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
     'Added per-user controls for Library source tags, Library resource-type labels, Question Bank source tags, expanded source information, support notifications, and automatic What’s new release highlights.',
