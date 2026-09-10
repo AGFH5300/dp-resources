@@ -52,6 +52,7 @@ jobs:
             const hints = [];
             const contexts = [];
             const sourceMaps = [];
+            const chunkExpressions = [];
             for (const scriptUrl of [...new Set(scripts)]) {
               const response = await fetch(scriptUrl);
               const source = await response.text();
@@ -63,9 +64,16 @@ jobs:
                 if (value.includes('<') || value.includes('>')) continue;
                 hints.push(value);
               }
-              for (const needle of ['.questionData.js', 'questionData', 'assets.revisionvillage.com', 'XMLHttpRequest', 'fetch(']) {
+              for (const match of source.matchAll(/\bu\.e\(([^)]{1,180})\)/g)) {
+                chunkExpressions.push({
+                  expression: match[1].replace(/\s+/g, ' ').trim(),
+                  offset: match.index,
+                  context: source.slice(Math.max(0, match.index - 250), Math.min(source.length, match.index + match[0].length + 350)).replace(/\s+/g, ' '),
+                });
+              }
+              for (const needle of ['.questionData.js', 'questionData', 'assets.revisionvillage.com', 'u.e(', 'u.u =']) {
                 let from = 0;
-                for (let count = 0; count < 20; count += 1) {
+                for (let count = 0; count < 30; count += 1) {
                   const at = source.indexOf(needle, from);
                   if (at < 0) break;
                   contexts.push({
@@ -99,8 +107,9 @@ jobs:
             const root = `${process.env.RUNNER_TEMP}/village-index/source`;
             fs.writeFileSync(`${root}/network-hints.json`, JSON.stringify(unique, null, 2) + '\n');
             fs.writeFileSync(`${root}/loader-contexts.json`, JSON.stringify(contexts, null, 2) + '\n');
+            fs.writeFileSync(`${root}/chunk-load-expressions.json`, JSON.stringify(chunkExpressions, null, 2) + '\n');
             fs.writeFileSync(`${root}/source-map-sources.json`, JSON.stringify(sourceMaps, null, 2) + '\n');
-            console.log(`Captured ${unique.length} safe network/source hints and ${contexts.length} loader contexts.`);
+            console.log(`Captured ${unique.length} hints, ${contexts.length} loader contexts, and ${chunkExpressions.length} webpack chunk-load expressions.`);
           })().catch((error) => {
             console.error(error);
             process.exitCode = 1;
@@ -116,18 +125,13 @@ jobs:
             --no-compare-production
           status=$?
           set -e
-
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
-            exit "$status"
-          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then exit "$status"; fi
           test -s "$RUNNER_TEMP/village-index/index/questions.ndjson"
 
       - name: Show compact audit summary
         if: always()
         run: |
-          if [ -f "$RUNNER_TEMP/village-index/summary.json" ]; then
-            cat "$RUNNER_TEMP/village-index/summary.json"
-          fi
+          if [ -f "$RUNNER_TEMP/village-index/summary.json" ]; then cat "$RUNNER_TEMP/village-index/summary.json"; fi
 
       - name: Upload metadata-only Village audit
         if: always()
@@ -141,6 +145,7 @@ jobs:
             ${{ runner.temp }}/village-index/source/json-candidates.json
             ${{ runner.temp }}/village-index/source/network-hints.json
             ${{ runner.temp }}/village-index/source/loader-contexts.json
+            ${{ runner.temp }}/village-index/source/chunk-load-expressions.json
             ${{ runner.temp }}/village-index/source/source-map-sources.json
             ${{ runner.temp }}/village-index/index/questions.ndjson
             ${{ runner.temp }}/village-index/index/source-summary.json
