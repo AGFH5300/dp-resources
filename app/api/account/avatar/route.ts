@@ -21,13 +21,28 @@ function noStore(payload: unknown, init?: ResponseInit) {
   return response;
 }
 
+function normalizedMimeType(request: Request) {
+  return (request.headers.get('content-type') || '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+}
+
 function hasExpectedMagicBytes(type: string, bytes: Uint8Array) {
   if (type === 'image/jpeg') {
-    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    return (
+      bytes.length >= 3 &&
+      bytes[0] === 0xff &&
+      bytes[1] === 0xd8 &&
+      bytes[2] === 0xff
+    );
   }
   if (type === 'image/png') {
     const expected = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    return bytes.length >= expected.length && expected.every((value, index) => bytes[index] === value);
+    return (
+      bytes.length >= expected.length &&
+      expected.every((value, index) => bytes[index] === value)
+    );
   }
   if (type === 'image/webp') {
     const riff = String.fromCharCode(...bytes.slice(0, 4));
@@ -45,27 +60,47 @@ export async function POST(request: Request) {
   if (!context.ok) return context.response;
 
   const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > ACCOUNT_AVATAR_MAX_BYTES + 128 * 1024) {
-    return noStore({ error: 'Profile images must be 2 MB or smaller.' }, { status: 413 });
+  if (contentLength > ACCOUNT_AVATAR_MAX_BYTES) {
+    return noStore(
+      { error: 'Profile images must be 2 MB or smaller.' },
+      { status: 413 },
+    );
   }
 
-  const form = await request.formData().catch(() => null);
-  const file = form?.get('avatar');
-  if (!(file instanceof File)) {
-    return noStore({ error: 'Choose an image to upload.' }, { status: 400 });
-  }
-  if (file.size < 1 || file.size > ACCOUNT_AVATAR_MAX_BYTES) {
-    return noStore({ error: 'Profile images must be 2 MB or smaller.' }, { status: 413 });
-  }
-
-  const extension = MIME_TO_EXTENSION.get(file.type);
+  const mimeType = normalizedMimeType(request);
+  const extension = MIME_TO_EXTENSION.get(mimeType);
   if (!extension) {
-    return noStore({ error: 'Use a JPG, PNG, or WebP image.' }, { status: 415 });
+    return noStore(
+      { error: 'Use a JPG, PNG, or WebP image.' },
+      { status: 415 },
+    );
   }
 
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  if (!hasExpectedMagicBytes(file.type, buffer)) {
-    return noStore({ error: 'That image file is not valid.' }, { status: 415 });
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await request.arrayBuffer());
+  } catch (error) {
+    console.error('Unable to read account avatar request body.', {
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+    return noStore(
+      { error: 'Unable to read that image. Please choose it again.' },
+      { status: 400 },
+    );
+  }
+
+  if (bytes.length < 1 || bytes.length > ACCOUNT_AVATAR_MAX_BYTES) {
+    return noStore(
+      { error: 'Profile images must be 2 MB or smaller.' },
+      { status: 413 },
+    );
+  }
+
+  if (!hasExpectedMagicBytes(mimeType, bytes)) {
+    return noStore(
+      { error: 'That image file is not valid.' },
+      { status: 415 },
+    );
   }
 
   const sb = createSupabaseAdminClient();
@@ -75,20 +110,28 @@ export async function POST(request: Request) {
     .eq('id', context.user.id)
     .maybeSingle<{ avatar_path: string | null }>();
   if (profileError) {
-    return noStore({ error: 'Unable to update your profile image.' }, { status: 503 });
+    return noStore(
+      { error: 'Unable to update your profile image.' },
+      { status: 503 },
+    );
   }
 
   const path = `${context.user.id}/avatar.${extension}`;
   const { error: uploadError } = await sb.storage
     .from(ACCOUNT_AVATAR_BUCKET)
-    .upload(path, buffer, {
+    .upload(path, bytes, {
       upsert: true,
-      contentType: file.type,
+      contentType: mimeType,
       cacheControl: '3600',
     });
   if (uploadError) {
-    console.error('Unable to upload account avatar.', { message: uploadError.message });
-    return noStore({ error: 'Unable to upload your profile image.' }, { status: 503 });
+    console.error('Unable to upload account avatar.', {
+      message: uploadError.message,
+    });
+    return noStore(
+      { error: 'Unable to upload your profile image.' },
+      { status: 503 },
+    );
   }
 
   if (profile?.avatar_path && profile.avatar_path !== path) {
@@ -101,10 +144,16 @@ export async function POST(request: Request) {
     .eq('id', context.user.id);
   if (updateError) {
     await sb.storage.from(ACCOUNT_AVATAR_BUCKET).remove([path]);
-    return noStore({ error: 'Unable to save your profile image.' }, { status: 503 });
+    return noStore(
+      { error: 'Unable to save your profile image.' },
+      { status: 503 },
+    );
   }
 
-  return noStore({ ok: true, avatarUrl: await signedAccountAvatarUrl(path) });
+  return noStore({
+    ok: true,
+    avatarUrl: await signedAccountAvatarUrl(path),
+  });
 }
 
 export async function DELETE(request: Request) {
@@ -113,6 +162,7 @@ export async function DELETE(request: Request) {
 
   const context = await requireApiMember();
   if (!context.ok) return context.response;
+
   const sb = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await sb
     .from('dp_resource_profiles')
@@ -120,7 +170,10 @@ export async function DELETE(request: Request) {
     .eq('id', context.user.id)
     .maybeSingle<{ avatar_path: string | null }>();
   if (profileError) {
-    return noStore({ error: 'Unable to remove your profile image.' }, { status: 503 });
+    return noStore(
+      { error: 'Unable to remove your profile image.' },
+      { status: 503 },
+    );
   }
 
   if (profile?.avatar_path) {
@@ -128,7 +181,9 @@ export async function DELETE(request: Request) {
       .from(ACCOUNT_AVATAR_BUCKET)
       .remove([profile.avatar_path]);
     if (removeError) {
-      console.error('Unable to remove account avatar object.', { message: removeError.message });
+      console.error('Unable to remove account avatar object.', {
+        message: removeError.message,
+      });
     }
   }
 
@@ -137,7 +192,11 @@ export async function DELETE(request: Request) {
     .update({ avatar_path: null })
     .eq('id', context.user.id);
   if (error) {
-    return noStore({ error: 'Unable to remove your profile image.' }, { status: 503 });
+    return noStore(
+      { error: 'Unable to remove your profile image.' },
+      { status: 503 },
+    );
   }
+
   return noStore({ ok: true });
 }
