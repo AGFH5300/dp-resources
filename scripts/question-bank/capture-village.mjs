@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
-import { access, mkdir, open, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { access, mkdir, open, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -164,7 +164,7 @@ async function mapLimit(items, limit, worker) {
   return results;
 }
 
-async function fetchText(url, { maxBytes, label }) {
+async function fetchText(url, { maxBytes, label, appUrl = DEFAULT_VILLAGE_APP_URL }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(new Error('Request timed out')), REQUEST_TIMEOUT_MS);
   try {
@@ -177,12 +177,14 @@ async function fetchText(url, { maxBytes, label }) {
       },
     });
     if (!response.ok) throw new Error(`${label}: HTTP ${response.status} ${response.statusText}`);
+    const finalUrl = normalizeAllowedUrl(response.url || url, url, appUrl);
+    if (!finalUrl) throw new Error(`${label}: redirect left the allowed Village/PirateIB hosts.`);
     const declared = Number(response.headers.get('content-length') || 0);
     if (declared > maxBytes) throw new Error(`${label}: declared size ${declared} exceeds ${maxBytes} bytes`);
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length > maxBytes) throw new Error(`${label}: response size ${bytes.length} exceeds ${maxBytes} bytes`);
     return {
-      url: response.url || url,
+      url: finalUrl,
       text: bytes.toString('utf8'),
       bytes: bytes.length,
       contentType: response.headers.get('content-type'),
@@ -221,26 +223,26 @@ function looksLikeJsonReference(value) {
   return /(?:^|[/\\])[^?#"']+\.(?:json|ndjson)(?:[?#].*)?$/i.test(value.trim());
 }
 
-function explicitAllowedBases(source, appUrl) {
-  const bases = new Set([new URL('.', appUrl).href]);
+function looksLikeRelativeBase(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed || trimmed.includes('${') || looksLikeJsonReference(trimmed)) return false;
+  return /^(?:https:\/\/|\/|\.\.?\/)[^?#]*\/$/i.test(trimmed);
+}
+
+function explicitAllowedBases(source, baseUrl, appUrl) {
+  const bases = new Set([new URL('.', appUrl).href, new URL('.', baseUrl).href]);
   for (const value of quotedStrings(source)) {
-    if (!/^https:\/\//i.test(value)) continue;
-    const normalized = normalizeAllowedUrl(value, appUrl, appUrl);
+    if (!looksLikeRelativeBase(value)) continue;
+    const normalized = normalizeAllowedUrl(value, baseUrl, appUrl);
     if (!normalized) continue;
-    try {
-      const url = new URL(normalized);
-      if (url.pathname.endsWith('/')) bases.add(url.href);
-      else bases.add(new URL('.', url).href);
-    } catch {
-      // Ignore malformed candidates.
-    }
+    bases.add(normalized.endsWith('/') ? normalized : new URL('.', normalized).href);
   }
   return [...bases];
 }
 
 export function discoverJsonReferences(source, baseUrl, appUrl = DEFAULT_VILLAGE_APP_URL, candidateBases = []) {
   const discovered = new Set();
-  const bases = new Set([...explicitAllowedBases(source, appUrl), ...candidateBases]);
+  const bases = new Set([...explicitAllowedBases(source, baseUrl, appUrl), ...candidateBases]);
 
   for (const value of quotedStrings(source)) {
     if (!looksLikeJsonReference(value)) continue;
@@ -436,7 +438,11 @@ function sourceManifestEntry(result, kind) {
 
 async function discoverLiveSources(options) {
   const sourceManifest = [];
-  const app = await fetchText(options.appUrl, { maxBytes: DEFAULT_MAX_SCRIPT_BYTES, label: 'Village app' });
+  const app = await fetchText(options.appUrl, {
+    maxBytes: DEFAULT_MAX_SCRIPT_BYTES,
+    label: 'Village app',
+    appUrl: options.appUrl,
+  });
   sourceManifest.push(sourceManifestEntry(app, 'html'));
 
   const scriptQueue = discoverScriptReferences(app.text, app.url, options.appUrl);
@@ -456,7 +462,11 @@ async function discoverLiveSources(options) {
         batch.push(next);
       }
     }
-    const results = await mapLimit(batch, options.concurrency, async (url) => fetchText(url, { maxBytes: DEFAULT_MAX_SCRIPT_BYTES, label: 'Village script' }));
+    const results = await mapLimit(batch, options.concurrency, async (url) => fetchText(url, {
+      maxBytes: DEFAULT_MAX_SCRIPT_BYTES,
+      label: 'Village script',
+      appUrl: options.appUrl,
+    }));
     for (const result of results) {
       if (!result.ok) continue;
       scripts.push(result.value);
@@ -558,7 +568,11 @@ async function indexJsonSources(discovery, options) {
   const results = await mapLimit(inputs, options.concurrency, async (input) => {
     const response = input.fixture
       ? await readFixtureJson(input.fixture)
-      : await fetchText(input.url, { maxBytes: options.maxJsonBytes, label: 'Village JSON source' });
+      : await fetchText(input.url, {
+          maxBytes: options.maxJsonBytes,
+          label: 'Village JSON source',
+          appUrl: options.appUrl,
+        });
     const parsed = parseJsonText(response.text);
     const records = collectQuestionRecords(parsed);
     const indexed = records.map((record) => indexQuestionRecord(record, response.url)).filter(Boolean);
