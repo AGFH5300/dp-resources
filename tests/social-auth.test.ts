@@ -101,7 +101,7 @@ describe('modern social authentication', () => {
     expect(panel).toContain('One DP Resources account. Your choice of sign-in.');
     expect(panel).toContain('Sign-in methods');
     expect(panel).toContain('ProviderLogo');
-    expect(panel).toContain('Disconnect ${confirmDisconnect.label}?');
+    expect(panel).toContain('Disconnect {confirmDisconnect.label}?');
     expect(panel).toContain('Sign-in security');
     expect(panel).toContain('ManageBac / Faria');
     expect(settings).toContain('<ConnectedAccounts />');
