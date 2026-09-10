@@ -47,11 +47,7 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient();
-    const flowId = searchParams.get('sb_flow_id');
-    const { error } = await supabase.auth.exchangeCodeForSession(
-      code,
-      flowId ? { flowId } : undefined,
-    );
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
       if (flow === 'link') {
