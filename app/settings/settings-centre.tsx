@@ -1,11 +1,12 @@
 'use client';
 
 import {
+  AlertCircle,
   Bell,
   BookOpenCheck,
   Camera,
   Check,
-  GraduationCap,
+  CheckCircle2,
   Loader2,
   LockKeyhole,
   Mail,
@@ -14,16 +15,14 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { AppSelect } from '@/components/ui/app-select';
+import { Spinner } from '@/components/ui/spinner';
 import {
   DEFAULT_ACCOUNT_PREFERENCES,
   normalizeAccountPreferences,
-  type AcademicSubject,
   type AccountPreferences,
-  type ExamSession,
 } from '@/lib/account-settings';
 import { publishAccountPreferences } from '@/lib/account-preferences-client';
 
@@ -34,16 +33,29 @@ type AccountSettingsPayload = {
     email: string;
     avatarUrl: string | null;
   };
-  academic: {
-    subjects: AcademicSubject[];
-    examYear: number | null;
-    examSession: ExamSession | null;
-  };
   preferences: AccountPreferences;
-  availableSubjects: Array<{ slug: string; name: string }>;
 };
 
-type TabId = 'profile' | 'academic' | 'preferences' | 'security';
+type AvailabilityResponse = {
+  status?: 'available' | 'unavailable' | 'invalid' | 'error';
+  available?: boolean;
+  reason?: string;
+  message?: string;
+};
+
+type UsernameCheckState = {
+  status:
+    | 'current'
+    | 'typing'
+    | 'checking'
+    | 'available'
+    | 'invalid'
+    | 'unavailable'
+    | 'error';
+  message: string | null;
+};
+
+type TabId = 'profile' | 'preferences' | 'security';
 
 const tabs: Array<{
   id: TabId;
@@ -56,12 +68,6 @@ const tabs: Array<{
     label: 'Profile',
     description: 'Name, username and avatar',
     icon: UserRound,
-  },
-  {
-    id: 'academic',
-    label: 'Academic',
-    description: 'Subjects, levels and exams',
-    icon: GraduationCap,
   },
   {
     id: 'preferences',
@@ -77,16 +83,25 @@ const tabs: Array<{
   },
 ];
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/;
+const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/;
+const USERNAME_REPEATED_UNDERSCORE_PATTERN = /__/;
+const USERNAME_DEBOUNCE_MS = 600;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 const fieldClass =
   'h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-950';
 
 function initials(name: string, username: string) {
   const source = name.trim() || username.trim() || 'DP';
-  return source
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || '')
-    .join('') || 'DP';
+  return (
+    source
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .join('') || 'DP'
+  );
 }
 
 function SectionHeading({
@@ -110,18 +125,24 @@ function SectionHeading({
 
 function SaveButton({
   busy,
+  disabled = false,
   children = 'Save changes',
 }: {
   busy: boolean;
+  disabled?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <button
       type="submit"
-      disabled={busy}
+      disabled={busy || disabled}
       className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[color:var(--dp-navy)] px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+      {busy ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Check className="size-4" />
+      )}
       {busy ? 'Saving…' : children}
     </button>
   );
@@ -141,7 +162,9 @@ function PreferenceSwitch({
   return (
     <div className="flex items-start justify-between gap-5 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </p>
         <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
           {description}
         </p>
@@ -152,13 +175,14 @@ function PreferenceSwitch({
         aria-checked={checked}
         aria-label={title}
         onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${
           checked ? 'bg-blue-700' : 'bg-slate-300 dark:bg-slate-700'
         }`}
       >
         <span
-          className={`absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? 'translate-x-5' : 'translate-x-0.5'
+          aria-hidden="true"
+          className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? 'translate-x-5' : 'translate-x-0'
           }`}
         />
       </button>
@@ -173,10 +197,10 @@ export function SettingsCentre() {
   const [saving, setSaving] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
-  const [subjects, setSubjects] = useState<AcademicSubject[]>([]);
-  const [examYear, setExamYear] = useState<number | null>(null);
-  const [examSession, setExamSession] = useState<ExamSession | null>(null);
-  const [subjectToAdd, setSubjectToAdd] = useState('none');
+  const [usernameCheck, setUsernameCheck] = useState<UsernameCheckState>({
+    status: 'current',
+    message: null,
+  });
   const [preferences, setPreferences] = useState<AccountPreferences>(
     DEFAULT_ACCOUNT_PREFERENCES,
   );
@@ -185,7 +209,19 @@ export function SettingsCentre() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const originalUsernameRef = useRef('');
+  const usernameRequestId = useRef(0);
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (usernameDebounceRef.current) {
+        clearTimeout(usernameDebounceRef.current);
+      }
+    };
+  }, []);
 
   async function loadSettings() {
     setLoading(true);
@@ -199,18 +235,24 @@ export function SettingsCentre() {
         | { error?: string }
         | null;
       if (!response.ok || !payload || !('profile' in payload)) {
-        throw new Error(payload && 'error' in payload ? payload.error : 'Unable to load settings.');
+        throw new Error(
+          payload && 'error' in payload ? payload.error : 'Unable to load settings.',
+        );
       }
+
       setData(payload);
       setDisplayName(payload.profile.displayName);
       setUsername(payload.profile.username);
-      setSubjects(payload.academic.subjects);
-      setExamYear(payload.academic.examYear);
-      setExamSession(payload.academic.examSession);
-      setPreferences(normalizeAccountPreferences(payload.preferences));
-      publishAccountPreferences(normalizeAccountPreferences(payload.preferences));
+      originalUsernameRef.current = payload.profile.username;
+      setUsernameCheck({ status: 'current', message: null });
+
+      const nextPreferences = normalizeAccountPreferences(payload.preferences);
+      setPreferences(nextPreferences);
+      publishAccountPreferences(nextPreferences);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to load account settings.');
+      toast.error(
+        error instanceof Error ? error.message : 'Unable to load account settings.',
+      );
     } finally {
       setLoading(false);
     }
@@ -220,25 +262,111 @@ export function SettingsCentre() {
     void loadSettings();
   }, []);
 
-  const availableSubjectOptions = useMemo(() => {
-    const selected = new Set(subjects.map((subject) => subject.slug));
-    return [
-      { value: 'none', label: 'Choose a subject' },
-      ...(data?.availableSubjects || [])
-        .filter((subject) => !selected.has(subject.slug))
-        .map((subject) => ({ value: subject.slug, label: subject.name })),
-    ];
-  }, [data?.availableSubjects, subjects]);
+  async function validateUsername(value: string, requestId: number) {
+    const trimmed = value.trim();
+    const current = originalUsernameRef.current.trim();
 
-  const yearOptions = useMemo(() => {
-    const current = new Date().getFullYear();
-    const years = Array.from({ length: 9 }, (_, index) => current + index);
-    if (examYear && !years.includes(examYear)) years.unshift(examYear);
-    return [
-      { value: 'none', label: 'Not set' },
-      ...years.map((year) => ({ value: String(year), label: String(year) })),
-    ];
-  }, [examYear]);
+    if (trimmed.toLowerCase() === current.toLowerCase()) {
+      if (requestId === usernameRequestId.current) {
+        setUsernameCheck({ status: 'current', message: null });
+      }
+      return true;
+    }
+
+    if (
+      !USERNAME_PATTERN.test(trimmed) ||
+      USERNAME_EDGE_UNDERSCORE_PATTERN.test(trimmed) ||
+      USERNAME_REPEATED_UNDERSCORE_PATTERN.test(trimmed)
+    ) {
+      if (requestId === usernameRequestId.current) {
+        setUsernameCheck({
+          status: 'invalid',
+          message: 'Use 3-24 characters: letters, numbers, or underscore.',
+        });
+      }
+      return false;
+    }
+
+    setUsernameCheck({ status: 'checking', message: null });
+
+    try {
+      const response = await fetch(
+        `/api/auth/availability?type=username&value=${encodeURIComponent(trimmed)}`,
+        { cache: 'no-store', credentials: 'same-origin' },
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | AvailabilityResponse
+        | null;
+
+      if (requestId !== usernameRequestId.current) return false;
+
+      const message =
+        payload?.reason || payload?.message || 'Could not validate username right now.';
+
+      if (!response.ok || payload?.status === 'error') {
+        setUsernameCheck({ status: 'error', message });
+        return false;
+      }
+
+      if (payload.status === 'invalid') {
+        setUsernameCheck({ status: 'invalid', message });
+        return false;
+      }
+
+      if (!payload.available || payload.status === 'unavailable') {
+        setUsernameCheck({
+          status: 'unavailable',
+          message: message || 'That username is already taken.',
+        });
+        return false;
+      }
+
+      setUsernameCheck({
+        status: 'available',
+        message: payload.message || 'Username is available.',
+      });
+      return true;
+    } catch {
+      if (requestId !== usernameRequestId.current) return false;
+      setUsernameCheck({
+        status: 'error',
+        message: 'Could not validate username right now.',
+      });
+      return false;
+    }
+  }
+
+  function handleUsernameChange(value: string) {
+    setUsername(value);
+    usernameRequestId.current += 1;
+    const requestId = usernameRequestId.current;
+
+    if (usernameDebounceRef.current) {
+      clearTimeout(usernameDebounceRef.current);
+      usernameDebounceRef.current = null;
+    }
+
+    if (
+      value.trim().toLowerCase() === originalUsernameRef.current.trim().toLowerCase()
+    ) {
+      setUsernameCheck({ status: 'current', message: null });
+      return;
+    }
+
+    setUsernameCheck({ status: 'typing', message: null });
+    usernameDebounceRef.current = setTimeout(() => {
+      void validateUsername(value, requestId);
+    }, USERNAME_DEBOUNCE_MS);
+  }
+
+  function validateUsernameNow() {
+    if (usernameDebounceRef.current) {
+      clearTimeout(usernameDebounceRef.current);
+      usernameDebounceRef.current = null;
+    }
+    usernameRequestId.current += 1;
+    void validateUsername(username, usernameRequestId.current);
+  }
 
   async function patchSettings(payload: Record<string, unknown>, label: string) {
     setSaving(label);
@@ -253,15 +381,30 @@ export function SettingsCentre() {
         | (AccountSettingsPayload & { ok?: boolean })
         | { error?: string }
         | null;
+
       if (!response.ok || !result || !('profile' in result)) {
-        throw new Error(result && 'error' in result ? result.error : 'Unable to save changes.');
+        if (label === 'profile' && response.status === 409) {
+          setUsernameCheck({
+            status: 'unavailable',
+            message:
+              result && 'error' in result && result.error
+                ? result.error
+                : 'That username is already taken.',
+          });
+        }
+        throw new Error(
+          result && 'error' in result ? result.error : 'Unable to save changes.',
+        );
       }
+
       setData(result);
-      setDisplayName(result.profile.displayName);
-      setUsername(result.profile.username);
-      setSubjects(result.academic.subjects);
-      setExamYear(result.academic.examYear);
-      setExamSession(result.academic.examSession);
+      if (label === 'profile') {
+        setDisplayName(result.profile.displayName);
+        setUsername(result.profile.username);
+        originalUsernameRef.current = result.profile.username;
+        setUsernameCheck({ status: 'current', message: null });
+      }
+
       const nextPreferences = normalizeAccountPreferences(result.preferences);
       setPreferences(nextPreferences);
       publishAccountPreferences(nextPreferences);
@@ -274,41 +417,52 @@ export function SettingsCentre() {
     }
   }
 
-  function addSubject() {
-    if (subjectToAdd === 'none' || !data) return;
-    const selected = data.availableSubjects.find((subject) => subject.slug === subjectToAdd);
-    if (!selected) return;
-    setSubjects((current) => [
-      ...current,
-      { slug: selected.slug, name: selected.name, level: 'SL' },
-    ]);
-    setSubjectToAdd('none');
-  }
-
   async function uploadAvatar(file: File | undefined) {
     if (!file) return;
+
+    if (!AVATAR_TYPES.has(file.type)) {
+      toast.error('Use a JPG, PNG, or WebP image.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+    if (file.size < 1 || file.size > AVATAR_MAX_BYTES) {
+      toast.error('Profile images must be 2 MB or smaller.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+
     setSaving('avatar');
     try {
-      const form = new FormData();
-      form.set('avatar', file);
       const response = await fetch('/api/account/avatar', {
         method: 'POST',
+        headers: { 'Content-Type': file.type },
         credentials: 'same-origin',
-        body: form,
+        body: file,
       });
       const result = (await response.json().catch(() => null)) as
         | { avatarUrl?: string | null; error?: string }
         | null;
-      if (!response.ok) throw new Error(result?.error || 'Unable to upload profile image.');
+      if (!response.ok) {
+        throw new Error(result?.error || 'Unable to upload profile image.');
+      }
+
       setData((current) =>
         current
-          ? { ...current, profile: { ...current.profile, avatarUrl: result?.avatarUrl || null } }
+          ? {
+              ...current,
+              profile: {
+                ...current.profile,
+                avatarUrl: result?.avatarUrl || null,
+              },
+            }
           : current,
       );
       window.dispatchEvent(new Event('dp:profile-changed'));
       toast.success('Profile image updated.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to upload profile image.');
+      toast.error(
+        error instanceof Error ? error.message : 'Unable to upload profile image.',
+      );
     } finally {
       if (avatarInputRef.current) avatarInputRef.current.value = '';
       setSaving(null);
@@ -322,15 +476,23 @@ export function SettingsCentre() {
         method: 'DELETE',
         credentials: 'same-origin',
       });
-      const result = (await response.json().catch(() => null)) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error || 'Unable to remove profile image.');
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(result?.error || 'Unable to remove profile image.');
+      }
       setData((current) =>
-        current ? { ...current, profile: { ...current.profile, avatarUrl: null } } : current,
+        current
+          ? { ...current, profile: { ...current.profile, avatarUrl: null } }
+          : current,
       );
       window.dispatchEvent(new Event('dp:profile-changed'));
       toast.success('Profile image removed.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to remove profile image.');
+      toast.error(
+        error instanceof Error ? error.message : 'Unable to remove profile image.',
+      );
     } finally {
       setSaving(null);
     }
@@ -353,7 +515,9 @@ export function SettingsCentre() {
       const result = (await response.json().catch(() => null)) as
         | { error?: string; confirmationRequired?: boolean; email?: string }
         | null;
-      if (!response.ok) throw new Error(result?.error || 'Unable to update email.');
+      if (!response.ok) {
+        throw new Error(result?.error || 'Unable to update email.');
+      }
       if (result?.confirmationRequired) {
         toast.success('Check your email to confirm the new address.');
       } else {
@@ -375,6 +539,7 @@ export function SettingsCentre() {
       toast.error('The new passwords do not match.');
       return;
     }
+
     setSaving('password');
     try {
       const response = await fetch('/api/account/security', {
@@ -387,14 +552,20 @@ export function SettingsCentre() {
           password: newPassword,
         }),
       });
-      const result = (await response.json().catch(() => null)) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error || 'Unable to update password.');
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(result?.error || 'Unable to update password.');
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       toast.success('Password updated.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to update password.');
+      toast.error(
+        error instanceof Error ? error.message : 'Unable to update password.',
+      );
     } finally {
       setSaving(null);
     }
@@ -427,10 +598,24 @@ export function SettingsCentre() {
     );
   }
 
+  const usernameHasError =
+    usernameCheck.status === 'invalid' ||
+    usernameCheck.status === 'unavailable' ||
+    usernameCheck.status === 'error';
+  const usernameIsChecking = usernameCheck.status === 'checking';
+  const usernameIsAvailable = usernameCheck.status === 'available';
+  const profileCanSave =
+    displayName.trim().length > 0 &&
+    username.trim().length > 0 &&
+    (usernameCheck.status === 'current' || usernameCheck.status === 'available');
+
   return (
     <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="h-fit rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-950 lg:sticky lg:top-20">
-        <nav aria-label="Account settings sections" className="grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
+        <nav
+          aria-label="Account settings sections"
+          className="grid gap-1 sm:grid-cols-3 lg:grid-cols-1"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -495,7 +680,9 @@ export function SettingsCentre() {
                     type="file"
                     className="sr-only"
                     accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => void uploadAvatar(event.target.files?.[0])}
+                    onChange={(event) =>
+                      void uploadAvatar(event.target.files?.[0])
+                    }
                   />
                   <button
                     type="button"
@@ -528,7 +715,11 @@ export function SettingsCentre() {
               className="mt-7 grid gap-5"
               onSubmit={(event) => {
                 event.preventDefault();
-                void patchSettings({ profile: { displayName, username } }, 'profile');
+                if (!profileCanSave) return;
+                void patchSettings(
+                  { profile: { displayName, username: username.trim() } },
+                  'profile',
+                );
               }}
             >
               <label className="grid gap-1.5">
@@ -542,7 +733,9 @@ export function SettingsCentre() {
                   maxLength={120}
                   autoComplete="name"
                 />
-                <span className="text-xs text-slate-500">Shown in your account interface.</span>
+                <span className="text-xs text-slate-500">
+                  Shown in your account interface.
+                </span>
               </label>
 
               <label className="grid gap-1.5">
@@ -550,159 +743,56 @@ export function SettingsCentre() {
                   Username
                 </span>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">@</span>
+                  <span className="absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+                    @
+                  </span>
                   <input
-                    className={`${fieldClass} pl-7`}
+                    className={`${fieldClass} pl-7 pr-10 ${
+                      usernameIsAvailable
+                        ? 'border-emerald-500'
+                        : usernameHasError
+                          ? 'border-red-500'
+                          : ''
+                    }`}
                     value={username}
-                    onChange={(event) => setUsername(event.target.value)}
+                    onChange={(event) => handleUsernameChange(event.target.value)}
+                    onBlur={validateUsernameNow}
                     maxLength={24}
                     autoComplete="username"
                     spellCheck={false}
                   />
+                  <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+                    {usernameIsChecking && (
+                      <Spinner className="size-4 text-[#00152a] dark:text-slate-100" />
+                    )}
+                    {usernameIsAvailable && (
+                      <CheckCircle2 className="size-4 text-[#0c7a43]" />
+                    )}
+                    {usernameHasError && (
+                      <AlertCircle className="size-4 text-red-600" />
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs text-slate-500">
-                  3–24 letters, numbers or underscores. Usernames must be unique.
-                </span>
+                {usernameIsAvailable ? (
+                  <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                    {usernameCheck.message || 'Username is available.'}
+                  </span>
+                ) : usernameHasError ? (
+                  <span className="text-xs text-red-700 dark:text-red-300">
+                    {usernameCheck.message}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500">
+                    3–24 letters, numbers or underscores. Availability is checked automatically.
+                  </span>
+                )}
               </label>
 
               <div className="flex justify-end">
-                <SaveButton busy={saving === 'profile'} />
-              </div>
-            </form>
-          </div>
-        )}
-
-        {activeTab === 'academic' && (
-          <div>
-            <SectionHeading
-              title="Academic profile"
-              description="Save your IB subjects, HL/SL levels and exam session so DP Resources can use them as account-level defaults."
-            />
-
-            <form
-              className="mt-6 grid gap-6"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void patchSettings(
-                  { academic: { subjects, examYear, examSession } },
-                  'academic',
-                );
-              }}
-            >
-              <div>
-                <div className="flex items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200">
-                      Subjects
-                    </label>
-                    <AppSelect
-                      value={subjectToAdd}
-                      onValueChange={setSubjectToAdd}
-                      options={availableSubjectOptions}
-                      placeholder="Choose a subject"
-                      searchable
-                      searchPlaceholder="Search subjects"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={subjectToAdd === 'none' || subjects.length >= 8}
-                    onClick={addSubject}
-                    className="h-9 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                <div className="mt-3 grid gap-2">
-                  {subjects.length ? (
-                    subjects.map((subject) => (
-                      <div
-                        key={subject.slug}
-                        className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-center dark:border-slate-800 dark:bg-slate-950"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {subject.name}
-                          </p>
-                          <p className="mt-0.5 text-xs text-slate-500">IB Diploma Programme</p>
-                        </div>
-                        <AppSelect
-                          value={subject.level}
-                          onValueChange={(level) =>
-                            setSubjects((current) =>
-                              current.map((item) =>
-                                item.slug === subject.slug
-                                  ? { ...item, level: level === 'HL' ? 'HL' : 'SL' }
-                                  : item,
-                              ),
-                            )
-                          }
-                          options={[
-                            { value: 'HL', label: 'HL' },
-                            { value: 'SL', label: 'SL' },
-                          ]}
-                          placeholder="Level"
-                        />
-                        <button
-                          type="button"
-                          aria-label={`Remove ${subject.name}`}
-                          onClick={() =>
-                            setSubjects((current) =>
-                              current.filter((item) => item.slug !== subject.slug),
-                            )
-                          }
-                          className="inline-flex size-9 items-center justify-center rounded-md text-slate-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500 dark:border-slate-700">
-                      No subjects saved yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    Exam session
-                  </label>
-                  <AppSelect
-                    value={examSession || 'none'}
-                    onValueChange={(value) =>
-                      setExamSession(
-                        value === 'May' || value === 'November' ? value : null,
-                      )
-                    }
-                    options={[
-                      { value: 'none', label: 'Not set' },
-                      { value: 'May', label: 'May' },
-                      { value: 'November', label: 'November' },
-                    ]}
-                    placeholder="Exam session"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    Exam year
-                  </label>
-                  <AppSelect
-                    value={examYear ? String(examYear) : 'none'}
-                    onValueChange={(value) =>
-                      setExamYear(value === 'none' ? null : Number(value))
-                    }
-                    options={yearOptions}
-                    placeholder="Exam year"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <SaveButton busy={saving === 'academic'} />
+                <SaveButton
+                  busy={saving === 'profile'}
+                  disabled={!profileCanSave || usernameIsChecking}
+                />
               </div>
             </form>
           </div>
@@ -733,7 +823,10 @@ export function SettingsCentre() {
                   <PreferenceSwitch
                     checked={preferences.showLibrarySourceTags}
                     onChange={(value) =>
-                      setPreferences((current) => ({ ...current, showLibrarySourceTags: value }))
+                      setPreferences((current) => ({
+                        ...current,
+                        showLibrarySourceTags: value,
+                      }))
                     }
                     title="Library source tags"
                     description="Show the source/provider badge on Library resources when attribution is applicable."
@@ -785,7 +878,10 @@ export function SettingsCentre() {
                   <PreferenceSwitch
                     checked={preferences.supportNotifications}
                     onChange={(value) =>
-                      setPreferences((current) => ({ ...current, supportNotifications: value }))
+                      setPreferences((current) => ({
+                        ...current,
+                        supportNotifications: value,
+                      }))
                     }
                     title="Support ticket notifications"
                     description="Show replies and status changes for your support requests in the notification centre."
@@ -793,7 +889,10 @@ export function SettingsCentre() {
                   <PreferenceSwitch
                     checked={preferences.showWhatsNew}
                     onChange={(value) =>
-                      setPreferences((current) => ({ ...current, showWhatsNew: value }))
+                      setPreferences((current) => ({
+                        ...current,
+                        showWhatsNew: value,
+                      }))
                     }
                     title="Show What’s new after releases"
                     description="Automatically open the release highlights once after a new DP Resources update. You can still open What’s new manually from your account menu."
@@ -820,11 +919,23 @@ export function SettingsCentre() {
                 <div className="flex items-start gap-3">
                   <Mail className="mt-0.5 size-5 text-blue-700 dark:text-blue-300" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Email address</h3>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                      Email address
+                    </h3>
                     <p className="mt-1 break-all text-sm text-slate-500 dark:text-slate-400">
                       Current email: {data.profile.email}
                     </p>
                     <form className="mt-4 grid gap-3" onSubmit={changeEmail}>
+                      <input
+                        type="text"
+                        name="username"
+                        value={data.profile.email}
+                        autoComplete="username"
+                        readOnly
+                        className="sr-only"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
                       <label className="grid gap-1.5">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           New email
@@ -863,11 +974,23 @@ export function SettingsCentre() {
                 <div className="flex items-start gap-3">
                   <LockKeyhole className="mt-0.5 size-5 text-blue-700 dark:text-blue-300" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">Password</h3>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                      Password
+                    </h3>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                       Use at least 8 characters and choose a password you do not reuse elsewhere.
                     </p>
                     <form className="mt-4 grid gap-3" onSubmit={changePassword}>
+                      <input
+                        type="text"
+                        name="username"
+                        value={data.profile.email}
+                        autoComplete="username"
+                        readOnly
+                        className="sr-only"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                      />
                       <label className="grid gap-1.5">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           Current password
@@ -912,7 +1035,9 @@ export function SettingsCentre() {
                         </label>
                       </div>
                       <div className="flex justify-end">
-                        <SaveButton busy={saving === 'password'}>Change password</SaveButton>
+                        <SaveButton busy={saving === 'password'}>
+                          Change password
+                        </SaveButton>
                       </div>
                     </form>
                   </div>
@@ -927,9 +1052,9 @@ export function SettingsCentre() {
                       Account privacy
                     </h3>
                     <p className="mt-1 text-sm leading-5 text-emerald-900/80 dark:text-emerald-200/80">
-                      Your profile and academic selections are account data, not a public profile.
-                      They are used inside DP Resources and remain subject to the existing administrator
-                      access needed to operate and secure the service.
+                      Your profile and preferences are account data, not a public profile. They are
+                      used inside DP Resources and remain subject to the existing administrator access
+                      needed to operate and secure the service.
                     </p>
                   </div>
                 </div>
