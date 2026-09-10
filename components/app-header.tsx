@@ -13,6 +13,10 @@ import {
 } from 'lucide-react';
 
 import { useAccountPreferenceState } from '@/lib/account-preferences-client';
+import {
+  loadAccountProfile,
+  peekCachedAccountProfile,
+} from '@/lib/account-profile-client';
 import { AccountMenu } from './account-menu';
 import { BrandWordmark } from './brand-wordmark';
 import { SuspensionWatcher } from './suspension-watcher';
@@ -36,9 +40,14 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const { preferences, ready: preferencesReady } = useAccountPreferenceState();
+  const cachedProfile = userId ? peekCachedAccountProfile(userId) : null;
   const [shortcutModifier, setShortcutModifier] = useState('Ctrl');
-  const [username, setUsername] = useState(initialUsername?.trim() || null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState(
+    cachedProfile?.username ?? initialUsername?.trim() ?? null,
+  );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    cachedProfile?.avatarUrl ?? null,
+  );
   const notificationFeed = useNotificationFeed(Boolean(userId));
   const adminUnread = admin
     ? notificationFeed.summary.adminTickets +
@@ -54,33 +63,40 @@ export function AppHeader({
   }, []);
 
   useEffect(() => {
-    setUsername(initialUsername?.trim() || null);
-    setAvatarUrl(null);
-    if (!userId) return;
+    if (!userId) {
+      setUsername(initialUsername?.trim() || null);
+      setAvatarUrl(null);
+      return;
+    }
 
     let cancelled = false;
-    const loadProfile = () => {
-      void fetch('/api/account/profile', { cache: 'no-store' })
-        .then(async (response) => {
-          if (!response.ok) throw new Error('Profile request failed');
-          return response.json() as Promise<{
-            username?: string | null;
-            avatarUrl?: string | null;
-          }>;
-        })
-        .then((data) => {
-          if (cancelled) return;
-          setUsername(data?.username?.trim() || null);
-          setAvatarUrl(data?.avatarUrl || null);
-        })
+    const applyProfile = (profile: {
+      username: string | null;
+      avatarUrl: string | null;
+    }) => {
+      if (cancelled) return;
+      setUsername(profile.username);
+      setAvatarUrl(profile.avatarUrl);
+    };
+    const loadProfile = (force = false) => {
+      void loadAccountProfile(userId, { force })
+        .then(applyProfile)
         .catch(() => undefined);
     };
 
+    // A remounted page-level Nav reuses the same in-memory profile snapshot,
+    // including the exact signed avatar URL, instead of flashing back to the
+    // fallback icon and generating another image URL on every navigation.
+    const cached = peekCachedAccountProfile(userId);
+    if (cached) applyProfile(cached);
+    else setUsername(initialUsername?.trim() || null);
+
     loadProfile();
-    window.addEventListener('dp:profile-changed', loadProfile);
+    const handleProfileChanged = () => loadProfile(true);
+    window.addEventListener('dp:profile-changed', handleProfileChanged);
     return () => {
       cancelled = true;
-      window.removeEventListener('dp:profile-changed', loadProfile);
+      window.removeEventListener('dp:profile-changed', handleProfileChanged);
     };
   }, [initialUsername, userId]);
 
