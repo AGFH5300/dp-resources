@@ -28,7 +28,7 @@ export default async function FinishSocialProfilePage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const user = await requireUser();
+  const { user } = await requireUser();
   const params = await searchParams;
   const nextPath = safeInternalReturnPath(params.next, '/library');
   const provider = socialAuthProviderFromInput(params.provider);
