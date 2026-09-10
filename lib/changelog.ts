@@ -32,6 +32,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Added profile-picture editing with repositioning, crop preview, zoom and rotation, and fixed signed private avatars so they display correctly throughout the account interface.',
     'Added per-user controls for Library source tags, Library resource-type labels, Question Bank source tags, expanded source information, support notifications, and automatic What’s new release highlights.',
     'Strengthened account security with current-password verification for sensitive changes, private avatar storage, safer account data synchronization, and refreshed production dependencies to clear high and critical security audit findings.',
+    'Kept profile pictures stable while navigating between DP Resources pages by reusing the loaded avatar instead of repeatedly resetting and reloading it.',
   ],
   // The Settings work merged on 9 September was still under pre-production testing.
   // Suppress those intermediate merge titles so the public changelog shows only the final 10 September release.
