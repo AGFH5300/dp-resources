@@ -1,6 +1,8 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { BrandWordmark } from '@/components/brand-wordmark';
+import { SocialAuthButtons } from '@/components/auth/social-auth-buttons';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 type AuthShellProps = {
@@ -20,6 +22,9 @@ export function AuthShell({
   attribution,
   children,
 }: AuthShellProps) {
+  const pathname = usePathname();
+  const socialMode = pathname === '/auth/sign-up' ? 'signup' : pathname === '/auth/login' ? 'login' : null;
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#f8f6f1] text-[#1b1c19]">
       <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
@@ -57,6 +62,7 @@ export function AuthShell({
               <BrandWordmark className="text-base sm:text-xl" />
               <ThemeToggle />
             </div>
+            {socialMode ? <SocialAuthButtons mode={socialMode} /> : null}
             {children}
           </div>
         </main>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { markPasswordEnabled } from '@/lib/account-auth-methods';
 import { isValidEmail } from '@/lib/auth-email';
 import { SITE_URL } from '@/lib/seo';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
@@ -185,6 +186,7 @@ export async function POST(request: Request) {
           : 'Could not finish account setup. Please try again.';
       return json({ ok: false, message }, profileError.code === '23505' ? 409 : 503);
     }
+    await markPasswordEnabled(authData.user.id);
     return json({ ok: true });
   }
 
@@ -201,6 +203,7 @@ export async function POST(request: Request) {
     if (error) {
       return json({ ok: false, message: 'Could not update your password. Please try again.' }, 400);
     }
+    await markPasswordEnabled(data.user.id);
     await supabase.auth.signOut({ scope: 'global' }).catch(() => undefined);
     return json({ ok: true });
   }

@@ -1,3 +1,4 @@
+import { markPasswordEnabled } from '@/lib/account-auth-methods';
 import { requireApiMember } from '@/lib/auth';
 import { isValidEmail } from '@/lib/auth-email';
 import { isPlainObject, sameOriginOrForbidden } from '@/lib/request-security';
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    await markPasswordEnabled(context.user.id);
     return noStore({ ok: true });
   }
 
