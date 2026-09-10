@@ -32,6 +32,10 @@ export function shouldBypassSupabaseMiddleware(pathname: string) {
   );
 }
 
+export function shouldPreserveRawRequestBody(pathname: string) {
+  return pathname === '/api/account/avatar';
+}
+
 export function getSupabaseAuthCookiePrefix(supabaseUrl: string) {
   try {
     const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
@@ -111,7 +115,6 @@ function securedNextResponse(
   requestHeaders.set('x-nonce', nonce);
   // Next.js reads the request CSP nonce and applies it to framework-generated
   // inline/bootstrap scripts. The response carries the same policy for browsers.
-  requestHeaders.set('Content-Security-Policy', csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
   return response;
@@ -144,6 +147,13 @@ function clearSupabaseAuthCookies(
 
 export async function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'development') return NextResponse.next();
+
+  // Binary request bodies must not be reconstructed through
+  // NextResponse.next({ request: { headers } }). On Replit/Next.js this can
+  // disturb the incoming stream before the route handler reads it.
+  if (shouldPreserveRawRequestBody(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
 
   const nonce = randomBytes(16).toString('base64');
   const csp = contentSecurityPolicy(nonce);
