@@ -28,7 +28,8 @@ describe('modern social authentication', () => {
     expect(buttons).toContain('Sign up');
     expect(buttons).toContain('Continue');
     expect(buttons).toContain('or continue with email');
-    expect(login).toContain("type=\"password\"");
+    expect(login).toContain("type={showPassword ? 'text' : 'password'}");
+    expect(login).toContain("fetch('/api/auth/login'");
     expect(signup).toContain('Create account');
   });
 
