@@ -34,6 +34,7 @@ describe('PirateIB Village metadata/fingerprint indexer', () => {
 
     const source = `
       const bankBase = 'https://village-assets.pirateib.sh/banks/';
+      const relativeBankBase = '../banks/';
       const fileNameMap = {
         biology: 'Biology QB.json',
         math: 'Mathematics AA HL.json'
@@ -43,6 +44,7 @@ describe('PirateIB Village metadata/fingerprint indexer', () => {
     const refs = discoverJsonReferences(source, 'https://village.pirateib.su/assets/app.js', APP);
     expect(refs).toContain('https://village-assets.pirateib.sh/banks/Biology%20QB.json');
     expect(refs).toContain('https://village-assets.pirateib.sh/banks/Mathematics%20AA%20HL.json');
+    expect(refs).toContain('https://village.pirateib.su/banks/Biology%20QB.json');
     expect(refs).toContain('https://village.pirateib.su/assets/direct/ESS.json');
   });
 
