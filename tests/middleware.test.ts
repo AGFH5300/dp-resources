@@ -7,6 +7,7 @@ import {
   isSupabaseAuthCookieName,
   isTransientSupabaseAuthError,
   shouldBypassSupabaseMiddleware,
+  shouldPreserveRawRequestBody,
 } from '../middleware';
 
 const middlewareSource = readFileSync('middleware.ts', 'utf8');
@@ -42,6 +43,15 @@ describe('middleware auth route bypasses', () => {
     expect(shouldBypassSupabaseMiddleware('/library')).toBe(false);
     expect(shouldBypassSupabaseMiddleware('/admin')).toBe(false);
     expect(shouldBypassSupabaseMiddleware('/api/question-bank/state')).toBe(false);
+  });
+
+  it('passes the avatar binary request through without rewriting request headers', () => {
+    expect(shouldPreserveRawRequestBody('/api/account/avatar')).toBe(true);
+    expect(shouldPreserveRawRequestBody('/api/account/settings')).toBe(false);
+    expect(shouldPreserveRawRequestBody('/library')).toBe(false);
+    expect(middlewareSource).toContain(
+      'if (shouldPreserveRawRequestBody(request.nextUrl.pathname))',
+    );
   });
 });
 

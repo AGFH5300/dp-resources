@@ -10,6 +10,7 @@ const schema = read('supabase/schema.sql');
 const settingsRoute = read('app/api/account/settings/route.ts');
 const securityRoute = read('app/api/account/security/route.ts');
 const avatarRoute = read('app/api/account/avatar/route.ts');
+const middleware = read('middleware.ts');
 const settingsPage = read('app/settings/settings-centre.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const appHeader = read('components/app-header.tsx');
@@ -63,12 +64,14 @@ describe('Settings & Account Centre', () => {
     expect(avatarRoute).toContain('hasExpectedMagicBytes');
   });
 
-  it('uploads avatars as a raw image body instead of multipart form data', () => {
+  it('preserves avatar binary request bodies through production middleware', () => {
     expect(settingsPage).toContain("headers: { 'Content-Type': file.type }");
     expect(settingsPage).toContain('body: file');
     expect(avatarRoute).toContain('request.arrayBuffer()');
+    expect(middleware).toContain("pathname === '/api/account/avatar'");
+    expect(middleware).toContain('shouldPreserveRawRequestBody');
+    expect(middleware).toContain('return NextResponse.next();');
     expect(avatarRoute).not.toContain('request.formData()');
-    expect(avatarRoute).not.toContain('instanceof File');
   });
 
   it('uses the signup username availability endpoint with live debounce feedback', () => {
