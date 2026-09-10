@@ -1,0 +1,35 @@
+name: Apply avatar editor integration patch
+
+on:
+  push:
+    branches:
+      - fix/avatar-display-editor-20260910
+    paths:
+      - scripts/apply-avatar-editor-patch.mjs
+      - .github/workflows/apply-avatar-editor-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: fix/avatar-display-editor-20260910
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: node scripts/apply-avatar-editor-patch.mjs
+      - name: Commit generated integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/settings/settings-centre.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Integrate profile picture editor into Settings"
+          git push origin HEAD:fix/avatar-display-editor-20260910
