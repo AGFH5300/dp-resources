@@ -30,6 +30,46 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Capture safe Village network hints
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/village-index/source"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const appUrl = 'https://village.pirateib.su/';
+          const allowed = (u) => {
+            try {
+              const x = new URL(u, appUrl);
+              return x.protocol === 'https:' && (x.hostname === 'village.pirateib.su' || x.hostname.endsWith('.pirateib.su') || x.hostname.endsWith('.pirateib.sh'));
+            } catch { return false; }
+          };
+          const html = await (await fetch(appUrl)).text();
+          const scripts = [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["']/gi)]
+            .map((m) => new URL(m[1], appUrl).href)
+            .filter(allowed);
+          const hints = [];
+          for (const scriptUrl of [...new Set(scripts)]) {
+            const response = await fetch(scriptUrl);
+            const source = await response.text();
+            const strings = [...source.matchAll(/(["'`])([^\n\r"'`]{1,500})\1/g)].map((m) => m[2]);
+            for (const value of strings) {
+              const looksNetworkish = /^(?:https?:\/\/|\/|\.\.?\/)/.test(value) || /(?:api|graphql|question|bank|data|asset|worker|\.json|\.ndjson|\.gz|\.br|\.bin|\.db|\.sqlite|\.wasm)/i.test(value);
+              const looksPathish = /[/.]/.test(value);
+              if (!looksNetworkish || !looksPathish || value.length > 300) continue;
+              if (value.includes('<') || value.includes('>')) continue;
+              hints.push(value);
+            }
+            for (const match of source.matchAll(/(?:fetch|axios\.(?:get|post)|XMLHttpRequest)\s*\(([^)]{1,240})\)/g)) {
+              hints.push(`CALL:${match[1].replace(/\s+/g, ' ').slice(0, 220)}`);
+            }
+            hints.push(`SCRIPT_SHA256:${scriptUrl}:${crypto.createHash('sha256').update(source).digest('hex')}`);
+          }
+          const unique = [...new Set(hints)].sort();
+          fs.writeFileSync(`${process.env.RUNNER_TEMP}/village-index/source/network-hints.json`, JSON.stringify(unique, null, 2) + '\n');
+          console.log(`Captured ${unique.length} safe network/source hints.`);
+          NODE
+
       - name: Index live Village metadata and fingerprints
         shell: bash
         run: |
@@ -40,10 +80,6 @@ jobs:
           status=$?
           set -e
 
-          # The indexer uses exit 2 to flag partial candidate-endpoint failures.
-          # Those are expected during self-discovery, so accept them only when
-          # a non-empty question index was still produced. Any other failure,
-          # or an empty index, remains a hard failure.
           if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
             exit "$status"
           fi
@@ -66,6 +102,7 @@ jobs:
             ${{ runner.temp }}/village-index/checksums.sha256
             ${{ runner.temp }}/village-index/source/source-manifest.json
             ${{ runner.temp }}/village-index/source/json-candidates.json
+            ${{ runner.temp }}/village-index/source/network-hints.json
             ${{ runner.temp }}/village-index/index/questions.ndjson
             ${{ runner.temp }}/village-index/index/source-summary.json
             ${{ runner.temp }}/village-index/index/failures.json
