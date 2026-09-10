@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'scripts/question-bank/capture-village.mjs'
+      - 'scripts/question-bank/probe-village-chunks.mjs'
       - 'scripts/question-bank/html-utils.mjs'
       - 'tests/village-indexer.test.mjs'
       - 'package.json'
@@ -116,6 +117,9 @@ jobs:
           });
           NODE
 
+      - name: Probe public Village question-data chunks
+        run: node scripts/question-bank/probe-village-chunks.mjs "$RUNNER_TEMP/village-index/source/question-chunk-probe.json"
+
       - name: Index live Village metadata and fingerprints
         shell: bash
         run: |
@@ -147,6 +151,7 @@ jobs:
             ${{ runner.temp }}/village-index/source/loader-contexts.json
             ${{ runner.temp }}/village-index/source/chunk-load-expressions.json
             ${{ runner.temp }}/village-index/source/source-map-sources.json
+            ${{ runner.temp }}/village-index/source/question-chunk-probe.json
             ${{ runner.temp }}/village-index/index/questions.ndjson
             ${{ runner.temp }}/village-index/index/source-summary.json
             ${{ runner.temp }}/village-index/index/failures.json
