@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Link2, Loader2, ShieldCheck, Unlink2 } from 'lucide-react';
+import { CheckCircle2, KeyRound, Link2, Loader2, ShieldCheck, Unlink2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
@@ -18,13 +18,24 @@ type ConnectedIdentity = {
   updatedAt: string | null;
 };
 
+type ProviderStatus = {
+  key: SocialAuthProviderKey;
+  label: string;
+  connected: boolean;
+  available: boolean;
+};
+
 type IdentityPayload = {
   identities?: ConnectedIdentity[];
+  providers?: ProviderStatus[];
+  passwordEnabled?: boolean;
   error?: string;
 };
 
 export function ConnectedAccounts() {
   const [identities, setIdentities] = useState<ConnectedIdentity[]>([]);
+  const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busyProvider, setBusyProvider] = useState<SocialAuthProviderKey | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] =
@@ -42,6 +53,8 @@ export function ConnectedAccounts() {
         return;
       }
       setIdentities(payload.identities || []);
+      setProviderStatuses(payload.providers || []);
+      setPasswordEnabled(payload.passwordEnabled === true);
       setError(null);
     } catch {
       setError('Could not load connected accounts.');
@@ -128,9 +141,8 @@ export function ConnectedAccounts() {
             Connected accounts
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Use Google, Microsoft, Apple, or GitHub to access the same DP Resources
-            account. Verified sign-ins using the same email stay together instead of
-            creating duplicate profiles.
+            Google, Microsoft and GitHub can sign in to the same DP Resources account.
+            Matching verified emails are kept together instead of creating duplicate profiles.
           </p>
         </div>
       </div>
@@ -148,11 +160,27 @@ export function ConnectedAccounts() {
       ) : null}
 
       <div className="mt-5 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 dark:divide-slate-700 dark:border-slate-700">
+        <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-4 dark:bg-slate-950/40">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-100">
+              <KeyRound className="size-4" aria-hidden="true" /> DP Resources password
+            </div>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {passwordEnabled ? 'Available as a backup sign-in method.' : 'Not set for this account.'}
+            </p>
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${passwordEnabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+            {passwordEnabled ? 'Enabled' : 'Not set'}
+          </span>
+        </div>
+
         {SOCIAL_AUTH_PROVIDER_KEYS.map((providerKey) => {
           const provider = SOCIAL_AUTH_PROVIDERS[providerKey];
+          const status = providerStatuses.find((item) => item.key === providerKey);
           const identity = identities.find((item) => item.provider === providerKey);
           const busy = busyProvider === providerKey;
           const confirming = confirmDisconnect === providerKey;
+          const available = status?.available === true;
 
           return (
             <div
@@ -168,15 +196,23 @@ export function ConnectedAccounts() {
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                       <ShieldCheck className="size-3" aria-hidden="true" /> Connected
                     </span>
-                  ) : (
+                  ) : available ? (
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                       Not connected
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      {providerKey === 'apple' ? 'Later' : 'Setup pending'}
                     </span>
                   )}
                 </div>
                 {identity?.email ? (
                   <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {identity.email}
+                  </p>
+                ) : providerKey === 'apple' ? (
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Planned for later because Apple web sign-in requires Apple Developer setup.
                   </p>
                 ) : null}
               </div>
@@ -214,7 +250,7 @@ export function ConnectedAccounts() {
                       Disconnect
                     </button>
                   )
-                ) : (
+                ) : available ? (
                   <button
                     type="button"
                     onClick={() => void connect(providerKey)}
@@ -224,6 +260,10 @@ export function ConnectedAccounts() {
                     {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
                     Connect
                   </button>
+                ) : (
+                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                    {providerKey === 'apple' ? 'Later' : 'Not configured'}
+                  </span>
                 )}
               </div>
             </div>
@@ -246,7 +286,7 @@ export function ConnectedAccounts() {
       </div>
 
       <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
-        DP Resources will not let you disconnect your only remaining account identity.
+        DP Resources will not let a social-only account disconnect its last remaining sign-in method.
       </p>
     </section>
   );
