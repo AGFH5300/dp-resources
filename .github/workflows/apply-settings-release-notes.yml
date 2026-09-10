@@ -1,0 +1,35 @@
+name: Apply Settings release notes
+
+on:
+  push:
+    branches:
+      - chore/finalize-settings-release-notes-20260910
+    paths:
+      - scripts/finalize-settings-release-notes.mjs
+      - .github/workflows/apply-settings-release-notes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: chore/finalize-settings-release-notes-20260910
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - run: node scripts/finalize-settings-release-notes.mjs
+      - name: Commit finalized release notes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/changelog.ts lib/whats-new.ts tests/source-ui-and-whats-new.test.ts
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Finalize Settings changelog and What's New"
+          git push origin HEAD:chore/finalize-settings-release-notes-20260910
