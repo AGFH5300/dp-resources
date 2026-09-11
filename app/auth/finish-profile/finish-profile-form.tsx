@@ -153,9 +153,7 @@ export function FinishSocialProfileForm({
     <>
       <h1 className="font-headline text-4xl text-[#00152a] dark:text-white">Create account</h1>
       <p className="mt-3 font-body text-[#43474d] dark:text-slate-300">
-        {providerLabel} verified{' '}
-        <span className="font-semibold text-[#1b1c19] dark:text-slate-100">{email}</span>.
-        Finish the same DP Resources profile used by every signup method.
+        {providerLabel} has verified your identity. Complete your DP Resources account details below.
       </p>
 
       <form
@@ -233,6 +231,33 @@ export function FinishSocialProfileForm({
           {showFullNameError ? (
             <p className="mt-2 text-sm text-red-700 dark:text-red-300">Enter your full name.</p>
           ) : null}
+        </div>
+
+        <div>
+          <label
+            htmlFor="social-signup-email"
+            className="font-label text-xs uppercase tracking-widest text-[#43474d] dark:text-slate-300"
+          >
+            Email
+          </label>
+          <div className="relative">
+            <input
+              id="social-signup-email"
+              className="tsm-input pr-10 text-[#43474d] dark:text-slate-200"
+              type="email"
+              name="social_signup_email"
+              value={email}
+              readOnly
+              aria-readonly="true"
+              tabIndex={-1}
+            />
+            <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+              <CheckCircle2 className="size-4 text-[#0c7a43] dark:text-emerald-400" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-[#0c7a43] dark:text-emerald-300">
+            Verified by {providerLabel}.
+          </p>
         </div>
 
         {error ? (
