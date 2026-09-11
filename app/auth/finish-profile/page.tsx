@@ -15,7 +15,7 @@ import { FinishSocialProfileForm } from './finish-profile-form';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata: Metadata = privatePageMetadata('Finish your profile');
+export const metadata: Metadata = privatePageMetadata('Create account');
 
 export default async function FinishSocialProfilePage() {
   const store = await cookies();
@@ -32,9 +32,11 @@ export default async function FinishSocialProfilePage() {
 
   return (
     <AuthShell
-      eyebrow="One DP Resources account"
-      title="Almost there."
-      description="Your provider has verified your identity. Finish the small DP Resources profile that stays with you no matter how you sign in."
+      eyebrow="Create account"
+      title="Set up your free account in a few steps."
+      description="Enter your details, verify your identity, then continue to a massive resource library."
+      quote="The goal of education is not to increase the amount of knowledge but to create the possibilities for a child to invent and discover."
+      attribution="Jean Piaget"
     >
       <FinishSocialProfileForm
         email={pending.email}
