@@ -48,6 +48,10 @@ describe('deployment completion pass', () => {
   it('exposes PDF, spreadsheet, CSV, DOCX and scoped image preview controls', () => {
     const p = read('app/resource/[fileId]/resource-preview.tsx');
     expect(p).toContain('PdfViewer');
+    expect(p).toContain('data-pdf-fullscreen-root');
+    expect(p).toContain('requestFullscreen');
+    expect(p).toContain('viewportFullscreen');
+    expect(p).toContain('Exit full screen');
     expect(p).toContain('Fit image');
     expect(p).toContain('Zoom in');
     expect(read('app/resource/[fileId]/page.tsx')).toContain('openHref');
