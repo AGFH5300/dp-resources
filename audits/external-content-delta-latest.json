@@ -1,6 +1,6 @@
 {
   "schema": "dp_external_content_delta_v1",
-  "generatedAt": "2026-09-11T04:54:07.781Z",
+  "generatedAt": "2026-09-11T08:07:35.732Z",
   "baselinePath": "audits/external-content-watch-baseline-20260909.json",
   "previousStatePath": "audits/external-content-index-state.json",
   "sourcePolicy": {
@@ -13,10 +13,10 @@
   "candidateSignals": [
     {
       "source": "exam_mate",
-      "id": "exam-mate-topical-count-238655",
+      "id": "exam-mate-yearly-count-49204",
       "status": "candidate",
       "kind": "catalog_count",
-      "label": "238655 topical past-paper questions",
+      "label": "49204 yearly past papers",
       "url": "https://www.exam-mate.com/"
     }
   ],
@@ -24,7 +24,7 @@
     "exam_mate": {
       "displayName": "Exam-Mate",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-11T04:54:05.895Z",
+      "scannedAt": "2026-09-11T08:07:29.134Z",
       "pages": [
         {
           "requestedUrl": "https://www.exam-mate.com/",
@@ -34,7 +34,7 @@
           "description": "exam-mate is an exam preparation tool containing a bank of IGCSE, A-Level, IB, AQA and OCR Topical questions and yearly past papers exams. With exam-mate you are able to build online exams easily using our question bank database.",
           "etag": null,
           "lastModified": null,
-          "htmlSha256": "56a36c803aacaaff8b0c99b8c998572d13ffbfc2e57d34e8026ec4aa7971dffd",
+          "htmlSha256": "9ce357aca99a11388f2fb218064f69fca68bf63e3711add8c1afe44e0f15bd92",
           "headings": [
             {
               "level": 1,
@@ -83,10 +83,10 @@
           "url": "https://www.exam-mate.com/"
         },
         {
-          "id": "exam-mate-yearly-count-49135",
+          "id": "exam-mate-yearly-count-49204",
           "status": "candidate",
           "kind": "catalog_count",
-          "label": "49135 yearly past papers",
+          "label": "49204 yearly past papers",
           "url": "https://www.exam-mate.com/"
         }
       ]
@@ -94,7 +94,7 @@
     "revision_village": {
       "displayName": "Revision Village",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-11T04:54:06.392Z",
+      "scannedAt": "2026-09-11T08:07:29.627Z",
       "pages": [
         {
           "requestedUrl": "https://www.revisionvillage.com/prediction-exams/",
@@ -198,7 +198,7 @@
     "revision_town": {
       "displayName": "Revision Town",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-11T04:54:06.692Z",
+      "scannedAt": "2026-09-11T08:07:29.910Z",
       "pages": [
         {
           "requestedUrl": "https://revisiontown.com/ib/",
@@ -378,7 +378,7 @@
     "mortar_and_pestle": {
       "displayName": "Mortar and Pestle",
       "captureMode": "fingerprint-only",
-      "scannedAt": "2026-09-11T04:54:06.820Z",
+      "scannedAt": "2026-09-11T08:07:30.096Z",
       "pages": [
         {
           "requestedUrl": "https://pestle.pirateib.su/app/",
@@ -388,7 +388,7 @@
           "description": "Practice IB Exam-Style Questions, create topic-wise tests, and much more!",
           "etag": null,
           "lastModified": "Fri, 11 Sep 2026 04:54:06 GMT",
-          "htmlSha256": "331743d86bbf1743e8eb0bb8b6bddf9fffa48347fb9234ece1b2fec839757bdb",
+          "htmlSha256": "0add5aba96ca09089958c9967b849ead68f960b807289a2082950589f9f28358",
           "headings": [],
           "itemCount": 0,
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
@@ -412,7 +412,7 @@
     "save_my_exams": {
       "displayName": "Save My Exams",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-11T04:54:07.781Z",
+      "scannedAt": "2026-09-11T08:07:35.732Z",
       "pages": [
         {
           "requestedUrl": "https://www.savemyexams.com/dp/",
@@ -643,8 +643,8 @@
           "title": "IB Maths Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Maths Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 19:10:14 GMT",
-          "htmlSha256": "49a5b84930199da3afb9a5efd671e9c1f25fd961c4662e9fb3f96846cf29094d",
+          "lastModified": "Fri, 11 Sep 2026 08:07:30 GMT",
+          "htmlSha256": "23423bf3199486ec4cf9c2b298e20c7e061e01e20e57aabd5de3d6b3086afe18",
           "headings": [
             {
               "level": 1,
@@ -675,8 +675,8 @@
               "text": "What is IB Digital Society?"
             }
           ],
-          "itemCount": 1689,
-          "catalogFingerprint": "d7502dd30e452a3d3f82d41f58079bc4bca175baca25f1f40e79582ee30cbcb8"
+          "itemCount": 1725,
+          "catalogFingerprint": "6218828cc4858d17cad5c3c370c52bc9de53ed155a9782243be3e94054517047"
         },
         {
           "requestedUrl": "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/",
@@ -685,16 +685,16 @@
           "title": "DP IB Analysis & Approaches (AA) Mock Exams",
           "description": "Increase your exam confidence with these DP IB Analysis & Approaches (AA) mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 18:27:53 GMT",
-          "htmlSha256": "21aa0efda99e4e60addfcb920ff219b28edac739fdbaed2a4dcff4ea2e9f5da0",
+          "lastModified": "Fri, 11 Sep 2026 08:07:31 GMT",
+          "htmlSha256": "6d4c3dcc6d7bccf985c3929dc817cc9273046e67239564156ff0a7f8223c7df8",
           "headings": [
             {
               "level": 1,
               "text": "DP IB Analysis & Approaches (AA) Mock Exams"
             }
           ],
-          "itemCount": 1701,
-          "catalogFingerprint": "4c857f19613c7fa7e7b4c701626a27baebf5da065eb0eddfb6ae373a50d196d7"
+          "itemCount": 1737,
+          "catalogFingerprint": "8274999cddfa2c28a26ee5014f0a9142423dd8f96c636f68c32fde9a4efba408"
         },
         {
           "requestedUrl": "https://www.savemyexams.com/dp/business/mock-exams/",
@@ -745,16 +745,16 @@
           "title": "DP IB Chemistry Mock Exams",
           "description": "Increase your exam confidence with these DP IB Chemistry mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 19:20:24 GMT",
-          "htmlSha256": "9a7a1e6056d13a56fcf101bdccdf2839d438043ea34c06c8bb5594bb628064d1",
+          "lastModified": "Fri, 11 Sep 2026 08:07:32 GMT",
+          "htmlSha256": "73891820780c4c3e8b8b395ed39502be8c4f66c815bbfdb1a570c51e2db61204",
           "headings": [
             {
               "level": 1,
               "text": "DP IB Chemistry Mock Exams"
             }
           ],
-          "itemCount": 1705,
-          "catalogFingerprint": "538ab28bbd4d034daa5e38cc65233814345d8c08367ff545acadd939b025a021"
+          "itemCount": 1741,
+          "catalogFingerprint": "fd61e1dd24edf625aebbdcfee17a252d575d3992939c514b34d4aaf076365545"
         },
         {
           "requestedUrl": "https://www.savemyexams.com/dp/biology/mock-exams/",
@@ -805,8 +805,8 @@
           "title": "IB Physics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Physics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 19:52:48 GMT",
-          "htmlSha256": "eb1d02f4a855b74fe5ca702b91b90c919327f4845a9158bc23537612fa5d95e8",
+          "lastModified": "Fri, 11 Sep 2026 08:07:33 GMT",
+          "htmlSha256": "0a34eceb1391b11188f9a44e864fff01068a5042fbadc1aa710951968a8bf145",
           "headings": [
             {
               "level": 1,
@@ -837,8 +837,8 @@
               "text": "What is IB Digital Society?"
             }
           ],
-          "itemCount": 1687,
-          "catalogFingerprint": "7bdb14999f2a4ea168f7be8a4f5275ffee69b660576b7df34788d4508b3b2bbf"
+          "itemCount": 1723,
+          "catalogFingerprint": "7cfc84928880a9154136367f9f8766d99172c021ee81e3ffa65ac3449221fc1a"
         },
         {
           "requestedUrl": "https://www.savemyexams.com/dp/economics/mock-exams/",
@@ -847,8 +847,8 @@
           "title": "IB Economics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Economics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 19:12:00 GMT",
-          "htmlSha256": "681c576b7e7023b950ceeed06bc634ea6620e4af3626b6d2f1ac1e7b9cb3db8c",
+          "lastModified": "Fri, 11 Sep 2026 08:07:34 GMT",
+          "htmlSha256": "950548225f6cc32b6310e231e7cfeda258a5b4b49a3c0a4d20e4791d71bbcd78",
           "headings": [
             {
               "level": 1,
@@ -879,8 +879,8 @@
               "text": "What is IB Digital Society?"
             }
           ],
-          "itemCount": 1687,
-          "catalogFingerprint": "a1e70ab81dac9df81937ccb9d94a26e9fbc90e3b2cb3e19dce70843f0ef5a079"
+          "itemCount": 1723,
+          "catalogFingerprint": "a536decd957b4a7c72cf71840ec1093375afc3ab08ccfd8254bc6f64c86428ac"
         },
         {
           "requestedUrl": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/",
@@ -889,22 +889,343 @@
           "title": "DP IB Psychology Mock Exams",
           "description": "Increase your exam confidence with these DP IB Psychology mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Thu, 10 Sep 2026 18:31:42 GMT",
-          "htmlSha256": "1b6fe38a3181a78e60cec8ab954e7924907168ddffd76d194165993bb9528e5f",
+          "lastModified": "Fri, 11 Sep 2026 08:07:35 GMT",
+          "htmlSha256": "6eb651cde0e2bd367319b68c79f65bc920d1d816c37dc9da74c908e3f1ba00a6",
           "headings": [
             {
               "level": 1,
               "text": "DP IB Psychology Mock Exams"
             }
           ],
-          "itemCount": 1689,
-          "catalogFingerprint": "e1e957b88339b8b411d1e0f654fc4f22931efff7d9c72e8cfee3f19ba43a3cff"
+          "itemCount": 1725,
+          "catalogFingerprint": "3fb60bfd29fd819f447eb2b37b433527bf40c04180fe4b5d2b5d6e65b3ca2336"
         }
       ],
-      "itemCount": 1822,
-      "newItemCount": 0,
+      "itemCount": 1862,
+      "newItemCount": 40,
       "removedItemCount": 0,
-      "newItems": [],
+      "newItems": [
+        {
+          "key": "65013fc42c5e1a6cf40def3d9d7b0f82",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-1-data-finance-estimation-and-modelling/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "4ed6f393756f6b021b7f19b79c15ae96",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2a-statistical-techniques/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "2196e7ec6146e827101ac527070e4d2d",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2b-critical-path-and-risk-analysis/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "8ada280dce25add03fe3b5f00ac4b0ab",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2c-graphical-techniques/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "2fba20df58e9a87a7601e71ca1a25ae0",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Mathematical Studies (Core Maths) Paper 1",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-1-data-finance-estimation-and-modelling/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "58077fe16bdd3e2399ad2dad9828ff77",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Mathematical Studies (Core Maths) Paper 2A",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2a-statistical-techniques/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "5cb9ca7c9c40bf21ad31a1e889463d9a",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Mathematical Studies (Core Maths) Paper 2B",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2b-critical-path-and-risk-analysis/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "ee5faa106f7ca1d6083b6b2e02e27dbc",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Mathematical Studies (Core Maths) Paper 2C",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2c-graphical-techniques/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "185787ebbedc42b819fba2c9fc550455",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-1-data-finance-estimation-and-modelling/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "ff1d8faed2733ff965df3219aeb51fd8",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2a-statistical-techniques/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "0dbe3234ef5901453014ffaf0ebf07b9",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2b-critical-path-and-risk-analysis/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "236500b3d55d9d5a54a3b138d92ff70b",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/level-3/maths/aqa/mathematical-studies-core-maths/14/paper-2c-graphical-techniques/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "7e88f28e42999f86adb632208ac7b9eb",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/core-pure/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "4c2118f6446f5e0dd2c94ee16771b960",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/decision-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "266f9f532e432f064634534c5682e9f9",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-mechanics-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "bc5939632ab68e8f4c1ac420aa76bd24",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-pure-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "575de8292416ff773fd9c9b7526b339c",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-statistics-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "792429b15f068cbd94133167baa53b7f",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/mechanics/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "72900a0355930721e80b973e7b94af8d",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/probability-and-statistics-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "90563c1190a7c20c1eb7934ecb37a712",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/pure-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "fa4238cca6256e72de60a6bf89a108d5",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/pure-2/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "48fdbc7a9d78546cd302b5a29e6cd0da",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/decision-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "dbdee4b6dee6a46abad2bec284290afc",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/mechanics-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "e959b67227ad06b85a2bc8947f9e89c2",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/pure-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "c8d4e30df768e4bf2fdd9915661c9732",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/pure-2/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "149222173a63205ae384d8cdb43edb79",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/statistics-1/topic-questions/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "a551a6dc5ddae829231cfb72ea16a3e8",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/core-pure/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "c7dec7d5fde0afa4f06c7c67187f404c",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/decision-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "a09b5f004d707055faeb4da097282029",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-mechanics-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "e9a43a0358f9b268bbea04467af3fc11",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-pure-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "d0092e05c4d36844febad9e5cf77f891",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/a-level/further-maths/edexcel/17/further-statistics-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "acf714377f98285c077ceff0a9bd3863",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/mechanics/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "f7d4f5aa42538951114588550fadf5aa",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/probability-and-statistics-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "08373626ebea9cb7897fd05fd6e4c9b0",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/pure-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "4ca2fc10b2cebe73058608c324f83847",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/as/maths/cie/20/pure-2/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "b25b664e58679de42c2117c731ee8772",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/decision-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "4552155e82b66597d7c51186b06f66c5",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/mechanics-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "d091d48c631c98ad93c28fb218323743",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/pure-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "5fd1b28b91831f58290667b3cbb95560",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/pure-2/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "01539dd83e9a756a791bd8334ed47b0c",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/international-as/maths/edexcel/19/statistics-1/revision-notes/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        }
+      ],
       "removedItems": [],
       "signals": []
     }
