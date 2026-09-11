@@ -175,6 +175,103 @@ function ImagePreview({ url, name }: { url: string; name: string }) {
   );
 }
 
+function PdfPreview({
+  url,
+  fileId,
+  name,
+}: {
+  url: string;
+  fileId: string;
+  name: string;
+}) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [viewportFullscreen, setViewportFullscreen] = useState(false);
+  const fullscreen = nativeFullscreen || viewportFullscreen;
+
+  useEffect(() => {
+    const syncFullscreen = () =>
+      setNativeFullscreen(document.fullscreenElement === wrap.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
+  useEffect(() => {
+    if (!viewportFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setViewportFullscreen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [viewportFullscreen]);
+
+  const toggleFullscreen = async () => {
+    const node = wrap.current;
+    if (!node) return;
+
+    if (document.fullscreenElement === node) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (viewportFullscreen) {
+      setViewportFullscreen(false);
+      return;
+    }
+
+    try {
+      if (node.requestFullscreen) {
+        await node.requestFullscreen();
+        return;
+      }
+    } catch {
+      // Some browsers block the Fullscreen API for embedded content. Fall back
+      // to an in-page viewport mode so every PDF can still be enlarged.
+    }
+    setViewportFullscreen(true);
+  };
+
+  return (
+    <div
+      ref={wrap}
+      data-pdf-fullscreen-root
+      className={
+        viewportFullscreen
+          ? 'fixed inset-0 z-[100] flex h-dvh min-h-0 flex-col bg-white'
+          : nativeFullscreen
+            ? 'flex h-screen min-h-0 flex-col bg-white'
+            : 'bg-white'
+      }
+    >
+      <div className="flex shrink-0 items-center justify-end border-x border-t border-slate-300 bg-[#323639] px-2 py-1.5 text-white">
+        <button
+          type="button"
+          onClick={() => void toggleFullscreen()}
+          aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+          title={fullscreen ? 'Exit full screen' : 'Full screen'}
+          className="inline-flex h-9 items-center gap-2 rounded px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          <Expand className="size-4" />
+          {fullscreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+      </div>
+      <div
+        className={
+          fullscreen
+            ? 'min-h-0 flex-1 [&>section]:!h-full [&>section]:!min-h-0'
+            : ''
+        }
+      >
+        <PdfViewer url={url} fileId={fileId} name={name} />
+      </div>
+    </div>
+  );
+}
+
 export function ResourcePreview({
   fileId,
   mimeType,
@@ -190,7 +287,7 @@ export function ResourcePreview({
   const bufferedUrl = `/api/resource/${fileId}/buffered-content`;
   const cap = getResourceCapability(mimeType, name, false, fileId);
   if (cap.previewMode === 'pdf')
-    return <PdfViewer url={bufferedUrl} fileId={fileId} name={name} />;
+    return <PdfPreview url={bufferedUrl} fileId={fileId} name={name} />;
   if (cap.previewMode === 'image')
     return <ImagePreview url={streamUrl} name={name} />;
   if (cap.previewMode === 'master-xlsx')
