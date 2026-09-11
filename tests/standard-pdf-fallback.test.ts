@@ -81,4 +81,17 @@ describe('standard PDF fallback', () => {
       'else timer=setTimeout(()=>void poll(url),4000)',
     );
   });
+
+  it('keeps fullscreen available when the browser-standard PDF reader is used', () => {
+    const viewer = read('app/resource/[fileId]/pdf-viewer.tsx');
+    const standard = viewer.slice(
+      viewer.indexOf('function StandardPdfViewer'),
+      viewer.indexOf('function pointer'),
+    );
+
+    expect(standard).toContain('requestFullscreen');
+    expect(standard).toContain("document.addEventListener('fullscreenchange'");
+    expect(standard).toContain("fullscreen ? 'Exit full screen' : 'Full screen'");
+    expect(standard).toContain('<Expand className="size-5" />');
+  });
 });
