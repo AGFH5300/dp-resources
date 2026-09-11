@@ -173,10 +173,12 @@ function StandardPdfViewer({
   fileId: string;
   name: string;
 }) {
+  const wrap = useRef<HTMLElement>(null);
   const [attempt, setAttempt] = useState(0);
   const [blobUrl, setBlobUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     let objectUrl = '';
@@ -215,6 +217,18 @@ function StandardPdfViewer({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [attempt, url]);
+  useEffect(() => {
+    const syncFullscreen = () =>
+      setFullscreen(document.fullscreenElement === wrap.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+  const toggleFullscreen = async () => {
+    const node = wrap.current;
+    if (!node) return;
+    if (document.fullscreenElement === node) await document.exitFullscreen();
+    else await node.requestFullscreen?.();
+  };
   if (error)
     return (
       <Fallback
@@ -225,9 +239,19 @@ function StandardPdfViewer({
     );
   return (
     <section
-      className="relative h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px] overflow-hidden border border-slate-300 bg-white"
+      ref={wrap}
+      className={`relative overflow-hidden border border-slate-300 bg-white ${fullscreen ? 'h-screen min-h-0' : 'h-[min(86dvh,calc(100dvh-6rem))] min-h-[560px]'}`}
       aria-label={`${name} standard PDF preview`}
     >
+      <button
+        type="button"
+        onClick={() => void toggleFullscreen()}
+        aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+        title={fullscreen ? 'Exit full screen' : 'Full screen'}
+        className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded bg-[#323639]/90 text-white shadow hover:bg-[#323639] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
+        <Expand className="size-5" />
+      </button>
       {loading ? (
         <div
           className="dp-loading-overlay absolute inset-0 z-10 grid place-items-center"
