@@ -64,6 +64,45 @@ function socialErrorRedirect(
   return clearOAuthCookie(NextResponse.redirect(target));
 }
 
+function pendingSignupResponse({
+  origin,
+  identity,
+  next,
+  showCreatePrompt,
+}: {
+  origin: string;
+  identity: VerifiedSocialIdentity;
+  next: string;
+  showCreatePrompt: boolean;
+}) {
+  const pending: PendingSocialIdentity = {
+    version: 1,
+    ...identity,
+    next,
+    expiresAt: Date.now() + SOCIAL_COOKIE_MAX_AGE * 1000,
+  };
+
+  const target = new URL(showCreatePrompt ? '/auth/login' : '/auth/finish-profile', origin);
+  if (showCreatePrompt) {
+    target.searchParams.set('social_error', 'no_account');
+    target.searchParams.set('social_provider', identity.provider);
+    target.searchParams.set('next', next);
+  } else {
+    target.searchParams.set('provider', identity.provider);
+    target.searchParams.set('next', next);
+  }
+
+  const response = clearOAuthCookie(NextResponse.redirect(target));
+  response.cookies.set(SOCIAL_PENDING_COOKIE, sealSocialPayload(pending), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: origin.startsWith('https://'),
+    path: '/',
+    maxAge: SOCIAL_COOKIE_MAX_AGE,
+  });
+  return response;
+}
+
 async function profileByEmail(email: string) {
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
@@ -255,28 +294,12 @@ export async function GET(
       );
     }
 
-    if (transaction.mode === 'login') {
-      return socialErrorRedirect(origin, provider, transaction.mode, 'no_account');
-    }
-
-    const pending: PendingSocialIdentity = {
-      version: 1,
-      ...identity,
+    return pendingSignupResponse({
+      origin,
+      identity,
       next: transaction.next,
-      expiresAt: Date.now() + SOCIAL_COOKIE_MAX_AGE * 1000,
-    };
-    const target = new URL('/auth/finish-profile', origin);
-    target.searchParams.set('provider', provider);
-    target.searchParams.set('next', transaction.next);
-    const response = clearOAuthCookie(NextResponse.redirect(target));
-    response.cookies.set(SOCIAL_PENDING_COOKIE, sealSocialPayload(pending), {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: origin.startsWith('https://'),
-      path: '/',
-      maxAge: SOCIAL_COOKIE_MAX_AGE,
+      showCreatePrompt: transaction.mode === 'login',
     });
-    return response;
   } catch (error) {
     console.error('Direct social authentication callback failed.', {
       provider,
