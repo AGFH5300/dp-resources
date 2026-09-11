@@ -6,13 +6,13 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 
 describe('modern social authentication', () => {
-  it('keeps the requested providers while the zero-cost direct engine launches with Google, Microsoft and GitHub', () => {
+  it('launches only Google, Microsoft and GitHub in the active social provider UI', () => {
     const providers = read('lib/social-auth.ts');
     const direct = read('lib/direct-social-auth.ts');
     expect(providers).toContain("'google'");
     expect(providers).toContain("'microsoft'");
-    expect(providers).toContain("'apple'");
     expect(providers).toContain("'github'");
+    expect(providers).not.toContain("'apple'");
     expect(direct).toContain("['google', 'microsoft', 'github']");
     expect(direct).toContain('GOOGLE_OAUTH_CLIENT_ID');
     expect(direct).toContain('MICROSOFT_OAUTH_CLIENT_ID');
@@ -29,7 +29,8 @@ describe('modern social authentication', () => {
     expect(shell).toContain("pathname === '/auth/login'");
     expect(shell).toContain('<SocialAuthButtons mode={socialMode} />');
     expect(buttons).toContain('/api/auth/social/${key}/start');
-    expect(buttons).toContain('Apple · later');
+    expect(buttons).not.toContain('Apple · later');
+    expect(buttons).toContain('border-2');
     expect(buttons).toContain('or continue with email');
     expect(login).toContain("type={showPassword ? 'text' : 'password'}");
     expect(login).toContain("fetch('/api/auth/login'");
@@ -54,16 +55,25 @@ describe('modern social authentication', () => {
     expect(callback).toContain('verifyDirectProviderCallback');
   });
 
-  it('uses verified provider identity to preserve same-email accounts and onboard only real new signups', () => {
+  it('keeps unmatched social login state and offers account creation without repeating provider OAuth', () => {
     const callback = read('app/api/auth/social/[provider]/callback/route.ts');
+    const buttons = read('components/auth/social-auth-buttons.tsx');
     const finishPage = read('app/auth/finish-profile/page.tsx');
+    const finishForm = read('app/auth/finish-profile/finish-profile-form.tsx');
     const finishRoute = read('app/api/auth/social/finish-profile/route.ts');
 
     expect(callback).toContain('existingAccountForIdentity');
-    expect(callback).toContain("transaction.mode === 'login'");
-    expect(callback).toContain("'no_account'");
+    expect(callback).toContain('pendingSignupResponse');
+    expect(callback).toContain("target.searchParams.set('social_error', 'no_account')");
     expect(callback).toContain('SOCIAL_PENDING_COOKIE');
+    expect(buttons).toContain('No DP Resources account found');
+    expect(buttons).toContain('Would you like to create an account with it?');
+    expect(buttons).toContain('href="/auth/finish-profile"');
     expect(finishPage).toContain('openSocialPayload<PendingSocialIdentity>');
+    expect(finishForm).toContain('className={`tsm-input pr-10');
+    expect(finishForm).toContain('VALIDATION_DEBOUNCE_MS = 600');
+    expect(finishForm).toContain('/api/auth/availability?');
+    expect(finishForm).toContain('Username is available.');
     expect(finishRoute).toContain('existingProfileByEmail');
     expect(finishRoute).toContain('dp_resource_username_availability_status');
     expect(finishRoute).toContain('getEmailDomainPolicy');
@@ -87,7 +97,7 @@ describe('modern social authentication', () => {
     expect(identities).toContain('sameOriginOrForbidden');
   });
 
-  it('presents Connected Accounts as a polished Account & sign-in section without depending on Supabase social identities', () => {
+  it('presents Connected Accounts as a focused Account & sign-in section', () => {
     const route = read('app/api/account/identities/route.ts');
     const panel = read('components/account/connected-accounts.tsx');
     const settings = read('app/settings/page.tsx');
@@ -101,9 +111,11 @@ describe('modern social authentication', () => {
     expect(panel).toContain('One DP Resources account. Your choice of sign-in.');
     expect(panel).toContain('Sign-in methods');
     expect(panel).toContain('ProviderLogo');
+    expect(panel).toContain('border-2');
     expect(panel).toContain('Disconnect {confirmDisconnect.label}?');
-    expect(panel).toContain('Sign-in security');
-    expect(panel).toContain('ManageBac / Faria');
+    expect(panel).not.toContain('Sign-in security');
+    expect(panel).not.toContain('ManageBac / Faria');
+    expect(panel).not.toContain("providerKey === 'apple'");
     expect(settings).toContain('<ConnectedAccounts />');
     expect(settings.indexOf('<ConnectedAccounts />')).toBeLessThan(settings.indexOf('<SettingsCentre />'));
   });

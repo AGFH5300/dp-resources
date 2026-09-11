@@ -84,7 +84,7 @@ export async function GET() {
       key,
       label: SOCIAL_AUTH_PROVIDERS[key].label,
       connected: connected.has(key),
-      available: key !== 'apple' && isDirectProviderConfigured(key),
+      available: isDirectProviderConfigured(key),
     })),
   });
 }

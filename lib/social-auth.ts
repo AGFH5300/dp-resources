@@ -1,7 +1,6 @@
 export const SOCIAL_AUTH_PROVIDER_KEYS = [
   'google',
   'microsoft',
-  'apple',
   'github',
 ] as const;
 
@@ -19,7 +18,6 @@ export const SOCIAL_AUTH_PROVIDERS: Record<
 > = {
   google: { key: 'google', label: 'Google' },
   microsoft: { key: 'microsoft', label: 'Microsoft' },
-  apple: { key: 'apple', label: 'Apple' },
   github: { key: 'github', label: 'GitHub' },
 };
 

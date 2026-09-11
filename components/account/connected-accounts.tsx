@@ -73,7 +73,13 @@ function connectedDate(value: string | null) {
   }).format(date);
 }
 
-function ProviderLogo({ provider, className = 'size-6' }: { provider: SocialAuthProviderKey; className?: string }) {
+function ProviderLogo({
+  provider,
+  className = 'size-6',
+}: {
+  provider: SocialAuthProviderKey;
+  className?: string;
+}) {
   if (provider === 'google') {
     return (
       <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
@@ -96,26 +102,18 @@ function ProviderLogo({ provider, className = 'size-6' }: { provider: SocialAuth
     );
   }
 
-  if (provider === 'github') {
-    return (
-      <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
-        <path d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.02c-3.22.7-3.9-1.36-3.9-1.36-.52-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.08-.12-.3-.52-1.47.11-3.05 0 0 .97-.31 3.17 1.18a11.08 11.08 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.05.74.8 1.19 1.82 1.19 3.08 0 4.42-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
-      </svg>
-    );
-  }
-
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor">
-      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.34.07 2.27.74 3.08.8 1.21-.25 2.37-.96 3.67-.87 1.56.12 2.73.74 3.51 1.86-3.22 1.93-2.46 6.18.5 7.37-.59 1.54-1.36 3.04-2.76 3.81ZM12.03 7.25C11.88 4.96 13.73 3.07 15.87 3c.3 2.64-2.4 4.6-3.84 4.25Z" />
+      <path d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.02c-3.22.7-3.9-1.36-3.9-1.36-.52-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.08-.12-.3-.52-1.47.11-3.05 0 0 .97-.31 3.17 1.18a11.08 11.08 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.05.74.8 1.19 1.82 1.19 3.08 0 4.42-2.7 5.38-5.28 5.67.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
     </svg>
   );
 }
 
 function providerSurface(provider: SocialAuthProviderKey) {
-  if (provider === 'google') return 'bg-white text-slate-900 ring-slate-200 dark:bg-white dark:text-slate-900';
-  if (provider === 'microsoft') return 'bg-white text-slate-900 ring-slate-200 dark:bg-white dark:text-slate-900';
-  if (provider === 'github') return 'bg-slate-950 text-white ring-slate-800 dark:bg-white dark:text-slate-950 dark:ring-slate-200';
-  return 'bg-slate-950 text-white ring-slate-800 dark:bg-white dark:text-slate-950 dark:ring-slate-200';
+  if (provider === 'github') {
+    return 'border-slate-700 bg-slate-900 text-white dark:border-slate-600 dark:bg-slate-800 dark:text-white';
+  }
+  return 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white';
 }
 
 export function ConnectedAccounts() {
@@ -244,8 +242,8 @@ export function ConnectedAccounts() {
               </p>
             </div>
 
-            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/80 bg-white/85 p-3 shadow-sm backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/80 sm:min-w-[19rem]">
-              <div className="size-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-blue-50 shadow-sm dark:border-slate-700 dark:bg-blue-950">
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-300/80 bg-white/85 p-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 sm:min-w-[19rem]">
+              <div className="size-12 shrink-0 overflow-hidden rounded-full border border-slate-300 bg-blue-50 shadow-sm dark:border-slate-700 dark:bg-blue-950">
                 {profile?.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={profile.avatarUrl} alt="Your profile" className="size-full object-cover" />
@@ -266,7 +264,7 @@ export function ConnectedAccounts() {
                   {profile?.email || (loading ? 'Loading account…' : 'Account email')}
                 </p>
               </div>
-              <div className="shrink-0 rounded-xl bg-slate-950 px-2.5 py-2 text-center text-white dark:bg-white dark:text-slate-950">
+              <div className="shrink-0 rounded-xl bg-slate-950 px-2.5 py-2 text-center text-white dark:bg-slate-800">
                 <span className="block text-base font-bold leading-none">{loading ? '—' : methodCount}</span>
                 <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.12em] opacity-70">methods</span>
               </div>
@@ -296,16 +294,16 @@ export function ConnectedAccounts() {
             </div>
             {!loading ? (
               <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300 sm:inline-flex">
-                {methodCount} {methodCount === 1 ? 'method' : 'methods'} available
+                {methodCount} {methodCount === 1 ? 'method' : 'methods'} connected
               </span>
             ) : null}
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="group rounded-2xl border border-slate-200 bg-slate-50/60 p-4 transition hover:border-slate-300 hover:bg-white hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700 dark:hover:bg-slate-900">
+            <div className="group rounded-2xl border-2 border-slate-300 bg-slate-50/60 p-4 transition hover:border-slate-400 hover:bg-white hover:shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-slate-600 dark:hover:bg-slate-900">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[color:var(--dp-navy)] text-white shadow-sm ring-1 ring-black/5 dark:bg-white dark:text-slate-950">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[color:var(--dp-navy)] text-white shadow-sm dark:bg-slate-800">
                     <KeyRound className="size-5" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
@@ -333,36 +331,32 @@ export function ConnectedAccounts() {
               return (
                 <div
                   key={providerKey}
-                  className={`group rounded-2xl border p-4 transition ${identity ? 'border-emerald-200 bg-emerald-50/30 hover:border-emerald-300 hover:bg-white dark:border-emerald-900/70 dark:bg-emerald-950/10 dark:hover:bg-slate-900' : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700 dark:hover:bg-slate-900'}`}
+                  className={`group rounded-2xl border-2 p-4 transition ${identity ? 'border-emerald-400/70 bg-emerald-50/30 hover:border-emerald-500 hover:bg-white dark:border-emerald-800 dark:bg-emerald-950/10 dark:hover:border-emerald-700 dark:hover:bg-slate-900' : 'border-slate-300 bg-slate-50/60 hover:border-slate-400 hover:bg-white hover:shadow-sm dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-slate-600 dark:hover:bg-slate-900'}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ${providerSurface(providerKey)}`}>
+                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-sm ${providerSurface(providerKey)}`}>
                         <ProviderLogo provider={providerKey} className="size-6" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-slate-950 dark:text-white">{provider.label}</p>
-                        </div>
+                        <p className="font-semibold text-slate-950 dark:text-white">{provider.label}</p>
                         <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                          {identity?.email || (providerKey === 'apple' ? 'Sign in with Apple' : `Continue with ${provider.label}`)}
+                          {identity?.email || `Continue with ${provider.label}`}
                         </p>
                       </div>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${identity ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : available ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
-                      {loading ? 'Checking…' : identity ? 'Connected' : available ? 'Available' : providerKey === 'apple' ? 'Later' : 'Setup pending'}
+                      {loading ? 'Checking…' : identity ? 'Connected' : available ? 'Available' : 'Setup pending'}
                     </span>
                   </div>
 
-                  <div className="mt-4 flex min-h-9 items-end justify-between gap-3">
+                  <div className="mt-4 flex min-h-10 items-end justify-between gap-3">
                     <div className="min-w-0 text-xs leading-5 text-slate-500 dark:text-slate-400">
                       {identity ? (
                         <span className="inline-flex items-center gap-1.5">
                           <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                           {date ? `Connected ${date}` : 'Verified provider identity'}
                         </span>
-                      ) : providerKey === 'apple' ? (
-                        'Planned for later.'
                       ) : available ? (
                         'Link this provider without creating a second profile.'
                       ) : (
@@ -375,7 +369,7 @@ export function ConnectedAccounts() {
                         type="button"
                         onClick={() => setConfirmDisconnect(identity)}
                         disabled={busy}
-                        className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+                        className="h-9 shrink-0 rounded-lg border-2 border-slate-300 px-3 text-xs font-semibold text-slate-600 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-300"
                       >
                         Disconnect
                       </button>
@@ -384,7 +378,7 @@ export function ConnectedAccounts() {
                         type="button"
                         onClick={() => void connect(providerKey)}
                         disabled={busy}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--dp-navy)] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow disabled:translate-y-0 disabled:opacity-50"
+                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border-2 border-blue-700 bg-blue-700 px-4 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-800 hover:bg-blue-800 hover:shadow disabled:translate-y-0 disabled:opacity-50 dark:border-blue-500 dark:bg-blue-600 dark:hover:border-blue-400 dark:hover:bg-blue-500"
                       >
                         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
                         {busy ? 'Connecting…' : 'Connect'}
@@ -395,60 +389,26 @@ export function ConnectedAccounts() {
               );
             })}
           </div>
-
-          <div className="mt-7 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white dark:border-slate-800">
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
-                  <ShieldCheck className="size-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Sign-in security</h3>
-                  <p className="mt-1 text-sm leading-5 text-slate-300">
-                    DP Resources protects you from accidentally disconnecting the last usable way into your account.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl bg-white/7 px-3 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Password</p>
-                  <p className="mt-1 text-sm font-semibold">{passwordEnabled ? 'Enabled' : 'Not set'}</p>
-                </div>
-                <div className="rounded-xl bg-white/7 px-3 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">MFA</p>
-                  <p className="mt-1 text-sm font-semibold">Coming next</p>
-                </div>
-                <div className="rounded-xl bg-white/7 px-3 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Sessions</p>
-                  <p className="mt-1 text-sm font-semibold">Coming next</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/40">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Future integration</p>
-                  <h3 className="mt-1 font-semibold text-slate-950 dark:text-white">ManageBac / Faria</h3>
-                </div>
-                <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Later</span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-slate-500 dark:text-slate-400">
-                School-account SSO can slot into this same account centre when partner access is available.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
       {confirmDisconnect ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !busyProvider) setConfirmDisconnect(null);
-        }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="disconnect-provider-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !busyProvider) setConfirmDisconnect(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="disconnect-provider-title"
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950"
+          >
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl shadow-sm ring-1 ${providerSurface(confirmDisconnect.provider)}`}>
+                <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-sm ${providerSurface(confirmDisconnect.provider)}`}>
                   <ProviderLogo provider={confirmDisconnect.provider} className="size-6" />
                 </div>
                 <div>
@@ -460,7 +420,13 @@ export function ConnectedAccounts() {
                   </p>
                 </div>
               </div>
-              <button type="button" onClick={() => setConfirmDisconnect(null)} disabled={Boolean(busyProvider)} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-900 dark:hover:text-slate-200" aria-label="Close disconnect confirmation">
+              <button
+                type="button"
+                onClick={() => setConfirmDisconnect(null)}
+                disabled={Boolean(busyProvider)}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                aria-label="Close disconnect confirmation"
+              >
                 <X className="size-4" />
               </button>
             </div>
@@ -469,10 +435,20 @@ export function ConnectedAccounts() {
                 You will no longer be able to use {confirmDisconnect.label} to sign in until you connect it again. Your DP Resources account and data will not be deleted.
               </p>
               <div className="mt-5 flex justify-end gap-2">
-                <button type="button" onClick={() => setConfirmDisconnect(null)} disabled={Boolean(busyProvider)} className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDisconnect(null)}
+                  disabled={Boolean(busyProvider)}
+                  className="rounded-lg border-2 border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                >
                   Keep connected
                 </button>
-                <button type="button" onClick={() => void disconnect(confirmDisconnect)} disabled={Boolean(busyProvider)} className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => void disconnect(confirmDisconnect)}
+                  disabled={Boolean(busyProvider)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                >
                   {busyProvider ? <Loader2 className="size-4 animate-spin" /> : <Unlink2 className="size-4" />}
                   {busyProvider ? 'Disconnecting…' : 'Disconnect'}
                 </button>

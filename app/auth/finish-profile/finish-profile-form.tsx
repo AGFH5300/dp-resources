@@ -1,12 +1,18 @@
 'use client';
 
-import { Check, Loader2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
+import { Spinner } from '@/components/ui/spinner';
+
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/;
+const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/;
+const USERNAME_REPEATED_UNDERSCORE_PATTERN = /__/;
+const VALIDATION_DEBOUNCE_MS = 600;
 
 type AvailabilityState =
   | { status: 'idle'; message: string }
+  | { status: 'typing'; message: string }
   | { status: 'checking'; message: string }
   | { status: 'available'; message: string }
   | { status: 'unavailable'; message: string }
@@ -17,6 +23,12 @@ function suggestedUsername(email: string) {
     .replace(/[^a-zA-Z0-9_]/g, '')
     .slice(0, 24);
   return base.length >= 3 ? base : '';
+}
+
+function usernameStatusClass(status: AvailabilityState['status']) {
+  if (status === 'available') return 'border-b-[#0c7a43]';
+  if (status === 'unavailable' || status === 'error') return 'border-b-red-600';
+  return '';
 }
 
 export function FinishSocialProfileForm({
@@ -33,8 +45,9 @@ export function FinishSocialProfileForm({
   const initialUsername = useMemo(() => suggestedUsername(email), [email]);
   const [username, setUsername] = useState(initialUsername);
   const [fullName, setFullName] = useState(initialFullName);
+  const [fullNameTouched, setFullNameTouched] = useState(false);
   const [availability, setAvailability] = useState<AvailabilityState>({
-    status: 'idle',
+    status: initialUsername ? 'typing' : 'idle',
     message: '',
   });
   const [saving, setSaving] = useState(false);
@@ -46,17 +59,21 @@ export function FinishSocialProfileForm({
       setAvailability({ status: 'idle', message: '' });
       return;
     }
-    if (!USERNAME_PATTERN.test(value)) {
+    if (
+      !USERNAME_PATTERN.test(value) ||
+      USERNAME_EDGE_UNDERSCORE_PATTERN.test(value) ||
+      USERNAME_REPEATED_UNDERSCORE_PATTERN.test(value)
+    ) {
       setAvailability({
         status: 'unavailable',
-        message: 'Use 3-24 letters, numbers, or underscores.',
+        message: 'Use 3-24 characters: letters, numbers, or underscore.',
       });
       return;
     }
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
-      setAvailability({ status: 'checking', message: 'Checking availability…' });
+      setAvailability({ status: 'checking', message: '' });
       try {
         const query = new URLSearchParams({ type: 'username', value });
         const response = await fetch(`/api/auth/availability?${query.toString()}`, {
@@ -64,12 +81,12 @@ export function FinishSocialProfileForm({
           signal: controller.signal,
         });
         const payload = (await response.json().catch(() => null)) as
-          | { available?: boolean; message?: string; reason?: string }
+          | { available?: boolean; status?: string; message?: string; reason?: string }
           | null;
         if (!response.ok || !payload) {
           setAvailability({
             status: 'error',
-            message: 'Could not check this username right now.',
+            message: payload?.message || payload?.reason || 'Could not validate username right now.',
           });
           return;
         }
@@ -79,17 +96,17 @@ export function FinishSocialProfileForm({
             : {
                 status: 'unavailable',
                 message:
-                  payload.message || payload.reason || 'Choose another username.',
+                  payload.message || payload.reason || 'That username is already taken.',
               },
         );
       } catch (caught) {
         if (caught instanceof DOMException && caught.name === 'AbortError') return;
         setAvailability({
           status: 'error',
-          message: 'Could not check this username right now.',
+          message: 'Could not validate username right now.',
         });
       }
-    }, 600);
+    }, VALIDATION_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timeout);
@@ -99,7 +116,8 @@ export function FinishSocialProfileForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || availability.status !== 'available') return;
+    setFullNameTouched(true);
+    if (saving || availability.status !== 'available' || !fullName.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -127,86 +145,140 @@ export function FinishSocialProfileForm({
     }
   }
 
+  const showFullNameError = fullNameTouched && !fullName.trim();
+  const usernameHasError =
+    availability.status === 'unavailable' || availability.status === 'error';
+
   return (
-    <form className="space-y-5" onSubmit={submit}>
-      <div>
-        <h1 className="font-headline text-3xl text-[#00152a]">Finish your profile</h1>
-        <p className="mt-2 font-body text-sm leading-6 text-[#5f6368]">
-          {providerLabel} verified <span className="font-medium text-[#1b1c19]">{email}</span>.
-          Choose the DP Resources name people will see.
-        </p>
-      </div>
+    <>
+      <h1 className="font-headline text-4xl text-[#00152a] dark:text-white">Create account</h1>
+      <p className="mt-3 font-body text-[#43474d] dark:text-slate-300">
+        {providerLabel} has verified your identity. Complete your DP Resources account details below.
+      </p>
 
-      {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-[#303238]">Full name</span>
-        <input
-          type="text"
-          value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
-          autoComplete="name"
-          maxLength={120}
-          required
-          className="h-11 w-full rounded-md border border-[#c3c6ce] bg-white px-3 text-sm outline-none transition focus:border-[#00152a] focus:ring-2 focus:ring-[#00152a]/10"
-        />
-      </label>
-
-      <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-[#303238]">Username</span>
-        <div className="relative">
-          <input
-            type="text"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck={false}
-            maxLength={24}
-            required
-            className="h-11 w-full rounded-md border border-[#c3c6ce] bg-white px-3 pr-10 text-sm outline-none transition focus:border-[#00152a] focus:ring-2 focus:ring-[#00152a]/10"
-          />
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-            {availability.status === 'checking' ? (
-              <Loader2 className="size-4 animate-spin text-slate-400" />
-            ) : availability.status === 'available' ? (
-              <Check className="size-4 text-emerald-600" />
-            ) : availability.status === 'unavailable' ? (
-              <X className="size-4 text-red-500" />
-            ) : null}
-          </span>
-        </div>
-        {availability.message ? (
-          <p
-            className={`mt-1.5 text-xs ${
-              availability.status === 'available'
-                ? 'text-emerald-700'
-                : availability.status === 'checking'
-                  ? 'text-slate-500'
-                  : 'text-red-600'
-            }`}
-          >
-            {availability.message}
-          </p>
-        ) : (
-          <p className="mt-1.5 text-xs text-slate-500">
-            3-24 characters: letters, numbers, or underscore.
-          </p>
-        )}
-      </label>
-
-      <button
-        type="submit"
-        disabled={saving || availability.status !== 'available' || !fullName.trim()}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[#00152a] px-4 text-sm font-semibold text-white transition hover:bg-[#102d4b] disabled:cursor-not-allowed disabled:opacity-50"
+      <form
+        className="mt-8 space-y-6"
+        onSubmit={submit}
+        noValidate
+        autoComplete="off"
       >
-        {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-        {saving ? 'Creating profile…' : 'Continue to DP Resources'}
-      </button>
-    </form>
+        <div>
+          <label
+            htmlFor="social-signup-username"
+            className="font-label text-xs uppercase tracking-widest text-[#43474d] dark:text-slate-300"
+          >
+            Username
+          </label>
+          <div className="relative">
+            <input
+              id="social-signup-username"
+              className={`tsm-input pr-10 ${usernameStatusClass(availability.status)}`}
+              type="text"
+              name="social_signup_username"
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+                setAvailability({ status: 'typing', message: '' });
+              }}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={24}
+              required
+              disabled={saving}
+            />
+            <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+              {availability.status === 'checking' ? (
+                <Spinner className="size-4 text-[#00152a] dark:text-white" />
+              ) : availability.status === 'available' ? (
+                <CheckCircle2 className="size-4 text-[#0c7a43] dark:text-emerald-400" />
+              ) : usernameHasError ? (
+                <AlertCircle className="size-4 text-red-600 dark:text-red-400" />
+              ) : null}
+            </div>
+          </div>
+          {availability.status === 'available' ? (
+            <p className="mt-2 text-sm text-[#0c7a43] dark:text-emerald-300">
+              Username is available.
+            </p>
+          ) : usernameHasError ? (
+            <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+              {availability.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div>
+          <label
+            htmlFor="social-signup-full-name"
+            className="font-label text-xs uppercase tracking-widest text-[#43474d] dark:text-slate-300"
+          >
+            Full name
+          </label>
+          <input
+            id="social-signup-full-name"
+            className={`tsm-input ${showFullNameError ? 'border-b-red-600' : fullName.trim() ? 'border-b-[#0c7a43]' : ''}`}
+            type="text"
+            name="social_signup_full_name"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            onBlur={() => setFullNameTouched(true)}
+            autoComplete="off"
+            maxLength={120}
+            required
+            disabled={saving}
+          />
+          {showFullNameError ? (
+            <p className="mt-2 text-sm text-red-700 dark:text-red-300">Enter your full name.</p>
+          ) : null}
+        </div>
+
+        <div>
+          <label
+            htmlFor="social-signup-email"
+            className="font-label text-xs uppercase tracking-widest text-[#43474d] dark:text-slate-300"
+          >
+            Email
+          </label>
+          <div className="relative">
+            <input
+              id="social-signup-email"
+              className="tsm-input pr-10 text-[#43474d] dark:text-slate-200"
+              type="email"
+              name="social_signup_email"
+              value={email}
+              readOnly
+              aria-readonly="true"
+              tabIndex={-1}
+            />
+            <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+              <CheckCircle2 className="size-4 text-[#0c7a43] dark:text-emerald-400" />
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-[#0c7a43] dark:text-emerald-300">
+            Verified by {providerLabel}.
+          </p>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        ) : null}
+
+        <button
+          type="submit"
+          className="dp-auth-primary flex w-full cursor-pointer items-center justify-center gap-2 rounded-sm bg-[#00152a] py-4 text-white transition-colors hover:bg-[#08284a] focus:outline-none focus:ring-2 focus:ring-[#00152a]/30 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={saving || availability.status !== 'available' || !fullName.trim()}
+        >
+          {saving ? (
+            <>
+              <Spinner className="size-4" />
+              <span>Creating your account...</span>
+            </>
+          ) : (
+            'Create account'
+          )}
+        </button>
+      </form>
+    </>
   );
 }

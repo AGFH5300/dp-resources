@@ -83,10 +83,6 @@ The DP Resources code uses the same state + PKCE + server callback architecture 
 
 For production, register the Microsoft and GitHub callback URLs shown above. Keep development/test credentials separate from production credentials where the provider permits it.
 
-## Apple
-
-Apple remains represented in the UI as a later provider. Web Sign in with Apple requires Apple Developer configuration and is intentionally not part of the zero-cost launch path.
-
 ## Account and duplicate-prevention model
 
 `public.dp_resource_social_identities` maps each provider's stable account subject to one existing DP Resources `auth.users.id`.
@@ -107,10 +103,11 @@ For a brand-new provider email, DP Resources does **not** create an incomplete S
 
 1. The provider verifies the user.
 2. DP Resources stores a short-lived, signed, HttpOnly onboarding handoff.
-3. The user chooses the normal DP Resources full name and username.
-4. Existing username, identity and disposable-email checks run.
-5. The complete Supabase user/profile is created with the same validation rules as the existing site.
-6. The provider identity is attached and DP Resources establishes the normal Supabase session server-side.
+3. If the user entered through Log in, DP Resources shows a modal explaining that no account exists and offers to create one without repeating OAuth.
+4. The user completes the same DP Resources username/full-name form style used by normal signup, including the automatic username availability checker.
+5. Existing username, identity and disposable-email checks run.
+6. The complete Supabase user/profile is created with the same validation rules as the existing site.
+7. The provider identity is attached and DP Resources establishes the normal Supabase session server-side.
 
 This avoids weakening the existing `auth.users` validation trigger.
 
@@ -119,6 +116,8 @@ This avoids weakening the existing `auth.users` validation trigger.
 Settings reads DP Resources' own provider mappings, not Supabase social identities. Connect uses the same DP Resources callback route in `mode=link`. Disconnect removes only the DP Resources mapping; provider access tokens are not retained.
 
 `public.dp_resource_auth_methods` records whether an account has a DP Resources password so a social-only account cannot disconnect its last usable social sign-in method.
+
+The active Connected Accounts UI is intentionally limited to Google, Microsoft and GitHub. Apple and future school SSO placeholders are not shown.
 
 ## Database migration
 
@@ -132,7 +131,7 @@ For each enabled provider:
 
 1. New signup -> provider -> DP Resources profile completion -> Library.
 2. Existing password user with the same verified email -> provider -> same existing DP Resources user/data.
-3. Login with an unregistered provider email -> clear `no account` message rather than silent signup.
+3. Login with an unregistered provider email -> modal offers account creation -> profile completion without repeating provider OAuth.
 4. Existing user -> Settings -> Connect provider -> same DP Resources user ID.
 5. Attempt to connect a provider account already owned by another DP Resources user -> blocked.
 6. Disconnect provider while another usable sign-in method remains.
@@ -145,7 +144,6 @@ For each enabled provider:
 
 ## Later phases
 
-- Apple, if/when Apple Developer access is available.
 - TOTP authenticator MFA and stronger verification for sensitive account operations.
 - Session/device management and sign-out controls.
-- ManageBac/Faria SSO after partner/SSO credentials and terms are confirmed.
+- ManageBac/Faria SSO only after partner/SSO credentials and terms are confirmed, without showing a placeholder before it is real.
