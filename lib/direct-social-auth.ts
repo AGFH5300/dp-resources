@@ -286,7 +286,7 @@ async function microsoftIdentity(accessToken: string): Promise<VerifiedSocialIde
   const profile = (await response.json().catch(() => null)) as
     | { id?: string; displayName?: string; mail?: string | null; userPrincipalName?: string }
     | null;
-  const email = normalizedEmail(profile?.mail) || normalizedEmail(profile?.userPrincipalName);
+  const email = normalizedEmail(profile?.userPrincipalName) || normalizedEmail(profile?.mail);
   if (!response.ok || !profile?.id || !email) {
     throw new Error('Microsoft did not return an email address for this account.');
   }
@@ -324,7 +324,7 @@ async function githubIdentity(accessToken: string): Promise<VerifiedSocialIdenti
     ? emails.find((candidate) => candidate.primary && candidate.verified) ||
       emails.find((candidate) => candidate.verified)
     : null;
-  const email = normalizedEmail(verified?.email) || normalizedEmail(user.email);
+  const email = normalizedEmail(verified?.email);
   if (!emailResponse.ok || !email) {
     throw new Error('GitHub did not return a verified email address.');
   }
