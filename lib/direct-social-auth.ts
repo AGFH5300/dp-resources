@@ -277,18 +277,18 @@ async function googleIdentity(accessToken: string): Promise<VerifiedSocialIdenti
 
 async function microsoftIdentity(accessToken: string): Promise<VerifiedSocialIdentity> {
   const response = await fetch(
-    'https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName',
+    'https://graph.microsoft.com/v1.0/me?$select=id,displayName,userPrincipalName',
     {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     },
   );
   const profile = (await response.json().catch(() => null)) as
-    | { id?: string; displayName?: string; mail?: string | null; userPrincipalName?: string }
+    | { id?: string; displayName?: string; userPrincipalName?: string }
     | null;
-  const email = normalizedEmail(profile?.userPrincipalName) || normalizedEmail(profile?.mail);
+  const email = normalizedEmail(profile?.userPrincipalName);
   if (!response.ok || !profile?.id || !email) {
-    throw new Error('Microsoft did not return an email address for this account.');
+    throw new Error('Microsoft did not return an addressable user principal name.');
   }
   return {
     provider: 'microsoft',
