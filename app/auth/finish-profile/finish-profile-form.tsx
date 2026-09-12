@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { Spinner } from '@/components/ui/spinner';
+import type { SocialAuthProviderKey } from '@/lib/social-auth';
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,24}$/;
 const USERNAME_EDGE_UNDERSCORE_PATTERN = /^_|_$/;
@@ -35,11 +36,13 @@ export function FinishSocialProfileForm({
   email,
   initialFullName,
   nextPath,
+  providerKey,
   providerLabel,
 }: {
   email: string;
   initialFullName: string;
   nextPath: string;
+  providerKey: SocialAuthProviderKey;
   providerLabel: string;
 }) {
   const initialUsername = useMemo(() => suggestedUsername(email), [email]);
@@ -148,6 +151,7 @@ export function FinishSocialProfileForm({
   const showFullNameError = fullNameTouched && !fullName.trim();
   const usernameHasError =
     availability.status === 'unavailable' || availability.status === 'error';
+  const microsoftAddress = providerKey === 'microsoft';
 
   return (
     <>
@@ -251,12 +255,18 @@ export function FinishSocialProfileForm({
               aria-readonly="true"
               tabIndex={-1}
             />
-            <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
-              <CheckCircle2 className="size-4 text-[#0c7a43] dark:text-emerald-400" />
-            </div>
+            {!microsoftAddress ? (
+              <div className="pointer-events-none absolute right-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+                <CheckCircle2 className="size-4 text-[#0c7a43] dark:text-emerald-400" />
+              </div>
+            ) : null}
           </div>
-          <p className="mt-2 text-sm text-[#0c7a43] dark:text-emerald-300">
-            Verified by {providerLabel}.
+          <p
+            className={`mt-2 text-sm ${microsoftAddress ? 'text-[#5f6368] dark:text-slate-400' : 'text-[#0c7a43] dark:text-emerald-300'}`}
+          >
+            {microsoftAddress
+              ? 'Provided by Microsoft sign-in.'
+              : `Verified by ${providerLabel}.`}
           </p>
         </div>
 
