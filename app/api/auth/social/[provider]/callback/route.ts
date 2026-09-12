@@ -219,12 +219,19 @@ async function linkIdentity(
 
 async function existingAccountForIdentity(identity: VerifiedSocialIdentity) {
   const claimed = await providerIdentity(identity.provider, identity.subject);
-  if (claimed) {
-    const profile = await profileById(claimed.user_id);
-    if (!profile) throw new Error('The connected DP Resources profile no longer exists.');
-    await attachIdentity(claimed.user_id, identity);
-    return profile;
-  }
+  if (!claimed) return null;
+
+  const profile = await profileById(claimed.user_id);
+  if (!profile) throw new Error('The connected DP Resources profile no longer exists.');
+  await attachIdentity(claimed.user_id, identity);
+  return profile;
+}
+
+async function existingAccountForTrustedEmail(identity: VerifiedSocialIdentity) {
+  // Google and GitHub explicitly verify the returned email before this point.
+  // Microsoft documents email/UPN as mutable and unsuitable for authorization,
+  // so Microsoft accounts must be linked explicitly from an authenticated session.
+  if (identity.provider === 'microsoft') return null;
 
   const profile = await profileByEmail(identity.email);
   if (!profile) return null;
@@ -283,7 +290,16 @@ export async function GET(
       return clearOAuthCookie(NextResponse.redirect(target));
     }
 
-    const existing = await existingAccountForIdentity(identity);
+    const existingBySubject = await existingAccountForIdentity(identity);
+
+    if (!existingBySubject && identity.provider === 'microsoft') {
+      const sameEmailProfile = await profileByEmail(identity.email);
+      if (sameEmailProfile) {
+        return socialErrorRedirect(origin, provider, transaction.mode, 'link_required');
+      }
+    }
+
+    const existing = existingBySubject || (await existingAccountForTrustedEmail(identity));
     if (existing) {
       if (await isSuspended(existing.id)) {
         return socialErrorRedirect(origin, provider, transaction.mode, 'account_suspended');
