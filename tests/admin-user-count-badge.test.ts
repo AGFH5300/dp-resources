@@ -22,10 +22,13 @@ describe('Admin Users total count', () => {
     expect(layout).toContain('<AdminUserCountBadge />');
   });
 
-  it('keeps Activity users wired to the same existing Users analytics modal', () => {
+  it('opens Activity user analytics immediately without leaving Activity', () => {
     const bridge = read('components/admin/activity-user-links.tsx');
-    expect(bridge).toContain("params.set('section', 'users')");
-    expect(bridge).toContain("params.set('userUsageId', userId)");
-    expect(bridge).toContain('/api/admin/users/search?q=');
+    expect(bridge).toContain('/api/admin/users/activity-detail?email=');
+    expect(bridge).toContain('setOpenEmail(email)');
+    expect(bridge).toContain('Loading user details…');
+    expect(bridge).not.toContain("params.set('section', 'users')");
+    expect(bridge).not.toContain("params.set('userUsageId', userId)");
+    expect(bridge).not.toContain('/api/admin/users/search?q=');
   });
 });
