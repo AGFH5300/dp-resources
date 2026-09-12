@@ -64,7 +64,7 @@ const PROVIDER_CONFIG: Record<DirectSocialProviderKey, ProviderServerConfig> = {
     clientSecretEnv: 'MICROSOFT_OAUTH_CLIENT_SECRET',
     authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    scopes: 'openid profile email User.Read',
+    scopes: 'openid User.Read',
   },
   github: {
     key: 'github',
@@ -72,7 +72,7 @@ const PROVIDER_CONFIG: Record<DirectSocialProviderKey, ProviderServerConfig> = {
     clientSecretEnv: 'GITHUB_OAUTH_CLIENT_SECRET',
     authorizeUrl: 'https://github.com/login/oauth/authorize',
     tokenUrl: 'https://github.com/login/oauth/access_token',
-    scopes: 'read:user user:email',
+    scopes: 'user:email',
   },
 };
 
