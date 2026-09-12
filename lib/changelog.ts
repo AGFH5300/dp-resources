@@ -27,6 +27,16 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-12': [
+    'Added one-click Question Bank filters for every Paper 1, Paper 2, Paper 3 and other paper number across all available years, sessions and time zones, while keeping exact exam-paper choices.',
+    'Made Search within this folder behave as a true filter, so searches such as Paper 1 exclude Paper 2, Paper 3 and Paper 10 instead of only ranking the closest matches.',
+    'Simplified Account & sign-in by keeping Connected Accounts controls while removing the duplicate account summary block.',
+  ],
+  '2026-09-11': [
+    'Added DP Resources social sign-in and Connected Accounts support for Google and Microsoft, including link and unlink controls in Account & sign-in settings.',
+    'Improved first-time social sign-in so an unlinked Google or Microsoft account can continue into the normal account-creation flow with the standard profile fields and live username availability checks.',
+    'Added fullscreen support to the standard browser PDF fallback so non-prepared PDFs keep the same essential viewing option.',
+  ],
   '2026-09-10': [
     'Added a complete Settings & Account Centre for profile details, username changes with automatic availability checking, private profile pictures, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
     'Added profile-picture editing with repositioning, crop preview, zoom and rotation, and fixed signed private avatars so they display correctly throughout the account interface.',
