@@ -15,12 +15,12 @@ export const WHATS_NEW_RELEASE = {
     {
       title: 'Social sign-in and Connected Accounts',
       description:
-        'Google and Microsoft sign-in now use the DP Resources account flow, and connected providers can be linked or unlinked from Account & sign-in settings.',
+        'Google, Microsoft and GitHub sign-in now use the DP Resources account flow, and connected providers can be linked or unlinked directly from Account & sign-in settings.',
     },
     {
       title: 'Create an account after social sign-in',
       description:
-        'If a Google or Microsoft account is not linked yet, DP Resources can continue into the normal account-creation flow with the same profile fields and live username availability checks.',
+        'If a Google, Microsoft or GitHub account is not linked yet, DP Resources can continue into the normal account-creation flow with the same profile fields and live username availability checks.',
     },
     {
       title: 'Fullscreen for standard PDF previews',
