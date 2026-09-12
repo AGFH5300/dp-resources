@@ -47,6 +47,8 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain("dateLabel: '12 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
+    expect(whatsNew).toContain('Google, Microsoft and GitHub sign-in');
+    expect(whatsNew).toContain('Google, Microsoft or GitHub account');
     for (const highlight of [
       'Filter an entire paper in one click',
       'Search within a Past Papers folder now really filters it',
