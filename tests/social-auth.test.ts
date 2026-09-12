@@ -19,6 +19,17 @@ describe('modern social authentication', () => {
     expect(direct).toContain('GITHUB_OAUTH_CLIENT_ID');
   });
 
+  it('keeps provider permissions minimal and does not request persistent Microsoft access', () => {
+    const direct = read('lib/direct-social-auth.ts');
+
+    expect(direct).toContain("scopes: 'openid email profile'");
+    expect(direct).toContain("scopes: 'openid profile email User.Read'");
+    expect(direct).toContain("scopes: 'read:user user:email'");
+    expect(direct).not.toContain('offline_access');
+    expect(direct).not.toContain('refresh_token');
+    expect(direct).toContain("cache: 'no-store'");
+  });
+
   it('shows social options on both login and signup without replacing email/password', () => {
     const shell = read('components/auth-shell.tsx');
     const buttons = read('components/auth/social-auth-buttons.tsx');
