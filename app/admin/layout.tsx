@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { AdminActivityUserLinksBridge } from '@/components/admin/activity-user-links';
+import { AdminUserAliasesBridge } from '@/components/admin/user-aliases';
 import { AdminUserCountBadge } from '@/components/admin/user-count-badge';
 import { UnsuspendConfirmationDialogBridge } from '@/components/admin/unsuspend-confirmation-dialog';
 import { privatePageMetadata } from '@/lib/seo';
@@ -20,6 +21,7 @@ export default function AdminLayout({
       <UnsuspendConfirmationDialogBridge />
       <Suspense fallback={null}>
         <AdminActivityUserLinksBridge />
+        <AdminUserAliasesBridge />
         <AdminUserCountBadge />
       </Suspense>
     </>

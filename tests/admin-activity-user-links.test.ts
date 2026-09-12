@@ -1,81 +1,48 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import {
-  buildActivityUserModalUrl,
-  validActivityReturnTarget,
-} from '../components/admin/activity-user-links';
 
 const bridgeSource = readFileSync(
   'components/admin/activity-user-links.tsx',
   'utf8',
 );
+const detailRoute = readFileSync(
+  'app/api/admin/users/activity-detail/route.ts',
+  'utf8',
+);
 const layoutSource = readFileSync('app/admin/layout.tsx', 'utf8');
 
 describe('Admin Activity user links', () => {
-  it('opens the existing Users resource analytics modal while preserving Activity filters', () => {
-    const url = buildActivityUserModalUrl(
-      '/admin',
-      'section=activity&activityPage=3&email=student%40example.com&action=file_opened',
-      '11111111-1111-4111-8111-111111111111',
-    );
-    const parsed = new URL(url, 'https://dp.resources.anshgupta.cc');
-
-    expect(parsed.pathname).toBe('/admin');
-    expect(parsed.searchParams.get('section')).toBe('users');
-    expect(parsed.searchParams.get('userUsageId')).toBe(
-      '11111111-1111-4111-8111-111111111111',
-    );
-    expect(parsed.searchParams.get('userUsageRange')).toBe('all');
-    expect(parsed.searchParams.get('activityPage')).toBe('3');
-    expect(parsed.searchParams.get('email')).toBe('student@example.com');
-    expect(parsed.searchParams.get('action')).toBe('file_opened');
-    expect(parsed.searchParams.has('userPage')).toBe(false);
+  it('opens user details directly over Activity without navigating to Users', () => {
+    expect(bridgeSource).toContain('/api/admin/users/activity-detail?email=');
+    expect(bridgeSource).toContain('setOpenEmail(email)');
+    expect(bridgeSource).toContain('Loading user details…');
+    expect(bridgeSource).not.toContain("params.set('section', 'users')");
+    expect(bridgeSource).not.toContain('router.push(');
+    expect(bridgeSource).not.toContain('router.replace(');
+    expect(bridgeSource).not.toContain('sessionStorage');
   });
 
-  it('only restores a recent same-page Activity URL after the modal closes', () => {
-    const now = 2_000_000;
-    const valid = JSON.stringify({
-      url: '/admin?section=activity&activityPage=4&file=Biology',
-      createdAt: now - 1_000,
-    });
-    const wrongSection = JSON.stringify({
-      url: '/admin?section=users',
-      createdAt: now - 1_000,
-    });
-    const stale = JSON.stringify({
-      url: '/admin?section=activity',
-      createdAt: now - 11 * 60 * 1_000,
-    });
-
-    expect(validActivityReturnTarget(valid, '/admin', now)).toBe(
-      '/admin?section=activity&activityPage=4&file=Biology',
-    );
-    expect(validActivityReturnTarget(wrongSection, '/admin', now)).toBeNull();
-    expect(validActivityReturnTarget(stale, '/admin', now)).toBeNull();
-    expect(
-      validActivityReturnTarget(
-        JSON.stringify({
-          url: '/other?section=activity',
-          createdAt: now - 1_000,
-        }),
-        '/admin',
-        now,
-      ),
-    ).toBeNull();
-  });
-
-  it('reuses the existing admin lookup without replacing React-owned table children', () => {
-    expect(bridgeSource).toContain('/api/admin/users/search?q=');
+  it('keeps the existing Activity table React-owned while making emails interactive', () => {
     expect(bridgeSource).toContain("heading.textContent?.trim() === 'Activity'");
     expect(bridgeSource).toContain('row.children.item(1)');
-    expect(bridgeSource).toContain('candidate.email?.trim().toLowerCase()');
-    expect(bridgeSource).toContain("cell.dataset.dpActivityUserLink = 'true'");
-    expect(bridgeSource).toContain("cell.setAttribute('role', 'button')");
+    expect(bridgeSource).toContain("userCell.dataset.dpActivityUserLink = 'true'");
+    expect(bridgeSource).toContain("userCell.setAttribute('role', 'button')");
     expect(bridgeSource).toContain('new MutationObserver(enhance)');
     expect(bridgeSource).toContain("document.addEventListener('click', onClick)");
-    expect(bridgeSource).toContain('window.sessionStorage.setItem(RETURN_KEY');
     expect(bridgeSource).not.toContain('replaceChildren(');
     expect(bridgeSource).not.toContain('document.createElement(');
+  });
+
+  it('labels Question Bank activity clearly', () => {
+    expect(bridgeSource).toContain("actionCell.textContent?.trim() === 'question_opened'");
+    expect(bridgeSource).toContain('Opened Question Bank question');
+  });
+
+  it('loads analytics through an admin-only no-store endpoint', () => {
+    expect(detailRoute).toContain('await requireAdmin()');
+    expect(detailRoute).toContain(".from('dp_admin_user_aliases')");
+    expect(detailRoute).toContain(".rpc('dp_admin_resource_usage_for_user'");
+    expect(detailRoute).toContain("Cache-Control', 'private, no-store, max-age=0'");
   });
 
   it('mounts the bridge behind Suspense in the shared Admin layout', () => {

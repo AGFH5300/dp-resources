@@ -3,6 +3,7 @@ export const ACTIONS: ActivityLog['action'][] = [
   'folder_opened',
   'file_opened',
   'download_started',
+  'question_opened',
 ];
 export function cleanTextFilter(value: string | null | undefined) {
   return (value || '').trim().slice(0, 100);

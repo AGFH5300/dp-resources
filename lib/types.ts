@@ -18,7 +18,11 @@ export type ActivityLog = {
   user_email: string;
   file_id: string | null;
   file_name: string;
-  action: 'folder_opened' | 'file_opened' | 'download_started';
+  action:
+    | 'folder_opened'
+    | 'file_opened'
+    | 'download_started'
+    | 'question_opened';
   created_at: string;
   ip_address: string | null;
   user_agent: string | null;

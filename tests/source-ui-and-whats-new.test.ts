@@ -41,20 +41,19 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 10 September release summary', () => {
+  it('keeps What’s new as a short hand-written 12 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-09-10-settings-account-centre'");
-    expect(whatsNew).toContain("dateLabel: '10 September 2026'");
+    expect(whatsNew).toContain("id: '2026-09-12-paper-filters-social-signin'");
+    expect(whatsNew).toContain("dateLabel: '12 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
-    expect(whatsNew).toContain('reposition, zoom and rotate');
     for (const highlight of [
-      'A new Settings & Account Centre',
-      'Choose how source information appears',
-      'More control over notifications',
-      'Crop and adjust your profile picture',
-      'Username availability is checked automatically',
-      'Account security has been strengthened',
+      'Filter an entire paper in one click',
+      'Search within a Past Papers folder now really filters it',
+      'Social sign-in and Connected Accounts',
+      'Create an account after social sign-in',
+      'Fullscreen for standard PDF previews',
+      'A cleaner Account & sign-in page',
     ]) {
       expect(whatsNew).toContain(highlight);
     }

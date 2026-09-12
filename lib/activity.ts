@@ -28,17 +28,33 @@ export async function recordActivity(input: ActivityInput) {
   if (error) throw new Error(`Unable to record resource activity: ${error.message}`);
 }
 
+async function recordOpenedOnce(
+  req: Request,
+  input: Omit<ActivityInput, 'action'>,
+  action: ActivityLog['action'],
+  namespace: string,
+) {
+  const fileId = input.fileId || 'unknown';
+  const gate = await rateLimit(
+    privacySafeRequestKey(req, `${namespace}:${input.userId}:${fileId}`),
+    1,
+    15 * 1000,
+    `${namespace}-audit`,
+  );
+  if (!gate.ok) return;
+  await recordActivity({ ...input, action });
+}
+
 export async function recordFileOpenedOnce(
   req: Request,
   input: Omit<ActivityInput, 'action'>,
 ) {
-  const fileId = input.fileId || 'unknown';
-  const gate = await rateLimit(
-    privacySafeRequestKey(req, `file-open:${input.userId}:${fileId}`),
-    1,
-    15 * 1000,
-    'file-open-audit',
-  );
-  if (!gate.ok) return;
-  await recordActivity({ ...input, action: 'file_opened' });
+  await recordOpenedOnce(req, input, 'file_opened', 'file-open');
+}
+
+export async function recordQuestionOpenedOnce(
+  req: Request,
+  input: Omit<ActivityInput, 'action'>,
+) {
+  await recordOpenedOnce(req, input, 'question_opened', 'question-open');
 }
