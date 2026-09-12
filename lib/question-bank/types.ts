@@ -9,6 +9,8 @@ export type QuestionFilters = {
   subtopicId: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
   paperId: string | null;
+  paperNumber: number | null;
+  paperReference: string | null;
   section: string | null;
   calculator: boolean | null;
   status: QuestionProgressStatus | null;

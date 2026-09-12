@@ -8,6 +8,8 @@ import { AppSelect } from '@/components/ui/app-select';
 import type { QuestionFilters } from '@/lib/question-bank/types';
 
 const ANY = '__any__';
+const PAPER_NUMBER_PREFIX = 'paper-number:';
+const PAPER_REFERENCE_PREFIX = 'paper-reference:';
 
 type Topic = {
   id: string;
@@ -32,6 +34,11 @@ function label(value: string) {
   return value
     .replaceAll('_', ' ')
     .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function extractPaperNumber(reference: string) {
+  const match = reference.match(/\bPaper\s+(\d+)\b/i);
+  return match ? Number(match[1]) : null;
 }
 
 export function QuestionBankFilters({
@@ -82,6 +89,28 @@ export function QuestionBankFilters({
     Boolean(filters.saved),
     filters.sourceSlugs.length > 0,
   ].filter(Boolean).length;
+
+  const paperNumbers = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          papers
+            .map((paper) => extractPaperNumber(paper.reference))
+            .filter((value): value is number => value !== null),
+        ),
+      ).sort((left, right) => left - right),
+    [papers],
+  );
+  const legacyPaperReference = filters.paperId
+    ? papers.find((paper) => paper.id === filters.paperId)?.reference || null
+    : null;
+  const selectedPaperValue = filters.paperNumber
+    ? `${PAPER_NUMBER_PREFIX}${filters.paperNumber}`
+    : filters.paperReference
+      ? `${PAPER_REFERENCE_PREFIX}${filters.paperReference}`
+      : legacyPaperReference
+        ? `${PAPER_REFERENCE_PREFIX}${legacyPaperReference}`
+        : ANY;
 
   useEffect(() => {
     setSearch(filters.q);
@@ -138,6 +167,28 @@ export function QuestionBankFilters({
       { topic: value === ANY ? null : value, subtopic: null },
       { resetSubtopic: true },
     );
+  }
+
+  function changePaper(value: string) {
+    if (value === ANY) {
+      updateParams({ paper: null, paperNumber: null, paperRef: null });
+      return;
+    }
+    if (value.startsWith(PAPER_NUMBER_PREFIX)) {
+      updateParams({
+        paper: null,
+        paperRef: null,
+        paperNumber: value.slice(PAPER_NUMBER_PREFIX.length),
+      });
+      return;
+    }
+    if (value.startsWith(PAPER_REFERENCE_PREFIX)) {
+      updateParams({
+        paper: null,
+        paperNumber: null,
+        paperRef: value.slice(PAPER_REFERENCE_PREFIX.length),
+      });
+    }
   }
 
   return (
@@ -198,18 +249,22 @@ export function QuestionBankFilters({
           <label>
             <span className="sr-only">Paper</span>
             <AppSelect
-              value={filters.paperId || ANY}
-              onValueChange={(value) =>
-                updateParams({ paper: value === ANY ? null : value })
-              }
+              value={selectedPaperValue}
+              onValueChange={changePaper}
               placeholder="Any paper"
               searchable
               searchPlaceholder="Search papers"
               options={[
                 { value: ANY, label: 'Any paper' },
+                ...paperNumbers.map((number) => ({
+                  value: `${PAPER_NUMBER_PREFIX}${number}`,
+                  label: `Paper ${number} · all sessions`,
+                  description: `Every Paper ${number} question across all years, sessions and time zones`,
+                })),
                 ...papers.map((paper) => ({
-                  value: paper.id,
+                  value: `${PAPER_REFERENCE_PREFIX}${paper.reference}`,
                   label: paper.reference,
+                  description: 'Specific exam paper',
                 })),
               ]}
             />

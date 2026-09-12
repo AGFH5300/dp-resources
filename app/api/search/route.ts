@@ -2,6 +2,7 @@ import { requireMember } from '@/lib/auth';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeResourceName } from '@/lib/resource-utils';
 import { expandResourceSearchAliases } from '@/lib/search-aliases';
+import { matchesScopedResourceQuery } from '@/lib/scoped-resource-search';
 import { getResourceAttributionMap } from '@/lib/content-attribution';
 import { privacySafeRequestKey, rateLimit } from '@/lib/rate-limit';
 export const dynamic = 'force-dynamic';
@@ -207,7 +208,13 @@ export async function GET(req: Request) {
     if (!merged.has(row.drive_file_id))
       merged.set(row.drive_file_id, { ...row, rank_score: 70 });
   }
+  const metadataSearch =
+    metadataSourceSlugs.length > 0 || metadataTypeSlugs.length > 0;
   const rankedRows = [...merged.values()]
+    .filter(
+      (row) =>
+        !folderId || metadataSearch || matchesScopedResourceQuery(row, needle),
+    )
     .sort(
       (left, right) =>
         right.rank_score - left.rank_score ||

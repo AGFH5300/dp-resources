@@ -22,12 +22,30 @@ function bool(value: string | undefined) {
   return null;
 }
 
+function paperNumber(value: string | undefined) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 20
+    ? parsed
+    : null;
+}
+
+function paperReference(value: string | undefined) {
+  const parsed = String(value || '').trim().slice(0, 120);
+  return parsed || null;
+}
+
 export function parseQuestionFilters(
   searchParams: Record<string, string | undefined>,
 ): QuestionFilters {
   const page = Number(searchParams.page || 1);
   const mine = searchParams.mine || '';
   const topicId = uuid(searchParams.topic);
+  const selectedPaperNumber = paperNumber(searchParams.paperNumber);
+  const selectedPaperReference = selectedPaperNumber
+    ? null
+    : paperReference(searchParams.paperRef);
+  const selectedPaperId =
+    selectedPaperNumber || selectedPaperReference ? null : uuid(searchParams.paper);
   const difficulty = ['easy', 'medium', 'hard'].includes(
     searchParams.difficulty || '',
   )
@@ -43,11 +61,13 @@ export function parseQuestionFilters(
     topicId,
     subtopicId: topicId ? uuid(searchParams.subtopic) : null,
     difficulty,
-    paperId: uuid(searchParams.paper),
+    paperId: selectedPaperId,
+    paperNumber: selectedPaperNumber,
+    paperReference: selectedPaperReference,
     section:
       searchParams.section && searchParams.section !== '__any__'
-      ? String(searchParams.section).trim().slice(0, 40)
-      : null,
+        ? String(searchParams.section).trim().slice(0, 40)
+        : null,
     calculator: bool(searchParams.calculator),
     status,
     saved:
@@ -195,48 +215,49 @@ export async function getCourseQuestionBank(
     filterOptionsResult,
     sourceOptionsResult,
     questionsResult,
-  ] =
-    await Promise.all([
-      client
-        .from('dp_qb_topics')
-        .select(
-          'id,slug,name,sort_order,subtopics:dp_qb_subtopics(id,slug,name,code,description,sort_order)',
-        )
-        .eq('course_id', course.id)
-        .order('sort_order'),
-      client
-        .from('dp_qb_course_papers')
-        .select(
-          'paper:dp_qb_papers!paper_id(id,reference,calculator_allowed,formula_booklet_source_url)',
-        )
-        .eq('course_id', course.id),
-      client
-        .from('dp_qb_datasets')
-        .select('expected_question_count')
-        .eq('course_id', course.id),
-      client.rpc('dp_qb_course_filter_options', {
-        p_course_id: course.id,
-      }),
-      client.rpc('dp_qb_source_options_for_course', {
-        p_course_id: course.id,
-      }),
-      client.rpc('dp_qb_list_questions', {
-        p_course_id: course.id,
-        p_query: filters.q || null,
-        p_topic_id: filters.topicId,
-        p_subtopic_id: filters.subtopicId,
-        p_difficulty: filters.difficulty,
-        p_paper_id: filters.paperId,
-        p_section: filters.section,
-        p_calculator: filters.calculator,
-        p_status: filters.status,
-        p_saved: filters.saved,
-        p_revisit: null,
-        p_page: filters.page,
-        p_page_size: 24,
-        p_source_slugs: filters.sourceSlugs.length ? filters.sourceSlugs : null,
-      }),
-    ]);
+  ] = await Promise.all([
+    client
+      .from('dp_qb_topics')
+      .select(
+        'id,slug,name,sort_order,subtopics:dp_qb_subtopics(id,slug,name,code,description,sort_order)',
+      )
+      .eq('course_id', course.id)
+      .order('sort_order'),
+    client
+      .from('dp_qb_course_papers')
+      .select(
+        'paper:dp_qb_papers!paper_id(id,reference,calculator_allowed,formula_booklet_source_url)',
+      )
+      .eq('course_id', course.id),
+    client
+      .from('dp_qb_datasets')
+      .select('expected_question_count')
+      .eq('course_id', course.id),
+    client.rpc('dp_qb_course_filter_options', {
+      p_course_id: course.id,
+    }),
+    client.rpc('dp_qb_source_options_for_course', {
+      p_course_id: course.id,
+    }),
+    client.rpc('dp_qb_list_questions', {
+      p_course_id: course.id,
+      p_query: filters.q || null,
+      p_topic_id: filters.topicId,
+      p_subtopic_id: filters.subtopicId,
+      p_difficulty: filters.difficulty,
+      p_paper_id: filters.paperId,
+      p_section: filters.section,
+      p_calculator: filters.calculator,
+      p_status: filters.status,
+      p_saved: filters.saved,
+      p_revisit: null,
+      p_page: filters.page,
+      p_page_size: 24,
+      p_source_slugs: filters.sourceSlugs.length ? filters.sourceSlugs : null,
+      p_paper_number: filters.paperNumber,
+      p_paper_reference: filters.paperReference,
+    }),
+  ]);
 
   const filterOptions = (
     requireData(
@@ -263,6 +284,18 @@ export async function getCourseQuestionBank(
       questionId: row.question_id,
     })),
   );
+  const rawPapers = (
+    requireData(papersResult.data, papersResult.error, 'Papers') || []
+  )
+    .map((row: any) => row.paper)
+    .filter(Boolean);
+  const papers = Array.from(
+    new Map(rawPapers.map((paper: any) => [String(paper.reference), paper])).values(),
+  ).sort((left: any, right: any) =>
+    String(left.reference).localeCompare(String(right.reference), undefined, {
+      numeric: true,
+    }),
+  );
 
   return {
     subject,
@@ -270,9 +303,7 @@ export async function getCourseQuestionBank(
     siblingCourses: siblingCourses || [],
     topics:
       requireData(topicsResult.data, topicsResult.error, 'Topics') || [],
-    papers: (
-      requireData(papersResult.data, papersResult.error, 'Papers') || []
-    ).map((row: any) => row.paper),
+    papers,
     sourceQuestionCount: (
       requireData(datasetsResult.data, datasetsResult.error, 'Dataset counts') || []
     ).reduce(
