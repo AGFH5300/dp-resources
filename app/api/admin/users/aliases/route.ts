@@ -1,4 +1,5 @@
 import { requireAdmin } from '@/lib/auth';
+import { sameOriginOrForbidden } from '@/lib/request-security';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
@@ -15,17 +16,18 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function GET() {
   await requireAdmin();
   const sb = createSupabaseAdminClient();
-  const [{ data: memberships, error: membershipError }, { data: aliases, error: aliasError }, { data: profiles, error: profileError }] =
-    await Promise.all([
-      sb
-        .from('dp_resource_memberships')
-        .select('id,email,role')
-        .order('email', { ascending: true }),
-      sb
-        .from('dp_admin_user_aliases')
-        .select('user_id,alias,updated_at'),
-      sb.from('dp_resource_profiles').select('id,username,full_name'),
-    ]);
+  const [
+    { data: memberships, error: membershipError },
+    { data: aliases, error: aliasError },
+    { data: profiles, error: profileError },
+  ] = await Promise.all([
+    sb
+      .from('dp_resource_memberships')
+      .select('id,email,role')
+      .order('email', { ascending: true }),
+    sb.from('dp_admin_user_aliases').select('user_id,alias,updated_at'),
+    sb.from('dp_resource_profiles').select('id,username,full_name'),
+  ]);
 
   const error = membershipError || aliasError || profileError;
   if (error) return noStore({ error: error.message }, { status: 500 });
@@ -59,6 +61,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const forbidden = sameOriginOrForbidden(req);
+  if (forbidden) return forbidden;
+
   const { membership: admin } = await requireAdmin();
   const body = await req.json().catch(() => ({}));
   const userId = String(body.userId || '').trim();
@@ -75,7 +80,8 @@ export async function PATCH(req: Request) {
     .select('id,email')
     .eq('id', userId)
     .maybeSingle();
-  if (targetError) return noStore({ error: targetError.message }, { status: 500 });
+  if (targetError)
+    return noStore({ error: targetError.message }, { status: 500 });
   if (!target) return noStore({ error: 'User not found.' }, { status: 404 });
 
   if (!alias) {
