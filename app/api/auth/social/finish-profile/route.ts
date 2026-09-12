@@ -194,10 +194,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // A same-email account may have appeared since the provider callback. Treat
-    // that as the same DP Resources account rather than creating a duplicate.
+    // A same-email account may have appeared since the provider callback. Google
+    // and GitHub provide an explicitly verified email before reaching this route.
+    // Microsoft email/UPN values are mutable, so Microsoft must be linked from an
+    // already-authenticated DP Resources account instead of authorizing by email.
     const existing = await existingProfileByEmail(email);
     if (existing) {
+      if (pending.provider === 'microsoft') {
+        return clearPending(
+          json(
+            {
+              error:
+                'This email already has a DP Resources account. Log in with an existing method, then connect Microsoft from Settings.',
+              field: 'form',
+            },
+            409,
+          ),
+        );
+      }
       await ensureIdentity(existing.id, pending);
       await establishSupabaseSession(existing.id, existing.email);
       return clearPending(json({ ok: true, existingAccount: true }));
