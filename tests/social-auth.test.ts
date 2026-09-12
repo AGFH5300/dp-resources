@@ -55,6 +55,19 @@ describe('modern social authentication', () => {
     expect(callback).toContain('verifyDirectProviderCallback');
   });
 
+  it('keeps provider permissions minimal and never requests or stores refresh tokens', () => {
+    const helper = read('lib/direct-social-auth.ts');
+
+    expect(helper).toContain("scopes: 'openid email profile'");
+    expect(helper).toContain("scopes: 'openid profile email User.Read'");
+    expect(helper).toContain("scopes: 'read:user user:email'");
+    expect(helper).not.toContain('offline_access');
+    expect(helper).not.toContain('refresh_token');
+    expect(helper).toContain('candidate.primary && candidate.verified');
+    expect(helper).toContain('candidate.verified');
+    expect(helper).not.toContain('normalizedEmail(user.email)');
+  });
+
   it('keeps unmatched social login state and offers account creation without repeating provider OAuth', () => {
     const callback = read('app/api/auth/social/[provider]/callback/route.ts');
     const buttons = read('components/auth/social-auth-buttons.tsx');
@@ -79,6 +92,21 @@ describe('modern social authentication', () => {
     expect(finishRoute).toContain('getEmailDomainPolicy');
     expect(finishRoute).toContain('admin.auth.admin.createUser');
     expect(finishRoute).toContain('establishSupabaseSession');
+  });
+
+  it('requires explicit linking before a Microsoft email can authorize an existing account', () => {
+    const callback = read('app/api/auth/social/[provider]/callback/route.ts');
+    const buttons = read('components/auth/social-auth-buttons.tsx');
+    const finishRoute = read('app/api/auth/social/finish-profile/route.ts');
+
+    expect(callback).toContain("identity.provider === 'microsoft'");
+    expect(callback).toContain("'link_required'");
+    expect(callback).toContain('existingAccountForTrustedEmail');
+    expect(callback).toContain("if (identity.provider === 'microsoft') return null");
+    expect(buttons).toContain("error === 'link_required'");
+    expect(buttons).toContain('connect ${label} from Settings');
+    expect(finishRoute).toContain("pending.provider === 'microsoft'");
+    expect(finishRoute).toContain('then connect Microsoft from Settings');
   });
 
   it('stores provider subjects server-side and prevents ambiguous account linking', () => {
