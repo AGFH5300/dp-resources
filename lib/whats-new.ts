@@ -1,36 +1,36 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-09-10-settings-account-centre',
-  dateLabel: '10 September 2026',
+  id: '2026-09-12-paper-filters-social-signin',
+  dateLabel: '12 September 2026',
   items: [
     {
-      title: 'A new Settings & Account Centre',
+      title: 'Filter an entire paper in one click',
       description:
-        'Manage your DP Resources profile, username, profile picture, email, password, notifications, privacy and display preferences from one place.',
+        'Question Bank paper filters now include choices such as Paper 1 · all sessions, while still letting you choose one exact year, session and time zone when needed.',
     },
     {
-      title: 'Choose how source information appears',
+      title: 'Search within a Past Papers folder now really filters it',
       description:
-        'You can independently show or hide Library source tags, Library resource-type labels, Question Bank source tags and expanded Question Bank source information.',
+        'Searching for terms such as paper 1 inside a Library folder now shows only matching files instead of merely ranking and highlighting matches among other papers.',
     },
     {
-      title: 'More control over notifications',
+      title: 'Social sign-in and Connected Accounts',
       description:
-        'Support-ticket notifications and automatic What’s new release pop-ups can now be controlled from your account preferences.',
+        'Google and Microsoft sign-in now use the DP Resources account flow, and connected providers can be linked or unlinked from Account & sign-in settings.',
     },
     {
-      title: 'Crop and adjust your profile picture',
+      title: 'Create an account after social sign-in',
       description:
-        'Choose a private JPG, PNG or WebP image, then reposition, zoom and rotate it with a circular preview before saving it to your account.',
+        'If a Google or Microsoft account is not linked yet, DP Resources can continue into the normal account-creation flow with the same profile fields and live username availability checks.',
     },
     {
-      title: 'Username availability is checked automatically',
+      title: 'Fullscreen for standard PDF previews',
       description:
-        'When you change your username in Settings, DP Resources checks availability while you type using the same validation flow as sign-up.',
+        'The standard browser PDF fallback now has a fullscreen control too, so smaller and non-prepared PDFs keep the same essential viewing option.',
     },
     {
-      title: 'Account security has been strengthened',
+      title: 'A cleaner Account & sign-in page',
       description:
-        'Sensitive email and password changes require your current password, and the production dependency set has been refreshed against current security advisories.',
+        'Connected Accounts keeps the provider controls you need while removing the duplicate account summary block, making the section quicker to scan.',
     },
   ],
 } as const;
