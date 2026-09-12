@@ -42,6 +42,7 @@ export default async function FinishSocialProfilePage() {
         email={pending.email}
         initialFullName={pending.fullName}
         nextPath={pending.next}
+        providerKey={provider.key}
         providerLabel={provider.label}
       />
     </AuthShell>
