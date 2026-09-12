@@ -127,9 +127,10 @@ describe('Settings & Account Centre', () => {
     );
   });
 
-  it('updates the unreleased What’s New entry to the final Settings scope', () => {
-    expect(whatsNew).toContain("id: '2026-09-10-settings-account-centre'");
-    expect(whatsNew).toContain('Username availability is checked automatically');
+  it('keeps What’s New current after the Settings release', () => {
+    expect(whatsNew).toContain("id: '2026-09-12-paper-filters-social-signin'");
+    expect(whatsNew).toContain('Social sign-in and Connected Accounts');
+    expect(whatsNew).toContain('Filter an entire paper in one click');
     expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 
