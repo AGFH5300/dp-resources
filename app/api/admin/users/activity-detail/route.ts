@@ -15,7 +15,7 @@ function noStore(payload: unknown, init?: ResponseInit) {
 export async function GET(req: Request) {
   await requireAdmin();
   const url = new URL(req.url);
-  const email = String(url.searchParams.get('email') || '').trim().toLowerCase();
+  const email = String(url.searchParams.get('email') || '').trim();
   const requestedRange = String(url.searchParams.get('range') || 'all');
   const range = RANGES.has(requestedRange) ? requestedRange : 'all';
 
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const { data: user, error: userError } = await adminSb
     .from('dp_resource_memberships')
     .select('id,email,role,created_at')
-    .ilike('email', email)
+    .eq('email', email)
     .maybeSingle();
   if (userError) return noStore({ error: userError.message }, { status: 500 });
   if (!user) return noStore({ error: 'User not found.' }, { status: 404 });
