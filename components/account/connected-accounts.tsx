@@ -40,28 +40,6 @@ type IdentityPayload = {
   error?: string;
 };
 
-type AccountProfile = {
-  username: string;
-  displayName: string;
-  email: string;
-  avatarUrl: string | null;
-};
-
-type SettingsPayload = {
-  profile?: AccountProfile;
-};
-
-function initials(name: string, username: string) {
-  const source = name.trim() || username.trim() || 'DP';
-  return (
-    source
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() || '')
-      .join('') || 'DP'
-  );
-}
-
 function connectedDate(value: string | null) {
   if (!value) return null;
   const date = new Date(value);
@@ -120,7 +98,6 @@ export function ConnectedAccounts() {
   const [identities, setIdentities] = useState<ConnectedIdentity[]>([]);
   const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
   const [passwordEnabled, setPasswordEnabled] = useState(false);
-  const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyProvider, setBusyProvider] = useState<SocialAuthProviderKey | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<ConnectedIdentity | null>(null);
@@ -130,10 +107,7 @@ export function ConnectedAccounts() {
   async function load() {
     setLoading(true);
     try {
-      const [identityResponse, settingsResponse] = await Promise.all([
-        fetch('/api/account/identities', { cache: 'no-store' }),
-        fetch('/api/account/settings', { cache: 'no-store', credentials: 'same-origin' }),
-      ]);
+      const identityResponse = await fetch('/api/account/identities', { cache: 'no-store' });
       const identityPayload = (await identityResponse.json().catch(() => null)) as IdentityPayload | null;
       if (!identityResponse.ok || !identityPayload) {
         setError(identityPayload?.error || 'Could not load sign-in methods.');
@@ -143,11 +117,6 @@ export function ConnectedAccounts() {
       setIdentities(identityPayload.identities || []);
       setProviderStatuses(identityPayload.providers || []);
       setPasswordEnabled(identityPayload.passwordEnabled === true);
-
-      if (settingsResponse.ok) {
-        const settingsPayload = (await settingsResponse.json().catch(() => null)) as SettingsPayload | null;
-        if (settingsPayload?.profile) setProfile(settingsPayload.profile);
-      }
       setError(null);
     } catch {
       setError('Could not load sign-in methods.');
@@ -225,53 +194,6 @@ export function ConnectedAccounts() {
   return (
     <section id="connected-accounts" className="scroll-mt-24">
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-        <div className="relative overflow-hidden border-b border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#f4f7fb_52%,#fffaf3_100%)] px-5 py-6 dark:border-slate-800 dark:bg-[linear-gradient(135deg,#0f172a_0%,#111827_55%,#172033_100%)] sm:px-7 sm:py-7">
-          <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-blue-200/30 blur-3xl dark:bg-blue-500/10" />
-          <div className="pointer-events-none absolute -bottom-24 left-1/3 size-52 rounded-full bg-amber-200/25 blur-3xl dark:bg-amber-400/5" />
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/80 px-3 py-1 text-xs font-semibold text-blue-800 shadow-sm backdrop-blur dark:border-blue-800/70 dark:bg-blue-950/40 dark:text-blue-200">
-                <ShieldCheck className="size-3.5" aria-hidden="true" />
-                Account &amp; sign-in
-              </div>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight text-[color:var(--dp-navy)] dark:text-white sm:text-2xl">
-                One DP Resources account. Your choice of sign-in.
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Link trusted providers to the same account so you can sign in the way that suits you without splitting your saved resources, activity or preferences.
-              </p>
-            </div>
-
-            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-300/80 bg-white/85 p-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/80 sm:min-w-[19rem]">
-              <div className="size-12 shrink-0 overflow-hidden rounded-full border border-slate-300 bg-blue-50 shadow-sm dark:border-slate-700 dark:bg-blue-950">
-                {profile?.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatarUrl} alt="Your profile" className="size-full object-cover" />
-                ) : (
-                  <span className="flex size-full items-center justify-center text-sm font-bold text-blue-800 dark:text-blue-200">
-                    {initials(profile?.displayName || '', profile?.username || '')}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">
-                  {profile?.displayName || 'Your DP Resources account'}
-                </p>
-                {profile?.username ? (
-                  <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">@{profile.username}</p>
-                ) : null}
-                <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                  {profile?.email || (loading ? 'Loading account…' : 'Account email')}
-                </p>
-              </div>
-              <div className="shrink-0 rounded-xl bg-slate-950 px-2.5 py-2 text-center text-white dark:bg-slate-800">
-                <span className="block text-base font-bold leading-none">{loading ? '—' : methodCount}</span>
-                <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.12em] opacity-70">methods</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="p-5 sm:p-7">
           {message ? (
             <div className="mb-5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
