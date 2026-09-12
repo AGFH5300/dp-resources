@@ -1,4 +1,5 @@
 import { requireMember } from '@/lib/auth';
+import { recordQuestionOpenedOnce } from '@/lib/activity';
 import { hasSubstantiveExaminerReport } from '@/lib/question-bank/examiner-report';
 import { nativeFormulaBookletUrl } from '@/lib/question-bank/formula-booklets';
 import { getQuestionDetail } from '@/lib/question-bank/queries';
@@ -79,10 +80,10 @@ async function recordQuestionView(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ variantId: string }> },
 ) {
-  const { user } = await requireMember();
+  const { user, membership } = await requireMember();
   const { variantId } = await params;
   if (!UUID_PATTERN.test(variantId))
     return noStore({ error: 'Invalid question identifier.' }, { status: 400 });
@@ -104,6 +105,19 @@ export async function GET(
       message: error instanceof Error ? error.message : String(error),
     });
     return null;
+  });
+  await recordQuestionOpenedOnce(request, {
+    userId: user.id,
+    userEmail: membership.email || user.email || '',
+    fileId: variant.id,
+    fileName: [variant.course?.name || 'Question Bank', question.reference]
+      .filter(Boolean)
+      .join(' · '),
+  }).catch((error) => {
+    console.error('Unable to record Question Bank admin activity.', {
+      variantId,
+      message: error instanceof Error ? error.message : String(error),
+    });
   });
 
   const audioByAssetId = new Map(
@@ -153,9 +167,6 @@ export async function GET(
           : null,
       } satisfies QuestionAsset;
       if (audio || row.role === 'audio') return [baseAsset];
-      // Deduplicated files can be referenced from a different source role than
-      // the occurrence that attached the physical asset. Emit one safe render
-      // alias per supported section so member UI filtering cannot hide it.
       return ASSET_RENDER_ROLES.map((role) => ({ ...baseAsset, role }));
     });
 
