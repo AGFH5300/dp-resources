@@ -40,18 +40,18 @@ Requested scopes: `openid email profile` only.
 - `MICROSOFT_OAUTH_CLIENT_ID`
 - `MICROSOFT_OAUTH_CLIENT_SECRET`
 
-Requested scopes: `openid profile email User.Read`.
+Requested scopes: `openid User.Read` only. `User.Read` is needed for the signed-in user's stable Microsoft object ID, display name and user principal name; the extra OIDC `profile` and `email` scopes are not requested because this implementation does not need them.
 
 Microsoft can still show **Maintain access to data you have given it access to** on its consent page. DP Resources does not explicitly request `offline_access` and does not retain refresh tokens. Microsoft documents that offline access is implicitly represented whenever delegated permissions are granted. DP Resources only uses the short-lived access token during the callback and never persists provider tokens.
 
-Microsoft email and UPN values are mutable and are not used to authorize an existing DP Resources account. A Microsoft identity that is not already mapped must be connected explicitly from Settings while the user is authenticated. This prevents an email attribute controlled by another Microsoft tenant from becoming an account-linking credential.
+Microsoft email-like attributes are mutable and are not used to authorize an existing DP Resources account. DP Resources uses the Microsoft object ID as the connected-provider identity and uses the returned user principal name only as profile/contact data. A Microsoft identity that is not already mapped must be connected explicitly from Settings while the user is authenticated.
 
 ### GitHub
 
 - `GITHUB_OAUTH_CLIENT_ID`
 - `GITHUB_OAUTH_CLIENT_SECRET`
 
-Requested scopes: `read:user user:email`. DP Resources accepts only an email marked verified by GitHub's `/user/emails` endpoint; it does not fall back to free-form profile email text.
+Requested scope: `user:email` only. GitHub tokens with no profile scope can still return the authenticated user's public profile information, while `user:email` grants the private verified-address lookup DP Resources actually needs. DP Resources accepts only an email marked verified by GitHub's `/user/emails` endpoint and never falls back to free-form profile email text.
 
 ### Transaction-signing secret
 
@@ -67,7 +67,7 @@ Generate a production value locally, keep it out of source control, and store it
 
 ### Google
 
-Use a Google OAuth **Web application** branded `DP Resources` with only the scopes above. Register the Replit callback for testing and the production callback before rollout. Homepage, privacy and terms should point to the DP Resources production pages.
+Use a Google OAuth **Web application** branded `DP Resources` with only the scopes above. Register the Replit callback for testing and the production callback before rollout. Homepage, privacy and terms should point to the DP Resources production pages. The OAuth audience/publishing status must permit intended production users, not only a temporary test-user list.
 
 ### Microsoft
 
@@ -77,7 +77,7 @@ The Microsoft consent screen can legitimately show `unverified` because Microsof
 
 ### GitHub
 
-Use the DP Resources OAuth app with both Replit and production callback URLs configured. The app must request only `read:user user:email` and should use the DP Resources homepage and branding.
+Use the DP Resources OAuth app with both Replit and production callback URLs configured. The app requests only `user:email`; public authenticated profile information supplies the stable GitHub user ID and display fallback without `read:user`.
 
 ## Account and duplicate-prevention model
 
@@ -106,7 +106,7 @@ For a brand-new provider identity, DP Resources does **not** create an incomplet
 6. The complete Supabase user/profile is created with the same validation rules as the existing site.
 7. The provider identity is attached and DP Resources establishes the normal Supabase session server-side.
 
-For Microsoft, if that email already belongs to an existing DP Resources account, signup is stopped and the user is told to sign in normally and connect Microsoft from Settings instead of linking by email.
+For Microsoft, the user principal name is displayed as provider-supplied profile/contact data rather than being described as a verified email. If that address already belongs to an existing DP Resources account, signup is stopped and the user is told to sign in normally and connect Microsoft from Settings instead of linking by email.
 
 This avoids weakening the existing `auth.users` validation trigger.
 
@@ -130,7 +130,7 @@ For each enabled provider:
 
 1. New signup -> provider -> DP Resources profile completion -> Library.
 2. Existing password user with a trusted verified Google/GitHub email -> provider -> same existing DP Resources user/data.
-3. Existing Microsoft user -> Settings -> Connect Microsoft -> same DP Resources user ID; an unlinked Microsoft email must not auto-attach from the login page.
+3. Existing Microsoft user -> Settings -> Connect Microsoft -> same DP Resources user ID; an unlinked Microsoft address must not auto-attach from the login page.
 4. Login with an unregistered provider identity -> account-creation flow works without repeating provider OAuth.
 5. Existing user -> Settings -> Connect provider -> same DP Resources user ID.
 6. Attempt to connect a provider account already owned by another DP Resources user -> blocked.
@@ -141,7 +141,7 @@ For each enabled provider:
 11. State mismatch/expired handoff fails closed.
 12. `next` redirects cannot leave DP Resources.
 13. Provider access tokens are not persisted in cookies, local storage or database rows.
-14. GitHub requires a provider-verified email and Microsoft never uses email/UPN as an authorization credential.
+14. GitHub requires a provider-verified email and Microsoft never uses UPN as an authorization credential.
 
 ## Production rollout checklist
 
