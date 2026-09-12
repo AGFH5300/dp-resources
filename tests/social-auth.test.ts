@@ -59,8 +59,10 @@ describe('modern social authentication', () => {
     const helper = read('lib/direct-social-auth.ts');
 
     expect(helper).toContain("scopes: 'openid email profile'");
-    expect(helper).toContain("scopes: 'openid profile email User.Read'");
-    expect(helper).toContain("scopes: 'read:user user:email'");
+    expect(helper).toContain("scopes: 'openid User.Read'");
+    expect(helper).toContain("scopes: 'user:email'");
+    expect(helper).not.toContain("scopes: 'openid profile email User.Read'");
+    expect(helper).not.toContain("scopes: 'read:user user:email'");
     expect(helper).not.toContain('offline_access');
     expect(helper).not.toContain('refresh_token');
     expect(helper).toContain('candidate.primary && candidate.verified');
