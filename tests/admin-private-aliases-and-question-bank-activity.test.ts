@@ -6,6 +6,9 @@ const read = (path: string) => readFileSync(path, 'utf8');
 const migration = read(
   'supabase/migrations/20260912195000_admin_aliases_and_question_bank_activity.sql',
 );
+const denyMigration = read(
+  'supabase/migrations/20260912201000_admin_aliases_explicit_member_deny.sql',
+);
 const aliasRoute = read('app/api/admin/users/aliases/route.ts');
 const aliasBridge = read('components/admin/user-aliases.tsx');
 const layout = read('app/admin/layout.tsx');
@@ -16,7 +19,7 @@ const whatsNew = read('lib/whats-new.ts');
 const changelog = read('lib/changelog.ts');
 
 describe('admin-private aliases and complete Activity tracking', () => {
-  it('stores aliases outside member profiles and grants the table only to service_role', () => {
+  it('stores aliases outside member profiles and denies member access at grants and RLS', () => {
     expect(migration).toContain('create table if not exists public.dp_admin_user_aliases');
     expect(migration).toContain('alter table public.dp_admin_user_aliases enable row level security');
     expect(migration).toContain(
@@ -25,6 +28,10 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(migration).toContain(
       'grant select, insert, update, delete on table public.dp_admin_user_aliases to service_role',
     );
+    expect(denyMigration).toContain('admin aliases are never member visible');
+    expect(denyMigration).toContain('to anon, authenticated');
+    expect(denyMigration).toContain('using (false)');
+    expect(denyMigration).toContain('with check (false)');
     expect(migration).not.toContain('dp_resource_profiles (');
   });
 
@@ -32,6 +39,7 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(aliasRoute.match(/await requireAdmin\(\)/g)?.length).toBeGreaterThanOrEqual(2);
     expect(aliasRoute).toContain(".from('dp_admin_user_aliases')");
     expect(aliasRoute).toContain("Cache-Control', 'private, no-store, max-age=0'");
+    expect(aliasRoute).toContain('sameOriginOrForbidden(req)');
     expect(aliasRoute).not.toContain('requireMember');
   });
 
