@@ -68,6 +68,20 @@ describe('modern social authentication', () => {
     expect(helper).not.toContain('normalizedEmail(user.email)');
   });
 
+  it('uses Microsoft stable subject mapping and treats UPN only as profile data', () => {
+    const helper = read('lib/direct-social-auth.ts');
+    const finishPage = read('app/auth/finish-profile/page.tsx');
+    const finishForm = read('app/auth/finish-profile/finish-profile-form.tsx');
+
+    expect(helper).toContain("?$select=id,displayName,userPrincipalName'");
+    expect(helper).not.toContain('?$select=id,displayName,mail,userPrincipalName');
+    expect(helper).toContain('normalizedEmail(profile?.userPrincipalName)');
+    expect(finishPage).toContain('providerKey={provider.key}');
+    expect(finishForm).toContain("providerKey === 'microsoft'");
+    expect(finishForm).toContain('Provided by Microsoft sign-in.');
+    expect(finishForm).not.toContain('Verified by Microsoft.');
+  });
+
   it('keeps unmatched social login state and offers account creation without repeating provider OAuth', () => {
     const callback = read('app/api/auth/social/[provider]/callback/route.ts');
     const buttons = read('components/auth/social-auth-buttons.tsx');
