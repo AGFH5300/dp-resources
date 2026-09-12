@@ -33,8 +33,8 @@ const historicalSummaries: Record<string, string[]> = {
     'Simplified Account & sign-in by keeping Connected Accounts controls while removing the duplicate account summary block.',
   ],
   '2026-09-11': [
-    'Added DP Resources social sign-in and Connected Accounts support for Google and Microsoft, including link and unlink controls in Account & sign-in settings.',
-    'Improved first-time social sign-in so an unlinked Google or Microsoft account can continue into the normal account-creation flow with the standard profile fields and live username availability checks.',
+    'Added DP Resources social sign-in and Connected Accounts support for Google, Microsoft and GitHub, including direct link and unlink controls in Account & sign-in settings.',
+    'Improved first-time social sign-in so an unlinked Google, Microsoft or GitHub account can continue into the normal account-creation flow with the standard profile fields and live username availability checks.',
     'Added fullscreen support to the standard browser PDF fallback so non-prepared PDFs keep the same essential viewing option.',
   ],
   '2026-09-10': [
