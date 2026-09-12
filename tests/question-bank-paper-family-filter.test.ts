@@ -24,7 +24,7 @@ describe('question-bank paper family filter', () => {
 
   it('filters paper families and exact references in SQL before pagination', () => {
     const migration = read(
-      'supabase/migrations/20260912175000_question_bank_paper_family_filters.sql',
+      'supabase/migrations/20260912135642_question_bank_paper_family_filters.sql',
     );
     expect(migration).toContain('p_paper_number integer default null');
     expect(migration).toContain('p_paper_reference text default null');
