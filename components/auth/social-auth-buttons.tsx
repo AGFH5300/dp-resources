@@ -45,6 +45,9 @@ function socialErrorMessage(error: string, label: string) {
   if (error === 'not_configured') return `${label} sign-in is not available yet.`;
   if (error === 'account_suspended') return 'This DP Resources account is suspended.';
   if (error === 'cancelled') return `${label} sign-in was cancelled.`;
+  if (error === 'link_required') {
+    return `This ${label} email already has a DP Resources account. Log in with an existing method, then connect ${label} from Settings.`;
+  }
   return `${label} sign-in could not be completed. Please try again.`;
 }
 
