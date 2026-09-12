@@ -97,7 +97,7 @@ describe('modern social authentication', () => {
     expect(identities).toContain('sameOriginOrForbidden');
   });
 
-  it('presents Connected Accounts as a focused Account & sign-in section', () => {
+  it('presents Connected Accounts as a focused sign-in methods section', () => {
     const route = read('app/api/account/identities/route.ts');
     const panel = read('components/account/connected-accounts.tsx');
     const settings = read('app/settings/page.tsx');
@@ -107,8 +107,7 @@ describe('modern social authentication', () => {
     expect(route).not.toContain('unlinkIdentity');
     expect(route).toContain("mode: 'link'");
     expect(route).toContain('password_enabled');
-    expect(panel).toContain('Account &amp; sign-in');
-    expect(panel).toContain('One DP Resources account. Your choice of sign-in.');
+    expect(panel).not.toContain('One DP Resources account. Your choice of sign-in.');
     expect(panel).toContain('Sign-in methods');
     expect(panel).toContain('ProviderLogo');
     expect(panel).toContain('border-2');
