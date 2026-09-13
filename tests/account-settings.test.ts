@@ -128,9 +128,9 @@ describe('Settings & Account Centre', () => {
   });
 
   it('keeps What’s New current after the Settings release', () => {
-    expect(whatsNew).toContain("id: '2026-09-12-paper-filters-social-signin'");
-    expect(whatsNew).toContain('Social sign-in and Connected Accounts');
-    expect(whatsNew).toContain('Filter an entire paper in one click');
+    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
+    expect(whatsNew).toContain('Attach screenshots and files to reports');
+    expect(whatsNew).toContain('Add several attachments at once');
     expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 
