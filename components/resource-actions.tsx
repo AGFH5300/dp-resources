@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import { ResourceTypeIcon } from './resource-type-icon';
 import { AppSelect } from '@/components/ui/app-select';
+import { CaseAttachmentInput } from '@/components/case-attachment-input';
 
 type ResourceContext = {
   driveFileId: string;
@@ -159,6 +160,7 @@ export function ReportResourceDialog({
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [category, setCategory] = useState(categories[0] || 'Other');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -186,23 +188,27 @@ export function ReportResourceDialog({
     setBusy(true);
     setError('');
     try {
+      const body = new FormData();
+      body.set('driveFileId', resource.driveFileId || '');
+      body.set('resourceName', resource.resourceName);
+      body.set('resourcePath', resource.resourcePath || '');
+      body.set('category', category);
+      body.set('message', message);
+      attachments.forEach((file) => body.append('attachments', file, file.name));
       const res = await fetch('/api/reports', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          driveFileId: resource.driveFileId || null,
-          resourceName: resource.resourceName,
-          resourcePath: resource.resourcePath || '',
-          category,
-          message,
-        }),
+        body,
       });
-      if (!res.ok) throw new Error('Report failed');
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || 'Report failed');
       setSent(true);
+      setAttachments([]);
       toast.success('Report sent');
-    } catch {
+    } catch (reason) {
       setError(
-        'We could not send this report. Please check your connection and try again.',
+        reason instanceof Error
+          ? reason.message
+          : 'We could not send this report. Please check your connection and try again.',
       );
       toast.error('Could not submit report');
     } finally {
@@ -227,6 +233,7 @@ export function ReportResourceDialog({
         setOpen(true);
         setSent(false);
         setError('');
+        setAttachments([]);
       }}
       className={className}
     >
@@ -251,7 +258,7 @@ export function ReportResourceDialog({
             ref={panelRef}
             onMouseDown={(e) => e.stopPropagation()}
             onSubmit={submit}
-            className="w-full max-w-lg rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-[color:var(--dp-warm-surface)] p-5 shadow-xl"
           >
             <div className="flex gap-3">
               <ResourceTypeIcon
@@ -316,6 +323,12 @@ export function ReportResourceDialog({
                     placeholder="Tell us what is wrong and what you expected."
                   />
                 </label>
+                <CaseAttachmentInput
+                  files={attachments}
+                  onChange={setAttachments}
+                  disabled={busy}
+                  compact
+                />
                 {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
                 <div className="mt-4 flex justify-end gap-2">
                   <button
