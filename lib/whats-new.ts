@@ -1,36 +1,26 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-09-12-paper-filters-social-signin',
-  dateLabel: '12 September 2026',
+  id: '2026-09-13-support-report-attachments',
+  dateLabel: '13 September 2026',
   items: [
     {
-      title: 'Filter an entire paper in one click',
+      title: 'Attach screenshots and files to reports',
       description:
-        'Question Bank paper filters now include choices such as Paper 1 · all sessions, while still letting you choose one exact year, session and time zone when needed.',
+        'Support requests and resource reports can now include images, videos, PDFs and common document files, so you can send the evidence with the issue instead of describing it separately.',
     },
     {
-      title: 'Search within a Past Papers folder now really filters it',
+      title: 'Add several attachments at once',
       description:
-        'Searching for terms such as paper 1 inside a Library folder now shows only matching files instead of merely ranking and highlighting matches among other papers.',
+        'You can attach multiple files in one submission, drag files into the attachment area, or paste a screenshot directly from your clipboard.',
     },
     {
-      title: 'Social sign-in and Connected Accounts',
+      title: 'Preview before you send',
       description:
-        'Google, Microsoft and GitHub sign-in now use the DP Resources account flow, and connected providers can be linked or unlinked directly from Account & sign-in settings.',
+        'Attachments can be reviewed and removed before submission, making it easier to check that the right screenshot, document or video is included.',
     },
     {
-      title: 'Create an account after social sign-in',
+      title: 'Private and safer attachment handling',
       description:
-        'If a Google, Microsoft or GitHub account is not linked yet, DP Resources can continue into the normal account-creation flow with the same profile fields and live username availability checks.',
-    },
-    {
-      title: 'Fullscreen for standard PDF previews',
-      description:
-        'The standard browser PDF fallback now has a fullscreen control too, so smaller and non-prepared PDFs keep the same essential viewing option.',
-    },
-    {
-      title: 'A cleaner Account & sign-in page',
-      description:
-        'Connected Accounts keeps the provider controls you need while removing the duplicate account summary block, making the section quicker to scan.',
+        'Uploaded evidence stays private and is protected by file-type validation, size limits, short-lived access links and malware scanning before it is accepted.',
     },
   ],
 } as const;
