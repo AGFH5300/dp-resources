@@ -35,7 +35,8 @@ const MAX_DRIVE_FILE_ID_LENGTH = 200;
 
 function attachmentError(error: unknown) {
   if (error instanceof CaseAttachmentError) {
-    return Response.json({ error: error.message }, { status: error.status });
+    const publicMessage = error.message;
+    return Response.json({ error: publicMessage }, { status: error.status });
   }
   console.error('[resource-report] unexpected attachment failure', {
     message: error instanceof Error ? error.message : 'unknown',
