@@ -13,7 +13,7 @@ const reportRoute = read('app/api/reports/route.ts');
 const attachmentRoute = read('app/api/case-attachments/[kind]/[id]/route.ts');
 const processing = read('lib/case-attachments.ts');
 const scanner = read('lib/attachment-malware-scan.ts');
-const migration = read('supabase/migrations/20260913161000_case_attachments.sql');
+const migration = read('supabase/migrations/20260913122907_case_attachments.sql');
 const admin = read('app/admin/admin-console.tsx');
 
 describe('support and resource-report attachments', () => {

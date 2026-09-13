@@ -41,21 +41,20 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 12 September release summary', () => {
+  it('keeps What’s new as a short hand-written 13 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-09-12-paper-filters-social-signin'");
-    expect(whatsNew).toContain("dateLabel: '12 September 2026'");
+    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
+    expect(whatsNew).toContain("dateLabel: '13 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
-    expect(whatsNew).toContain('Google, Microsoft and GitHub sign-in');
-    expect(whatsNew).toContain('Google, Microsoft or GitHub account');
+    expect(whatsNew).toContain('Support requests and resource reports can now include images');
+    expect(whatsNew).toContain('drag files into the attachment area');
+    expect(whatsNew).toContain('short-lived access links and malware scanning');
     for (const highlight of [
-      'Filter an entire paper in one click',
-      'Search within a Past Papers folder now really filters it',
-      'Social sign-in and Connected Accounts',
-      'Create an account after social sign-in',
-      'Fullscreen for standard PDF previews',
-      'A cleaner Account & sign-in page',
+      'Attach screenshots and files to reports',
+      'Add several attachments at once',
+      'Preview before you send',
+      'Private and safer attachment handling',
     ]) {
       expect(whatsNew).toContain(highlight);
     }

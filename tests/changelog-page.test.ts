@@ -17,6 +17,10 @@ describe('public changelog page', () => {
     expect(page).toContain(
       'A listed record of all the features, improvements, and fixes',
     );
+    expect(page).toContain("date: '2026-09-13T18:49:40.000Z'");
+    expect(page).toContain('Added attachments to Support requests and resource reports');
+    expect(page).toContain('Added attachment previews and removal before submission');
+    expect(page).toContain('Protected submitted evidence with private storage');
     expect(page).toContain("date: '2026-08-24T09:16:00.000Z'");
     expect(page).toContain('Fixed duplicate Question Bank topics and subtopics across subjects');
     expect(page).toContain('Fixed the Question Bank course search field in dark mode');

@@ -71,13 +71,14 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(currentPublicHistory).not.toMatch(/alias|administrator|admin-only/i);
   });
 
-  it('curates both 11 and 12 September in the public changelog and refreshes What’s New', () => {
+  it('keeps the September changelog curated and refreshes What’s New for attachments', () => {
     expect(changelog).toContain("'2026-09-12': [");
     expect(changelog).toContain("'2026-09-11': [");
     expect(changelog).toContain('Added one-click Question Bank filters');
     expect(changelog).toContain('Added DP Resources social sign-in and Connected Accounts support');
     expect(changelog).toContain('Added fullscreen support to the standard browser PDF fallback');
-    expect(whatsNew).toContain("id: '2026-09-12-paper-filters-social-signin'");
-    expect(whatsNew).toContain("dateLabel: '12 September 2026'");
+    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
+    expect(whatsNew).toContain("dateLabel: '13 September 2026'");
+    expect(whatsNew).toContain('Attach screenshots and files to reports');
   });
 });
