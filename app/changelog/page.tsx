@@ -17,6 +17,24 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-13-support-report-attachments',
+    summary:
+      'Added attachments to Support requests and resource reports, including images, videos, PDFs and common document files, with multiple-file selection, drag and drop, and pasted screenshots.',
+    date: '2026-09-13T18:49:40.000Z',
+  },
+  {
+    id: 'release-2026-09-13-attachment-preview-admin-viewer',
+    summary:
+      'Added attachment previews and removal before submission, plus a secure attachment viewer for users and the Admin case inspector.',
+    date: '2026-09-13T18:49:39.000Z',
+  },
+  {
+    id: 'release-2026-09-13-private-attachment-security',
+    summary:
+      'Protected submitted evidence with private storage, short-lived access links, file-size and content validation, file hashing, and malware scanning before attachments are accepted.',
+    date: '2026-09-13T18:49:38.000Z',
+  },
+  {
     id: 'release-2026-09-08-resource-preview-reliability',
     summary:
       'Improved resource preview reliability so intermittent connection failures are retried automatically instead of frequently requiring a manual Retry on the first open.',
