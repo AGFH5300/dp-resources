@@ -4,6 +4,8 @@ import { CloseButton } from '@/components/ui/close-button';
 import { markNotificationCategory } from '@/components/notification-center';
 import { toast } from 'sonner';
 import { AppSelect } from '@/components/ui/app-select';
+import { CaseAttachmentInput } from '@/components/case-attachment-input';
+import { CaseAttachmentViewer } from '@/components/case-attachment-viewer';
 
 type RequestState = 'idle' | 'submitting' | 'success' | 'error';
 export type UserTicket = {
@@ -82,6 +84,7 @@ export function SupportForm({
   const [category, setCategory] = useState<string>(categories[0].value);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [tickets, setTickets] = useState<UserTicket[]>(initialTickets);
   const [selected, setSelected] = useState<UserTicket | null>(
     initialTickets[0] || null,
@@ -101,10 +104,14 @@ export function SupportForm({
     setRequestState('submitting');
     setError('');
     try {
+      const body = new FormData();
+      body.set('category', category);
+      body.set('subject', subject);
+      body.set('message', message);
+      attachments.forEach((file) => body.append('attachments', file, file.name));
       const res = await fetch('/api/support', {
         method: 'POST',
-        body: JSON.stringify({ category, subject, message }),
-        headers: { 'Content-Type': 'application/json' },
+        body,
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ticket)
@@ -115,13 +122,16 @@ export function SupportForm({
       setDetail(null);
       setSubject('');
       setMessage('');
+      setAttachments([]);
       setRequestState('success');
       toast.success('Support request sent');
-    } catch {
+    } catch (reason) {
       setRequestState('error');
       toast.error('Could not submit support request');
       setError(
-        'We could not submit your ticket. Please keep your message here and try again.',
+        reason instanceof Error
+          ? reason.message
+          : 'We could not submit your ticket. Please keep your message here and try again.',
       );
     }
   }
@@ -203,6 +213,11 @@ export function SupportForm({
           <p className="text-right text-xs text-slate-500">
             {message.length} characters
           </p>
+          <CaseAttachmentInput
+            files={attachments}
+            onChange={setAttachments}
+            disabled={requestState === 'submitting'}
+          />
           <button
             disabled={requestState === 'submitting'}
             className="mt-3 rounded-md bg-[color:var(--dp-blue)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
@@ -281,6 +296,7 @@ export function SupportForm({
             <p className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm text-slate-700">
               {detail?.ticket?.message || selected.message}
             </p>
+            <CaseAttachmentViewer kind="support" caseId={selected.id} />
             <div className="mt-4 space-y-3 text-sm">
               <div className="rounded-md border border-amber-100 bg-amber-50 p-3 text-amber-900">
                 <b>Received</b>
