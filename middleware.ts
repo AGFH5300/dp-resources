@@ -33,7 +33,11 @@ export function shouldBypassSupabaseMiddleware(pathname: string) {
 }
 
 export function shouldPreserveRawRequestBody(pathname: string) {
-  return pathname === '/api/account/avatar';
+  return (
+    pathname === '/api/account/avatar' ||
+    pathname === '/api/support' ||
+    pathname === '/api/reports'
+  );
 }
 
 export function getSupabaseAuthCookiePrefix(supabaseUrl: string) {
@@ -149,7 +153,7 @@ function clearSupabaseAuthCookies(
 export async function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'development') return NextResponse.next();
 
-  // Binary request bodies must not be reconstructed through
+  // Binary and multipart request bodies must not be reconstructed through
   // NextResponse.next({ request: { headers } }). On Replit/Next.js this can
   // disturb the incoming stream before the route handler reads it.
   if (shouldPreserveRawRequestBody(request.nextUrl.pathname)) {
