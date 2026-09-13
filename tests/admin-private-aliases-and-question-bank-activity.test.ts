@@ -55,6 +55,7 @@ describe('admin-private aliases and complete Activity tracking', () => {
 
   it('records Question Bank opens in the existing admin Activity stream', () => {
     expect(migration).toContain("'question_opened'");
+    expect(migration).toContain('from public.dp_qb_user_progress progress');
     expect(activity).toContain('recordQuestionOpenedOnce');
     expect(questionRoute).toContain('recordQuestionOpenedOnce(request');
     expect(questionRoute).toContain('variant.course?.name');
