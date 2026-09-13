@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { AppSelect as AdminSelect } from '@/components/ui/app-select';
 import { CloseButton } from '@/components/ui/close-button';
 import { EmailSearchInput } from '@/components/ui/email-search-input';
+import { CaseAttachmentViewer } from '@/components/case-attachment-viewer';
 import { formatMimeType } from '@/lib/file-type-labels';
 import {
   markNotificationCategory,
@@ -491,6 +492,11 @@ function CaseInspector({
             </dd>
           </div>
         </dl>
+        <CaseAttachmentViewer
+          kind={isReport ? 'report' : 'support'}
+          caseId={item.id}
+          title="Submitted attachments"
+        />
         {!isReport && (
           <section className="mt-4">
             <h4 className="text-sm font-semibold">Visible conversation</h4>
