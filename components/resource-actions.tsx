@@ -189,7 +189,8 @@ export function ReportResourceDialog({
     setError('');
     try {
       const body = new FormData();
-      body.set('driveFileId', resource.driveFileId || '');
+      const driveFileId = resource.driveFileId || null;
+      body.set('driveFileId', driveFileId || '');
       body.set('resourceName', resource.resourceName);
       body.set('resourcePath', resource.resourcePath || '');
       body.set('category', category);
