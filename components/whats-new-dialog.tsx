@@ -5,24 +5,52 @@ import { CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { SiteConfirmDialog } from '@/components/ui/site-confirm-dialog';
+import {
+  TUTORIAL_ACTIVE_STORAGE_KEY,
+  TUTORIAL_CHECK_COMPLETE_EVENT,
+  TUTORIAL_CHECKING_STORAGE_KEY,
+  TUTORIAL_OPENED_EVENT,
+} from '@/lib/tutorials';
 import { WHATS_NEW_RELEASE } from '@/lib/whats-new';
 
 const STORAGE_KEY = `dp-whats-new:${WHATS_NEW_RELEASE.id}`;
+
+function tutorialBlocksAutoOpen() {
+  try {
+    return (
+      window.sessionStorage.getItem(TUTORIAL_ACTIVE_STORAGE_KEY) === '1' ||
+      window.sessionStorage.getItem(TUTORIAL_CHECKING_STORAGE_KEY) === '1'
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function WhatsNewDialog({ autoOpen = true }: { autoOpen?: boolean }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const show = () => setOpen(true);
-    window.addEventListener('dp:open-whats-new', show);
-    if (autoOpen) {
+    const hideForTutorial = () => setOpen(false);
+    const autoShow = () => {
+      if (!autoOpen || tutorialBlocksAutoOpen()) return;
       try {
         if (window.localStorage.getItem(STORAGE_KEY) !== 'seen') setOpen(true);
       } catch {
         setOpen(true);
       }
-    }
-    return () => window.removeEventListener('dp:open-whats-new', show);
+    };
+
+    window.addEventListener('dp:open-whats-new', show);
+    window.addEventListener(TUTORIAL_OPENED_EVENT, hideForTutorial);
+    window.addEventListener(TUTORIAL_CHECK_COMPLETE_EVENT, autoShow);
+    autoShow();
+
+    return () => {
+      window.removeEventListener('dp:open-whats-new', show);
+      window.removeEventListener(TUTORIAL_OPENED_EVENT, hideForTutorial);
+      window.removeEventListener(TUTORIAL_CHECK_COMPLETE_EVENT, autoShow);
+    };
   }, [autoOpen]);
 
   const dismiss = () => {
