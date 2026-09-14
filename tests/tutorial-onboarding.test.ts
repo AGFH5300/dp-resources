@@ -52,6 +52,10 @@ describe('interactive tutorial onboarding', () => {
 
   it('supports mobile layouts and reduced-motion users', () => {
     expect(controller).toContain('window.innerWidth < 640');
+    expect(controller).toContain(
+      'highlight.bottom > window.innerHeight * 0.62',
+    );
+    expect(controller).toContain('env(safe-area-inset-top)');
     expect(controller).toContain('env(safe-area-inset-bottom)');
     expect(controller).toContain("'(prefers-reduced-motion: reduce)'");
     expect(controller).toContain("behavior: reducedMotion ? 'auto' : 'smooth'");
