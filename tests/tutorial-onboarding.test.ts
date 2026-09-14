@@ -8,6 +8,7 @@ const replayCard = read('components/tutorial/tutorial-replay-card.tsx');
 const tutorialConfig = read('lib/tutorials.ts');
 const tutorialRoute = read('app/api/tutorials/progress/route.ts');
 const nav = read('components/nav.tsx');
+const accountMenu = read('components/account-menu.tsx');
 const whatsNew = read('components/whats-new-dialog.tsx');
 const settingsPage = read('app/settings/page.tsx');
 const schema = read('supabase/schema.sql');
@@ -35,7 +36,8 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'saved'");
     expect(controller).toContain('a[href="/saved"]');
     expect(controller).toContain("id: 'settings'");
-    expect(controller).toContain('data-tutorial-target="tutorial-replay"');
+    expect(controller).toContain('data-tutorial-target="account-menu"');
+    expect(accountMenu).toContain('data-tutorial-target="account-menu"');
   });
 
   it('makes the source lesson a real two-part click-through interaction', () => {
@@ -47,6 +49,21 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('aria-modal={step.interactive ? false : true}');
     expect(controller).toContain('Try it now: click any source checkbox');
     expect(controller).toContain('The highlighted controls stay live');
+  });
+
+  it('keeps navigation-heading steps on the library shell and warms real route changes', () => {
+    expect(controller).toContain("const LIBRARY_ROUTE = '/library'");
+    expect(controller).toContain(
+      "const PREFETCH_ROUTES = ['/library', '/question-bank', '/question-bank/build'] as const",
+    );
+    expect(controller).toContain('for (const route of PREFETCH_ROUTES) router.prefetch(route)');
+    expect(controller).toContain('router.replace(step.route)');
+    expect(controller).toContain("id: 'recent'");
+    expect(controller).toContain("id: 'saved'");
+    expect(controller).toContain("id: 'settings'");
+    expect(controller).not.toContain('Loader2');
+    expect(controller).not.toContain('Opening ${step.routeLabel || step.title}…');
+    expect(controller).not.toContain('role="status"');
   });
 
   it('provides Back, Next, Skip, progress and keyboard navigation', () => {
@@ -61,17 +78,7 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('role="dialog"');
   });
 
-  it('shows an intentional navigation state until the next real target is ready', () => {
-    expect(controller).toContain('const transitioning = active && (changingRoute || !targetReady)');
-    expect(controller).toContain('Opening ${step.routeLabel || step.title}…');
-    expect(controller).toContain('The tutorial will spotlight the exact control as soon as the page is ready.');
-    expect(controller).toContain('role="status"');
-    expect(controller).toContain('aria-live="polite"');
-    expect(controller).toContain('disabled={saving || transitioning}');
-    expect(controller).toContain('attempts < 300');
-  });
-
-  it('supports mobile layouts and reduced-motion users', () => {
+  it('supports mobile layouts, immediate target positioning and reduced-motion users', () => {
     expect(controller).toContain('window.innerWidth < 640');
     expect(controller).toContain(
       'visibleHighlight.bottom > window.innerHeight * 0.62',
@@ -79,8 +86,10 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('env(safe-area-inset-top)');
     expect(controller).toContain('env(safe-area-inset-bottom)');
     expect(controller).toContain("'(prefers-reduced-motion: reduce)'");
-    expect(controller).toContain("behavior: reducedMotion ? 'auto' : 'smooth'");
-    expect(controller).toContain("reducedMotion ? '' : 'animate-spin'");
+    expect(controller).toContain("behavior: 'auto'");
+    expect(controller).toContain(
+      "reducedMotion ? '' : 'transition-all duration-150'",
+    );
   });
 
   it('stores tutorial version completion per user using the existing protected onboarding table', () => {
