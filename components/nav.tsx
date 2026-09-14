@@ -1,5 +1,6 @@
 import { AppHeader } from './app-header';
 import { LibraryRouteWarmup } from './library-route-warmup';
+import { TutorialController } from './tutorial/tutorial-controller';
 
 // AppTopbar retired; integrated header owns "Search the library" via dp:open-search and var(--dp-navy) visual tokens.
 export function Nav({
@@ -12,6 +13,7 @@ export function Nav({
 }) {
   return (
     <>
+      <TutorialController userId={userId} />
       <LibraryRouteWarmup />
       <AppHeader admin={admin} userId={userId} />
     </>
