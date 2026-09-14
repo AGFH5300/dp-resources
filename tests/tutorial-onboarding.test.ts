@@ -34,7 +34,7 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'saved'");
     expect(controller).toContain('a[href="/saved"]');
     expect(controller).toContain("id: 'settings'");
-    expect(controller).toContain('data-tutorial-target=\\"tutorial-replay\\"');
+    expect(controller).toContain('data-tutorial-target="tutorial-replay"');
   });
 
   it('provides Back, Next, Skip, progress and keyboard navigation', () => {
@@ -52,7 +52,7 @@ describe('interactive tutorial onboarding', () => {
 
   it('supports mobile layouts and reduced-motion users', () => {
     expect(controller).toContain('window.innerWidth < 640');
-    expect(controller).toContain("env(safe-area-inset-bottom)");
+    expect(controller).toContain('env(safe-area-inset-bottom)');
     expect(controller).toContain("'(prefers-reduced-motion: reduce)'");
     expect(controller).toContain("behavior: reducedMotion ? 'auto' : 'smooth'");
   });
