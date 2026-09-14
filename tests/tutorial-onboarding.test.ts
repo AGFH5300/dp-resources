@@ -27,7 +27,8 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('button[aria-label^="Search library"]');
     expect(controller).toContain("id: 'practice-builder'");
     expect(controller).toContain('main a[href="/question-bank/build"]');
-    expect(controller).toContain("id: 'source-filters'");
+    expect(controller).toContain("id: 'source-filters-try'");
+    expect(controller).toContain("id: 'source-filters-explain'");
     expect(controller).toContain("text: 'Sources'");
     expect(controller).toContain("id: 'recent'");
     expect(controller).toContain('a[href="/recent"]');
@@ -35,6 +36,17 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('a[href="/saved"]');
     expect(controller).toContain("id: 'settings'");
     expect(controller).toContain('data-tutorial-target="tutorial-replay"');
+  });
+
+  it('makes the source lesson a real two-part click-through interaction', () => {
+    expect(controller).toContain('interactive: true');
+    expect(controller).toContain('advanceOnInteraction: true');
+    expect(controller).toContain("target.addEventListener('change', advanceAfterInteraction)");
+    expect(controller).toContain("input.type !== 'checkbox'");
+    expect(controller).toContain('pointer-events-none fixed z-[90]');
+    expect(controller).toContain('aria-modal={step.interactive ? false : true}');
+    expect(controller).toContain('Try it now: click any source checkbox');
+    expect(controller).toContain('The highlighted controls stay live');
   });
 
   it('provides Back, Next, Skip, progress and keyboard navigation', () => {
@@ -47,18 +59,28 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("event.key === 'Escape'");
     expect(controller).toContain("event.key !== 'Tab'");
     expect(controller).toContain('role="dialog"');
-    expect(controller).toContain('aria-modal="true"');
+  });
+
+  it('shows an intentional navigation state until the next real target is ready', () => {
+    expect(controller).toContain('const transitioning = active && (changingRoute || !targetReady)');
+    expect(controller).toContain('Opening ${step.routeLabel || step.title}…');
+    expect(controller).toContain('The tutorial will spotlight the exact control as soon as the page is ready.');
+    expect(controller).toContain('role="status"');
+    expect(controller).toContain('aria-live="polite"');
+    expect(controller).toContain('disabled={saving || transitioning}');
+    expect(controller).toContain('attempts < 300');
   });
 
   it('supports mobile layouts and reduced-motion users', () => {
     expect(controller).toContain('window.innerWidth < 640');
     expect(controller).toContain(
-      'highlight.bottom > window.innerHeight * 0.62',
+      'visibleHighlight.bottom > window.innerHeight * 0.62',
     );
     expect(controller).toContain('env(safe-area-inset-top)');
     expect(controller).toContain('env(safe-area-inset-bottom)');
     expect(controller).toContain("'(prefers-reduced-motion: reduce)'");
     expect(controller).toContain("behavior: reducedMotion ? 'auto' : 'smooth'");
+    expect(controller).toContain("reducedMotion ? '' : 'animate-spin'");
   });
 
   it('stores tutorial version completion per user using the existing protected onboarding table', () => {
