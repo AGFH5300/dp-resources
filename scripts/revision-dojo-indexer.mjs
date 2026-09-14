@@ -168,7 +168,7 @@ function looksLikeResource(url, label = '') {
 async function fetchText(url, accept = 'text/html,application/xhtml+xml,application/xml,text/xml,text/plain') {
   const response = await fetch(url, {
     redirect: 'follow',
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(8_000),
     headers: { 'user-agent': USER_AGENT, accept },
   });
   const text = await response.text();
@@ -209,67 +209,67 @@ async function discoverRobotsSitemaps(baseUrl) {
 
 async function discoverViaSitemaps(origin, maxUrls) {
   const robots = await discoverRobotsSitemaps(origin.baseUrl);
-  const queue = [...robots.urls];
-  for (const pathname of ['/sitemap.xml', '/sitemap-index.xml']) {
-    const candidate = new URL(pathname, origin.baseUrl).toString();
-    if (!queue.includes(candidate)) queue.push(candidate);
-  }
+  const initialCandidates = [...new Set([
+    ...robots.urls,
+    new URL('/sitemap.xml', origin.baseUrl).toString(),
+    new URL('/sitemap-index.xml', origin.baseUrl).toString(),
+  ])];
 
-  const visited = new Set();
-  const catalogUrls = [];
   const sitemapChecks = [];
+  const catalogUrls = [];
+  const nestedSitemaps = [];
 
-  while (queue.length > 0 && catalogUrls.length < maxUrls) {
-    const sitemapUrl = queue.shift();
-    if (visited.has(sitemapUrl)) continue;
-    visited.add(sitemapUrl);
+  async function inspectSitemap(sitemapUrl) {
     try {
       const response = await fetchText(sitemapUrl, 'application/xml,text/xml,text/plain');
       const locs = parseSitemapLocs(response.text, response.finalUrl);
       sitemapChecks.push({ url: sitemapUrl, status: response.status, locCount: locs.length, sha256: sha256(response.text) });
       for (const loc of locs) {
         if (!isSameOrigin(loc, origin.baseUrl)) continue;
-        if (/sitemap/i.test(new URL(loc).pathname) && !visited.has(loc)) queue.push(loc);
+        if (/sitemap/i.test(new URL(loc).pathname)) nestedSitemaps.push(loc);
         else if (looksLikeResource(loc)) catalogUrls.push(loc);
-        if (catalogUrls.length >= maxUrls) break;
       }
     } catch (error) {
       sitemapChecks.push({ url: sitemapUrl, error: String(error.message || error) });
     }
   }
 
+  await Promise.all(initialCandidates.map(inspectSitemap));
+  const secondWave = [...new Set(nestedSitemaps)].filter((url) => !initialCandidates.includes(url)).slice(0, 50);
+  if (secondWave.length > 0) await Promise.all(secondWave.map(inspectSitemap));
+
   return { robots, sitemapChecks, urls: [...new Set(catalogUrls)].slice(0, maxUrls) };
 }
 
 async function discoverViaCatalogPages(origin, maxUrls) {
-  const pageChecks = [];
-  const items = [];
-  for (const seed of CATALOG_SEEDS) {
-    if (items.length >= maxUrls) break;
+  const results = await Promise.all(CATALOG_SEEDS.map(async (seed) => {
     const requestedUrl = new URL(seed, origin.baseUrl).toString();
     try {
       const response = await fetchText(requestedUrl);
       const anchors = extractAnchors(response.text, response.finalUrl)
         .filter(({ url, label }) => isSameOrigin(url, origin.baseUrl) && looksLikeResource(url, label));
-      pageChecks.push({
-        requestedUrl,
-        finalUrl: response.finalUrl,
-        status: response.status,
-        contentType: response.contentType,
-        etag: response.etag,
-        lastModified: response.lastModified,
-        htmlSha256: sha256(response.text),
-        linkCount: anchors.length,
-      });
-      for (const anchor of anchors) {
-        items.push(resourceItem(origin.key, anchor.url, anchor.label, `catalog:${seed || '/'}`));
-        if (items.length >= maxUrls) break;
-      }
+      return {
+        pageCheck: {
+          requestedUrl,
+          finalUrl: response.finalUrl,
+          status: response.status,
+          contentType: response.contentType,
+          etag: response.etag,
+          lastModified: response.lastModified,
+          htmlSha256: sha256(response.text),
+          linkCount: anchors.length,
+        },
+        items: anchors.map((anchor) => resourceItem(origin.key, anchor.url, anchor.label, `catalog:${seed || '/'}`)),
+      };
     } catch (error) {
-      pageChecks.push({ requestedUrl, error: String(error.message || error) });
+      return { pageCheck: { requestedUrl, error: String(error.message || error) }, items: [] };
     }
-  }
-  return { pageChecks, items: dedupeItems(items) };
+  }));
+
+  return {
+    pageChecks: results.map((result) => result.pageCheck),
+    items: dedupeItems(results.flatMap((result) => result.items)).slice(0, maxUrls),
+  };
 }
 
 async function scanOrigin(origin, maxUrls) {
@@ -297,11 +297,8 @@ function summarizeKinds(items) {
 
 async function scan(options) {
   const previous = await readJsonIfExists(options.state, { items: [] });
-  const originResults = [];
-  for (const origin of ORIGINS) {
-    process.stderr.write(`Scanning ${origin.baseUrl}\n`);
-    originResults.push(await scanOrigin(origin, options.maxUrls));
-  }
+  for (const origin of ORIGINS) process.stderr.write(`Scanning ${origin.baseUrl}\n`);
+  const originResults = await Promise.all(ORIGINS.map((origin) => scanOrigin(origin, options.maxUrls)));
 
   const items = dedupeItems(originResults.flatMap((result) => result.items));
   const previousByKey = new Map((previous.items || []).map((item) => [item.key, item]));
@@ -363,7 +360,9 @@ async function scan(options) {
 
 const options = parseArgs(process.argv.slice(2));
 if (options.help) process.stdout.write(usage());
-else scan(options).catch((error) => {
-  process.stderr.write(`RevisionDojo indexer failed: ${error.message || error}\n`);
-  process.exitCode = 1;
-});
+else scan(options)
+  .then(() => process.exit(0))
+  .catch((error) => {
+    process.stderr.write(`RevisionDojo indexer failed: ${error.message || error}\n`);
+    process.exit(1);
+  });
