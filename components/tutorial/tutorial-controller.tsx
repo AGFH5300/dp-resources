@@ -1,6 +1,12 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MousePointerClick,
+  X,
+} from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   useCallback,
@@ -40,7 +46,11 @@ type TutorialStep = {
   title: string;
   description: string;
   route?: string;
+  routeLabel?: string;
   target?: TutorialTarget;
+  interactive?: boolean;
+  advanceOnInteraction?: boolean;
+  interactionHint?: string;
 };
 
 type HighlightRect = {
@@ -66,6 +76,12 @@ type StartTutorialDetail = {
   replay?: boolean;
 };
 
+const SOURCE_TARGET: TextTarget = {
+  selector: 'legend',
+  text: 'Sources',
+  closest: 'fieldset',
+};
+
 const STEPS: TutorialStep[] = [
   {
     id: 'welcome',
@@ -79,6 +95,7 @@ const STEPS: TutorialStep[] = [
     description:
       'The Library is the main home for textbooks, notes, past papers, and other learning resources. Open folders and resources here whenever you want to browse directly.',
     route: '/library',
+    routeLabel: 'Library',
     target: {
       selectors: [
         'nav[aria-label="Primary navigation"] a[href="/library"]',
@@ -92,6 +109,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Use the Question Bank to find practice questions by subject and topic, then move from browsing into focused practice when you are ready.',
     route: '/question-bank',
+    routeLabel: 'Question Bank',
     target: {
       selectors: [
         'nav[aria-label="Primary navigation"] a[href="/question-bank"]',
@@ -105,6 +123,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Global search is always close by. On desktop you can also press ⌘ K on Mac or Ctrl K on Windows to open it without leaving what you are doing.',
     route: '/question-bank',
+    routeLabel: 'Question Bank',
     target: {
       selectors: ['button[aria-label^="Search library"]'],
     },
@@ -115,21 +134,35 @@ const STEPS: TutorialStep[] = [
     description:
       'Practice Builder lets you create a focused question set instead of working through everything. Choose exactly what you want to practise and generate a session.',
     route: '/question-bank',
+    routeLabel: 'Question Bank',
     target: {
       selectors: ['main a[href="/question-bank/build"]'],
     },
   },
   {
-    id: 'source-filters',
-    title: 'Control question sources',
+    id: 'source-filters-try',
+    title: 'Source filters: try one',
     description:
-      'Inside Practice Builder, Source filters let you use one source or combine several. This makes it easy to broaden a set or keep it limited to the material you want.',
+      'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',
     route: '/question-bank/build',
-    target: {
-      selector: 'legend',
-      text: 'Sources',
-      closest: 'fieldset',
-    },
+    routeLabel: 'Practice Builder',
+    target: SOURCE_TARGET,
+    interactive: true,
+    advanceOnInteraction: true,
+    interactionHint:
+      'Try it now: click any source checkbox. The tutorial will continue automatically.',
+  },
+  {
+    id: 'source-filters-explain',
+    title: 'Use one source, several, or all',
+    description:
+      'Checked sources restrict the practice set to those providers. Leave every source unchecked to use all available sources. You can click the highlighted controls again now if you want to change or undo your test selection.',
+    route: '/question-bank/build',
+    routeLabel: 'Practice Builder',
+    target: SOURCE_TARGET,
+    interactive: true,
+    interactionHint:
+      'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',
   },
   {
     id: 'recent',
@@ -137,6 +170,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Recent keeps the resources you opened lately within reach, so you can return to something without finding it again from scratch.',
     route: '/recent',
+    routeLabel: 'Recent',
     target: {
       selectors: [
         'nav[aria-label="Primary navigation"] a[href="/recent"]',
@@ -150,6 +184,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Saved is your personal shortcut to resources you want to come back to. Use it for frequently used material or anything you do not want to lose track of.',
     route: '/saved',
+    routeLabel: 'Saved',
     target: {
       selectors: [
         'nav[aria-label="Primary navigation"] a[href="/saved"]',
@@ -163,6 +198,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Your Settings & Account Centre manages your profile, preferences, connected accounts, and security. You can also replay this full tutorial from here whenever you want.',
     route: '/settings',
+    routeLabel: 'Settings',
     target: {
       selectors: ['[data-tutorial-target="tutorial-replay"]'],
     },
@@ -182,15 +218,17 @@ function resolveTarget(target: TutorialTarget | undefined) {
 
   if ('selectors' in target) {
     for (const selector of target.selectors) {
-      const matches = Array.from(document.querySelectorAll(selector));
-      const match = matches.find(visibleElement);
+      const match = Array.from(document.querySelectorAll(selector)).find(
+        visibleElement,
+      );
       if (match) return match as HTMLElement;
     }
     return null;
   }
 
-  const candidates = Array.from(document.querySelectorAll(target.selector));
-  for (const candidate of candidates) {
+  for (const candidate of Array.from(
+    document.querySelectorAll(target.selector),
+  )) {
     if (candidate.textContent?.trim() !== target.text) continue;
     const match = target.closest ? candidate.closest(target.closest) : candidate;
     if (visibleElement(match)) return match;
@@ -275,15 +313,21 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   const router = useRouter();
   const cardRef = useRef<HTMLElement>(null);
   const targetRef = useRef<HTMLElement | null>(null);
+  const interactionTimerRef = useRef<number | null>(null);
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [replay, setReplay] = useState(false);
   const [highlight, setHighlight] = useState<HighlightRect | null>(null);
+  const [readyStepId, setReadyStepId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const step = STEPS[stepIndex] ?? STEPS[0];
+  const targetReady = !step.target || readyStepId === step.id;
+  const changingRoute = Boolean(step.route && pathname !== step.route);
+  const transitioning = active && (changingRoute || !targetReady);
+  const visibleHighlight = targetReady ? highlight : null;
 
   useLayoutEffect(() => {
     if (!userId) return;
@@ -309,6 +353,8 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       setSaveError(null);
       setReplay(isReplay);
       setStepIndex(nextIndex);
+      setReadyStepId(null);
+      setHighlight(null);
       setActive(true);
       storeSession(nextIndex, isReplay);
       window.dispatchEvent(new Event(TUTORIAL_OPENED_EVENT));
@@ -389,10 +435,17 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     if (!active) {
       targetRef.current = null;
       setHighlight(null);
+      setReadyStepId(null);
       return;
     }
 
     storeSession(stepIndex, replay);
+    setReadyStepId(null);
+
+    if (interactionTimerRef.current !== null) {
+      window.clearTimeout(interactionTimerRef.current);
+      interactionTimerRef.current = null;
+    }
 
     if (step.route && pathname !== step.route) {
       targetRef.current = null;
@@ -404,6 +457,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     if (!step.target) {
       targetRef.current = null;
       setHighlight(null);
+      setReadyStepId(step.id);
       return;
     }
 
@@ -411,10 +465,28 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     let frame = 0;
     let attempts = 0;
     let observer: ResizeObserver | null = null;
+    let interactionTarget: HTMLElement | null = null;
 
     const update = () => {
       if (cancelled || !targetRef.current) return;
       setHighlight(measureTarget(targetRef.current));
+    };
+
+    const advanceAfterInteraction = (event: Event) => {
+      if (!step.advanceOnInteraction) return;
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || input.type !== 'checkbox') return;
+      if (interactionTimerRef.current !== null) {
+        window.clearTimeout(interactionTimerRef.current);
+      }
+      interactionTimerRef.current = window.setTimeout(() => {
+        if (cancelled) return;
+        const nextIndex = Math.min(stepIndex + 1, STEPS.length - 1);
+        setStepIndex(nextIndex);
+        setReadyStepId(null);
+        storeSession(nextIndex, replay);
+        interactionTimerRef.current = null;
+      }, reducedMotion ? 0 : 260);
     };
 
     const locate = () => {
@@ -422,7 +494,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       const target = resolveTarget(step.target);
       if (!target) {
         attempts += 1;
-        if (attempts < 180) frame = window.requestAnimationFrame(locate);
+        if (attempts < 300) frame = window.requestAnimationFrame(locate);
         return;
       }
 
@@ -433,10 +505,16 @@ export function TutorialController({ userId }: { userId?: string | null }) {
         behavior: reducedMotion ? 'auto' : 'smooth',
       });
       update();
+      setReadyStepId(step.id);
 
       if (typeof ResizeObserver !== 'undefined') {
         observer = new ResizeObserver(update);
         observer.observe(target);
+      }
+
+      if (step.interactive) {
+        interactionTarget = target;
+        target.addEventListener('change', advanceAfterInteraction);
       }
     };
 
@@ -450,15 +528,33 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
       observer?.disconnect();
+      interactionTarget?.removeEventListener('change', advanceAfterInteraction);
       targetRef.current = null;
     };
-  }, [active, pathname, reducedMotion, replay, router, step, stepIndex]);
+  }, [
+    active,
+    pathname,
+    reducedMotion,
+    replay,
+    router,
+    step,
+    stepIndex,
+  ]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || transitioning) return;
     const frame = window.requestAnimationFrame(() => cardRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
-  }, [active, stepIndex, pathname]);
+  }, [active, pathname, stepIndex, transitioning]);
+
+  useEffect(
+    () => () => {
+      if (interactionTimerRef.current !== null) {
+        window.clearTimeout(interactionTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const persistDismissal = useCallback(async () => {
     const response = await fetch('/api/tutorials/progress', {
@@ -481,6 +577,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       await persistDismissal();
       clearStoredSession();
       setHighlight(null);
+      setReadyStepId(null);
       setActive(false);
     } catch {
       setSaveError('Your progress could not be saved. Please try again.');
@@ -489,25 +586,31 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     }
   }, [persistDismissal, saving]);
 
+  const moveToStep = useCallback(
+    (nextIndex: number) => {
+      const clamped = clamp(nextIndex, 0, STEPS.length - 1);
+      setSaveError(null);
+      setReadyStepId(null);
+      setHighlight(null);
+      setStepIndex(clamped);
+      storeSession(clamped, replay);
+    },
+    [replay],
+  );
+
   const goBack = useCallback(() => {
-    if (saving || stepIndex <= 0) return;
-    const nextIndex = stepIndex - 1;
-    setSaveError(null);
-    setStepIndex(nextIndex);
-    storeSession(nextIndex, replay);
-  }, [replay, saving, stepIndex]);
+    if (saving || transitioning || stepIndex <= 0) return;
+    moveToStep(stepIndex - 1);
+  }, [moveToStep, saving, stepIndex, transitioning]);
 
   const goNext = useCallback(() => {
-    if (saving) return;
+    if (saving || transitioning) return;
     if (stepIndex >= STEPS.length - 1) {
       void closeTutorial();
       return;
     }
-    const nextIndex = stepIndex + 1;
-    setSaveError(null);
-    setStepIndex(nextIndex);
-    storeSession(nextIndex, replay);
-  }, [closeTutorial, replay, saving, stepIndex]);
+    moveToStep(stepIndex + 1);
+  }, [closeTutorial, moveToStep, saving, stepIndex, transitioning]);
 
   useEffect(() => {
     if (!active) return;
@@ -528,7 +631,14 @@ export function TutorialController({ userId }: { userId?: string | null }) {
         goNext();
         return;
       }
-      if (event.key !== 'Tab' || !cardRef.current) return;
+      if (
+        event.key !== 'Tab' ||
+        !cardRef.current ||
+        step.interactive ||
+        transitioning
+      ) {
+        return;
+      }
 
       const focusable = Array.from(
         cardRef.current.querySelectorAll<HTMLElement>(
@@ -557,14 +667,23 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [active, closeTutorial, goBack, goNext]);
+  }, [active, closeTutorial, goBack, goNext, step.interactive, transitioning]);
 
   const cardStyle = useMemo<CSSProperties>(() => {
     if (typeof window === 'undefined') return {};
 
+    if (transitioning || !visibleHighlight) {
+      return {
+        left: '50%',
+        top: '50%',
+        width: 'min(24rem, calc(100vw - 2rem))',
+        transform: 'translate(-50%, -50%)',
+      };
+    }
+
     if (window.innerWidth < 640) {
       const targetNearBottom =
-        highlight && highlight.bottom > window.innerHeight * 0.62;
+        visibleHighlight.bottom > window.innerHeight * 0.62;
       return targetNearBottom
         ? {
             left: 12,
@@ -578,87 +697,86 @@ export function TutorialController({ userId }: { userId?: string | null }) {
           };
     }
 
-    if (!highlight) {
-      return {
-        left: '50%',
-        top: '50%',
-        width: 'min(24rem, calc(100vw - 2rem))',
-        transform: 'translate(-50%, -50%)',
-      };
-    }
-
     const width = Math.min(384, window.innerWidth - 32);
-    const left = clamp(highlight.left, 16, window.innerWidth - width - 16);
+    const left = clamp(
+      visibleHighlight.left,
+      16,
+      window.innerWidth - width - 16,
+    );
     const gap = 16;
-    const roomBelow = window.innerHeight - highlight.bottom;
+    const roomBelow = window.innerHeight - visibleHighlight.bottom;
 
     if (roomBelow >= 290) {
-      return { left, top: highlight.bottom + gap, width };
+      return { left, top: visibleHighlight.bottom + gap, width };
     }
-    if (highlight.top >= 290) {
+    if (visibleHighlight.top >= 290) {
       return {
         left,
-        bottom: window.innerHeight - highlight.top + gap,
+        bottom: window.innerHeight - visibleHighlight.top + gap,
         width,
       };
     }
 
-    return {
-      right: 16,
-      top: 88,
-      width,
-    };
-  }, [highlight]);
+    return { right: 16, top: 88, width };
+  }, [transitioning, visibleHighlight]);
 
   if (!active) return null;
 
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
   const backdropClass = 'fixed z-[80] bg-slate-950/70';
+  const transitionLabel = changingRoute
+    ? `Opening ${step.routeLabel || step.title}…`
+    : `Finding ${step.title.toLowerCase()}…`;
 
   return (
     <>
-      {highlight ? (
+      {visibleHighlight && !transitioning ? (
         <>
           <div
             aria-hidden
             className={backdropClass}
-            style={{ left: 0, top: 0, right: 0, height: highlight.top }}
+            style={{ left: 0, top: 0, right: 0, height: visibleHighlight.top }}
           />
           <div
             aria-hidden
             className={backdropClass}
             style={{
               left: 0,
-              top: highlight.top,
-              width: highlight.left,
-              height: highlight.height,
+              top: visibleHighlight.top,
+              width: visibleHighlight.left,
+              height: visibleHighlight.height,
             }}
           />
           <div
             aria-hidden
             className={backdropClass}
             style={{
-              left: highlight.right,
-              top: highlight.top,
+              left: visibleHighlight.right,
+              top: visibleHighlight.top,
               right: 0,
-              height: highlight.height,
+              height: visibleHighlight.height,
             }}
           />
           <div
             aria-hidden
             className={backdropClass}
-            style={{ left: 0, top: highlight.bottom, right: 0, bottom: 0 }}
+            style={{
+              left: 0,
+              top: visibleHighlight.bottom,
+              right: 0,
+              bottom: 0,
+            }}
           />
           <div
             aria-hidden
-            className={`fixed z-[90] rounded-xl border-2 border-blue-400 ring-4 ring-white/80 ${
+            className={`pointer-events-none fixed z-[90] rounded-xl border-2 border-blue-400 ring-4 ring-white/80 ${
               reducedMotion ? '' : 'transition-all duration-200'
             }`}
             style={{
-              left: highlight.left,
-              top: highlight.top,
-              width: highlight.width,
-              height: highlight.height,
+              left: visibleHighlight.left,
+              top: visibleHighlight.top,
+              width: visibleHighlight.width,
+              height: visibleHighlight.height,
             }}
           />
         </>
@@ -669,7 +787,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       <section
         ref={cardRef}
         role="dialog"
-        aria-modal="true"
+        aria-modal={step.interactive ? false : true}
         aria-labelledby={`tutorial-title-${step.id}`}
         aria-describedby={`tutorial-description-${step.id}`}
         tabIndex={-1}
@@ -714,12 +832,38 @@ export function TutorialController({ userId }: { userId?: string | null }) {
           />
         </div>
 
+        {transitioning ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-5 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/35 dark:text-blue-100"
+          >
+            <Loader2
+              className={`size-5 shrink-0 ${reducedMotion ? '' : 'animate-spin'}`}
+              aria-hidden
+            />
+            <span>
+              <strong className="block">{transitionLabel}</strong>
+              <span className="mt-0.5 block text-xs text-blue-700 dark:text-blue-300">
+                The tutorial will spotlight the exact control as soon as the page is ready.
+              </span>
+            </span>
+          </div>
+        ) : null}
+
         <p
           id={`tutorial-description-${step.id}`}
           className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300"
         >
           {step.description}
         </p>
+
+        {!transitioning && step.interactionHint ? (
+          <div className="mt-4 flex gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3.5 py-3 text-sm text-indigo-900 dark:border-indigo-900/70 dark:bg-indigo-950/35 dark:text-indigo-100">
+            <MousePointerClick className="mt-0.5 size-5 shrink-0" aria-hidden />
+            <span>{step.interactionHint}</span>
+          </div>
+        ) : null}
 
         {saveError ? (
           <p
@@ -743,7 +887,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
             <button
               type="button"
               onClick={goBack}
-              disabled={stepIndex === 0 || saving}
+              disabled={stepIndex === 0 || saving || transitioning}
               className="inline-flex min-h-10 items-center gap-1 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <ChevronLeft className="size-4" aria-hidden />
@@ -752,8 +896,8 @@ export function TutorialController({ userId }: { userId?: string | null }) {
             <button
               type="button"
               onClick={goNext}
-              disabled={saving}
-              className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              disabled={saving || transitioning}
+              className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {stepIndex === STEPS.length - 1 ? 'Finish' : 'Next'}
               {stepIndex === STEPS.length - 1 ? null : (
