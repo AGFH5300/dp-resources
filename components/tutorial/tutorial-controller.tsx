@@ -563,11 +563,19 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     if (typeof window === 'undefined') return {};
 
     if (window.innerWidth < 640) {
-      return {
-        left: 12,
-        right: 12,
-        bottom: 'calc(12px + env(safe-area-inset-bottom))',
-      };
+      const targetNearBottom =
+        highlight && highlight.bottom > window.innerHeight * 0.62;
+      return targetNearBottom
+        ? {
+            left: 12,
+            right: 12,
+            top: 'calc(12px + env(safe-area-inset-top))',
+          }
+        : {
+            left: 12,
+            right: 12,
+            bottom: 'calc(12px + env(safe-area-inset-bottom))',
+          };
     }
 
     if (!highlight) {
