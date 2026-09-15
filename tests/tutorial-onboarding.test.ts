@@ -9,6 +9,7 @@ const tutorialConfig = read('lib/tutorials.ts');
 const tutorialRoute = read('app/api/tutorials/progress/route.ts');
 const nav = read('components/nav.tsx');
 const appHeader = read('components/app-header.tsx');
+const instantLibraryBrowser = read('app/library/instant-library-browser.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const whatsNew = read('components/whats-new-dialog.tsx');
 const settingsPage = read('app/settings/page.tsx');
@@ -24,7 +25,8 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'library'");
     expect(controller).toContain('data-tutorial-target="nav-library"');
     expect(controller).toContain("id: 'ib-resource-library'");
-    expect(controller).toContain("text: 'Resource Library'");
+    expect(controller).toContain('data-tutorial-target="ib-resource-library"');
+    expect(instantLibraryBrowser).toContain('data-tutorial-target="ib-resource-library"');
     expect(controller).toContain('most comprehensive list of IB resources');
     expect(controller).toContain("id: 'question-bank'");
     expect(controller).toContain('data-tutorial-target="nav-question-bank"');
@@ -58,15 +60,15 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('The highlighted controls stay live');
   });
 
-it('keeps the first source interaction optional while auto-positioning the target', () => {
-const start = controller.indexOf("id: 'source-filters-try'");
-const end = controller.indexOf("id: 'source-filters-explain'");
-const sourceTry = controller.slice(start, end);
-expect(sourceTry).toContain('centerTarget: true');
-expect(sourceTry).toContain('press Next to continue');
-expect(sourceTry).not.toContain('requireInteraction: true');
-expect(controller).toContain('step.centerTarget ||');
-});
+  it('keeps the first source interaction optional while auto-positioning the target', () => {
+    const start = controller.indexOf("id: 'source-filters-try'");
+    const end = controller.indexOf("id: 'source-filters-explain'");
+    const sourceTry = controller.slice(start, end);
+    expect(sourceTry).toContain('centerTarget: true');
+    expect(sourceTry).toContain('press Next to continue');
+    expect(sourceTry).not.toContain('requireInteraction: true');
+    expect(controller).toContain('step.centerTarget ||');
+  });
 
   it('locks the underlying page while leaving only the active tutorial target interactive', () => {
     expect(controller).toContain("html.style.overflow = 'hidden'");

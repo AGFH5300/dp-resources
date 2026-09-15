@@ -106,18 +106,16 @@ const STEPS: TutorialStep[] = [
       selectors: ['[data-tutorial-target="nav-library"]'],
     },
   },
-{
-id: 'ib-resource-library',
-title: 'IB Resource Library',
-description:
-  'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
-route: LIBRARY_ROUTE,
-target: {
-  selector: 'span',
-  text: 'Resource Library',
-  closest: 'a',
-},
-},
+  {
+    id: 'ib-resource-library',
+    title: 'IB Resource Library',
+    description:
+      'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
+    route: LIBRARY_ROUTE,
+    target: {
+      selectors: ['[data-tutorial-target="ib-resource-library"]'],
+    },
+  },
   {
     id: 'question-bank',
     title: 'Question Bank',
@@ -618,11 +616,11 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
       targetRef.current = target;
       const rect = target.getBoundingClientRect();
-if (
-  step.centerTarget ||
-  rect.top < 76 ||
-  rect.bottom > window.innerHeight - 24
-) {
+      if (
+        step.centerTarget ||
+        rect.top < 76 ||
+        rect.bottom > window.innerHeight - 24
+      ) {
         target.scrollIntoView({
           block: 'center',
           inline: 'nearest',
