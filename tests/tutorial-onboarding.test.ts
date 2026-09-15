@@ -104,7 +104,7 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("event.key === 'Escape'");
     expect(controller).toContain("event.key !== 'Tab'");
     expect(controller).toContain('role="dialog"');
-    expect(controller).toContain("'Use highlighted control'");
+    expect(controller).toContain('Use highlighted control');
   });
 
   it('supports mobile layouts, automatic target positioning and reduced-motion users', () => {
