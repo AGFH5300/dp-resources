@@ -99,6 +99,7 @@ describe('interactive tutorial onboarding', () => {
   it('adds an obvious animated click beacon to required click targets', () => {
     expect(controller).toContain("step.interactionEvent === 'click'");
     expect(controller).toContain('pointer-events-none fixed z-[95]');
+    expect(controller).toContain('visibleHighlight.left >= cueWidth + gap + 12');
     expect(controller).toContain('animate-ping');
     expect(controller).toContain('animate-pulse');
     expect(controller).toContain('Click');

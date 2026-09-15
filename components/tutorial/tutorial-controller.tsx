@@ -888,18 +888,39 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
     const cueWidth = 96;
     const cueHeight = 38;
-    const left = clamp(
+    const gap = 10;
+    const centeredTop = clamp(
+      visibleHighlight.top + visibleHighlight.height / 2 - cueHeight / 2,
+      12,
+      Math.max(12, window.innerHeight - cueHeight - 12),
+    );
+
+    if (visibleHighlight.left >= cueWidth + gap + 12) {
+      return {
+        left: visibleHighlight.left - cueWidth - gap,
+        top: centeredTop,
+      };
+    }
+
+    if (window.innerWidth - visibleHighlight.right >= cueWidth + gap + 12) {
+      return {
+        left: visibleHighlight.right + gap,
+        top: centeredTop,
+      };
+    }
+
+    const centeredLeft = clamp(
       visibleHighlight.left + visibleHighlight.width / 2 - cueWidth / 2,
       12,
       Math.max(12, window.innerWidth - cueWidth - 12),
     );
-    const below = visibleHighlight.bottom + 10;
+    const below = visibleHighlight.bottom + gap;
     const top =
       below + cueHeight <= window.innerHeight - 12
         ? below
-        : Math.max(12, visibleHighlight.top - cueHeight - 10);
+        : Math.max(12, visibleHighlight.top - cueHeight - gap);
 
-    return { left, top };
+    return { left: centeredLeft, top };
   }, [visibleHighlight]);
 
   if (!active) return null;
