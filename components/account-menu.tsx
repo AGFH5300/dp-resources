@@ -28,6 +28,8 @@ export function AccountMenu({
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest?.('[data-tutorial-overlay="true"]')) return;
       if (ref.current && !ref.current.contains(e.target as Node))
         setOpen(false);
     };
@@ -85,6 +87,7 @@ export function AccountMenu({
           <Link
             role="menuitem"
             href="/settings"
+            data-tutorial-target="settings-link"
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50"
             onClick={() => setOpen(false)}
           >

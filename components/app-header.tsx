@@ -164,6 +164,7 @@ export function AppHeader({
                   key={href}
                   href={href}
                   aria-current={active ? 'page' : undefined}
+                  data-tutorial-target={`nav-${href.slice(1).replaceAll('/', '-')}`}
                   className="flex items-center gap-1.5 px-2 text-sm font-medium text-slate-600 hover:text-[color:var(--dp-navy)]"
                 >
                   {label}
@@ -230,6 +231,7 @@ export function AppHeader({
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
+              data-tutorial-target={`nav-${href.slice(1).replaceAll('/', '-')}`}
               className="flex flex-col items-center gap-1 py-2 text-[11px] text-slate-600"
             >
               <span className="relative">
