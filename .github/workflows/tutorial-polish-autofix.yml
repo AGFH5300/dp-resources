@@ -17,7 +17,7 @@ jobs:
         with:
           ref: fix/tutorial-source-position-and-resource-library
           fetch-depth: 0
-      - name: Apply tutorial polish
+      - name: Stabilize tutorial target and formatting
         shell: bash
         run: |
           python3 - <<'PY'
@@ -26,124 +26,108 @@ jobs:
           controller_path = Path('components/tutorial/tutorial-controller.tsx')
           controller = controller_path.read_text()
 
-          type_old = "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n};"
-          type_new = "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n  centerTarget?: boolean;\n};"
-          if type_old not in controller:
-              raise SystemExit('TutorialStep type anchor not found')
-          controller = controller.replace(type_old, type_new, 1)
+          unformatted_ib = """{
+id: 'ib-resource-library',
+title: 'IB Resource Library',
+description:
+  'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
+route: LIBRARY_ROUTE,
+target: {
+  selector: 'span',
+  text: 'Resource Library',
+  closest: 'a',
+},
+},
+"""
+          formatted_ib = """  {
+    id: 'ib-resource-library',
+    title: 'IB Resource Library',
+    description:
+      'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
+    route: LIBRARY_ROUTE,
+    target: {
+      selectors: ['[data-tutorial-target=\"ib-resource-library\"]'],
+    },
+  },
+"""
+          if unformatted_ib not in controller:
+              raise SystemExit('Unformatted IB step not found')
+          controller = controller.replace(unformatted_ib, formatted_ib, 1)
 
-          question_anchor = "  {\n    id: 'question-bank',"
-          ib_step = """  {
-            id: 'ib-resource-library',
-            title: 'IB Resource Library',
-            description:
-              'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
-            route: LIBRARY_ROUTE,
-            target: {
-              selector: 'span',
-              text: 'Resource Library',
-              closest: 'a',
-            },
-          },
-          """
-          # Strip the two workflow-source spaces left by the YAML block while preserving TS indentation.
-          ib_step = '\n'.join(line[2:] if line.startswith('  ') else line for line in ib_step.splitlines()) + '\n'
-          if question_anchor not in controller:
-              raise SystemExit('Question Bank step anchor not found')
-          controller = controller.replace(question_anchor, ib_step + question_anchor, 1)
-
-          source_start = controller.index("    id: 'source-filters-try',")
-          source_end = controller.index("    id: 'source-filters-explain',")
-          source_block = controller[source_start:source_end]
-          source_block = source_block.replace(
-              "      'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',",
-              "      'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',",
-              1,
-          )
-          source_block = source_block.replace("    requireInteraction: true,\n", "", 1)
-          if "    centerTarget: true,\n" not in source_block:
-              source_block = source_block.replace(
-                  "    placement: 'left',\n",
-                  "    placement: 'left',\n    centerTarget: true,\n",
-                  1,
-              )
-          source_block = source_block.replace(
-              "      'Try it now: click any source checkbox. The tutorial will continue automatically.',",
-              "      'Try it now: click any source checkbox if you want, or press Next to continue.',",
-              1,
-          )
-          controller = controller[:source_start] + source_block + controller[source_end:]
-
-          explain_start = controller.index("    id: 'source-filters-explain',")
-          explain_end = controller.index("    id: 'recent',")
-          explain_block = controller[explain_start:explain_end]
-          if "    centerTarget: true,\n" not in explain_block:
-              explain_block = explain_block.replace(
-                  "    placement: 'left',\n",
-                  "    placement: 'left',\n    centerTarget: true,\n",
-                  1,
-              )
-          explain_block = explain_block.replace(
-              "      'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',",
-              "      'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',",
-              1,
-          )
-          controller = controller[:explain_start] + explain_block + controller[explain_end:]
-
-          scroll_old = "      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {"
-          scroll_new = """      if (
-            step.centerTarget ||
-            rect.top < 76 ||
-            rect.bottom > window.innerHeight - 24
-          ) {"""
-          scroll_new = '\n'.join(line[6:] if line.startswith('      ') else line for line in scroll_new.splitlines())
-          if scroll_old not in controller:
-              raise SystemExit('Target scroll anchor not found')
-          controller = controller.replace(scroll_old, scroll_new, 1)
+          unformatted_scroll = """if (
+  step.centerTarget ||
+  rect.top < 76 ||
+  rect.bottom > window.innerHeight - 24
+) {
+"""
+          formatted_scroll = """      if (
+        step.centerTarget ||
+        rect.top < 76 ||
+        rect.bottom > window.innerHeight - 24
+      ) {
+"""
+          if unformatted_scroll not in controller:
+              raise SystemExit('Unformatted scroll rule not found')
+          controller = controller.replace(unformatted_scroll, formatted_scroll, 1)
           controller_path.write_text(controller)
+
+          browser_path = Path('app/library/instant-library-browser.tsx')
+          browser = browser_path.read_text()
+          library_feature_anchor = """    <a
+      href={item.isFolder ? `/library?folder=${encodeURIComponent(item.id)}` : `/resource/${item.id}`}
+"""
+          library_feature_replacement = """    <a
+      data-tutorial-target="ib-resource-library"
+      href={item.isFolder ? `/library?folder=${encodeURIComponent(item.id)}` : `/resource/${item.id}`}
+"""
+          feature_start = browser.index('function LibraryFeature(')
+          feature_end = browser.index('function FolderLoadingRows()', feature_start)
+          feature = browser[feature_start:feature_end]
+          if library_feature_anchor not in feature:
+              raise SystemExit('LibraryFeature anchor not found')
+          feature = feature.replace(library_feature_anchor, library_feature_replacement, 1)
+          browser = browser[:feature_start] + feature + browser[feature_end:]
+          browser_path.write_text(browser)
 
           tests_path = Path('tests/tutorial-onboarding.test.ts')
           tests = tests_path.read_text()
-
-          library_assertion_anchor = "    expect(controller).toContain('data-tutorial-target=\"nav-library\"');\n"
-          library_assertions = (
-              library_assertion_anchor
-              + "    expect(controller).toContain(\"id: 'ib-resource-library'\");\n"
-              + "    expect(controller).toContain(\"text: 'Resource Library'\");\n"
-              + "    expect(controller).toContain('most comprehensive list of IB resources');\n"
-          )
-          if library_assertion_anchor not in tests:
-              raise SystemExit('Library assertion anchor not found')
-          tests = tests.replace(library_assertion_anchor, library_assertions, 1)
-
-          source_assertion_anchor = "    expect(controller).toContain(\"placement: 'left'\");\n"
-          if source_assertion_anchor not in tests:
-              raise SystemExit('Source placement assertion anchor not found')
+          constant_anchor = "const appHeader = read('components/app-header.tsx');\n"
+          constant_replacement = constant_anchor + "const instantLibraryBrowser = read('app/library/instant-library-browser.tsx');\n"
+          if constant_anchor not in tests:
+              raise SystemExit('Test constant anchor not found')
+          tests = tests.replace(constant_anchor, constant_replacement, 1)
           tests = tests.replace(
-              source_assertion_anchor,
-              source_assertion_anchor + "    expect(controller).toContain('centerTarget: true');\n",
+              "    expect(controller).toContain(\"text: 'Resource Library'\");\n",
+              "    expect(controller).toContain('data-tutorial-target=\"ib-resource-library\"');\n    expect(instantLibraryBrowser).toContain('data-tutorial-target=\"ib-resource-library\"');\n",
               1,
           )
 
-          insert_before = "  it('locks the underlying page while leaving only the active tutorial target interactive', () => {\n"
-          optional_test = """  it('keeps the first source interaction optional while auto-positioning the target', () => {
-            const start = controller.indexOf("id: 'source-filters-try'");
-            const end = controller.indexOf("id: 'source-filters-explain'");
-            const sourceTry = controller.slice(start, end);
-            expect(sourceTry).toContain('centerTarget: true');
-            expect(sourceTry).toContain('press Next to continue');
-            expect(sourceTry).not.toContain('requireInteraction: true');
-            expect(controller).toContain('step.centerTarget ||');
-          });
-
-          """
-          optional_test = '\n'.join(line[2:] if line.startswith('  ') else line for line in optional_test.splitlines()) + '\n'
-          if insert_before not in tests:
-              raise SystemExit('Optional source test insertion point not found')
-          tests = tests.replace(insert_before, optional_test + insert_before, 1)
+          unformatted_test = """it('keeps the first source interaction optional while auto-positioning the target', () => {
+const start = controller.indexOf("id: 'source-filters-try'");
+const end = controller.indexOf("id: 'source-filters-explain'");
+const sourceTry = controller.slice(start, end);
+expect(sourceTry).toContain('centerTarget: true');
+expect(sourceTry).toContain('press Next to continue');
+expect(sourceTry).not.toContain('requireInteraction: true');
+expect(controller).toContain('step.centerTarget ||');
+});
+"""
+          formatted_test = """  it('keeps the first source interaction optional while auto-positioning the target', () => {
+    const start = controller.indexOf("id: 'source-filters-try'");
+    const end = controller.indexOf("id: 'source-filters-explain'");
+    const sourceTry = controller.slice(start, end);
+    expect(sourceTry).toContain('centerTarget: true');
+    expect(sourceTry).toContain('press Next to continue');
+    expect(sourceTry).not.toContain('requireInteraction: true');
+    expect(controller).toContain('step.centerTarget ||');
+  });
+"""
+          if unformatted_test not in tests:
+              raise SystemExit('Unformatted optional source test not found')
+          tests = tests.replace(unformatted_test, formatted_test, 1)
           tests_path.write_text(tests)
           PY
-      - name: Commit tutorial polish
+      - name: Commit final tutorial polish
         run: |
           if git diff --quiet; then
             echo "No patch changes required."
@@ -151,6 +135,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
-          git commit -m "Polish tutorial sources and add IB resource library [tutorial-autofix]"
+          git add components/tutorial/tutorial-controller.tsx app/library/instant-library-browser.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Stabilize IB tutorial target and source positioning [tutorial-autofix]"
           git push origin HEAD:fix/tutorial-source-position-and-resource-library
