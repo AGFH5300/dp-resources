@@ -148,9 +148,9 @@ const STEPS: TutorialStep[] = [
   },
   {
     id: 'source-filters-try',
-    title: 'Source filters: try one',
+    title: 'Source filters',
     description:
-      'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',
+      'Choose one or more providers to restrict your practice set, or leave every source unchecked to use all available sources. You can try a checkbox here, or simply press Next without changing anything.',
     route: '/question-bank/build',
     target: SOURCE_TARGET,
     interactive: true,
@@ -159,20 +159,7 @@ const STEPS: TutorialStep[] = [
     placement: 'left',
     centerTarget: true,
     interactionHint:
-      'Try it now: click any source checkbox if you want, or press Next to continue.',
-  },
-  {
-    id: 'source-filters-explain',
-    title: 'Use one source, several, or all',
-    description:
-      'Checked sources restrict the practice set to those providers. Leave every source unchecked to use all available sources. You can click the highlighted controls again now if you want to change or undo your test selection.',
-    route: '/question-bank/build',
-    target: SOURCE_TARGET,
-    interactive: true,
-    placement: 'left',
-    centerTarget: true,
-    interactionHint:
-      'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',
+      'Optional: click any source checkbox to try it, or press Next to continue.',
   },
   {
     id: 'recent',
@@ -896,7 +883,33 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     return { right: 16, top: 88, width };
   }, [step.placement, visibleHighlight]);
 
+  const clickCueStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!visibleHighlight || typeof window === 'undefined') return undefined;
+
+    const cueWidth = 96;
+    const cueHeight = 38;
+    const left = clamp(
+      visibleHighlight.left + visibleHighlight.width / 2 - cueWidth / 2,
+      12,
+      Math.max(12, window.innerWidth - cueWidth - 12),
+    );
+    const below = visibleHighlight.bottom + 10;
+    const top =
+      below + cueHeight <= window.innerHeight - 12
+        ? below
+        : Math.max(12, visibleHighlight.top - cueHeight - 10);
+
+    return { left, top };
+  }, [visibleHighlight]);
+
   if (!active) return null;
+
+  const showClickCue = Boolean(
+    visibleHighlight &&
+      requiresInteraction &&
+      step.interactionEvent === 'click' &&
+      clickCueStyle,
+  );
 
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
   const backdropClass = 'fixed z-[80] bg-slate-950/70';
@@ -952,6 +965,27 @@ export function TutorialController({ userId }: { userId?: string | null }) {
               height: visibleHighlight.height,
             }}
           />
+          {showClickCue ? (
+            <div
+              aria-hidden
+              className="pointer-events-none fixed z-[95] flex items-center gap-2"
+              style={clickCueStyle}
+            >
+              <span className="relative flex size-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg ring-2 ring-white dark:ring-slate-900">
+                {!reducedMotion ? (
+                  <span className="absolute inset-0 rounded-full bg-blue-400/60 animate-ping" />
+                ) : null}
+                <MousePointerClick className="relative size-4" aria-hidden />
+              </span>
+              <span
+                className={`rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-white shadow-lg ${
+                  reducedMotion ? '' : 'animate-pulse'
+                }`}
+              >
+                Click
+              </span>
+            </div>
+          ) : null}
         </>
       ) : (
         <div aria-hidden className="fixed inset-0 z-[80] bg-slate-950/70" />
