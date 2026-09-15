@@ -96,8 +96,62 @@ function normalizeTextualSourceNotes(value: string) {
   );
 }
 
+function isEscaped(value: string, index: number) {
+  let slashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && value[cursor] === '\\'; cursor -= 1)
+    slashes += 1;
+  return slashes % 2 === 1;
+}
+
+function unwrapLatexAnswerMacros(value: string) {
+  const source = String(value || '');
+  const answer = /\\answer\s*\{/gi;
+  let output = '';
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    answer.lastIndex = cursor;
+    const match = answer.exec(source);
+    if (!match || match.index === undefined) {
+      output += source.slice(cursor);
+      break;
+    }
+
+    output += source.slice(cursor, match.index);
+    const opening = match.index + match[0].lastIndexOf('{');
+    let depth = 0;
+    let closing = -1;
+
+    for (let index = opening; index < source.length; index += 1) {
+      if (source[index] === '{' && !isEscaped(source, index)) depth += 1;
+      else if (source[index] === '}' && !isEscaped(source, index)) {
+        depth -= 1;
+        if (depth === 0) {
+          closing = index;
+          break;
+        }
+      }
+    }
+
+    if (closing < 0) {
+      // Do not destroy malformed source; the downstream renderer can still show it.
+      output += source.slice(match.index);
+      break;
+    }
+
+    // \answer{...} is only presentational source syntax. Keep all nested LaTeX
+    // intact and remove the unsupported wrapper before KaTeX sees the formula.
+    output += source.slice(opening + 1, closing);
+    cursor = closing + 1;
+  }
+
+  return output;
+}
+
 function normalizeProductionSource(value: string) {
-  return normalizeImportedTableRows(normalizeTextualSourceNotes(value))
+  return normalizeImportedTableRows(
+    normalizeTextualSourceNotes(unwrapLatexAnswerMacros(value)),
+  )
     .replace(/<\s*no\s*link\s*>/gi, '')
     .replace(/::answer\[/gi, ':answer[')
     .replace(/^::tableoptions(?:\{[^}]*\})?\s*$/gim, ':::tableoptions')
