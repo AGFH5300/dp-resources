@@ -10,6 +10,7 @@ on:
     paths:
       - 'scripts/external-content-indexer.mjs'
       - 'scripts/revision-dojo-indexer.mjs'
+      - 'scripts/revision-dojo-full-crawl.mjs'
       - '.github/workflows/external-content-index.yml'
 
 permissions:
@@ -39,6 +40,7 @@ jobs:
         run: |
           node --check scripts/external-content-indexer.mjs
           node --check scripts/revision-dojo-indexer.mjs
+          node --check scripts/revision-dojo-full-crawl.mjs
 
       - name: Scan all monitored DP sources
         run: >-
