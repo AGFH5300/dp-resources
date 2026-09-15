@@ -48,6 +48,7 @@ type TutorialStep = {
   requireInteraction?: boolean;
   interactionHint?: string;
   placement?: 'auto' | 'left';
+  centerTarget?: boolean;
 };
 
 type HighlightRect = {
@@ -105,6 +106,18 @@ const STEPS: TutorialStep[] = [
       selectors: ['[data-tutorial-target="nav-library"]'],
     },
   },
+{
+id: 'ib-resource-library',
+title: 'IB Resource Library',
+description:
+  'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
+route: LIBRARY_ROUTE,
+target: {
+  selector: 'span',
+  text: 'Resource Library',
+  closest: 'a',
+},
+},
   {
     id: 'question-bank',
     title: 'Question Bank',
@@ -139,16 +152,16 @@ const STEPS: TutorialStep[] = [
     id: 'source-filters-try',
     title: 'Source filters: try one',
     description:
-      'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',
+      'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',
     route: '/question-bank/build',
     target: SOURCE_TARGET,
     interactive: true,
     advanceOnInteraction: true,
     interactionEvent: 'change',
-    requireInteraction: true,
     placement: 'left',
+    centerTarget: true,
     interactionHint:
-      'Try it now: click any source checkbox. The tutorial will continue automatically.',
+      'Try it now: click any source checkbox if you want, or press Next to continue.',
   },
   {
     id: 'source-filters-explain',
@@ -159,8 +172,9 @@ const STEPS: TutorialStep[] = [
     target: SOURCE_TARGET,
     interactive: true,
     placement: 'left',
+    centerTarget: true,
     interactionHint:
-      'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',
+      'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',
   },
   {
     id: 'recent',
@@ -604,7 +618,11 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
       targetRef.current = target;
       const rect = target.getBoundingClientRect();
-      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {
+if (
+  step.centerTarget ||
+  rect.top < 76 ||
+  rect.bottom > window.innerHeight - 24
+) {
         target.scrollIntoView({
           block: 'center',
           inline: 'nearest',

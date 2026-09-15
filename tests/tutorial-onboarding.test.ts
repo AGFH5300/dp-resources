@@ -23,6 +23,9 @@ describe('interactive tutorial onboarding', () => {
   it('spotlights stable real product surfaces across the walkthrough', () => {
     expect(controller).toContain("id: 'library'");
     expect(controller).toContain('data-tutorial-target="nav-library"');
+    expect(controller).toContain("id: 'ib-resource-library'");
+    expect(controller).toContain("text: 'Resource Library'");
+    expect(controller).toContain('most comprehensive list of IB resources');
     expect(controller).toContain("id: 'question-bank'");
     expect(controller).toContain('data-tutorial-target="nav-question-bank"');
     expect(controller).toContain("id: 'search'");
@@ -47,12 +50,23 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("interactionEvent: 'change'");
     expect(controller).toContain('requireInteraction: true');
     expect(controller).toContain("placement: 'left'");
+    expect(controller).toContain('centerTarget: true');
     expect(controller).toContain("input.type !== 'checkbox'");
     expect(controller).toContain('visibleHighlight.left - leftWidth - gap');
     expect(controller).toContain('pointer-events-none fixed z-[90]');
     expect(controller).toContain('Try it now: click any source checkbox');
     expect(controller).toContain('The highlighted controls stay live');
   });
+
+it('keeps the first source interaction optional while auto-positioning the target', () => {
+const start = controller.indexOf("id: 'source-filters-try'");
+const end = controller.indexOf("id: 'source-filters-explain'");
+const sourceTry = controller.slice(start, end);
+expect(sourceTry).toContain('centerTarget: true');
+expect(sourceTry).toContain('press Next to continue');
+expect(sourceTry).not.toContain('requireInteraction: true');
+expect(controller).toContain('step.centerTarget ||');
+});
 
   it('locks the underlying page while leaving only the active tutorial target interactive', () => {
     expect(controller).toContain("html.style.overflow = 'hidden'");
