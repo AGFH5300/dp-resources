@@ -1,0 +1,32 @@
+name: Tutorial click cue autofix
+
+on:
+  push:
+    branches:
+      - fix/tutorial-single-source-click-cue
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[tutorial-click-cue]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tutorial-single-source-click-cue
+          fetch-depth: 0
+      - name: Apply tutorial click cue polish
+        run: python3 scripts/tmp-tutorial-click-cue.py
+      - name: Commit tutorial click cue polish
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Simplify source tutorial and add click beacon [tutorial-click-cue]"
+          git push origin HEAD:fix/tutorial-single-source-click-cue
