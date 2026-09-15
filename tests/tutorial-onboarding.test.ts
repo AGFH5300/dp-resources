@@ -96,10 +96,12 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).not.toContain('role="status"');
   });
 
-  it('adds an obvious animated click beacon to required click targets', () => {
+  it('attaches an obvious animated click badge directly to required click targets', () => {
     expect(controller).toContain("step.interactionEvent === 'click'");
     expect(controller).toContain('pointer-events-none fixed z-[95]');
-    expect(controller).toContain('visibleHighlight.left >= cueWidth + gap + 12');
+    expect(controller).toContain('visibleHighlight.right - cueWidth - inset');
+    expect(controller).toContain('visibleHighlight.top + inset');
+    expect(controller).toContain('inline-flex h-8 items-center');
     expect(controller).toContain('animate-ping');
     expect(controller).toContain('animate-pulse');
     expect(controller).toContain('Click');
