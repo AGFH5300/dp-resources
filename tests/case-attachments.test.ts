@@ -26,6 +26,17 @@ describe('support and resource-report attachments', () => {
     expect(input).toContain('Add attachments');
   });
 
+  it('keeps the shared attachment picker readable in light and dark themes', () => {
+    expect(input).toContain('bg-[color:var(--surface-container-lowest)]');
+    expect(input).toContain('text-[color:var(--dp-ink)]');
+    expect(input).toContain('border-[color:var(--outline)]');
+    expect(input).toContain('text-[color:var(--text-muted)]');
+    expect(input).toContain('dark:bg-blue-950/25');
+    expect(input).not.toContain(
+      'bg-white px-3 py-2 text-sm font-medium text-slate-700',
+    );
+  });
+
   it('submits attachments through both support and resource report forms', () => {
     expect(supportForm).toContain('<CaseAttachmentInput');
     expect(supportForm).toContain("body.append('attachments', file, file.name)");
