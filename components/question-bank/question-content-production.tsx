@@ -103,7 +103,7 @@ function isEscaped(value: string, index: number) {
   return slashes % 2 === 1;
 }
 
-function unwrapLatexAnswerMacros(value: string) {
+function unwrapUnsupportedLatexAnswerMacros(value: string) {
   const source = String(value || '');
   const answer = /\\answer\s*\{/gi;
   let output = '';
@@ -139,9 +139,20 @@ function unwrapLatexAnswerMacros(value: string) {
       break;
     }
 
-    // \answer{...} is only presentational source syntax. Keep all nested LaTeX
-    // intact and remove the unsupported wrapper before KaTeX sees the formula.
-    output += source.slice(opening + 1, closing);
+    const body = source.slice(opening + 1, closing);
+    const trimmedBody = body.trim();
+    const downstreamHandlesBody =
+      !/[{}]/.test(trimmedBody) || /^\\textrm\s*\{[^{}]*\}$/i.test(trimmedBody);
+
+    if (downstreamHandlesBody) {
+      // Leave the simple forms alone so normalizeQuestionSource can convert them
+      // to :answer[...] and retain the existing dp-qb-answer presentation.
+      output += source.slice(match.index, closing + 1);
+    } else {
+      // Complex imported answer bodies can contain nested LaTeX braces that the
+      // legacy regex normalizer cannot parse. Remove only that unsupported wrapper.
+      output += body;
+    }
     cursor = closing + 1;
   }
 
@@ -150,7 +161,7 @@ function unwrapLatexAnswerMacros(value: string) {
 
 function normalizeProductionSource(value: string) {
   return normalizeImportedTableRows(
-    normalizeTextualSourceNotes(unwrapLatexAnswerMacros(value)),
+    normalizeTextualSourceNotes(unwrapUnsupportedLatexAnswerMacros(value)),
   )
     .replace(/<\s*no\s*link\s*>/gi, '')
     .replace(/::answer\[/gi, ':answer[')
