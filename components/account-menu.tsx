@@ -28,6 +28,8 @@ export function AccountMenu({
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest?.('[data-tutorial-overlay="true"]')) return;
       if (ref.current && !ref.current.contains(e.target as Node))
         setOpen(false);
     };
