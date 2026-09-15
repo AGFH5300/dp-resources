@@ -33,4 +33,18 @@ $-185^\circ\mathrm{C} + 273 = \answer{88\, \textrm{K}}$
     expect(html).toContain('3');
     expect(html).toContain('m');
   });
+
+  it('keeps supported simple answer macros on the existing answer directive path', () => {
+    const html = renderToStaticMarkup(
+      <QuestionContent
+        kind="markscheme"
+        source={String.raw`$\answer{\textrm{A}}$ and $\answer{42}$`}
+      />,
+    );
+
+    expect(html).not.toContain('\\answer');
+    expect(html.match(/dp-qb-answer/g)).toHaveLength(2);
+    expect(html).toContain('A');
+    expect(html).toContain('42');
+  });
 });
