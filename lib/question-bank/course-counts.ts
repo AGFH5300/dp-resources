@@ -11,8 +11,10 @@ export async function getQuestionBankCourseCounts() {
   const client = await createClient();
   const { data, error } = await client.rpc('dp_qb_course_question_counts');
 
+  // Counts decorate the landing page; they must never make the whole
+  // Question Bank unavailable when Postgres is briefly under load.
   if (error) {
-    throw new Error(`Question Bank course counts: ${error.message}`);
+    return new Map<string, number>();
   }
 
   return new Map(

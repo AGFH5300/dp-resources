@@ -24,11 +24,14 @@ export default async function BuildPracticeSetPage({
   const { membership } = await requireMember();
   const query = await searchParams;
   const client = await createClient();
-  const [catalog, shared, { data: sourceRows = [] }] = await Promise.all([
+  const [catalog, shared, sourceOptionsResult] = await Promise.all([
     getPracticeBuilderCatalog(),
     query.code ? getPracticeShare(query.code) : Promise.resolve(null),
     client.rpc('dp_content_source_options'),
   ]);
+  const sourceRows = Array.isArray(sourceOptionsResult.data)
+    ? sourceOptionsResult.data
+    : [];
   if (query.code && !shared) notFound();
 
   const initialConfiguration = shared
@@ -76,7 +79,7 @@ export default async function BuildPracticeSetPage({
           <PracticeSetBuilderV4
             catalog={catalog as any}
             userId={membership.id}
-            sourceOptions={(sourceRows as any[])
+            sourceOptions={sourceRows
               .filter((source) => Number(source.question_variant_count || 0) > 0)
               .map((source) => ({
                 slug: source.slug,
