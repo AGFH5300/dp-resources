@@ -47,7 +47,7 @@ function Preview({ file }: { file: File }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="block h-14 w-14 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
+        className="block h-14 w-14 shrink-0 overflow-hidden rounded-md border border-[color:var(--outline)] bg-[color:var(--surface-container-low)]"
         aria-label={`Preview ${file.name}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -62,7 +62,7 @@ function Preview({ file }: { file: File }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-500"
+        className="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-[color:var(--outline)] bg-[color:var(--surface-container-low)] text-[color:var(--text-muted)]"
         aria-label={`Preview ${file.name}`}
       >
         <PlaySquare className="size-6" />
@@ -75,7 +75,7 @@ function Preview({ file }: { file: File }) {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-slate-200 bg-slate-50 text-slate-500"
+      className="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-[color:var(--outline)] bg-[color:var(--surface-container-low)] text-[color:var(--text-muted)]"
       aria-label={`Preview ${file.name}`}
     >
       <FileText className="size-6" />
@@ -150,8 +150,8 @@ export function CaseAttachmentInput({
         }}
         className={`rounded-md border border-dashed p-3 transition ${
           dragging
-            ? 'border-[color:var(--dp-blue)] bg-blue-50'
-            : 'border-slate-300 bg-slate-50/70'
+            ? 'border-[color:var(--dp-blue)] bg-blue-50 dark:bg-blue-950/25'
+            : 'border-[color:var(--outline)] bg-[color:var(--surface-container-low)]'
         } ${disabled ? 'opacity-60' : ''}`}
       >
         <input
@@ -171,23 +171,23 @@ export function CaseAttachmentInput({
             type="button"
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-md border border-[color:var(--outline)] bg-[color:var(--surface-container-lowest)] px-3 py-2 text-sm font-semibold text-[color:var(--dp-ink)] shadow-sm transition-colors hover:bg-[color:var(--surface-container-high)] disabled:cursor-not-allowed"
           >
-            <Paperclip className="size-4" />
+            <Paperclip className="size-4" aria-hidden />
             Add attachments
           </button>
-          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-            <Upload className="size-3.5" /> Drop files here or paste a screenshot
+          <span className="inline-flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
+            <Upload className="size-3.5" aria-hidden /> Drop files here or paste a screenshot
           </span>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-[color:var(--text-muted)]">
           Images, MP4/WebM/MOV, PDF, DOCX, XLSX, PPTX, TXT or CSV · up to{' '}
           {CASE_ATTACHMENT_MAX_FILES} files · {formatAttachmentSize(CASE_ATTACHMENT_MAX_TOTAL_BYTES)} total
         </p>
       </div>
 
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">
           {error}
         </p>
       ) : null}
@@ -201,14 +201,14 @@ export function CaseAttachmentInput({
             return (
               <div
                 key={`${fileKey(file)}:${index}`}
-                className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-2"
+                className="flex items-center gap-3 rounded-md border border-[color:var(--outline)] bg-[color:var(--surface-container-lowest)] p-2"
               >
                 <Preview file={file} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-800">
+                  <p className="truncate text-sm font-medium text-[color:var(--dp-ink)]">
                     {file.name || 'Pasted image'}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-[color:var(--text-muted)]">
                     <KindIcon className="size-3.5" />
                     {kind || 'file'} · {formatAttachmentSize(file.size)}
                   </p>
@@ -221,7 +221,7 @@ export function CaseAttachmentInput({
                     setError('');
                     onChange(next);
                   }}
-                  className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-red-700 disabled:cursor-not-allowed"
+                  className="rounded-md p-2 text-[color:var(--text-muted)] hover:bg-[color:var(--surface-container-high)] hover:text-red-700 disabled:cursor-not-allowed dark:hover:text-red-300"
                   aria-label={`Remove ${file.name}`}
                   title="Remove attachment"
                 >
@@ -230,7 +230,7 @@ export function CaseAttachmentInput({
               </div>
             );
           })}
-          <p className="text-right text-xs text-slate-500">
+          <p className="text-right text-xs text-[color:var(--text-muted)]">
             {files.length}/{CASE_ATTACHMENT_MAX_FILES} files · {formatAttachmentSize(totalBytes)}
           </p>
         </div>
