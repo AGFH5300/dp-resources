@@ -1,0 +1,178 @@
+name: Tutorial polish autofix
+
+on:
+  push:
+    branches:
+      - fix/tutorial-source-position-and-resource-library
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[tutorial-autofix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tutorial-source-position-and-resource-library
+          fetch-depth: 0
+      - name: Apply tutorial polish
+        shell: python
+        run: |
+          from pathlib import Path
+
+          controller_path = Path('components/tutorial/tutorial-controller.tsx')
+          controller = controller_path.read_text()
+
+          replacements = []
+
+          replacements.append((
+              "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n};",
+              "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n  centerTarget?: boolean;\n};",
+          ))
+
+          library_step = """  {
+    id: 'library',
+    title: 'Your Library',
+    description:
+      'The Library is the main home for textbooks, notes, past papers, and other learning resources. Open folders and resources here whenever you want to browse directly.',
+    route: LIBRARY_ROUTE,
+    target: {
+      selectors: ['[data-tutorial-target=\"nav-library\"]'],
+    },
+  },
+"""
+          ib_step = library_step + """  {
+    id: 'ib-resource-library',
+    title: 'IB Resource Library',
+    description:
+      'The IB Resource Library is the most comprehensive list of IB resources on DP Resources. Use this master catalogue to find compiled DP revision resources by subject, topic, and direct resource link.',
+    route: LIBRARY_ROUTE,
+    target: {
+      selector: 'span',
+      text: 'Resource Library',
+      closest: 'a',
+    },
+  },
+"""
+          replacements.append((library_step, ib_step))
+
+          old_source_try = """  {
+    id: 'source-filters-try',
+    title: 'Source filters: try one',
+    description:
+      'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',
+    route: '/question-bank/build',
+    target: SOURCE_TARGET,
+    interactive: true,
+    advanceOnInteraction: true,
+    interactionEvent: 'change',
+    requireInteraction: true,
+    placement: 'left',
+    interactionHint:
+      'Try it now: click any source checkbox. The tutorial will continue automatically.',
+  },
+"""
+          new_source_try = """  {
+    id: 'source-filters-try',
+    title: 'Source filters: try one',
+    description:
+      'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',
+    route: '/question-bank/build',
+    target: SOURCE_TARGET,
+    interactive: true,
+    advanceOnInteraction: true,
+    interactionEvent: 'change',
+    placement: 'left',
+    centerTarget: true,
+    interactionHint:
+      'Try it now: click any source checkbox if you want, or press Next to continue.',
+  },
+"""
+          replacements.append((old_source_try, new_source_try))
+
+          old_source_explain = """    target: SOURCE_TARGET,
+    interactive: true,
+    placement: 'left',
+    interactionHint:
+      'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',
+"""
+          new_source_explain = """    target: SOURCE_TARGET,
+    interactive: true,
+    placement: 'left',
+    centerTarget: true,
+    interactionHint:
+      'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',
+"""
+          replacements.append((old_source_explain, new_source_explain))
+
+          replacements.append((
+              "      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {",
+              "      if (\n        step.centerTarget ||\n        rect.top < 76 ||\n        rect.bottom > window.innerHeight - 24\n      ) {",
+          ))
+
+          for old, new in replacements:
+              if old not in controller:
+                  raise SystemExit(f'Expected controller pattern not found:\n{old[:220]}')
+              controller = controller.replace(old, new, 1)
+
+          controller_path.write_text(controller)
+
+          tests_path = Path('tests/tutorial-onboarding.test.ts')
+          tests = tests_path.read_text()
+
+          old_library_assertions = """    expect(controller).toContain(\"id: 'library'\");
+    expect(controller).toContain('data-tutorial-target=\"nav-library\"');
+    expect(controller).toContain(\"id: 'question-bank'\");
+"""
+          new_library_assertions = """    expect(controller).toContain(\"id: 'library'\");
+    expect(controller).toContain('data-tutorial-target=\"nav-library\"');
+    expect(controller).toContain(\"id: 'ib-resource-library'\");
+    expect(controller).toContain(\"text: 'Resource Library'\");
+    expect(controller).toContain('most comprehensive list of IB resources');
+    expect(controller).toContain(\"id: 'question-bank'\");
+"""
+          if old_library_assertions not in tests:
+              raise SystemExit('Expected library tutorial assertions not found')
+          tests = tests.replace(old_library_assertions, new_library_assertions, 1)
+
+          old_source_assertion = """    expect(controller).toContain(\"placement: 'left'\");
+    expect(controller).toContain(\"input.type !== 'checkbox'\");
+"""
+          new_source_assertion = """    expect(controller).toContain(\"placement: 'left'\");
+    expect(controller).toContain('centerTarget: true');
+    expect(controller).toContain(\"input.type !== 'checkbox'\");
+"""
+          if old_source_assertion not in tests:
+              raise SystemExit('Expected source positioning assertion not found')
+          tests = tests.replace(old_source_assertion, new_source_assertion, 1)
+
+          insert_before = """  it('locks the underlying page while leaving only the active tutorial target interactive', () => {
+"""
+          optional_test = """  it('keeps the first source interaction optional while auto-positioning the target', () => {
+    const start = controller.indexOf(\"id: 'source-filters-try'\");
+    const end = controller.indexOf(\"id: 'source-filters-explain'\");
+    const sourceTry = controller.slice(start, end);
+    expect(sourceTry).toContain('centerTarget: true');
+    expect(sourceTry).toContain('press Next to continue');
+    expect(sourceTry).not.toContain('requireInteraction: true');
+    expect(controller).toContain('step.centerTarget ||');
+  });
+
+"""
+          if insert_before not in tests:
+              raise SystemExit('Expected test insertion point not found')
+          tests = tests.replace(insert_before, optional_test + insert_before, 1)
+          tests_path.write_text(tests)
+      - name: Commit tutorial polish
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Polish tutorial sources and add IB resource library [tutorial-autofix]"
+          git push origin HEAD:fix/tutorial-source-position-and-resource-library
