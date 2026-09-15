@@ -81,12 +81,6 @@ const SOURCE_TARGET: TextTarget = {
 };
 
 const LIBRARY_ROUTE = '/library';
-const PREFETCH_ROUTES = [
-  '/library',
-  '/question-bank',
-  '/question-bank/build',
-  '/settings',
-] as const;
 
 const STEPS: TutorialStep[] = [
   {
@@ -360,11 +354,6 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       // Coordination with What's New is best-effort only.
     }
   }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    for (const route of PREFETCH_ROUTES) router.prefetch(route);
-  }, [router, userId]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');

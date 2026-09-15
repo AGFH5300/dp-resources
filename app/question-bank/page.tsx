@@ -193,12 +193,15 @@ function SubjectCourseLinks({
 export default async function QuestionBankLanding() {
   const { user, membership } = await requireMember();
   const client = await createClient();
-  const [data, questionCounts, { data: sourceRows = [] }] = await Promise.all([
+  const [data, questionCounts, sourceOptionsResult] = await Promise.all([
     getQuestionBankLanding(user.id),
     getQuestionBankCourseCounts(),
     client.rpc('dp_content_source_options'),
   ]);
-  const questionSources = (sourceRows as any[])
+  const sourceRows = Array.isArray(sourceOptionsResult.data)
+    ? sourceOptionsResult.data
+    : [];
+  const questionSources = sourceRows
     .filter((source) => Number(source.question_variant_count || 0) > 0)
     .map((source) => ({
       slug: String(source.slug),
@@ -262,6 +265,7 @@ export default async function QuestionBankLanding() {
 
           <Link
             href="/question-bank/build"
+            prefetch={false}
             className="group rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-md dark:border-indigo-900/70 dark:from-indigo-950/45 dark:via-slate-900 dark:to-violet-950/30"
           >
             <div className="flex items-start gap-4">
@@ -302,6 +306,7 @@ export default async function QuestionBankLanding() {
               </div>
               <Link
                 href="/question-bank/build"
+                prefetch={false}
                 className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
               >
                 Build by source <ArrowRight className="size-4" />

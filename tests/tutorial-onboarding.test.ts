@@ -84,11 +84,12 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).not.toContain('aria-label="Skip tutorial"');
   });
 
-  it('keeps navigation-heading steps on the library shell and warms real route changes', () => {
+  it('keeps navigation-heading steps on the library shell without eager heavy-route prefetches', () => {
     expect(controller).toContain("const LIBRARY_ROUTE = '/library'");
-    expect(controller).toContain("'/question-bank/build'");
-    expect(controller).toContain("'/settings'");
-    expect(controller).toContain('for (const route of PREFETCH_ROUTES) router.prefetch(route)');
+    expect(controller).toContain("route: '/question-bank/build'");
+    expect(controller).toContain("route: '/settings'");
+    expect(controller).not.toContain('PREFETCH_ROUTES');
+    expect(controller).not.toContain('router.prefetch(');
     expect(controller).toContain('router.replace(step.route)');
     expect(controller).toContain("id: 'recent'");
     expect(controller).toContain("id: 'saved'");
