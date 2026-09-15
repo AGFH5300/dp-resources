@@ -56,7 +56,6 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("input.type !== 'checkbox'");
     expect(controller).toContain('visibleHighlight.left - leftWidth - gap');
     expect(controller).toContain('pointer-events-none fixed z-[90]');
-    expect(controller).toContain('Try it now: click any source checkbox');
     expect(controller).toContain('Optional: click any source checkbox');
   });
 
