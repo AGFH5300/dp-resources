@@ -40,6 +40,7 @@ type TutorialStep = {
   title: string;
   description: string;
   route?: string;
+  warmRoute?: string;
   target?: TutorialTarget;
   interactive?: boolean;
   advanceOnInteraction?: boolean;
@@ -96,6 +97,7 @@ const STEPS: TutorialStep[] = [
     description:
       'The Library is the main home for textbooks, notes, past papers, and other learning resources. Open folders and resources here whenever you want to browse directly.',
     route: LIBRARY_ROUTE,
+    warmRoute: '/question-bank',
     target: {
       selectors: ['[data-tutorial-target="nav-library"]'],
     },
@@ -126,6 +128,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Global search is always close by. On desktop you can also press ⌘ K on Mac or Ctrl K on Windows to open it without leaving what you are doing.',
     route: '/question-bank',
+    warmRoute: '/question-bank/build',
     target: {
       selectors: ['button[aria-label^="Search library"]'],
     },
@@ -171,6 +174,7 @@ const STEPS: TutorialStep[] = [
     description:
       'Saved is your personal shortcut to resources you want to come back to. Use it for frequently used material or anything you do not want to lose track of.',
     route: LIBRARY_ROUTE,
+    warmRoute: '/settings',
     target: {
       selectors: ['[data-tutorial-target="nav-saved"]'],
     },
@@ -329,6 +333,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   const cardRef = useRef<HTMLElement>(null);
   const targetRef = useRef<HTMLElement | null>(null);
   const interactionTimerRef = useRef<number | null>(null);
+  const warmedRoutesRef = useRef(new Set<string>());
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [replay, setReplay] = useState(false);
@@ -362,6 +367,18 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     media.addEventListener?.('change', update);
     return () => media.removeEventListener?.('change', update);
   }, []);
+
+  useEffect(() => {
+    const warmRoute = step.warmRoute;
+    if (!active || targetPending || !warmRoute || pathname === warmRoute) return;
+    if (warmedRoutesRef.current.has(warmRoute)) return;
+
+    // Warm only the next expensive tutorial destination, and only after the
+    // current spotlight is usable. This keeps navigation fast without bringing
+    // back the old all-routes-at-once prefetch load.
+    warmedRoutesRef.current.add(warmRoute);
+    router.prefetch(warmRoute);
+  }, [active, pathname, router, step.warmRoute, targetPending]);
 
   const startTutorial = useCallback(
     (requestedIndex = 0, isReplay = false) => {
