@@ -104,6 +104,7 @@ function LibraryFeature({
 }) {
   return (
     <a
+      data-tutorial-target="ib-resource-library"
       href={item.isFolder ? `/library?folder=${encodeURIComponent(item.id)}` : `/resource/${item.id}`}
       onClick={(event) => {
         if (!normalLeftClick(event)) return;
