@@ -84,12 +84,15 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).not.toContain('aria-label="Skip tutorial"');
   });
 
-  it('keeps navigation-heading steps on the library shell without eager heavy-route prefetches', () => {
+  it('warms only the next expensive tutorial route after the current spotlight is ready', () => {
     expect(controller).toContain("const LIBRARY_ROUTE = '/library'");
-    expect(controller).toContain("route: '/question-bank/build'");
-    expect(controller).toContain("route: '/settings'");
+    expect(controller).toContain("warmRoute: '/question-bank'");
+    expect(controller).toContain("warmRoute: '/question-bank/build'");
+    expect(controller).toContain("warmRoute: '/settings'");
+    expect(controller).toContain('warmedRoutesRef');
+    expect(controller).toContain('if (!active || targetPending || !warmRoute');
+    expect(controller).toContain('router.prefetch(warmRoute)');
     expect(controller).not.toContain('PREFETCH_ROUTES');
-    expect(controller).not.toContain('router.prefetch(');
     expect(controller).toContain('router.replace(step.route)');
     expect(controller).toContain("id: 'recent'");
     expect(controller).toContain("id: 'saved'");
