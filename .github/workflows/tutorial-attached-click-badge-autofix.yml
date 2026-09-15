@@ -1,0 +1,32 @@
+name: Tutorial attached click badge autofix
+
+on:
+  push:
+    branches:
+      - fix/tutorial-attached-click-badge
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[tutorial-attached-click-badge]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tutorial-attached-click-badge
+          fetch-depth: 0
+      - name: Attach click badge to highlighted target
+        run: python3 scripts/tmp-attach-click-badge.py
+      - name: Commit attached click badge polish
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Attach tutorial click badge to target [tutorial-attached-click-badge]"
+          git push origin HEAD:fix/tutorial-attached-click-badge
