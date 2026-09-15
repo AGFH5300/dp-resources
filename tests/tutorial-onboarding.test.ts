@@ -35,7 +35,7 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'practice-builder'");
     expect(controller).toContain('main a[href="/question-bank/build"]');
     expect(controller).toContain("id: 'source-filters-try'");
-    expect(controller).toContain("id: 'source-filters-explain'");
+    expect(controller).not.toContain("id: 'source-filters-explain'");
     expect(controller).toContain("text: 'Sources'");
     expect(controller).toContain("id: 'recent'");
     expect(controller).toContain('data-tutorial-target="nav-recent"');
@@ -56,17 +56,18 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("input.type !== 'checkbox'");
     expect(controller).toContain('visibleHighlight.left - leftWidth - gap');
     expect(controller).toContain('pointer-events-none fixed z-[90]');
-    expect(controller).toContain('Try it now: click any source checkbox');
-    expect(controller).toContain('The highlighted controls stay live');
+    expect(controller).toContain('Optional: click any source checkbox');
   });
 
-  it('keeps the first source interaction optional while auto-positioning the target', () => {
+  it('keeps a single optional source lesson and auto-positions the target', () => {
     const start = controller.indexOf("id: 'source-filters-try'");
-    const end = controller.indexOf("id: 'source-filters-explain'");
-    const sourceTry = controller.slice(start, end);
-    expect(sourceTry).toContain('centerTarget: true');
-    expect(sourceTry).toContain('press Next to continue');
-    expect(sourceTry).not.toContain('requireInteraction: true');
+    const end = controller.indexOf("id: 'recent'");
+    const sourceStep = controller.slice(start, end);
+    expect(sourceStep).toContain("title: 'Source filters'");
+    expect(sourceStep).toContain('centerTarget: true');
+    expect(sourceStep).toContain('press Next to continue');
+    expect(sourceStep).not.toContain('requireInteraction: true');
+    expect(controller).not.toContain("id: 'source-filters-explain'");
     expect(controller).toContain('step.centerTarget ||');
   });
 
@@ -93,6 +94,16 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'saved'");
     expect(controller).not.toContain('Loader2');
     expect(controller).not.toContain('role="status"');
+  });
+
+  it('adds an obvious animated click beacon to required click targets', () => {
+    expect(controller).toContain("step.interactionEvent === 'click'");
+    expect(controller).toContain('pointer-events-none fixed z-[95]');
+    expect(controller).toContain('visibleHighlight.left >= cueWidth + gap + 12');
+    expect(controller).toContain('animate-ping');
+    expect(controller).toContain('animate-pulse');
+    expect(controller).toContain('Click');
+    expect(controller).toContain("reducedMotion ? '' : 'animate-pulse'");
   });
 
   it('makes the Settings finale a required click-through sequence ending at Replay tutorial', () => {
