@@ -1,0 +1,32 @@
+name: Tutorial step speed autofix
+
+on:
+  push:
+    branches:
+      - fix/tutorial-step-load-speed
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[tutorial-step-speed-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tutorial-step-load-speed
+          fetch-depth: 0
+      - name: Apply staged tutorial prefetch patch
+        run: python3 scripts/tmp-speed-up-tutorial-steps.py
+      - name: Commit staged tutorial prefetch patch
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Speed up slow tutorial route transitions [tutorial-step-speed-fix]"
+          git push origin HEAD:fix/tutorial-step-load-speed
