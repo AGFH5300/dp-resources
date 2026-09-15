@@ -85,6 +85,7 @@ export function AccountMenu({
           <Link
             role="menuitem"
             href="/settings"
+            data-tutorial-target="settings-link"
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50"
             onClick={() => setOpen(false)}
           >
