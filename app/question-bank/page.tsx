@@ -306,6 +306,7 @@ export default async function QuestionBankLanding() {
               </div>
               <Link
                 href="/question-bank/build"
+                prefetch={false}
                 className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
               >
                 Build by source <ArrowRight className="size-4" />
