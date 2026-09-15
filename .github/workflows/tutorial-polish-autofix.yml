@@ -26,28 +26,14 @@ jobs:
           controller_path = Path('components/tutorial/tutorial-controller.tsx')
           controller = controller_path.read_text()
 
-          replacements = []
+          type_old = "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n};"
+          type_new = "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n  centerTarget?: boolean;\n};"
+          if type_old not in controller:
+              raise SystemExit('TutorialStep type anchor not found')
+          controller = controller.replace(type_old, type_new, 1)
 
-          replacements.append((
-              "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n};",
-              "  interactionHint?: string;\n  placement?: 'auto' | 'left';\n  centerTarget?: boolean;\n};",
-          ))
-
-          library_step = """  {
-            id: 'library',
-            title: 'Your Library',
-            description:
-              'The Library is the main home for textbooks, notes, past papers, and other learning resources. Open folders and resources here whenever you want to browse directly.',
-            route: LIBRARY_ROUTE,
-            target: {
-              selectors: ['[data-tutorial-target=\"nav-library\"]'],
-            },
-          },
-          """
-          # Dedent only the Python source literal indentation introduced by this workflow.
-          import textwrap
-          library_step = textwrap.dedent(library_step)
-          ib_step = library_step + textwrap.dedent("""  {
+          question_anchor = "  {\n    id: 'question-bank',"
+          ib_step = """  {
             id: 'ib-resource-library',
             title: 'IB Resource Library',
             description:
@@ -59,103 +45,90 @@ jobs:
               closest: 'a',
             },
           },
-          """)
-          replacements.append((library_step, ib_step))
+          """
+          # Strip the two workflow-source spaces left by the YAML block while preserving TS indentation.
+          ib_step = '\n'.join(line[2:] if line.startswith('  ') else line for line in ib_step.splitlines()) + '\n'
+          if question_anchor not in controller:
+              raise SystemExit('Question Bank step anchor not found')
+          controller = controller.replace(question_anchor, ib_step + question_anchor, 1)
 
-          old_source_try = textwrap.dedent("""  {
-            id: 'source-filters-try',
-            title: 'Source filters: try one',
-            description:
-              'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',
-            route: '/question-bank/build',
-            target: SOURCE_TARGET,
-            interactive: true,
-            advanceOnInteraction: true,
-            interactionEvent: 'change',
-            requireInteraction: true,
-            placement: 'left',
-            interactionHint:
-              'Try it now: click any source checkbox. The tutorial will continue automatically.',
-          },
-          """)
-          new_source_try = textwrap.dedent("""  {
-            id: 'source-filters-try',
-            title: 'Source filters: try one',
-            description:
-              'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',
-            route: '/question-bank/build',
-            target: SOURCE_TARGET,
-            interactive: true,
-            advanceOnInteraction: true,
-            interactionEvent: 'change',
-            placement: 'left',
-            centerTarget: true,
-            interactionHint:
-              'Try it now: click any source checkbox if you want, or press Next to continue.',
-          },
-          """)
-          replacements.append((old_source_try, new_source_try))
+          source_start = controller.index("    id: 'source-filters-try',")
+          source_end = controller.index("    id: 'source-filters-explain',")
+          source_block = controller[source_start:source_end]
+          source_block = source_block.replace(
+              "      'These are the real source controls inside Practice Builder. Click any source checkbox in the highlighted area once so you can see exactly how this filter works.',",
+              "      'These are the real source controls inside Practice Builder. You can try a source checkbox to see the filter work, or simply continue to the next step.',",
+              1,
+          )
+          source_block = source_block.replace("    requireInteraction: true,\n", "", 1)
+          if "    centerTarget: true,\n" not in source_block:
+              source_block = source_block.replace(
+                  "    placement: 'left',\n",
+                  "    placement: 'left',\n    centerTarget: true,\n",
+                  1,
+              )
+          source_block = source_block.replace(
+              "      'Try it now: click any source checkbox. The tutorial will continue automatically.',",
+              "      'Try it now: click any source checkbox if you want, or press Next to continue.',",
+              1,
+          )
+          controller = controller[:source_start] + source_block + controller[source_end:]
 
-          old_source_explain = textwrap.dedent("""    target: SOURCE_TARGET,
-            interactive: true,
-            placement: 'left',
-            interactionHint:
-              'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',
-          """)
-          new_source_explain = textwrap.dedent("""    target: SOURCE_TARGET,
-            interactive: true,
-            placement: 'left',
-            centerTarget: true,
-            interactionHint:
-              'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',
-          """)
-          replacements.append((old_source_explain, new_source_explain))
+          explain_start = controller.index("    id: 'source-filters-explain',")
+          explain_end = controller.index("    id: 'recent',")
+          explain_block = controller[explain_start:explain_end]
+          if "    centerTarget: true,\n" not in explain_block:
+              explain_block = explain_block.replace(
+                  "    placement: 'left',\n",
+                  "    placement: 'left',\n    centerTarget: true,\n",
+                  1,
+              )
+          explain_block = explain_block.replace(
+              "      'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',",
+              "      'The highlighted controls stay live while this step is open. Change them if you want, or just press Next.',",
+              1,
+          )
+          controller = controller[:explain_start] + explain_block + controller[explain_end:]
 
-          replacements.append((
-              "      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {",
-              "      if (\n        step.centerTarget ||\n        rect.top < 76 ||\n        rect.bottom > window.innerHeight - 24\n      ) {",
-          ))
-
-          for old, new in replacements:
-              if old not in controller:
-                  raise SystemExit(f'Expected controller pattern not found:\n{old[:220]}')
-              controller = controller.replace(old, new, 1)
-
+          scroll_old = "      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {"
+          scroll_new = """      if (
+            step.centerTarget ||
+            rect.top < 76 ||
+            rect.bottom > window.innerHeight - 24
+          ) {"""
+          scroll_new = '\n'.join(line[6:] if line.startswith('      ') else line for line in scroll_new.splitlines())
+          if scroll_old not in controller:
+              raise SystemExit('Target scroll anchor not found')
+          controller = controller.replace(scroll_old, scroll_new, 1)
           controller_path.write_text(controller)
 
           tests_path = Path('tests/tutorial-onboarding.test.ts')
           tests = tests_path.read_text()
 
-          old_library_assertions = textwrap.dedent("""    expect(controller).toContain(\"id: 'library'\");
-            expect(controller).toContain('data-tutorial-target=\"nav-library\"');
-            expect(controller).toContain(\"id: 'question-bank'\");
-          """)
-          new_library_assertions = textwrap.dedent("""    expect(controller).toContain(\"id: 'library'\");
-            expect(controller).toContain('data-tutorial-target=\"nav-library\"');
-            expect(controller).toContain(\"id: 'ib-resource-library'\");
-            expect(controller).toContain(\"text: 'Resource Library'\");
-            expect(controller).toContain('most comprehensive list of IB resources');
-            expect(controller).toContain(\"id: 'question-bank'\");
-          """)
-          if old_library_assertions not in tests:
-              raise SystemExit('Expected library tutorial assertions not found')
-          tests = tests.replace(old_library_assertions, new_library_assertions, 1)
+          library_assertion_anchor = "    expect(controller).toContain('data-tutorial-target=\"nav-library\"');\n"
+          library_assertions = (
+              library_assertion_anchor
+              + "    expect(controller).toContain(\"id: 'ib-resource-library'\");\n"
+              + "    expect(controller).toContain(\"text: 'Resource Library'\");\n"
+              + "    expect(controller).toContain('most comprehensive list of IB resources');\n"
+          )
+          if library_assertion_anchor not in tests:
+              raise SystemExit('Library assertion anchor not found')
+          tests = tests.replace(library_assertion_anchor, library_assertions, 1)
 
-          old_source_assertion = textwrap.dedent("""    expect(controller).toContain(\"placement: 'left'\");
-            expect(controller).toContain(\"input.type !== 'checkbox'\");
-          """)
-          new_source_assertion = textwrap.dedent("""    expect(controller).toContain(\"placement: 'left'\");
-            expect(controller).toContain('centerTarget: true');
-            expect(controller).toContain(\"input.type !== 'checkbox'\");
-          """)
-          if old_source_assertion not in tests:
-              raise SystemExit('Expected source positioning assertion not found')
-          tests = tests.replace(old_source_assertion, new_source_assertion, 1)
+          source_assertion_anchor = "    expect(controller).toContain(\"placement: 'left'\");\n"
+          if source_assertion_anchor not in tests:
+              raise SystemExit('Source placement assertion anchor not found')
+          tests = tests.replace(
+              source_assertion_anchor,
+              source_assertion_anchor + "    expect(controller).toContain('centerTarget: true');\n",
+              1,
+          )
 
           insert_before = "  it('locks the underlying page while leaving only the active tutorial target interactive', () => {\n"
-          optional_test = textwrap.dedent("""  it('keeps the first source interaction optional while auto-positioning the target', () => {
-            const start = controller.indexOf(\"id: 'source-filters-try'\");
-            const end = controller.indexOf(\"id: 'source-filters-explain'\");
+          optional_test = """  it('keeps the first source interaction optional while auto-positioning the target', () => {
+            const start = controller.indexOf("id: 'source-filters-try'");
+            const end = controller.indexOf("id: 'source-filters-explain'");
             const sourceTry = controller.slice(start, end);
             expect(sourceTry).toContain('centerTarget: true');
             expect(sourceTry).toContain('press Next to continue');
@@ -163,9 +136,10 @@ jobs:
             expect(controller).toContain('step.centerTarget ||');
           });
 
-          """)
+          """
+          optional_test = '\n'.join(line[2:] if line.startswith('  ') else line for line in optional_test.splitlines()) + '\n'
           if insert_before not in tests:
-              raise SystemExit('Expected test insertion point not found')
+              raise SystemExit('Optional source test insertion point not found')
           tests = tests.replace(insert_before, optional_test + insert_before, 1)
           tests_path.write_text(tests)
           PY
