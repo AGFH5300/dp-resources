@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, MousePointerClick, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MousePointerClick } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   useCallback,
@@ -43,7 +43,11 @@ type TutorialStep = {
   target?: TutorialTarget;
   interactive?: boolean;
   advanceOnInteraction?: boolean;
+  interactionEvent?: 'change' | 'click';
+  interactionAdvanceDelayMs?: number;
+  requireInteraction?: boolean;
   interactionHint?: string;
+  placement?: 'auto' | 'left';
 };
 
 type HighlightRect = {
@@ -76,7 +80,12 @@ const SOURCE_TARGET: TextTarget = {
 };
 
 const LIBRARY_ROUTE = '/library';
-const PREFETCH_ROUTES = ['/library', '/question-bank', '/question-bank/build'] as const;
+const PREFETCH_ROUTES = [
+  '/library',
+  '/question-bank',
+  '/question-bank/build',
+  '/settings',
+] as const;
 
 const STEPS: TutorialStep[] = [
   {
@@ -93,10 +102,7 @@ const STEPS: TutorialStep[] = [
       'The Library is the main home for textbooks, notes, past papers, and other learning resources. Open folders and resources here whenever you want to browse directly.',
     route: LIBRARY_ROUTE,
     target: {
-      selectors: [
-        'nav[aria-label="Primary navigation"] a[href="/library"]',
-        'nav[aria-label="Mobile navigation"] a[href="/library"]',
-      ],
+      selectors: ['[data-tutorial-target="nav-library"]'],
     },
   },
   {
@@ -106,10 +112,7 @@ const STEPS: TutorialStep[] = [
       'Use the Question Bank to find practice questions by subject and topic, then move from browsing into focused practice when you are ready.',
     route: '/question-bank',
     target: {
-      selectors: [
-        'nav[aria-label="Primary navigation"] a[href="/question-bank"]',
-        'nav[aria-label="Mobile navigation"] a[href="/question-bank"]',
-      ],
+      selectors: ['[data-tutorial-target="nav-question-bank"]'],
     },
   },
   {
@@ -141,6 +144,9 @@ const STEPS: TutorialStep[] = [
     target: SOURCE_TARGET,
     interactive: true,
     advanceOnInteraction: true,
+    interactionEvent: 'change',
+    requireInteraction: true,
+    placement: 'left',
     interactionHint:
       'Try it now: click any source checkbox. The tutorial will continue automatically.',
   },
@@ -152,6 +158,7 @@ const STEPS: TutorialStep[] = [
     route: '/question-bank/build',
     target: SOURCE_TARGET,
     interactive: true,
+    placement: 'left',
     interactionHint:
       'The highlighted controls stay live while this step is open. Change them if you want, then press Next.',
   },
@@ -162,10 +169,7 @@ const STEPS: TutorialStep[] = [
       'Recent keeps the resources you opened lately within reach, so you can return to something without finding it again from scratch.',
     route: LIBRARY_ROUTE,
     target: {
-      selectors: [
-        'nav[aria-label="Primary navigation"] a[href="/recent"]',
-        'nav[aria-label="Mobile navigation"] a[href="/recent"]',
-      ],
+      selectors: ['[data-tutorial-target="nav-recent"]'],
     },
   },
   {
@@ -175,20 +179,50 @@ const STEPS: TutorialStep[] = [
       'Saved is your personal shortcut to resources you want to come back to. Use it for frequently used material or anything you do not want to lose track of.',
     route: LIBRARY_ROUTE,
     target: {
-      selectors: [
-        'nav[aria-label="Primary navigation"] a[href="/saved"]',
-        'nav[aria-label="Mobile navigation"] a[href="/saved"]',
-      ],
+      selectors: ['[data-tutorial-target="nav-saved"]'],
     },
   },
   {
-    id: 'settings',
-    title: 'Settings and your account',
+    id: 'account-menu',
+    title: 'Open your account menu',
     description:
-      'Your account menu is where you open Settings & Account Centre to manage your profile, preferences, connected accounts, and security. The full tutorial can also be replayed from Settings whenever you want.',
+      'Your profile menu contains Settings & Account Centre. Click the highlighted account button to open it.',
     route: LIBRARY_ROUTE,
     target: {
       selectors: ['[data-tutorial-target="account-menu"]'],
+    },
+    interactive: true,
+    advanceOnInteraction: true,
+    interactionEvent: 'click',
+    interactionAdvanceDelayMs: 90,
+    requireInteraction: true,
+    interactionHint:
+      'Click the highlighted account button. The next step will point to Settings inside the menu.',
+  },
+  {
+    id: 'settings-link',
+    title: 'Open Settings',
+    description:
+      'Now click Settings in the account menu. This takes you to Settings & Account Centre, where your profile, preferences, connected accounts, and security controls live.',
+    route: LIBRARY_ROUTE,
+    target: {
+      selectors: ['[data-tutorial-target="settings-link"]'],
+    },
+    interactive: true,
+    advanceOnInteraction: true,
+    interactionEvent: 'click',
+    interactionAdvanceDelayMs: 0,
+    requireInteraction: true,
+    interactionHint: 'Click the highlighted Settings item to continue.',
+  },
+  {
+    id: 'tutorial-replay',
+    title: 'Replay the tutorial anytime',
+    description:
+      'That is the full tour. If you ever want to run it again, come back to Settings and use this Replay tutorial button.',
+    route: '/settings',
+    target: {
+      selectors: ['[data-tutorial-target="tutorial-replay-button"]'],
     },
   },
 ];
@@ -315,6 +349,9 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   const targetReady = !step.target || readyStepId === step.id;
   const targetPending = active && !targetReady;
   const visibleHighlight = targetReady ? highlight : null;
+  const requiresInteraction = Boolean(
+    step.requireInteraction && step.advanceOnInteraction,
+  );
 
   useLayoutEffect(() => {
     if (!userId) return;
@@ -429,6 +466,63 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   }, [active, pathname, router, step.route]);
 
   useEffect(() => {
+    if (!active) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+
+    const allowTutorialNode = (node: Node | null) => {
+      if (!node) return false;
+      if (cardRef.current?.contains(node)) return true;
+      return Boolean(step.interactive && targetRef.current?.contains(node));
+    };
+
+    const blockPageScroll = (event: Event) => {
+      if (cardRef.current?.contains(event.target as Node)) return;
+      event.preventDefault();
+    };
+
+    const blockOutsideInteraction = (event: Event) => {
+      if (allowTutorialNode(event.target as Node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    document.addEventListener('wheel', blockPageScroll, {
+      capture: true,
+      passive: false,
+    });
+    document.addEventListener('touchmove', blockPageScroll, {
+      capture: true,
+      passive: false,
+    });
+    document.addEventListener('click', blockOutsideInteraction, true);
+    document.addEventListener('mousedown', blockOutsideInteraction, true);
+
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      body.style.overflow = previous.bodyOverflow;
+      html.style.overscrollBehavior = previous.htmlOverscroll;
+      body.style.overscrollBehavior = previous.bodyOverscroll;
+      document.removeEventListener('wheel', blockPageScroll, true);
+      document.removeEventListener('touchmove', blockPageScroll, true);
+      document.removeEventListener('click', blockOutsideInteraction, true);
+      document.removeEventListener('mousedown', blockOutsideInteraction, true);
+    };
+  }, [active, step.id, step.interactive]);
+
+  useEffect(() => {
     if (!active) {
       targetRef.current = null;
       setHighlight(null);
@@ -437,6 +531,8 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     }
 
     storeSession(stepIndex, replay);
+    targetRef.current = null;
+    setHighlight(null);
     setReadyStepId(null);
 
     if (interactionTimerRef.current !== null) {
@@ -445,8 +541,6 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     }
 
     if (!step.target) {
-      targetRef.current = null;
-      setHighlight(null);
       setReadyStepId(step.id);
       return;
     }
@@ -456,27 +550,47 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     let attempts = 0;
     let observer: ResizeObserver | null = null;
     let interactionTarget: HTMLElement | null = null;
+    let interactionEvent: 'change' | 'click' | null = null;
+    let interactionCapture = false;
 
     const update = () => {
       if (cancelled || !targetRef.current) return;
       setHighlight(measureTarget(targetRef.current));
     };
 
+    const commitNextStep = () => {
+      if (cancelled) return;
+      const nextIndex = Math.min(stepIndex + 1, STEPS.length - 1);
+      setStepIndex(nextIndex);
+      setReadyStepId(null);
+      setHighlight(null);
+      storeSession(nextIndex, replay);
+      interactionTimerRef.current = null;
+    };
+
     const advanceAfterInteraction = (event: Event) => {
       if (!step.advanceOnInteraction) return;
-      const input = event.target;
-      if (!(input instanceof HTMLInputElement) || input.type !== 'checkbox') return;
+      const eventName = step.interactionEvent ?? 'change';
+      if (eventName === 'change') {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || input.type !== 'checkbox') {
+          return;
+        }
+      }
+
       if (interactionTimerRef.current !== null) {
         window.clearTimeout(interactionTimerRef.current);
       }
-      interactionTimerRef.current = window.setTimeout(() => {
-        if (cancelled) return;
-        const nextIndex = Math.min(stepIndex + 1, STEPS.length - 1);
-        setStepIndex(nextIndex);
-        setReadyStepId(null);
-        storeSession(nextIndex, replay);
-        interactionTimerRef.current = null;
-      }, reducedMotion ? 0 : 220);
+
+      const delay = reducedMotion
+        ? 0
+        : (step.interactionAdvanceDelayMs ?? (eventName === 'change' ? 220 : 90));
+      if (delay <= 0) {
+        commitNextStep();
+        return;
+      }
+
+      interactionTimerRef.current = window.setTimeout(commitNextStep, delay);
     };
 
     const locate = () => {
@@ -489,11 +603,14 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       }
 
       targetRef.current = target;
-      target.scrollIntoView({
-        block: 'center',
-        inline: 'nearest',
-        behavior: 'auto',
-      });
+      const rect = target.getBoundingClientRect();
+      if (rect.top < 76 || rect.bottom > window.innerHeight - 24) {
+        target.scrollIntoView({
+          block: 'center',
+          inline: 'nearest',
+          behavior: 'auto',
+        });
+      }
       update();
       setReadyStepId(step.id);
 
@@ -502,9 +619,15 @@ export function TutorialController({ userId }: { userId?: string | null }) {
         observer.observe(target);
       }
 
-      if (step.interactive) {
+      if (step.interactive && step.advanceOnInteraction) {
         interactionTarget = target;
-        target.addEventListener('change', advanceAfterInteraction);
+        interactionEvent = step.interactionEvent ?? 'change';
+        interactionCapture = interactionEvent === 'click';
+        target.addEventListener(
+          interactionEvent,
+          advanceAfterInteraction,
+          interactionCapture,
+        );
       }
     };
 
@@ -518,7 +641,13 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
       observer?.disconnect();
-      interactionTarget?.removeEventListener('change', advanceAfterInteraction);
+      if (interactionTarget && interactionEvent) {
+        interactionTarget.removeEventListener(
+          interactionEvent,
+          advanceAfterInteraction,
+          interactionCapture,
+        );
+      }
       targetRef.current = null;
     };
   }, [active, reducedMotion, replay, step, stepIndex]);
@@ -572,6 +701,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     (nextIndex: number) => {
       const clamped = clamp(nextIndex, 0, STEPS.length - 1);
       setSaveError(null);
+      targetRef.current = null;
       setReadyStepId(null);
       setHighlight(null);
       setStepIndex(clamped);
@@ -586,16 +716,26 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   }, [moveToStep, saving, stepIndex, targetPending]);
 
   const goNext = useCallback(() => {
-    if (saving || targetPending) return;
+    if (saving || targetPending || requiresInteraction) return;
     if (stepIndex >= STEPS.length - 1) {
       void closeTutorial();
       return;
     }
     moveToStep(stepIndex + 1);
-  }, [closeTutorial, moveToStep, saving, stepIndex, targetPending]);
+  }, [
+    closeTutorial,
+    moveToStep,
+    requiresInteraction,
+    saving,
+    stepIndex,
+    targetPending,
+  ]);
 
   useEffect(() => {
     if (!active) return;
+
+    const focusableSelector =
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -613,37 +753,56 @@ export function TutorialController({ userId }: { userId?: string | null }) {
         goNext();
         return;
       }
+
+      const eventNode = event.target as Node | null;
+      const insideCard = Boolean(eventNode && cardRef.current?.contains(eventNode));
+      const insideInteractiveTarget = Boolean(
+        eventNode && step.interactive && targetRef.current?.contains(eventNode),
+      );
       if (
-        event.key !== 'Tab' ||
-        !cardRef.current ||
-        step.interactive ||
-        targetPending
+        ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(
+          event.key,
+        ) &&
+        !insideCard &&
+        !insideInteractiveTarget
       ) {
+        event.preventDefault();
         return;
       }
 
-      const focusable = Array.from(
-        cardRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusable.length === 0) {
+      if (event.key !== 'Tab' || !cardRef.current || targetPending) return;
+
+      const focusable: HTMLElement[] = [];
+      const addFocusable = (root: HTMLElement) => {
+        if (root.matches(focusableSelector)) focusable.push(root);
+        focusable.push(
+          ...Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)),
+        );
+      };
+      addFocusable(cardRef.current);
+      if (step.interactive && targetRef.current) addFocusable(targetRef.current);
+
+      const uniqueFocusable = Array.from(new Set(focusable)).filter(visibleElement);
+      if (uniqueFocusable.length === 0) {
         event.preventDefault();
         cardRef.current.focus();
         return;
       }
 
       const current = document.activeElement as HTMLElement | null;
-      const index = current ? focusable.indexOf(current) : -1;
+      const index = current ? uniqueFocusable.indexOf(current) : -1;
       if (event.shiftKey && index <= 0) {
         event.preventDefault();
-        focusable[focusable.length - 1]?.focus();
-      } else if (!event.shiftKey && index === focusable.length - 1) {
+        uniqueFocusable[uniqueFocusable.length - 1]?.focus();
+      } else if (!event.shiftKey && index === uniqueFocusable.length - 1) {
         event.preventDefault();
-        focusable[0]?.focus();
+        uniqueFocusable[0]?.focus();
       } else if (index === -1) {
         event.preventDefault();
-        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0])?.focus();
+        (event.shiftKey
+          ? uniqueFocusable[uniqueFocusable.length - 1]
+          : uniqueFocusable[0]
+        )?.focus();
       }
     };
 
@@ -680,12 +839,31 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     }
 
     const width = Math.min(384, window.innerWidth - 32);
+    const gap = 16;
+
+    if (step.placement === 'left') {
+      const availableLeft = Math.max(0, visibleHighlight.left - gap - 16);
+      const leftWidth = Math.min(width, Math.max(260, availableLeft));
+      const cardHeight = Math.min(
+        cardRef.current?.offsetHeight || 360,
+        window.innerHeight - 32,
+      );
+      return {
+        left: Math.max(16, visibleHighlight.left - leftWidth - gap),
+        top: clamp(
+          visibleHighlight.top,
+          16,
+          Math.max(16, window.innerHeight - cardHeight - 16),
+        ),
+        width: leftWidth,
+      };
+    }
+
     const left = clamp(
       visibleHighlight.left,
       16,
       window.innerWidth - width - 16,
     );
-    const gap = 16;
     const roomBelow = window.innerHeight - visibleHighlight.bottom;
 
     if (roomBelow >= 290) {
@@ -700,7 +878,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     }
 
     return { right: 16, top: 88, width };
-  }, [visibleHighlight]);
+  }, [step.placement, visibleHighlight]);
 
   if (!active) return null;
 
@@ -765,6 +943,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
       <section
         ref={cardRef}
+        data-tutorial-overlay="true"
         role="dialog"
         aria-modal={step.interactive ? false : true}
         aria-labelledby={`tutorial-title-${step.id}`}
@@ -775,28 +954,16 @@ export function TutorialController({ userId }: { userId?: string | null }) {
           reducedMotion ? '' : 'transition-[top,left,right,bottom] duration-150'
         }`}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-300">
-              Step {stepIndex + 1} of {STEPS.length}
-            </p>
-            <h2
-              id={`tutorial-title-${step.id}`}
-              className="mt-2 text-xl font-semibold tracking-tight"
-            >
-              {step.title}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => void closeTutorial()}
-            disabled={saving}
-            aria-label="Skip tutorial"
-            title="Skip tutorial"
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-700 dark:text-blue-300">
+            Step {stepIndex + 1} of {STEPS.length}
+          </p>
+          <h2
+            id={`tutorial-title-${step.id}`}
+            className="mt-2 text-xl font-semibold tracking-tight"
           >
-            <X className="size-5" aria-hidden />
-          </button>
+            {step.title}
+          </h2>
         </div>
 
         <div
@@ -856,13 +1023,17 @@ export function TutorialController({ userId }: { userId?: string | null }) {
             <button
               type="button"
               onClick={goNext}
-              disabled={saving || targetPending}
+              disabled={saving || targetPending || requiresInteraction}
               className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[color:var(--dp-navy)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {stepIndex === STEPS.length - 1 ? 'Finish' : 'Next'}
-              {stepIndex === STEPS.length - 1 ? null : (
+              {requiresInteraction
+                ? 'Use highlighted control'
+                : stepIndex === STEPS.length - 1
+                  ? 'Finish'
+                  : 'Next'}
+              {!requiresInteraction && stepIndex < STEPS.length - 1 ? (
                 <ChevronRight className="size-4" aria-hidden />
-              )}
+              ) : null}
             </button>
           </div>
         </div>
