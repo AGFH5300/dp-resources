@@ -1,6 +1,6 @@
 {
   "schema": "dp_external_content_index_state_v1",
-  "updatedAt": "2026-09-14T09:01:08.808Z",
+  "updatedAt": "2026-09-15T08:45:26.826Z",
   "signalIds": [
     "exam-mate-topical-count-238260",
     "exam-mate-topical-count-238265",
@@ -16,98 +16,27 @@
   ],
   "sources": {
     "exam_mate": {
-      "scannedAt": "2026-09-14T09:00:59.092Z",
+      "scannedAt": "2026-09-15T08:45:15.099Z",
       "captureMode": "metadata-only",
       "pages": [
         {
           "requestedUrl": "https://www.exam-mate.com/",
-          "finalUrl": "https://www.exam-mate.com/",
-          "status": 200,
-          "etag": null,
-          "lastModified": null,
-          "htmlSha256": "e4b8e0eb870719d5f04d3fa85457d5a89cafa34594afd6dea564d7414b950a5b",
-          "catalogFingerprint": "2dfa32140fd0b44c9b0af64c6474d3a6ebf6a3f5b6f891b2f5f611e678e00107",
-          "itemCount": 8
+          "error": "fetch failed"
         }
       ],
-      "items": [
-        {
-          "key": "e914da5edf222201e71bb836d89004b8",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "AI Exam Marker (Free)",
-          "url": "https://www.exam-mate.com/exam-marker",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "3f635412810f81f69d6aa9d59a31c146",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "AI Revision Assistant (Free)",
-          "url": "https://www.exam-mate.com/revision",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "8e0735b64094ddee444a9c715c63ff34",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "Build Exam or Worksheet",
-          "url": "https://www.exam-mate.com/exams/pricing",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "60cc752e559c24b1a07f2005ff66d003",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "Online Exam Builder",
-          "url": "https://www.exam-mate.com/myexams",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "7401af50339006c44059eee54a2ee609",
-          "source": "exam_mate",
-          "kind": "mock_exam",
-          "text": "AI Mock Exam (Free)",
-          "url": "https://www.exam-mate.com/mockexam",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "80177aa4f12c402bb60e0c1b31e7bbda",
-          "source": "exam_mate",
-          "kind": "prediction_exam",
-          "text": "AI Exam Prediction (Free)",
-          "url": "https://www.exam-mate.com/prediction-exam",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "5e52d031fbb1719b580c6a51f5c20357",
-          "source": "exam_mate",
-          "kind": "question_bank_or_exam_questions",
-          "text": "Build Question List (Free)",
-          "url": "https://www.exam-mate.com/list",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "1666a3b96b694b59afb0350e0229e99a",
-          "source": "exam_mate",
-          "kind": "question_bank_or_exam_questions",
-          "text": "exam-mate Question Bank (Free)",
-          "url": "https://www.exam-mate.com/questionbank",
-          "discoveredOn": "https://www.exam-mate.com/"
-        }
-      ]
+      "items": []
     },
     "revision_village": {
-      "scannedAt": "2026-09-14T09:00:59.618Z",
+      "scannedAt": "2026-09-15T08:45:15.726Z",
       "captureMode": "metadata-only",
       "pages": [
         {
           "requestedUrl": "https://www.revisionvillage.com/prediction-exams/",
           "finalUrl": "https://www.revisionvillage.com/prediction-exams/",
           "status": 200,
-          "etag": "\"uqnwtagsvc8itn\"",
+          "etag": "\"su899i69c48itk\"",
           "lastModified": null,
-          "htmlSha256": "2dd108bfa7706985e3e39cc467903ec2706c248bc1fead011c7c3a0b3b0eafb4",
+          "htmlSha256": "c3391f963f94f40fb638b66dc350759ed2c974955c8692db8cea5ac87cb48c6c",
           "catalogFingerprint": "1642de768e2ad58c8e55c941e0343af157c27d487a91655a6bd21e6243fb7e0e",
           "itemCount": 66
         },
@@ -115,9 +44,9 @@
           "requestedUrl": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
           "finalUrl": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
           "status": 200,
-          "etag": "\"p9dt3c0c4o2hlx\"",
+          "etag": "\"1peb1twfdn2hlu\"",
           "lastModified": null,
-          "htmlSha256": "f44d6ebff447d24b75fd064621028b8cfd9e7784945fc6630c0ecd49770d8455",
+          "htmlSha256": "6ba628a444510e2152e9adfaf5b841521253dd96113fae00de0b04efeedb465a",
           "catalogFingerprint": "1f2edf351f31870461723799f19f7dd95991352bdb43810e6b889ab0faaf1601",
           "itemCount": 43
         }
@@ -710,7 +639,7 @@
       ]
     },
     "revision_town": {
-      "scannedAt": "2026-09-14T09:00:59.837Z",
+      "scannedAt": "2026-09-15T08:45:16.216Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -2362,7 +2291,7 @@
       ]
     },
     "mortar_and_pestle": {
-      "scannedAt": "2026-09-14T09:01:00.071Z",
+      "scannedAt": "2026-09-15T08:45:16.656Z",
       "captureMode": "fingerprint-only",
       "pages": [
         {
@@ -2370,8 +2299,8 @@
           "finalUrl": "https://pestle.pirateib.su/app/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:00 GMT",
-          "htmlSha256": "d5e6f3d9bd7df9a43df7a435aa3c17341de41e9a1374ca4cb1d9c529eb9bbf88",
+          "lastModified": "Tue, 15 Sep 2026 08:45:16 GMT",
+          "htmlSha256": "c9fecd6e656fb4810363d7500d08382b38c279ef98006ff1b328e3940b0e1bba",
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
           "itemCount": 0
         }
@@ -2379,7 +2308,7 @@
       "items": []
     },
     "save_my_exams": {
-      "scannedAt": "2026-09-14T09:01:08.806Z",
+      "scannedAt": "2026-09-15T08:45:26.823Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -2387,8 +2316,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 05:17:35 GMT",
-          "htmlSha256": "df832bad1e4fda0c23bb88e6f556eb7f7ebbd3639070bd7ec40da1a055678347",
+          "lastModified": "Tue, 15 Sep 2026 08:45:17 GMT",
+          "htmlSha256": "49931d8da01c992e32c037e7af6726fd3e1015415ee8cb54a1c101640a13a472",
           "catalogFingerprint": "d7406a8aae87218559aa7f64f4f1a37d26818302e5710be4a7571f3ecb5e3304",
           "itemCount": 1864
         },
@@ -2397,8 +2326,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/maths/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:01 GMT",
-          "htmlSha256": "0623bf884121792a567e1a49cb6a3f542f1a7bf5ce61c0000c33d8ca93b7b12d",
+          "lastModified": "Tue, 15 Sep 2026 08:45:18 GMT",
+          "htmlSha256": "0d841d65de73b59bc684ae8ec698118c0aee24390824aeadc45c8fc550978140",
           "catalogFingerprint": "fbafd7b2566fcd3768b23383c53cb415762586879f78b4fd3718f8eb32065545",
           "itemCount": 1804
         },
@@ -2407,9 +2336,9 @@
           "finalUrl": "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:02 GMT",
-          "htmlSha256": "cbbb6e2d70fcf26309b92693f47238ed3b8eaa25c47a9a80794f3d4093d3f82e",
-          "catalogFingerprint": "b9a15ee735772b8a7b661d08bd2133b3cc1922075c9cf1b928370e7bb2c914f4",
+          "lastModified": "Tue, 15 Sep 2026 08:45:20 GMT",
+          "htmlSha256": "5540f7d106f8531cf72e8006c7af86861465bdd0b3a8a84a0784ac4651e53b2e",
+          "catalogFingerprint": "eb476511dca34c95af888da792df410a71f91459ee628620de411dc4c0f74304",
           "itemCount": 1816
         },
         {
@@ -2417,8 +2346,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/business/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:04 GMT",
-          "htmlSha256": "1d11753124bd8f297065c122f8ed90a0dd9fb594868cb02c9c240889b396a279",
+          "lastModified": "Tue, 15 Sep 2026 08:45:21 GMT",
+          "htmlSha256": "08b2a0936560bf64a79c0ee3cb20ce2cd3aa1b0bb46d4eba9a374d3f9f42e3aa",
           "catalogFingerprint": "113d0b1c79f736b3d145da1d0736297cc106147744538b58cb2e9a4e19032978",
           "itemCount": 1803
         },
@@ -2427,8 +2356,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/chemistry/ib/23/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 02:32:31 GMT",
-          "htmlSha256": "1c15ff7298b7e0062e9017ad883e70a7c7815a4a6081ef0d360ff664d7209081",
+          "lastModified": "Tue, 15 Sep 2026 08:45:22 GMT",
+          "htmlSha256": "74a4d5a2c4a877e8acdea8a9bb09d4584fed584e729c2ea33cd35f22eae35fc0",
           "catalogFingerprint": "88cb484f12e7bbe6c039a707ea6242196afc4afc82b7371db434814ab2d674d0",
           "itemCount": 1820
         },
@@ -2437,8 +2366,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/biology/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:06 GMT",
-          "htmlSha256": "81af0ffee2f06fd88607ca73e8717a1fb8fd0d22e7941bc87d205ae8062dc3e9",
+          "lastModified": "Tue, 15 Sep 2026 08:45:23 GMT",
+          "htmlSha256": "75e09ae190db7423096fdb5064a8e89a085bcbf73ebffd036d34b32dbf67928a",
           "catalogFingerprint": "5f48dcbaf725e2e7aab09bb3f3cc1367f053f5703da062039d995fe6d5fbe290",
           "itemCount": 1802
         },
@@ -2447,8 +2376,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/physics/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:07 GMT",
-          "htmlSha256": "38e65db2fca9c87f00b1fd03e7bd16817e8e586067fbad894191e7ddb49c1a29",
+          "lastModified": "Tue, 15 Sep 2026 08:45:24 GMT",
+          "htmlSha256": "ffef2422857ab65d52d948e699bdfa438c8533c5a30b7c305afad4449df85457",
           "catalogFingerprint": "ac0a4045a7540eb75679acb64c87a5b4a4231f6a4f588d6e4910082a805d12bc",
           "itemCount": 1802
         },
@@ -2457,8 +2386,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/economics/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 09:01:08 GMT",
-          "htmlSha256": "76c13e5a3fbb6cfdab5faeda5ff19ddf2580ebe4657918a981c4c5757cf6b583",
+          "lastModified": "Tue, 15 Sep 2026 08:45:25 GMT",
+          "htmlSha256": "2c518e90c1d4682fdf01c39e3abb9369c5a5d81c38d2a01ffd435ab1dfc225c4",
           "catalogFingerprint": "5f218c2092349cf058ab835c5aa745817968671afe1b3399c4164ef18df92db4",
           "itemCount": 1802
         },
@@ -2467,8 +2396,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Mon, 14 Sep 2026 00:06:13 GMT",
-          "htmlSha256": "55d64708c2d631446e90bb2773dd378439aba4a094c11447fa9ee102bb5859fe",
+          "lastModified": "Tue, 15 Sep 2026 08:45:26 GMT",
+          "htmlSha256": "2ae75d268b3d20595895b800a38b7fcca5b29291cf5cde371a85c9a3f024bc58",
           "catalogFingerprint": "54a595c8cba88c5ee4ade9eb4d3986ea8cfae929fc5e1c4aab55c219f13280dd",
           "itemCount": 1804
         }
@@ -14251,11 +14180,11 @@
           "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
         },
         {
-          "key": "2cc59e4cbea550123e2a4b45a0e86669",
+          "key": "3f25f74ef95e70396e2e64e8fc9a7308",
           "source": "save_my_exams",
           "kind": "question_bank_or_exam_questions",
           "text": "Exam Questions",
-          "url": "https://www.savemyexams.com/dp/maths/ib/aa/21/sl/topic-questions/number-and-algebra/exponentials-and-logs/",
+          "url": "https://www.savemyexams.com/dp/maths/ib/aa/21/sl/topic-questions/number-and-algebra/number-toolkit/",
           "discoveredOn": "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/"
         },
         {
