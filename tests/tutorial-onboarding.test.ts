@@ -8,6 +8,7 @@ const replayCard = read('components/tutorial/tutorial-replay-card.tsx');
 const tutorialConfig = read('lib/tutorials.ts');
 const tutorialRoute = read('app/api/tutorials/progress/route.ts');
 const nav = read('components/nav.tsx');
+const appHeader = read('components/app-header.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const whatsNew = read('components/whats-new-dialog.tsx');
 const settingsPage = read('app/settings/page.tsx');
@@ -19,11 +20,11 @@ describe('interactive tutorial onboarding', () => {
     expect(nav).toContain('<AppHeader admin={admin} userId={userId} />');
   });
 
-  it('spotlights the real product surfaces across the walkthrough', () => {
+  it('spotlights stable real product surfaces across the walkthrough', () => {
     expect(controller).toContain("id: 'library'");
-    expect(controller).toContain('a[href="/library"]');
+    expect(controller).toContain('data-tutorial-target="nav-library"');
     expect(controller).toContain("id: 'question-bank'");
-    expect(controller).toContain('a[href="/question-bank"]');
+    expect(controller).toContain('data-tutorial-target="nav-question-bank"');
     expect(controller).toContain("id: 'search'");
     expect(controller).toContain('button[aria-label^="Search library"]');
     expect(controller).toContain("id: 'practice-builder'");
@@ -32,38 +33,65 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'source-filters-explain'");
     expect(controller).toContain("text: 'Sources'");
     expect(controller).toContain("id: 'recent'");
-    expect(controller).toContain('a[href="/recent"]');
+    expect(controller).toContain('data-tutorial-target="nav-recent"');
     expect(controller).toContain("id: 'saved'");
-    expect(controller).toContain('a[href="/saved"]');
-    expect(controller).toContain("id: 'settings'");
-    expect(controller).toContain('data-tutorial-target="account-menu"');
-    expect(accountMenu).toContain('data-tutorial-target="account-menu"');
+    expect(controller).toContain('data-tutorial-target="nav-saved"');
+    expect(appHeader).toContain(
+      'data-tutorial-target={`nav-${href.slice(1).replaceAll(\'/\', \'-\')}`}',
+    );
   });
 
-  it('makes the source lesson a real two-part click-through interaction', () => {
+  it('keeps the source lesson interactive and positions its card to the left on desktop', () => {
     expect(controller).toContain('interactive: true');
     expect(controller).toContain('advanceOnInteraction: true');
-    expect(controller).toContain("target.addEventListener('change', advanceAfterInteraction)");
+    expect(controller).toContain("interactionEvent: 'change'");
+    expect(controller).toContain('requireInteraction: true');
+    expect(controller).toContain("placement: 'left'");
     expect(controller).toContain("input.type !== 'checkbox'");
+    expect(controller).toContain('visibleHighlight.left - leftWidth - gap');
     expect(controller).toContain('pointer-events-none fixed z-[90]');
-    expect(controller).toContain('aria-modal={step.interactive ? false : true}');
     expect(controller).toContain('Try it now: click any source checkbox');
     expect(controller).toContain('The highlighted controls stay live');
   });
 
+  it('locks the underlying page while leaving only the active tutorial target interactive', () => {
+    expect(controller).toContain("html.style.overflow = 'hidden'");
+    expect(controller).toContain("body.style.overflow = 'hidden'");
+    expect(controller).toContain("html.style.overscrollBehavior = 'none'");
+    expect(controller).toContain("document.addEventListener('wheel', blockPageScroll");
+    expect(controller).toContain("document.addEventListener('touchmove', blockPageScroll");
+    expect(controller).toContain("document.addEventListener('click', blockOutsideInteraction, true)");
+    expect(controller).toContain('step.interactive && targetRef.current?.contains(node)');
+    expect(controller).toContain("['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']");
+    expect(controller).toContain('data-tutorial-overlay="true"');
+    expect(controller).not.toContain('aria-label="Skip tutorial"');
+  });
+
   it('keeps navigation-heading steps on the library shell and warms real route changes', () => {
     expect(controller).toContain("const LIBRARY_ROUTE = '/library'");
-    expect(controller).toContain(
-      "const PREFETCH_ROUTES = ['/library', '/question-bank', '/question-bank/build'] as const",
-    );
+    expect(controller).toContain("'/question-bank/build'");
+    expect(controller).toContain("'/settings'");
     expect(controller).toContain('for (const route of PREFETCH_ROUTES) router.prefetch(route)');
     expect(controller).toContain('router.replace(step.route)');
     expect(controller).toContain("id: 'recent'");
     expect(controller).toContain("id: 'saved'");
-    expect(controller).toContain("id: 'settings'");
     expect(controller).not.toContain('Loader2');
-    expect(controller).not.toContain('Opening ${step.routeLabel || step.title}…');
     expect(controller).not.toContain('role="status"');
+  });
+
+  it('makes the Settings finale a required click-through sequence ending at Replay tutorial', () => {
+    expect(controller).toContain("id: 'account-menu'");
+    expect(controller).toContain('data-tutorial-target="account-menu"');
+    expect(controller).toContain("id: 'settings-link'");
+    expect(controller).toContain('data-tutorial-target="settings-link"');
+    expect(controller).toContain("interactionEvent: 'click'");
+    expect(controller).toContain('interactionAdvanceDelayMs: 0');
+    expect(controller).toContain("id: 'tutorial-replay'");
+    expect(controller).toContain('data-tutorial-target="tutorial-replay-button"');
+    expect(accountMenu).toContain('data-tutorial-target="account-menu"');
+    expect(accountMenu).toContain('data-tutorial-target="settings-link"');
+    expect(accountMenu).toContain('[data-tutorial-overlay="true"]');
+    expect(replayCard).toContain('data-tutorial-target="tutorial-replay-button"');
   });
 
   it('provides Back, Next, Skip, progress and keyboard navigation', () => {
@@ -76,9 +104,10 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("event.key === 'Escape'");
     expect(controller).toContain("event.key !== 'Tab'");
     expect(controller).toContain('role="dialog"');
+    expect(controller).toContain("'Use highlighted control'");
   });
 
-  it('supports mobile layouts, immediate target positioning and reduced-motion users', () => {
+  it('supports mobile layouts, automatic target positioning and reduced-motion users', () => {
     expect(controller).toContain('window.innerWidth < 640');
     expect(controller).toContain(
       'visibleHighlight.bottom > window.innerHeight * 0.62',
@@ -87,6 +116,7 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('env(safe-area-inset-bottom)');
     expect(controller).toContain("'(prefers-reduced-motion: reduce)'");
     expect(controller).toContain("behavior: 'auto'");
+    expect(controller).toContain('rect.bottom > window.innerHeight - 24');
     expect(controller).toContain(
       "reducedMotion ? '' : 'transition-all duration-150'",
     );
