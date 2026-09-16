@@ -75,13 +75,15 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(changelog).toContain("'2026-09-16': [");
     expect(changelog).toContain("'2026-09-12': [");
     expect(changelog).toContain("'2026-09-11': [");
+    expect(changelog).toContain('Expanded the Question Bank with 11,763 distinct RevisionDojo questions');
     expect(changelog).toContain('Added a 12-step interactive onboarding walkthrough');
     expect(changelog).toContain('Improved Question Bank reliability when source or course counts are slow');
     expect(changelog).toContain('Added one-click Question Bank filters');
     expect(changelog).toContain('Added DP Resources social sign-in and Connected Accounts support');
     expect(changelog).toContain('Added fullscreen support to the standard browser PDF fallback');
-    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain("dateLabel: '16 September 2026'");
+    expect(whatsNew).toContain('11,763 RevisionDojo questions added');
     expect(whatsNew).toContain('Take a guided tour of DP Resources');
   });
 });

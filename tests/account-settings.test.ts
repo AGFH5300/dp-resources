@@ -128,10 +128,11 @@ describe('Settings & Account Centre', () => {
   });
 
   it('keeps What’s New current after the guided onboarding release', () => {
-    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
+    expect(whatsNew).toContain('11,763 RevisionDojo questions added');
     expect(whatsNew).toContain('Take a guided tour of DP Resources');
     expect(whatsNew).toContain('Replay the tutorial anytime');
-    expect(whatsNew).toContain('Clearer, more reliable Practice Builder');
+    expect(whatsNew).toContain('Clearer and more reliable practice');
     expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 
