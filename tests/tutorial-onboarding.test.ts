@@ -140,7 +140,9 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'settings-link'");
     expect(controller).toContain('data-tutorial-target="settings-link"');
     expect(controller).toContain("interactionEvent: 'click'");
-    expect(controller).toContain('interactionAdvanceDelayMs: 0');
+    expect(controller).toContain('interactionAdvanceDelayMs: 90');
+    expect(controller).toContain("step.id === 'settings-link'");
+    expect(controller).toContain("router.replace('/settings')");
     expect(controller).toContain("id: 'tutorial-replay'");
     expect(controller).toContain('data-tutorial-target="tutorial-replay-button"');
     expect(accountMenu).toContain('data-tutorial-target="account-menu"');

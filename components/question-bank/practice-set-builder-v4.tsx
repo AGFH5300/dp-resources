@@ -1864,7 +1864,9 @@ export function PracticeSetBuilderV4({
                   <details
                     key={subject.id}
                     open={Boolean(search) || undefined}
-                    className={`${styles.pickerSubject} rounded-2xl border`}
+                    className={`${styles.pickerSubject} ${
+                      allSelected ? styles.pickerSubjectComplete : ''
+                    } rounded-2xl border`}
                   >
                     <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
                       <ChevronDown className={`${styles.detailsChevron} size-4 shrink-0`} />

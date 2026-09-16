@@ -26,16 +26,16 @@
     transform 150ms ease;
 }
 
-.conceptButton:not(:disabled):hover {
-  border-color: color-mix(in srgb, var(--dp-blue) 72%, var(--outline));
-  background: color-mix(in srgb, var(--dp-blue) 10%, var(--dp-warm-surface));
+.conceptButton:not(.conceptButtonSelected):not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--dp-blue) 42%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 5%, var(--dp-warm-surface));
   transform: translateY(-1px);
 }
 
 .conceptButtonSelected,
 .conceptButtonSelected:disabled {
-  border-color: color-mix(in srgb, var(--dp-blue) 58%, var(--outline));
-  background: color-mix(in srgb, var(--dp-blue) 15%, var(--dp-warm-surface));
+  border-color: #2563eb;
+  background: #dbeafe;
   color: var(--dp-heading);
   opacity: 1 !important;
 }
@@ -50,8 +50,8 @@
 }
 
 .conceptButtonSelected .conceptIcon {
-  background: color-mix(in srgb, var(--dp-blue) 24%, var(--dp-warm-surface));
-  color: #93c5fd;
+  background: #2563eb;
+  color: #ffffff;
 }
 
 .courseOption {
@@ -61,14 +61,19 @@
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
-.courseOption:hover {
-  border-color: color-mix(in srgb, var(--dp-blue) 55%, var(--outline));
-  background: color-mix(in srgb, var(--dp-blue) 7%, var(--dp-warm-surface));
+.courseOption:not(.courseOptionSelected):hover {
+  border-color: color-mix(in srgb, var(--dp-blue) 38%, var(--outline));
+  background: color-mix(in srgb, var(--dp-blue) 4%, var(--dp-warm-surface));
 }
 
 .courseOptionSelected {
-  border-color: #3b82f6;
-  background: color-mix(in srgb, #2563eb 18%, var(--dp-warm-surface));
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.courseOptionSelected:hover {
+  border-color: #1d4ed8;
+  background: #dbeafe;
 }
 
 .selectedSubjectGroup,
@@ -151,7 +156,14 @@
   background: #ede9fe;
 }
 
-.courseBulkButton:disabled,
+.courseBulkButton:disabled {
+  cursor: default;
+  border-color: #22c55e;
+  background: #dcfce7;
+  color: #166534;
+  opacity: 1;
+}
+
 .maxBulkButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -209,6 +221,21 @@
   border-color: color-mix(in srgb, #2563eb 38%, var(--outline));
 }
 
+.pickerSubjectComplete {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.pickerSubjectComplete > summary {
+  background: #f0fdf4;
+  border-radius: inherit;
+}
+
+.pickerSubjectComplete .selectionCounter {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .selectionCounter {
   background: color-mix(in srgb, #2563eb 11%, var(--dp-warm-surface));
   color: #1d4ed8;
@@ -223,13 +250,13 @@
 }
 
 .deleteButton {
-  color: var(--dp-muted-text);
+  color: #64748b;
   transition: color 150ms ease, background-color 150ms ease;
 }
 
 .deleteButton:hover {
-  color: #fca5a5;
-  background: rgb(153 27 27 / 0.22);
+  color: #b91c1c;
+  background: #fef2f2;
 }
 
 .countInput {
@@ -254,8 +281,8 @@
 
 .countButton:not(:disabled):hover {
   border-color: #3b82f6;
-  background: color-mix(in srgb, #2563eb 18%, var(--dp-warm-surface));
-  color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .countButton:disabled {
@@ -309,13 +336,15 @@
 }
 
 .previewSuccess {
-  background: rgb(6 95 70 / 0.2);
-  color: #a7f3d0;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
 }
 
 .previewWarning {
-  background: rgb(180 83 9 / 0.22);
-  color: #fde68a;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
 }
 
 .summaryCard {
@@ -397,6 +426,24 @@
 :global(html[data-theme='dark']) .countButton:not(:disabled):hover {
   background: #1b3154;
   border-color: #60a5fa;
+  color: #dbeafe;
+}
+
+:global(html[data-theme='dark']) .deleteButton:hover {
+  color: #fca5a5;
+  background: rgb(153 27 27 / 0.28);
+}
+
+:global(html[data-theme='dark']) .previewSuccess {
+  border-color: #166534;
+  background: #123325;
+  color: #a7f3d0;
+}
+
+:global(html[data-theme='dark']) .previewWarning {
+  border-color: #92400e;
+  background: #3b2608;
+  color: #fde68a;
 }
 
 :global(html[data-theme='dark']) .selectionPanel,
@@ -486,4 +533,15 @@
 :global(html[data-theme='dark']) .selectionCounter {
   background: #19365d;
   color: #bfdbfe;
+}
+
+:global(html[data-theme='dark']) .pickerSubjectComplete,
+:global(html[data-theme='dark']) .pickerSubjectComplete > summary {
+  border-color: #15803d;
+  background: #102d22;
+}
+
+:global(html[data-theme='dark']) .pickerSubjectComplete .selectionCounter {
+  background: #14532d;
+  color: #bbf7d0;
 }
