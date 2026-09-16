@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { GlobalSearch } from '@/components/global-search';
 import { SiteFooter } from '@/components/site-footer';
+import { TutorialController } from '@/components/tutorial/tutorial-controller';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo';
 
 const FAVICON_URL = '/brand/dp-favicon.png?v=134a33c';
@@ -129,6 +130,7 @@ export default async function RootLayout({
           <div className="flex-1 bg-white">{children}</div>
           <SiteFooter />
         </div>
+        <TutorialController />
         <GlobalSearch />
         <AppToaster />
       </body>

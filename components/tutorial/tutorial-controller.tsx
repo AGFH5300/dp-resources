@@ -327,7 +327,7 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-export function TutorialController({ userId }: { userId?: string | null }) {
+export function TutorialController() {
   const pathname = usePathname();
   const router = useRouter();
   const cardRef = useRef<HTMLElement>(null);
@@ -338,6 +338,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [replay, setReplay] = useState(false);
   const [highlight, setHighlight] = useState<HighlightRect | null>(null);
+  const [lastReadyHighlight, setLastReadyHighlight] = useState<HighlightRect | null>(null);
   const [readyStepId, setReadyStepId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -346,19 +347,18 @@ export function TutorialController({ userId }: { userId?: string | null }) {
   const step = STEPS[stepIndex] ?? STEPS[0];
   const targetReady = !step.target || readyStepId === step.id;
   const targetPending = active && !targetReady;
-  const visibleHighlight = targetReady ? highlight : null;
+  const visibleHighlight = targetReady ? highlight : (targetPending ? lastReadyHighlight : null);
   const requiresInteraction = Boolean(
     step.requireInteraction && step.advanceOnInteraction,
   );
 
   useLayoutEffect(() => {
-    if (!userId) return;
     try {
       window.sessionStorage.setItem(TUTORIAL_CHECKING_STORAGE_KEY, '1');
     } catch {
       // Coordination with What's New is best-effort only.
     }
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -382,35 +382,31 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
   const startTutorial = useCallback(
     (requestedIndex = 0, isReplay = false) => {
-      if (!userId) return;
       const nextIndex = clamp(requestedIndex, 0, STEPS.length - 1);
       setSaveError(null);
       setReplay(isReplay);
       setStepIndex(nextIndex);
       setReadyStepId(null);
       setHighlight(null);
+      setLastReadyHighlight(null);
       setActive(true);
       storeSession(nextIndex, isReplay);
       window.dispatchEvent(new Event(TUTORIAL_OPENED_EVENT));
     },
-    [userId],
+    [],
   );
 
   useEffect(() => {
-    if (!userId) return;
-
     const stored = readStoredSession();
-    if (stored) {
-      startTutorial(stored.stepIndex, Boolean(stored.replay));
-      return;
-    }
-
     let cancelled = false;
     const params = new URLSearchParams({
       key: CORE_TUTORIAL_KEY,
       version: String(CORE_TUTORIAL_VERSION),
     });
 
+    // The controller is root-mounted so it survives App Router page swaps. Verify
+    // member access once before restoring a stored session; logged-out/auth pages
+    // simply fail this protected endpoint and never start the tutorial.
     void fetch(`/api/tutorials/progress?${params.toString()}`, {
       cache: 'no-store',
     })
@@ -420,6 +416,10 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       })
       .then((payload) => {
         if (cancelled) return;
+        if (stored) {
+          startTutorial(stored.stepIndex, Boolean(stored.replay));
+          return;
+        }
         if (!payload.dismissed) {
           startTutorial(0, false);
           return;
@@ -433,6 +433,8 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       })
       .catch(() => {
         if (cancelled) return;
+        clearStoredSession();
+        setActive(false);
         try {
           window.sessionStorage.removeItem(TUTORIAL_CHECKING_STORAGE_KEY);
         } catch {
@@ -444,7 +446,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
     return () => {
       cancelled = true;
     };
-  }, [startTutorial, userId]);
+  }, [startTutorial]);
 
   useEffect(() => {
     const handleStart = (event: Event) => {
@@ -560,7 +562,9 @@ export function TutorialController({ userId }: { userId?: string | null }) {
 
     const update = () => {
       if (cancelled || !targetRef.current) return;
-      setHighlight(measureTarget(targetRef.current));
+      const nextHighlight = measureTarget(targetRef.current);
+      setHighlight(nextHighlight);
+      setLastReadyHighlight(nextHighlight);
     };
 
     const commitNextStep = () => {
@@ -697,6 +701,7 @@ export function TutorialController({ userId }: { userId?: string | null }) {
       await persistDismissal();
       clearStoredSession();
       setHighlight(null);
+      setLastReadyHighlight(null);
       setReadyStepId(null);
       setActive(false);
     } catch {
