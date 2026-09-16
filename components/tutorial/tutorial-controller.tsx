@@ -208,7 +208,7 @@ const STEPS: TutorialStep[] = [
     interactive: true,
     advanceOnInteraction: true,
     interactionEvent: 'click',
-    interactionAdvanceDelayMs: 0,
+    interactionAdvanceDelayMs: 90,
     requireInteraction: true,
     interactionHint: 'Click the highlighted Settings item to continue.',
   },
@@ -633,6 +633,9 @@ export function TutorialController() {
     const advanceAfterInteraction = (event: Event) => {
       if (!step.advanceOnInteraction) return;
       const eventName = step.interactionEvent ?? 'change';
+      if (step.id === 'settings-link' && pathname !== '/settings') {
+        router.replace('/settings');
+      }
       if (eventName === 'change') {
         const input = event.target;
         if (!(input instanceof HTMLInputElement) || input.type !== 'checkbox') {
@@ -991,47 +994,11 @@ export function TutorialController() {
   );
 
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
-  const backdropClass = 'fixed z-[80] bg-slate-950/70';
 
   return (
     <>
       {visibleHighlight ? (
         <>
-          <div
-            aria-hidden
-            className={backdropClass}
-            style={{ left: 0, top: 0, right: 0, height: visibleHighlight.top }}
-          />
-          <div
-            aria-hidden
-            className={backdropClass}
-            style={{
-              left: 0,
-              top: visibleHighlight.top,
-              width: visibleHighlight.left,
-              height: visibleHighlight.height,
-            }}
-          />
-          <div
-            aria-hidden
-            className={backdropClass}
-            style={{
-              left: visibleHighlight.right,
-              top: visibleHighlight.top,
-              right: 0,
-              height: visibleHighlight.height,
-            }}
-          />
-          <div
-            aria-hidden
-            className={backdropClass}
-            style={{
-              left: 0,
-              top: visibleHighlight.bottom,
-              right: 0,
-              bottom: 0,
-            }}
-          />
           <div
             aria-hidden
             className={`pointer-events-none fixed z-[90] rounded-xl border-2 border-blue-400 ring-4 ring-white/80 ${
@@ -1042,6 +1009,7 @@ export function TutorialController() {
               top: visibleHighlight.top,
               width: visibleHighlight.width,
               height: visibleHighlight.height,
+              boxShadow: '0 0 0 9999px rgb(2 6 23 / 0.70)',
             }}
           />
           {showClickCue ? (
