@@ -23,8 +23,8 @@ describe('post-production live-data release audit', () => {
       '191 redundant canonical rows',
       '12,306 visible questions',
       '11,832 source IDs',
-      '11,763 distinct canonical questions',
-      '15,571 distinct variants',
+      '11,763 distinct RevisionDojo questions',
+      '15,571 course/question variants',
       '15,645 source links',
     ]) {
       expect(page).toContain(text);
