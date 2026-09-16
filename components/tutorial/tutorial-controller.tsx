@@ -353,6 +353,7 @@ export function TutorialController() {
   const cardRef = useRef<HTMLElement>(null);
   const targetRef = useRef<HTMLElement | null>(null);
   const interactionTimerRef = useRef<number | null>(null);
+  const routeHandoffRef = useRef<string | null>(null);
   const warmedRoutesRef = useRef(new Set<string>());
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -489,6 +490,10 @@ export function TutorialController() {
 
   useEffect(() => {
     if (!active || !step.route || pathname === step.route) return;
+    // A required tutorial click can intentionally navigate away from the current
+    // step's route before the next step is committed. Do not immediately bounce
+    // that navigation back to the old route while the handoff is in flight.
+    if (routeHandoffRef.current) return;
     router.replace(step.route);
   }, [active, pathname, router, step.route]);
 
@@ -623,6 +628,7 @@ export function TutorialController() {
     const commitNextStep = () => {
       if (cancelled) return;
       const nextIndex = Math.min(stepIndex + 1, STEPS.length - 1);
+      routeHandoffRef.current = null;
       setStepIndex(nextIndex);
       setReadyStepId(null);
       setHighlight(null);
@@ -634,6 +640,11 @@ export function TutorialController() {
       if (!step.advanceOnInteraction) return;
       const eventName = step.interactionEvent ?? 'change';
       if (step.id === 'settings-link' && pathname !== '/settings') {
+        // The current step still belongs to /library because the Settings link is
+        // rendered inside that account menu. Mark the intentional cross-route
+        // handoff before navigating so the route guard cannot send us back.
+        event.preventDefault();
+        routeHandoffRef.current = '/settings';
         router.replace('/settings');
       }
       if (eventName === 'change') {

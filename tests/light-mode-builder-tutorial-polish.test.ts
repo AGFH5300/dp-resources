@@ -27,6 +27,8 @@ describe('light-mode Practice Builder and tutorial polish', () => {
   it('marks a completely selected subject across the whole subject bar', () => {
     expect(builder).toContain("allSelected ? styles.pickerSubjectComplete : ''");
     expect(css).toContain('.pickerSubjectComplete > summary');
+    expect(css).toContain('.pickerSubject {\n  overflow: hidden;');
+    expect(css).not.toContain('border-radius: inherit;');
   });
 
   it('uses a rounded spotlight mask and starts Settings navigation on click', () => {
