@@ -5,7 +5,17 @@ export const WHATS_NEW_RELEASE = {
     {
       title: '11,763 RevisionDojo questions added',
       description:
-        'The Question Bank now includes 11,763 distinct RevisionDojo questions across 15,571 course/question variants, with RevisionDojo available as a source throughout the Question Bank and Practice Builder.',
+        'A full production import audited 12,306 visible RevisionDojo questions and accepted 11,832 source IDs. After deduplication, RevisionDojo now spans 11,763 distinct canonical questions and 15,571 distinct variants, with 15,645 source links and source filtering throughout Question Bank and Practice Builder.',
+    },
+    {
+      title: 'CBS Physics A.1–A.5 added',
+      description:
+        'CBS has now been fully imported from 341 source occurrences into 217 distinct questions and 302 live, ready variants across Physics A.1–A.5: 137 HL and 165 SL. All CBS variants passed final render QA with zero remaining quarantined variants.',
+    },
+    {
+      title: '606 redundant question rows cleaned up safely',
+      description:
+        'Two live Question Bank deduplication passes consolidated 415 redundant canonical rows on 15 September and another 191 on 16 September, while preserving source provenance, variants, assets, saved questions, practice references and user progress. Ambiguous collisions were kept separate instead of being force-merged.',
     },
     {
       title: 'Take a guided tour of DP Resources',

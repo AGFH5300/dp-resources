@@ -17,9 +17,27 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-16-cbs-question-bank-import',
+    summary:
+      'Added CBS Physics A.1–A.5 to the live Question Bank from 341 source occurrences, consolidated into 232 CBS source groups and 217 distinct canonical questions; 302 variants are live and ready (137 HL and 165 SL) with 310 CBS variant-source provenance links and zero remaining quarantined CBS variants.',
+    date: '2026-09-16T18:21:18.000Z',
+  },
+  {
+    id: 'release-2026-09-16-global-question-bank-dedupe',
+    summary:
+      'Completed a second global Question Bank deduplication pass, consolidating 191 redundant canonical rows (42,189 to 41,998 before the CBS addition) while preserving 44,095 question-source and 58,714 variant-source provenance rows plus saved, progress and practice references; final audited duplicate and orphan checks were zero.',
+    date: '2026-09-16T15:57:28.000Z',
+  },
+  {
+    id: 'release-2026-09-15-question-bank-dedupe',
+    summary:
+      'Consolidated 415 redundant canonical Question Bank rows in live Supabase: 384 confirmed Revision Village/cross-source duplicates and 31 exact Pestle duplicates, while preserving provenance, variants, topic placements, assets, papers and videos, saved questions and user progress; 16 ambiguous Revision Village reference collisions were deliberately left separate.',
+    date: '2026-09-15T18:36:37.000Z',
+  },
+  {
     id: 'release-2026-09-16-revisiondojo-expansion',
     summary:
-      'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source assignments, with RevisionDojo available as a source in Question Bank and Practice Builder filtering.',
+      'Completed the full RevisionDojo production import after auditing 12,306 visible questions: 11,832 source IDs were accepted and 474 withheld, with 28 canonical merges and 3 empty placeholders removed; after global deduplication, RevisionDojo now spans 11,763 distinct canonical questions, 15,571 distinct variants and 15,645 source links, with source filtering available in Question Bank and Practice Builder.',
     date: '2026-09-16T14:26:39.840Z',
   },
   {
