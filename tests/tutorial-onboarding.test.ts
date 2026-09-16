@@ -8,6 +8,7 @@ const replayCard = read('components/tutorial/tutorial-replay-card.tsx');
 const tutorialConfig = read('lib/tutorials.ts');
 const tutorialRoute = read('app/api/tutorials/progress/route.ts');
 const nav = read('components/nav.tsx');
+const layout = read('app/layout.tsx');
 const appHeader = read('components/app-header.tsx');
 const instantLibraryBrowser = read('app/library/instant-library-browser.tsx');
 const accountMenu = read('components/account-menu.tsx');
@@ -16,9 +17,13 @@ const settingsPage = read('app/settings/page.tsx');
 const schema = read('supabase/schema.sql');
 
 describe('interactive tutorial onboarding', () => {
-  it('mounts only inside the approved member navigation shell', () => {
-    expect(nav).toContain('<TutorialController userId={userId} />');
+  it('keeps one persistent tutorial controller above page route swaps', () => {
+    expect(layout).toContain('<TutorialController />');
+    expect(nav).not.toContain('TutorialController');
     expect(nav).toContain('<AppHeader admin={admin} userId={userId} />');
+    expect(controller).toContain('export function TutorialController()');
+    expect(controller).toContain('if (stored) {');
+    expect(controller).toContain('clearStoredSession();');
   });
 
   it('spotlights stable real product surfaces across the walkthrough', () => {
@@ -82,6 +87,12 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']");
     expect(controller).toContain('data-tutorial-overlay="true"');
     expect(controller).not.toContain('aria-label="Skip tutorial"');
+  });
+
+  it('holds the previous spotlight geometry until the next target is ready', () => {
+    expect(controller).toContain('lastReadyHighlight');
+    expect(controller).toContain('targetPending ? lastReadyHighlight : null');
+    expect(controller).toContain('setLastReadyHighlight(nextHighlight)');
   });
 
   it('warms only the next expensive tutorial route after the current spotlight is ready', () => {
