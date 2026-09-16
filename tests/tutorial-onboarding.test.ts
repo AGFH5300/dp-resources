@@ -89,6 +89,17 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).not.toContain('aria-label="Skip tutorial"');
   });
 
+  it('never measures a detached route-transition target and rebinds to its replacement', () => {
+    expect(controller).toContain('!element.isConnected');
+    expect(controller).toContain('function inViewportElement');
+    expect(controller).toContain('matches.find(inViewportElement) ?? matches[0]');
+    expect(controller).toContain('if (!targetRef.current.isConnected)');
+    expect(controller).toContain('restartLocate();');
+    expect(controller).toContain('new MutationObserver');
+    expect(controller).toContain("mutationObserver.observe(document.body, { childList: true, subtree: true })");
+    expect(controller).toContain('mutationObserver?.disconnect()');
+  });
+
   it('holds the previous spotlight geometry until the next target is ready', () => {
     expect(controller).toContain('lastReadyHighlight');
     expect(controller).toContain('targetPending ? lastReadyHighlight : null');

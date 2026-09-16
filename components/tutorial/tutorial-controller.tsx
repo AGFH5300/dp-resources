@@ -225,11 +225,29 @@ const STEPS: TutorialStep[] = [
 ];
 
 function visibleElement(element: Element | null): element is HTMLElement {
-  if (!(element instanceof HTMLElement)) return false;
+  if (!(element instanceof HTMLElement) || !element.isConnected) return false;
   const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
   const style = window.getComputedStyle(element);
-  return style.display !== 'none' && style.visibility !== 'hidden';
+  if (
+    style.display === 'none' ||
+    style.visibility === 'hidden' ||
+    Number.parseFloat(style.opacity || '1') <= 0.01
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function inViewportElement(element: Element | null): element is HTMLElement {
+  if (!visibleElement(element)) return false;
+  const rect = element.getBoundingClientRect();
+  return (
+    rect.right > 0 &&
+    rect.bottom > 0 &&
+    rect.left < window.innerWidth &&
+    rect.top < window.innerHeight
+  );
 }
 
 function resolveTarget(target: TutorialTarget | undefined) {
@@ -237,22 +255,24 @@ function resolveTarget(target: TutorialTarget | undefined) {
 
   if ('selectors' in target) {
     for (const selector of target.selectors) {
-      const match = Array.from(document.querySelectorAll(selector)).find(
+      const matches = Array.from(document.querySelectorAll(selector)).filter(
         visibleElement,
-      );
-      if (match) return match as HTMLElement;
+      ) as HTMLElement[];
+      const match = matches.find(inViewportElement) ?? matches[0];
+      if (match) return match;
     }
     return null;
   }
 
+  const matches: HTMLElement[] = [];
   for (const candidate of Array.from(
     document.querySelectorAll(target.selector),
   )) {
     if (candidate.textContent?.trim() !== target.text) continue;
     const match = target.closest ? candidate.closest(target.closest) : candidate;
-    if (visibleElement(match)) return match;
+    if (visibleElement(match)) matches.push(match);
   }
-  return null;
+  return matches.find(inViewportElement) ?? matches[0] ?? null;
 }
 
 function measureTarget(element: HTMLElement): HighlightRect {
@@ -556,12 +576,45 @@ export function TutorialController() {
     let frame = 0;
     let attempts = 0;
     let observer: ResizeObserver | null = null;
+    let mutationObserver: MutationObserver | null = null;
     let interactionTarget: HTMLElement | null = null;
     let interactionEvent: 'change' | 'click' | null = null;
     let interactionCapture = false;
+    let locateScheduled = false;
+
+    const detachInteractionTarget = () => {
+      if (interactionTarget && interactionEvent) {
+        interactionTarget.removeEventListener(
+          interactionEvent,
+          advanceAfterInteraction,
+          interactionCapture,
+        );
+      }
+      interactionTarget = null;
+      interactionEvent = null;
+      interactionCapture = false;
+    };
+
+    const restartLocate = () => {
+      if (cancelled || locateScheduled) return;
+      observer?.disconnect();
+      observer = null;
+      detachInteractionTarget();
+      targetRef.current = null;
+      setReadyStepId(null);
+      setHighlight(null);
+      attempts = 0;
+      locateScheduled = true;
+      frame = window.requestAnimationFrame(locate);
+    };
 
     const update = () => {
       if (cancelled || !targetRef.current) return;
+      if (!targetRef.current.isConnected) {
+        restartLocate();
+        return;
+      }
+      if (!inViewportElement(targetRef.current)) return;
       const nextHighlight = measureTarget(targetRef.current);
       setHighlight(nextHighlight);
       setLastReadyHighlight(nextHighlight);
@@ -602,12 +655,16 @@ export function TutorialController() {
       interactionTimerRef.current = window.setTimeout(commitNextStep, delay);
     };
 
-    const locate = () => {
+    function locate() {
+      locateScheduled = false;
       if (cancelled) return;
       const target = resolveTarget(step.target);
       if (!target) {
         attempts += 1;
-        if (attempts < 300) frame = window.requestAnimationFrame(locate);
+        if (attempts < 300) {
+          locateScheduled = true;
+          frame = window.requestAnimationFrame(locate);
+        }
         return;
       }
 
@@ -642,9 +699,24 @@ export function TutorialController() {
           interactionCapture,
         );
       }
-    };
+    }
 
+    locateScheduled = true;
     frame = window.requestAnimationFrame(locate);
+    mutationObserver = new MutationObserver(() => {
+      const current = targetRef.current;
+      if (!current || !current.isConnected) {
+        restartLocate();
+        return;
+      }
+      if (!inViewportElement(current)) {
+        const replacement = resolveTarget(step.target);
+        if (replacement && replacement !== current && inViewportElement(replacement)) {
+          restartLocate();
+        }
+      }
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
 
@@ -654,13 +726,8 @@ export function TutorialController() {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
       observer?.disconnect();
-      if (interactionTarget && interactionEvent) {
-        interactionTarget.removeEventListener(
-          interactionEvent,
-          advanceAfterInteraction,
-          interactionCapture,
-        );
-      }
+      mutationObserver?.disconnect();
+      detachInteractionTarget();
       targetRef.current = null;
     };
   }, [active, reducedMotion, replay, step, stepIndex]);
