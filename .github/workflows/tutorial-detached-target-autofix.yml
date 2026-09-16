@@ -1,0 +1,32 @@
+name: Tutorial detached target autofix
+
+on:
+  push:
+    branches:
+      - fix/tutorial-detached-targets
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[tutorial-detached-target-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tutorial-detached-targets
+          fetch-depth: 0
+      - name: Apply detached tutorial target patch
+        run: python3 scripts/tmp-fix-tutorial-detached-targets.py
+      - name: Commit detached target fix
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/tutorial/tutorial-controller.tsx tests/tutorial-onboarding.test.ts
+          git commit -m "Rebind tutorial targets across route swaps [tutorial-detached-target-fix]"
+          git push origin HEAD:fix/tutorial-detached-targets
