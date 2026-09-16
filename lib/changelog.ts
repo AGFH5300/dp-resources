@@ -27,8 +27,13 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-15': [
+    'Consolidated 415 redundant canonical Question Bank rows in the live Question Bank: 384 confirmed Revision Village/cross-source duplicates and 31 exact Pestle duplicates, while preserving provenance, variants, topic placements, assets, papers and videos, saved questions and user progress; 16 ambiguous Revision Village reference collisions were deliberately left separate.',
+  ],
   '2026-09-16': [
-    'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source assignments, with RevisionDojo available as a source in Question Bank and Practice Builder filtering.',
+    'Added CBS Physics A.1–A.5 to the live Question Bank from 341 source occurrences, consolidated into 232 CBS source groups and 217 distinct canonical questions; 302 variants are live and ready (137 HL and 165 SL) with 310 CBS variant-source provenance links and zero remaining quarantined CBS variants.',
+    'Completed a second global Question Bank deduplication pass, consolidating 191 redundant canonical rows (42,189 to 41,998 before the CBS addition) while preserving 44,095 question-source and 58,714 variant-source provenance rows plus saved, progress and practice references; final audited duplicate and orphan checks were zero.',
+    'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source links after a full production import audit of 12,306 visible questions: 11,832 source IDs were accepted and 474 withheld, with 28 canonical merges and 3 empty placeholders removed; RevisionDojo source filtering is available in Question Bank and Practice Builder.',
     'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
     'Made tutorial navigation substantially faster and steadier with staged route preparation, persistent cross-page spotlighting, stable loading-shell targets, attached click cues, locked background interaction and a reliable Settings finale.',
     'Polished Practice Builder in light mode with clearer selected and hover states, stronger checkmarks, readable clear and bulk controls, rounded fully-selected subject states, and improved eligible-question feedback.',
