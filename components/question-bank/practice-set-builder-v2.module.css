@@ -213,6 +213,7 @@
 }
 
 .pickerSubject {
+  overflow: hidden;
   border-color: var(--outline);
   background: var(--dp-warm-surface);
 }
@@ -228,7 +229,6 @@
 
 .pickerSubjectComplete > summary {
   background: #f0fdf4;
-  border-radius: inherit;
 }
 
 .pickerSubjectComplete .selectionCounter {
