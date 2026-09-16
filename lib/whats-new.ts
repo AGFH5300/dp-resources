@@ -1,7 +1,12 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-09-16-guided-onboarding-practice-builder',
+  id: '2026-09-16-revisiondojo-guided-onboarding',
   dateLabel: '16 September 2026',
   items: [
+    {
+      title: '11,763 RevisionDojo questions added',
+      description:
+        'The Question Bank now includes 11,763 distinct RevisionDojo questions across 15,571 course/question variants, with RevisionDojo available as a source throughout the Question Bank and Practice Builder.',
+    },
     {
       title: 'Take a guided tour of DP Resources',
       description:
@@ -10,17 +15,17 @@ export const WHATS_NEW_RELEASE = {
     {
       title: 'Replay the tutorial anytime',
       description:
-        'The walkthrough can be replayed from Settings, clearly marks required clicks on the real controls, keeps the page locked while the tour is active, and still lets you leave with Skip or Escape.',
+        'The walkthrough can be replayed from Settings, clearly marks required clicks on the real controls, locks the background while active, and moves smoothly between pages with fast, stable highlights.',
     },
     {
-      title: 'Faster and steadier guided navigation',
+      title: 'Clearer and more reliable practice',
       description:
-        'Tutorial destinations are prepared just before they are needed, highlights stay attached through page changes, and Practice Builder and Settings targets appear quickly without the old jump, pause or broken-corner behaviour.',
+        'Practice Builder selection states and controls are clearer in light mode, while Question Bank and Practice Builder now handle slow source/course counts more gracefully instead of freezing or crashing.',
     },
     {
-      title: 'Clearer, more reliable Practice Builder',
+      title: 'More fixes since the last production release',
       description:
-        'Light-mode selection states, completed subjects, course controls and question-availability feedback are easier to read, while Question Bank loading is more resilient and source filtering now reflects RevisionDojo alongside the other current providers.',
+        'This release also fixes the duplicate CH0007 practice entry and imported answer-markup rendering, and improves attachment controls in dark mode for Support requests and resource reports.',
     },
   ],
 } as const;

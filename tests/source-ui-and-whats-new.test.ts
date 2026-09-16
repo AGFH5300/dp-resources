@@ -43,20 +43,22 @@ describe('source UI and release notes', () => {
 
   it('keeps What’s new as a short hand-written 16 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain("dateLabel: '16 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
     for (const highlight of [
+      '11,763 RevisionDojo questions added',
       'Take a guided tour of DP Resources',
       'Replay the tutorial anytime',
-      'Faster and steadier guided navigation',
-      'Clearer, more reliable Practice Builder',
+      'Clearer and more reliable practice',
+      'More fixes since the last production release',
     ]) {
       expect(whatsNew).toContain(highlight);
     }
     expect(whatsNew).toContain('IB Resource Library');
-    expect(whatsNew).toContain('RevisionDojo');
+    expect(whatsNew).toContain('11,763 distinct RevisionDojo questions');
+    expect(whatsNew).toContain('15,571 course/question variants');
   });
 
   it('curates the complete 16 September public release in both changelog sources', () => {
@@ -68,6 +70,7 @@ describe('source UI and release notes', () => {
       'Polished Practice Builder in light mode',
       'Improved Question Bank reliability when source or course counts are slow',
       'Fixed a duplicate CH0007 practice question',
+      'Expanded the Question Bank with 11,763 distinct RevisionDojo questions',
       'Improved Support and resource-report attachment controls in dark mode',
     ]) {
       expect(page).toContain(note);

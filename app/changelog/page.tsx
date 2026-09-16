@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-16-revisiondojo-expansion',
+    summary:
+      'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source assignments, with RevisionDojo available as a source in Question Bank and Practice Builder filtering.',
+    date: '2026-09-16T14:26:39.840Z',
+  },
+  {
     id: 'release-2026-09-16-01',
     summary:
       'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
