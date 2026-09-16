@@ -5,7 +5,7 @@ export const WHATS_NEW_RELEASE = {
     {
       title: '11,763 RevisionDojo questions added',
       description:
-        'A full production import audited 12,306 visible RevisionDojo questions and accepted 11,832 source IDs. After deduplication, RevisionDojo now spans 11,763 distinct canonical questions and 15,571 distinct variants, with 15,645 source links and source filtering throughout Question Bank and Practice Builder.',
+        'A full production import audited 12,306 visible RevisionDojo questions and accepted 11,832 source IDs. After deduplication, the Question Bank now contains 11,763 distinct RevisionDojo questions across 15,571 course/question variants, with 15,645 source links and RevisionDojo filtering throughout Question Bank and Practice Builder.',
     },
     {
       title: 'CBS Physics A.1–A.5 added',
