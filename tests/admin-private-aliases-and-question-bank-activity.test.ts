@@ -71,14 +71,17 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(currentPublicHistory).not.toMatch(/alias|administrator|admin-only/i);
   });
 
-  it('keeps the September changelog curated and refreshes What’s New for attachments', () => {
+  it('keeps the September changelog curated and refreshes What’s New for guided onboarding', () => {
+    expect(changelog).toContain("'2026-09-16': [");
     expect(changelog).toContain("'2026-09-12': [");
     expect(changelog).toContain("'2026-09-11': [");
+    expect(changelog).toContain('Added a 12-step interactive onboarding walkthrough');
+    expect(changelog).toContain('Improved Question Bank reliability when source or course counts are slow');
     expect(changelog).toContain('Added one-click Question Bank filters');
     expect(changelog).toContain('Added DP Resources social sign-in and Connected Accounts support');
     expect(changelog).toContain('Added fullscreen support to the standard browser PDF fallback');
-    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
-    expect(whatsNew).toContain("dateLabel: '13 September 2026'");
-    expect(whatsNew).toContain('Attach screenshots and files to reports');
+    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain("dateLabel: '16 September 2026'");
+    expect(whatsNew).toContain('Take a guided tour of DP Resources');
   });
 });

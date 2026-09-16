@@ -17,6 +17,42 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-16-01',
+    summary:
+      'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
+    date: '2026-09-16T13:51:00.000Z',
+  },
+  {
+    id: 'release-2026-09-16-02',
+    summary:
+      'Made tutorial navigation substantially faster and steadier with staged route preparation, persistent cross-page spotlighting, stable loading-shell targets, attached click cues, locked background interaction and a reliable Settings finale.',
+    date: '2026-09-16T12:52:00.000Z',
+  },
+  {
+    id: 'release-2026-09-16-03',
+    summary:
+      'Polished Practice Builder in light mode with clearer selected and hover states, stronger checkmarks, readable clear and bulk controls, rounded fully-selected subject states, and improved eligible-question feedback.',
+    date: '2026-09-16T11:53:00.000Z',
+  },
+  {
+    id: 'release-2026-09-16-04',
+    summary:
+      'Improved Question Bank reliability when source or course counts are slow by removing heavy parallel prefetches, handling timed-out optional counts without crashing, and reducing repeated source-count database work.',
+    date: '2026-09-16T10:54:00.000Z',
+  },
+  {
+    id: 'release-2026-09-16-05',
+    summary:
+      'Fixed a duplicate CH0007 practice question while preserving its Revision Town and Revision Village provenance, and corrected imported answer markup so unsupported answer wrappers no longer leak into rendered explanations.',
+    date: '2026-09-16T09:55:00.000Z',
+  },
+  {
+    id: 'release-2026-09-16-06',
+    summary:
+      'Improved Support and resource-report attachment controls in dark mode so attachment buttons, helper text, previews, selected files, errors and remove controls keep strong readable contrast.',
+    date: '2026-09-16T08:56:00.000Z',
+  },
+  {
     id: 'release-2026-09-13-support-report-attachments',
     summary:
       'Added attachments to Support requests and resource reports, including images, videos, PDFs and common document files, with multiple-file selection, drag and drop, and pasted screenshots.',
