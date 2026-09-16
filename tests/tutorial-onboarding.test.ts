@@ -14,6 +14,7 @@ const instantLibraryBrowser = read('app/library/instant-library-browser.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const whatsNew = read('components/whats-new-dialog.tsx');
 const settingsPage = read('app/settings/page.tsx');
+const practiceBuilderLoading = read('app/question-bank/build/loading.tsx');
 const schema = read('supabase/schema.sql');
 
 describe('interactive tutorial onboarding', () => {
@@ -62,6 +63,15 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain('visibleHighlight.left - leftWidth - gap');
     expect(controller).toContain('pointer-events-none fixed z-[90]');
     expect(controller).toContain('Optional: click any source checkbox');
+  });
+
+  it('keeps the Step 7 loading shell aligned with the live Sources list', () => {
+    expect(practiceBuilderLoading).toContain("{ label: 'Revision Village', count: 4_192 }");
+    expect(practiceBuilderLoading).toContain("{ label: 'Revision Town', count: 12_212 }");
+    expect(practiceBuilderLoading).toContain("{ label: 'PESTLE', count: 13_291 }");
+    expect(practiceBuilderLoading).toContain("{ label: 'Exam-Mate', count: 13_374 }");
+    expect(practiceBuilderLoading).toContain("{ label: 'RevisionDojo', count: 81 }");
+    expect(practiceBuilderLoading).toContain('source.count.toLocaleString()');
   });
 
   it('keeps a single optional source lesson and auto-positions the target', () => {
@@ -140,11 +150,13 @@ describe('interactive tutorial onboarding', () => {
     expect(controller).toContain("id: 'settings-link'");
     expect(controller).toContain('data-tutorial-target="settings-link"');
     expect(controller).toContain("interactionEvent: 'click'");
-    expect(controller).toContain('interactionAdvanceDelayMs: 90');
+    expect(controller).toContain('interactionAdvanceDelayMs: 0');
     expect(controller).toContain("step.id === 'settings-link'");
     expect(controller).toContain("routeHandoffRef.current = '/settings'");
     expect(controller).toContain('if (routeHandoffRef.current) return');
+    expect(controller).toContain('if (handoffRoute && pathname === handoffRoute)');
     expect(controller).toContain('event.preventDefault()');
+    expect(controller).toContain('commitNextStep();');
     expect(controller).toContain("router.replace('/settings')");
     expect(controller).toContain("id: 'tutorial-replay'");
     expect(controller).toContain('data-tutorial-target="tutorial-replay-button"');
