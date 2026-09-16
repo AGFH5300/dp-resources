@@ -1,1 +1,0 @@
-Public release notes cover user-facing changes since production commit 400999180c4f89f6aaa4f9178af9a465b022dded. Internal-only implementation and release mechanics remain excluded.
