@@ -1,26 +1,26 @@
 export const WHATS_NEW_RELEASE = {
-  id: '2026-09-13-support-report-attachments',
-  dateLabel: '13 September 2026',
+  id: '2026-09-16-guided-onboarding-practice-builder',
+  dateLabel: '16 September 2026',
   items: [
     {
-      title: 'Attach screenshots and files to reports',
+      title: 'Take a guided tour of DP Resources',
       description:
-        'Support requests and resource reports can now include images, videos, PDFs and common document files, so you can send the evidence with the issue instead of describing it separately.',
+        'A new 12-step walkthrough teaches the real Library, IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings interface without replacing it with a demo.',
     },
     {
-      title: 'Add several attachments at once',
+      title: 'Replay the tutorial anytime',
       description:
-        'You can attach multiple files in one submission, drag files into the attachment area, or paste a screenshot directly from your clipboard.',
+        'The walkthrough can be replayed from Settings, clearly marks required clicks on the real controls, keeps the page locked while the tour is active, and still lets you leave with Skip or Escape.',
     },
     {
-      title: 'Preview before you send',
+      title: 'Faster and steadier guided navigation',
       description:
-        'Attachments can be reviewed and removed before submission, making it easier to check that the right screenshot, document or video is included.',
+        'Tutorial destinations are prepared just before they are needed, highlights stay attached through page changes, and Practice Builder and Settings targets appear quickly without the old jump, pause or broken-corner behaviour.',
     },
     {
-      title: 'Private and safer attachment handling',
+      title: 'Clearer, more reliable Practice Builder',
       description:
-        'Uploaded evidence stays private and is protected by file-type validation, size limits, short-lived access links and malware scanning before it is accepted.',
+        'Light-mode selection states, completed subjects, course controls and question-availability feedback are easier to read, while Question Bank loading is more resilient and source filtering now reflects RevisionDojo alongside the other current providers.',
     },
   ],
 } as const;

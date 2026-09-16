@@ -41,23 +41,40 @@ describe('source UI and release notes', () => {
     expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 13 September release summary', () => {
+  it('keeps What’s new as a short hand-written 16 September release summary', () => {
     const whatsNew = read('lib/whats-new.ts');
-    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
-    expect(whatsNew).toContain("dateLabel: '13 September 2026'");
+    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain("dateLabel: '16 September 2026'");
     expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
     expect(whatsNew).not.toContain('Save your IB academic profile');
-    expect(whatsNew).toContain('Support requests and resource reports can now include images');
-    expect(whatsNew).toContain('drag files into the attachment area');
-    expect(whatsNew).toContain('short-lived access links and malware scanning');
     for (const highlight of [
-      'Attach screenshots and files to reports',
-      'Add several attachments at once',
-      'Preview before you send',
-      'Private and safer attachment handling',
+      'Take a guided tour of DP Resources',
+      'Replay the tutorial anytime',
+      'Faster and steadier guided navigation',
+      'Clearer, more reliable Practice Builder',
     ]) {
       expect(whatsNew).toContain(highlight);
     }
+    expect(whatsNew).toContain('IB Resource Library');
+    expect(whatsNew).toContain('RevisionDojo');
+  });
+
+  it('curates the complete 16 September public release in both changelog sources', () => {
+    const page = read('app/changelog/page.tsx');
+    const history = read('lib/changelog.ts');
+    for (const note of [
+      'Added a 12-step interactive onboarding walkthrough',
+      'Made tutorial navigation substantially faster and steadier',
+      'Polished Practice Builder in light mode',
+      'Improved Question Bank reliability when source or course counts are slow',
+      'Fixed a duplicate CH0007 practice question',
+      'Improved Support and resource-report attachment controls in dark mode',
+    ]) {
+      expect(page).toContain(note);
+      expect(history).toContain(note);
+    }
+    expect(page).toContain('2026-09-16');
+    expect(history).toContain("'2026-09-16': [");
   });
 
   it('keeps the August 6-16 release window curated and filters public notes to user-facing changes', () => {

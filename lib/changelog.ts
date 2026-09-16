@@ -27,6 +27,14 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-16': [
+    'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
+    'Made tutorial navigation substantially faster and steadier with staged route preparation, persistent cross-page spotlighting, stable loading-shell targets, attached click cues, locked background interaction and a reliable Settings finale.',
+    'Polished Practice Builder in light mode with clearer selected and hover states, stronger checkmarks, readable clear and bulk controls, rounded fully-selected subject states, and improved eligible-question feedback.',
+    'Improved Question Bank reliability when source or course counts are slow by removing heavy parallel prefetches, handling timed-out optional counts without crashing, and reducing repeated source-count database work.',
+    'Fixed a duplicate CH0007 practice question while preserving its Revision Town and Revision Village provenance, and corrected imported answer markup so unsupported answer wrappers no longer leak into rendered explanations.',
+    'Improved Support and resource-report attachment controls in dark mode so attachment buttons, helper text, previews, selected files, errors and remove controls keep strong readable contrast.',
+  ],
   '2026-09-12': [
     'Added one-click Question Bank filters for every Paper 1, Paper 2, Paper 3 and other paper number across all available years, sessions and time zones, while keeping exact exam-paper choices.',
     'Made Search within this folder behave as a true filter, so searches such as Paper 1 exclude Paper 2, Paper 3 and Paper 10 instead of only ranking the closest matches.',

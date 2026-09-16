@@ -127,10 +127,11 @@ describe('Settings & Account Centre', () => {
     );
   });
 
-  it('keeps What’s New current after the Settings release', () => {
-    expect(whatsNew).toContain("id: '2026-09-13-support-report-attachments'");
-    expect(whatsNew).toContain('Attach screenshots and files to reports');
-    expect(whatsNew).toContain('Add several attachments at once');
+  it('keeps What’s New current after the guided onboarding release', () => {
+    expect(whatsNew).toContain("id: '2026-09-16-guided-onboarding-practice-builder'");
+    expect(whatsNew).toContain('Take a guided tour of DP Resources');
+    expect(whatsNew).toContain('Replay the tutorial anytime');
+    expect(whatsNew).toContain('Clearer, more reliable Practice Builder');
     expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 
