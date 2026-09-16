@@ -208,7 +208,7 @@ const STEPS: TutorialStep[] = [
     interactive: true,
     advanceOnInteraction: true,
     interactionEvent: 'click',
-    interactionAdvanceDelayMs: 90,
+    interactionAdvanceDelayMs: 0,
     requireInteraction: true,
     interactionHint: 'Click the highlighted Settings item to continue.',
   },
@@ -489,6 +489,11 @@ export function TutorialController() {
   }, [startTutorial]);
 
   useEffect(() => {
+    const handoffRoute = routeHandoffRef.current;
+    if (handoffRoute && pathname === handoffRoute) {
+      routeHandoffRef.current = null;
+      return;
+    }
     if (!active || !step.route || pathname === step.route) return;
     // A required tutorial click can intentionally navigate away from the current
     // step's route before the next step is committed. Do not immediately bounce
@@ -628,7 +633,6 @@ export function TutorialController() {
     const commitNextStep = () => {
       if (cancelled) return;
       const nextIndex = Math.min(stepIndex + 1, STEPS.length - 1);
-      routeHandoffRef.current = null;
       setStepIndex(nextIndex);
       setReadyStepId(null);
       setHighlight(null);
@@ -640,12 +644,14 @@ export function TutorialController() {
       if (!step.advanceOnInteraction) return;
       const eventName = step.interactionEvent ?? 'change';
       if (step.id === 'settings-link' && pathname !== '/settings') {
-        // The current step still belongs to /library because the Settings link is
-        // rendered inside that account menu. Mark the intentional cross-route
-        // handoff before navigating so the route guard cannot send us back.
+        // Advance the tutorial state in the same click that starts navigation.
+        // A delayed timer would be cancelled when pathname changes and the target
+        // effect is torn down, leaving the tour stranded on Step 11.
         event.preventDefault();
         routeHandoffRef.current = '/settings';
+        commitNextStep();
         router.replace('/settings');
+        return;
       }
       if (eventName === 'change') {
         const input = event.target;

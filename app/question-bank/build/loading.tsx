@@ -2,7 +2,13 @@ import { Layers3, SlidersHorizontal } from 'lucide-react';
 
 import { Nav } from '@/components/nav';
 
-const SOURCES = ['Revision Village', 'Revision Town', 'PESTLE', 'Exam-Mate'];
+const SOURCES = [
+  { label: 'Revision Village', count: 4_192 },
+  { label: 'Revision Town', count: 12_212 },
+  { label: 'PESTLE', count: 13_291 },
+  { label: 'Exam-Mate', count: 13_374 },
+  { label: 'RevisionDojo', count: 81 },
+] as const;
 
 export default function LoadingPracticeBuilder() {
   return (
@@ -76,9 +82,12 @@ export default function LoadingPracticeBuilder() {
                   </legend>
                   <div className="mt-2 space-y-2">
                     {SOURCES.map((source) => (
-                      <label key={source} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                      <label key={source.label} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                         <input type="checkbox" />
-                        <span className="min-w-0 flex-1 truncate">{source}</span>
+                        <span className="min-w-0 flex-1 truncate">{source.label}</span>
+                        <span className="shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                          {source.count.toLocaleString()}
+                        </span>
                       </label>
                     ))}
                   </div>
