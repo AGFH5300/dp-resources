@@ -733,7 +733,7 @@ export function TutorialController() {
       detachInteractionTarget();
       targetRef.current = null;
     };
-  }, [active, reducedMotion, replay, step, stepIndex]);
+  }, [active, pathname, reducedMotion, replay, router, step, stepIndex]);
 
   useEffect(() => {
     if (!active || targetPending) return;
