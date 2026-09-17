@@ -56,7 +56,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     date: '2026-09-16',
     dateLabel: '16 September 2026',
     summary:
-      'A major Question Bank expansion, broader Physics coverage, guided onboarding and a steadier practice experience.',
+      'A major Question Bank expansion, broader Physics coverage, guided onboarding, steadier practice and a redesigned way to discover every major DP Resources update.',
     showWhatsNew: true,
     features: [
       {

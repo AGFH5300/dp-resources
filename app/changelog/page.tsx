@@ -19,7 +19,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-17-whats-new-experience',
     summary:
-      'Redesigned What’s New into a release-aware, feature-by-feature product presentation with visual media, swipe, keyboard and progress navigation, deep-link actions, polished video controls, release history, development previewing, and cross-device viewed-state persistence.',
+      'Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices.',
     date: '2026-09-17T05:45:00.000Z',
   },
   {

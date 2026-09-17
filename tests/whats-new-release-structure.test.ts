@@ -51,7 +51,7 @@ describe('What’s New release structure', () => {
     const page = read('app/changelog/page.tsx');
     const changelog = read('lib/changelog.ts');
     const summary =
-      'Redesigned What’s New into a release-aware, feature-by-feature product presentation';
+      'Redesigned What’s New into a polished feature-by-feature update experience';
 
     expect(page).toContain('release-2026-09-17-whats-new-experience');
     expect(page).toContain(summary);

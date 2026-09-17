@@ -28,7 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-09-17': [
-    'Redesigned What’s New into a release-aware, feature-by-feature product presentation with visual media, swipe, keyboard and progress navigation, deep-link actions, polished video controls, release history, development previewing, and cross-device viewed-state persistence.',
+    'Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices.',
   ],
   '2026-09-15': [
     'Consolidated 415 redundant canonical Question Bank rows in the live Question Bank: 384 confirmed Revision Village/cross-source duplicates and 31 exact Pestle duplicates, while preserving provenance, variants, topic placements, assets, papers and videos, saved questions and user progress; 16 ambiguous Revision Village reference collisions were deliberately left separate.',
