@@ -25,40 +25,87 @@ describe('source UI and release notes', () => {
     expect(page).toContain('question_variant_count');
   });
 
-  it('shows What’s new once per release and keeps it reopenable', () => {
+  it('uses a release-aware immersive What’s New experience', () => {
     const dialog = read('components/whats-new-dialog.tsx');
+    const controller = read(
+      'components/whats-new/use-whats-new-controller.ts',
+    );
+    const slide = read('components/whats-new/whats-new-slide.tsx');
+    const media = read('components/whats-new/whats-new-media.tsx');
+    const navigation = read('components/whats-new/whats-new-navigation.tsx');
+    const history = read('components/whats-new/whats-new-history.tsx');
+    const client = read('lib/whats-new-client.ts');
     const accountMenu = read('components/account-menu.tsx');
-    expect(dialog).toContain('WHATS_NEW_RELEASE.id');
-    expect(dialog).toContain('localStorage.getItem');
-    expect(dialog).toContain('localStorage.setItem');
-    expect(dialog).toContain('View full changelog');
-    expect(dialog).toContain('max-h-[min(52vh,28rem)]');
-    expect(dialog).toContain('overflow-y-auto');
-    expect(dialog).toContain('overscroll-contain');
-    expect(dialog).not.toContain('Sparkles');
+
+    expect(dialog).toContain('useWhatsNewController');
+    expect(dialog).toContain('prefers-reduced-motion');
+    expect(dialog).toContain("event.key === 'ArrowLeft'");
+    expect(dialog).toContain("event.key === 'ArrowRight'");
+    expect(dialog).toContain('onPointerDown');
+    expect(dialog).toContain('onPointerUp');
+    expect(dialog).toContain('WhatsNewHistory');
+    expect(dialog).toContain('WhatsNewNavigation');
+    expect(dialog).toContain('WhatsNewSlide');
+    expect(dialog).toContain('role="dialog"');
+    expect(dialog).toContain('aria-modal="true"');
+
+    expect(controller).toContain('WHATS_NEW_RELEASES');
+    expect(controller).toContain('latestAutoOpenRelease');
+    expect(controller).toContain('previewWhatsNew');
+    expect(controller).toContain("router.push(href)");
+    expect(controller).toContain('persistAccountViewedRelease');
+    expect(controller).toContain("reason: 'history'");
+
+    expect(slide).toContain('WhatsNewMedia');
+    expect(slide).toContain('feature.cta');
+    expect(slide).toContain('onTryIt');
+    expect(media).toContain('playsInline');
+    expect(media).toContain("preload={active ? 'metadata' : 'none'}");
+    expect(media).toContain('video.pause()');
+    expect(media).toContain('requestFullscreen');
+    expect(media).toContain('webkitEnterFullscreen');
+    expect(media).toContain('Replay video');
+    expect(navigation).toContain('Previous feature');
+    expect(navigation).toContain('Next feature');
+    expect(navigation).toContain('Done');
+    expect(history).toContain('Release history');
+
+    expect(client).toContain('WHATS_NEW_VIEWED_RELEASES_STORAGE_KEY');
+    expect(client).toContain("fetch('/api/account/whats-new'");
+    expect(client).toContain('persistAccountViewedRelease');
     expect(accountMenu).toContain('dp:open-whats-new');
-    expect(accountMenu).toContain('WHATS_NEW_RELEASE.dateLabel');
-    expect(accountMenu).not.toContain('Sparkles');
   });
 
-  it('keeps What’s new as a short hand-written 16 September release summary', () => {
+  it('keeps What’s New curated separately from the detailed changelog', () => {
     const whatsNew = read('lib/whats-new.ts');
+    expect(whatsNew).toContain('export type WhatsNewRelease');
+    expect(whatsNew).toContain('showWhatsNew: boolean');
+    expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain("dateLabel: '16 September 2026'");
-    expect(whatsNew).not.toContain("dateLabel: 'September 2026'");
-    expect(whatsNew).not.toContain('Save your IB academic profile');
-    for (const highlight of [
-      '11,763 RevisionDojo questions added',
-      'Take a guided tour of DP Resources',
-      'Replay the tutorial anytime',
-      'Clearer and more reliable practice',
-      'More fixes since the last production release',
-    ]) {
-      expect(whatsNew).toContain(highlight);
-    }
-    expect(whatsNew).toContain('IB Resource Library');
-    expect(whatsNew).toContain('11,763 distinct RevisionDojo questions');
-    expect(whatsNew).toContain('15,571 course/question variants');
+    expect(whatsNew).toContain('11,763 more questions to practise');
+    expect(whatsNew).toContain('Physics A.1–A.5, now with CBS');
+    expect(whatsNew).toContain('Learn DP Resources on the real interface');
+    expect(whatsNew).toContain('Practice that keeps moving');
+    expect(whatsNew).toContain("cta: { label: 'Try it', href: '/question-bank' }");
+  });
+
+  it('persists viewed releases at account level with a local fallback', () => {
+    const route = read('app/api/account/whats-new/route.ts');
+    const migration = read(
+      'supabase/migrations/20260916234500_whats_new_release_history.sql',
+    );
+    const client = read('lib/whats-new-client.ts');
+
+    expect(route).toContain('viewed_whats_new_releases');
+    expect(route).toContain('requireApiMember');
+    expect(route).toContain('sameOriginOrForbidden');
+    expect(route).toContain('getWhatsNewRelease');
+    expect(migration).toContain('viewed_whats_new_releases jsonb');
+    expect(migration).toContain("jsonb_typeof(viewed_whats_new_releases) = 'array'");
+    expect(client).toContain('readLocalViewedReleaseIds');
+    expect(client).toContain('writeLocalViewedReleaseIds');
+    expect(client).toContain('fetchAccountViewedReleaseIds');
   });
 
   it('curates the complete 16 September public release in both changelog sources', () => {

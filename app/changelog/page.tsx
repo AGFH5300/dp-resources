@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-17-whats-new-experience',
+    summary:
+      'Redesigned What’s New into a release-aware, feature-by-feature product presentation with visual media, swipe, keyboard and progress navigation, deep-link actions, polished video controls, release history, development previewing, and cross-device viewed-state persistence.',
+    date: '2026-09-17T05:45:00.000Z',
+  },
+  {
     id: 'release-2026-09-16-cbs-question-bank-import',
     summary:
       'Added CBS Physics A.1–A.5 to the live Question Bank from 341 source occurrences, consolidated into 232 CBS source groups and 217 distinct canonical questions; 302 variants are live and ready (137 HL and 165 SL) with 310 CBS variant-source provenance links and zero remaining quarantined CBS variants.',

@@ -359,6 +359,7 @@ create table if not exists public.dp_resource_user_settings (
   show_expanded_source_attribution boolean not null default true,
   support_notifications boolean not null default true,
   show_whats_new boolean not null default true,
+  viewed_whats_new_releases jsonb not null default '[]'::jsonb check (jsonb_typeof(viewed_whats_new_releases) = 'array'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
