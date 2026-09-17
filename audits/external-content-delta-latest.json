@@ -1,6 +1,6 @@
 {
   "schema": "dp_external_content_delta_v1",
-  "generatedAt": "2026-09-16T08:39:34.374Z",
+  "generatedAt": "2026-09-17T08:43:15.092Z",
   "baselinePath": "audits/external-content-watch-baseline-20260909.json",
   "previousStatePath": "audits/external-content-index-state.json",
   "sourcePolicy": {
@@ -12,19 +12,27 @@
   "confirmedSignals": [],
   "candidateSignals": [
     {
+      "source": "exam_mate",
+      "id": "exam-mate-topical-count-238746",
+      "status": "candidate",
+      "kind": "catalog_count",
+      "label": "238746 topical past-paper questions",
+      "url": "https://www.exam-mate.com/"
+    },
+    {
       "source": "revision_town",
-      "id": "revision-town-page-date-15-sep-2026",
+      "id": "revision-town-page-date-16-sep-2026",
       "status": "candidate",
       "kind": "page_refresh_marker",
-      "label": "IB hub page marker: 15 Sep 2026",
+      "label": "IB hub page marker: 16 Sep 2026",
       "url": "https://revisiontown.com/ib/"
     },
     {
       "source": "revision_town",
-      "id": "revision-town-page-date-15-sep-2026",
+      "id": "revision-town-page-date-17-sep-2026",
       "status": "candidate",
       "kind": "page_refresh_marker",
-      "label": "IB hub page marker: 15 Sep 2026",
+      "label": "IB hub page marker: 17 Sep 2026",
       "url": "https://revisiontown.com/ib-mathematics/"
     }
   ],
@@ -32,7 +40,7 @@
     "exam_mate": {
       "displayName": "Exam-Mate",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-16T08:39:27.001Z",
+      "scannedAt": "2026-09-17T08:43:09.461Z",
       "pages": [
         {
           "requestedUrl": "https://www.exam-mate.com/",
@@ -42,7 +50,7 @@
           "description": "exam-mate is an exam preparation tool containing a bank of IGCSE, A-Level, IB, AQA and OCR Topical questions and yearly past papers exams. With exam-mate you are able to build online exams easily using our question bank database.",
           "etag": null,
           "lastModified": null,
-          "htmlSha256": "a8a3d2d353d10d33d6573495dbff36945b2a4d3b9df29819db581fd935351d7b",
+          "htmlSha256": "d95e7f72ce45ad02b1987fb478254cbd448d28a1a0ee183abf3202fd090306eb",
           "headings": [
             {
               "level": 1,
@@ -78,81 +86,16 @@
         }
       ],
       "itemCount": 8,
-      "newItemCount": 8,
+      "newItemCount": 0,
       "removedItemCount": 0,
-      "newItems": [
-        {
-          "key": "e914da5edf222201e71bb836d89004b8",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "AI Exam Marker (Free)",
-          "url": "https://www.exam-mate.com/exam-marker",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "3f635412810f81f69d6aa9d59a31c146",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "AI Revision Assistant (Free)",
-          "url": "https://www.exam-mate.com/revision",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "8e0735b64094ddee444a9c715c63ff34",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "Build Exam or Worksheet",
-          "url": "https://www.exam-mate.com/exams/pricing",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "60cc752e559c24b1a07f2005ff66d003",
-          "source": "exam_mate",
-          "kind": "catalog_resource",
-          "text": "Online Exam Builder",
-          "url": "https://www.exam-mate.com/myexams",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "7401af50339006c44059eee54a2ee609",
-          "source": "exam_mate",
-          "kind": "mock_exam",
-          "text": "AI Mock Exam (Free)",
-          "url": "https://www.exam-mate.com/mockexam",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "80177aa4f12c402bb60e0c1b31e7bbda",
-          "source": "exam_mate",
-          "kind": "prediction_exam",
-          "text": "AI Exam Prediction (Free)",
-          "url": "https://www.exam-mate.com/prediction-exam",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "5e52d031fbb1719b580c6a51f5c20357",
-          "source": "exam_mate",
-          "kind": "question_bank_or_exam_questions",
-          "text": "Build Question List (Free)",
-          "url": "https://www.exam-mate.com/list",
-          "discoveredOn": "https://www.exam-mate.com/"
-        },
-        {
-          "key": "1666a3b96b694b59afb0350e0229e99a",
-          "source": "exam_mate",
-          "kind": "question_bank_or_exam_questions",
-          "text": "exam-mate Question Bank (Free)",
-          "url": "https://www.exam-mate.com/questionbank",
-          "discoveredOn": "https://www.exam-mate.com/"
-        }
-      ],
+      "newItems": [],
       "removedItems": [],
       "signals": [
         {
-          "id": "exam-mate-topical-count-238655",
+          "id": "exam-mate-topical-count-238746",
           "status": "candidate",
           "kind": "catalog_count",
-          "label": "238655 topical past-paper questions",
+          "label": "238746 topical past-paper questions",
           "url": "https://www.exam-mate.com/"
         },
         {
@@ -167,7 +110,7 @@
     "revision_village": {
       "displayName": "Revision Village",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-16T08:39:27.513Z",
+      "scannedAt": "2026-09-17T08:43:09.949Z",
       "pages": [
         {
           "requestedUrl": "https://www.revisionvillage.com/prediction-exams/",
@@ -175,9 +118,9 @@
           "status": 200,
           "title": "IB Prediction Exams [October 2026] | Revision Village",
           "description": "[Official 2026] Prediction Exams for IB Mathematics and Sciences, used by 70% of IB Students Worldwide. Revision Village.",
-          "etag": "\"ppzjreyw2b8itk\"",
+          "etag": "\"4rbio2euex8j3k\"",
           "lastModified": null,
-          "htmlSha256": "adc535765c395998a925eb92b383e3168e4eebb286b8ff5823cede276b5554a1",
+          "htmlSha256": "5fe97bca095804f1492bb6ed00e703e478c3632bea955e8c234c8ad08679eee4",
           "headings": [
             {
               "level": 1,
@@ -216,8 +159,8 @@
               "text": "80% of IB Students"
             }
           ],
-          "itemCount": 66,
-          "catalogFingerprint": "1642de768e2ad58c8e55c941e0343af157c27d487a91655a6bd21e6243fb7e0e"
+          "itemCount": 67,
+          "catalogFingerprint": "805d6211e1f8e1071630e3cea592f043c19105cdf892d25ec7fc70b1d154bc4c"
         },
         {
           "requestedUrl": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
@@ -225,9 +168,9 @@
           "status": 200,
           "title": "Internal Assessment Resources | Revision Village",
           "description": "These resources are designed to guide you through the entire IA process, in addition to showing you finished examples.",
-          "etag": "\"ng835qfo2z2hlu\"",
+          "etag": "\"8u2k3ssmqb2hto\"",
           "lastModified": null,
-          "htmlSha256": "8073e9caec5c68b8e13b0cee56f90db1f7691382d233521a656d3bf4046baa48",
+          "htmlSha256": "be21eac758c52e0197f27fe10284f8d37346b4a82b978800af8573069bdf3352",
           "headings": [
             {
               "level": 1,
@@ -242,14 +185,23 @@
               "text": "What’s unique about the IA resources at RV?"
             }
           ],
-          "itemCount": 43,
-          "catalogFingerprint": "1f2edf351f31870461723799f19f7dd95991352bdb43810e6b889ab0faaf1601"
+          "itemCount": 44,
+          "catalogFingerprint": "12c877c14b46db77b026e051aca703ceebd1d580c81f7f65e72343966305bde2"
         }
       ],
-      "itemCount": 73,
-      "newItemCount": 0,
+      "itemCount": 74,
+      "newItemCount": 1,
       "removedItemCount": 0,
-      "newItems": [],
+      "newItems": [
+        {
+          "key": "d17232442b1e286cd64f657b8926a46c",
+          "source": "revision_village",
+          "kind": "catalog_resource",
+          "text": "Community",
+          "url": "https://www.revisionvillage.com/blog/",
+          "discoveredOn": "https://www.revisionvillage.com/blog/internal-assessment-resources/"
+        }
+      ],
       "removedItems": [],
       "signals": [
         {
@@ -271,7 +223,7 @@
     "revision_town": {
       "displayName": "Revision Town",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-16T08:39:27.809Z",
+      "scannedAt": "2026-09-17T08:43:10.140Z",
       "pages": [
         {
           "requestedUrl": "https://revisiontown.com/ib/",
@@ -279,9 +231,9 @@
           "status": 200,
           "title": "International Baccalaureate® (IB) – RevisionTown",
           "description": "IB Resources - Notes, Past Papers, Books,.... IB Business & Management Business & Management SLBusiness & Management HL IB Mathematics IB Math AA SLIB Math AA HLIB Math AI SLIB",
-          "etag": "\"6551-1789498986;br\"",
+          "etag": "\"299-1789598294;br\"",
           "lastModified": null,
-          "htmlSha256": "4359d0efdaa182cbd5880a19f79f86d60453bed0a69f39dd1fcbe769ade92958",
+          "htmlSha256": "44cfaa0cd95ba4eeb962780eb3c41d2dfd4c3218ed3670dc5519e468b2c92903",
           "headings": [
             {
               "level": 2,
@@ -389,9 +341,9 @@
           "status": 200,
           "title": "IB Mathematics – RevisionTown",
           "description": "IB Math AA SLIB Math AA HLIB Math AI SLIB Math AI HLOther NotesMath AALecture Notes (Math AA):-Topic 1. Number and algebraTopic 2. FunctionsTopic 3. Geometry and trigonometryTopic 4. Statistics and probabilityTopic 5. Calculus Formula Booklets",
-          "etag": "\"4606-1789497330;br\"",
+          "etag": "\"880-1789604022;br\"",
           "lastModified": null,
-          "htmlSha256": "cee967425e188752ea3487041cdb6367f0e3aa7cd67a6947787e1dff78751c84",
+          "htmlSha256": "7a6db0d98c7e89112cf6705d0cbe3bf440ea1c3f744adb2f92402e1835e60615",
           "headings": [
             {
               "level": 1,
@@ -433,17 +385,17 @@
       "removedItems": [],
       "signals": [
         {
-          "id": "revision-town-page-date-15-sep-2026",
+          "id": "revision-town-page-date-16-sep-2026",
           "status": "candidate",
           "kind": "page_refresh_marker",
-          "label": "IB hub page marker: 15 Sep 2026",
+          "label": "IB hub page marker: 16 Sep 2026",
           "url": "https://revisiontown.com/ib/"
         },
         {
-          "id": "revision-town-page-date-15-sep-2026",
+          "id": "revision-town-page-date-17-sep-2026",
           "status": "candidate",
           "kind": "page_refresh_marker",
-          "label": "IB hub page marker: 15 Sep 2026",
+          "label": "IB hub page marker: 17 Sep 2026",
           "url": "https://revisiontown.com/ib-mathematics/"
         }
       ]
@@ -451,7 +403,7 @@
     "mortar_and_pestle": {
       "displayName": "Mortar and Pestle",
       "captureMode": "fingerprint-only",
-      "scannedAt": "2026-09-16T08:39:28.084Z",
+      "scannedAt": "2026-09-17T08:43:10.309Z",
       "pages": [
         {
           "requestedUrl": "https://pestle.pirateib.su/app/",
@@ -460,8 +412,8 @@
           "title": "Mortar & Pestle | The Next Generation of Question Grinding",
           "description": "Practice IB Exam-Style Questions, create topic-wise tests, and much more!",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:28 GMT",
-          "htmlSha256": "5613627dfd8664ee53e05ff8d0dfd891954cd03d16bf1706725030022b9a3314",
+          "lastModified": "Thu, 17 Sep 2026 06:24:57 GMT",
+          "htmlSha256": "6f6d18e22ea4fa2e7fdfaec59164e4a85f3b93f0c54910106000bbe89410396b",
           "headings": [],
           "itemCount": 0,
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
@@ -485,7 +437,7 @@
     "save_my_exams": {
       "displayName": "Save My Exams",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-16T08:39:34.374Z",
+      "scannedAt": "2026-09-17T08:43:15.092Z",
       "pages": [
         {
           "requestedUrl": "https://www.savemyexams.com/dp/",
@@ -494,8 +446,8 @@
           "title": "IB Revision Notes, Past Papers & Exam Questions",
           "description": "All the course specific IB revision resources you need to ace your exams. Discover IB revision notes, past papers, exam questions, flashcards & more.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:28 GMT",
-          "htmlSha256": "428d196ecbafc79686176919baec7332fc13380a512099e4c860978d49bb1fa3",
+          "lastModified": "Wed, 16 Sep 2026 21:37:12 GMT",
+          "htmlSha256": "a122c5b2d0d54893ea3e5668da4a07ac81368da11402f3b8569aa968485329a5",
           "headings": [
             {
               "level": 1,
@@ -716,8 +668,8 @@
           "title": "IB Maths Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Maths Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Tue, 15 Sep 2026 22:45:07 GMT",
-          "htmlSha256": "ad08e1882079858dfbcc585bd906a55e5951a9439f7dabfea49087ed14f9fd0f",
+          "lastModified": "Thu, 17 Sep 2026 08:43:11 GMT",
+          "htmlSha256": "874e97c528b078c14d11e232815f65f69260bd205b3e12ac23e543dfd2652e84",
           "headings": [
             {
               "level": 1,
@@ -758,8 +710,8 @@
           "title": "DP IB Analysis & Approaches (AA) Mock Exams",
           "description": "Increase your exam confidence with these DP IB Analysis & Approaches (AA) mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:29 GMT",
-          "htmlSha256": "ed3f8749b81c8c38bb8aa62b1e12afd09de9f9fa7c9968c5f9114db55eb41c9c",
+          "lastModified": "Wed, 16 Sep 2026 22:42:19 GMT",
+          "htmlSha256": "720bcb0691a577b3838f9ced480ef5075656d2f34ae5bbce80fefd61dc65776d",
           "headings": [
             {
               "level": 1,
@@ -776,8 +728,8 @@
           "title": "IB Business Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Business Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:30 GMT",
-          "htmlSha256": "5b56c9932f74f3074675212dafa276380ee7b3e0df85477a00257e38a67a72ad",
+          "lastModified": "Thu, 17 Sep 2026 08:43:11 GMT",
+          "htmlSha256": "d9cb504abe026685cfaf442750fff97de3b95f782d4a514e63004f1873cd95a9",
           "headings": [
             {
               "level": 1,
@@ -818,8 +770,8 @@
           "title": "DP IB Chemistry Mock Exams",
           "description": "Increase your exam confidence with these DP IB Chemistry mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:31 GMT",
-          "htmlSha256": "578e2e95fdc90c8a4e5a3340da5e83afc07dce3142a2374eee93457e4e8f3c6a",
+          "lastModified": "Thu, 17 Sep 2026 08:43:12 GMT",
+          "htmlSha256": "56bd1e6390ded81e5913fe976de153de16534281d35c4c81422acaff15fc89dd",
           "headings": [
             {
               "level": 1,
@@ -836,8 +788,8 @@
           "title": "IB Biology Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Biology Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Tue, 15 Sep 2026 22:19:09 GMT",
-          "htmlSha256": "43983a5c43a12fa5ccc313c89ecb113712f8fb6a4effc80867da2cb556158701",
+          "lastModified": "Wed, 16 Sep 2026 21:00:39 GMT",
+          "htmlSha256": "ecc3491bcf9094435d6e355305c537c0a00113b92567146f992c8736b633e281",
           "headings": [
             {
               "level": 1,
@@ -878,8 +830,8 @@
           "title": "IB Physics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Physics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:32 GMT",
-          "htmlSha256": "f9d9e68b686a6e7ae4f97ba4b3ce535dd9695ea0bcda9997b5d866edfbb83a44",
+          "lastModified": "Thu, 17 Sep 2026 08:43:13 GMT",
+          "htmlSha256": "a5ca8798f3739e750786f9c846e2fb8c20f8c4e3b92c9db2acf76bd8d95bfb18",
           "headings": [
             {
               "level": 1,
@@ -920,8 +872,8 @@
           "title": "IB Economics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Economics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 07:26:18 GMT",
-          "htmlSha256": "d29e776767de0295d205f6011c17a62534d32924d3f3f6defab26d9671f2836a",
+          "lastModified": "Thu, 17 Sep 2026 08:43:14 GMT",
+          "htmlSha256": "3e0a699a789c37af608bf3041e1336990a451035c7aef8f91b5c975aa9c69298",
           "headings": [
             {
               "level": 1,
@@ -962,8 +914,8 @@
           "title": "DP IB Psychology Mock Exams",
           "description": "Increase your exam confidence with these DP IB Psychology mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 08:39:33 GMT",
-          "htmlSha256": "f7621d1964d20063aaff6d70d4329bdad928801bde23ed6a8e8e221c7783390b",
+          "lastModified": "Thu, 17 Sep 2026 02:41:43 GMT",
+          "htmlSha256": "23d5c0f777bb90bb9acea450013d4918f4453fc029031e17c59e3b2c3d89f1e6",
           "headings": [
             {
               "level": 1,
