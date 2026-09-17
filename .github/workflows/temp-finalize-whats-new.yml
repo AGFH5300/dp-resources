@@ -1,0 +1,70 @@
+name: Finalize Whats New release notes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-finalize-whats-new.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch release copy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old_changelog = "Redesigned What’s New into a release-aware, feature-by-feature product presentation with visual media, swipe, keyboard and progress navigation, deep-link actions, polished video controls, release history, development previewing, and cross-device viewed-state persistence."
+          new_changelog = "Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices."
+
+          for filename in ["lib/changelog.ts", "app/changelog/page.tsx"]:
+              path = Path(filename)
+              text = path.read_text()
+              if old_changelog not in text:
+                  raise SystemExit(f"Expected changelog copy not found in {filename}")
+              path.write_text(text.replace(old_changelog, new_changelog))
+
+          path = Path("lib/whats-new.ts")
+          text = path.read_text()
+          old_summary = "A major Question Bank expansion, broader Physics coverage, guided onboarding and a steadier practice experience."
+          new_summary = "A major Question Bank expansion, broader Physics coverage, guided onboarding, steadier practice and a redesigned way to discover every major DP Resources update."
+          if old_summary not in text:
+              raise SystemExit("Expected What’s New summary not found")
+          path.write_text(text.replace(old_summary, new_summary))
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run What’s New tests
+        run: npx vitest run tests/source-ui-and-whats-new.test.ts tests/whats-new-release-structure.test.ts
+
+      - name: Commit finalized release copy and remove helper
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/temp-finalize-whats-new.yml
+          git add lib/changelog.ts app/changelog/page.tsx lib/whats-new.ts
+          git commit -m "Polish changelog and What’s New release copy"
+          git push origin main
