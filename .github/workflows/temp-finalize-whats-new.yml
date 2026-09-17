@@ -3,23 +3,21 @@ name: Finalize Whats New release notes
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/temp-finalize-whats-new.yml'
 
 permissions:
   contents: write
 
 jobs:
   finalize:
-    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Patch release copy
+      - name: Update release copy
         shell: bash
         run: |
           python - <<'PY'
@@ -42,29 +40,31 @@ jobs:
           if old_summary not in text:
               raise SystemExit("Expected What’s New summary not found")
           path.write_text(text.replace(old_summary, new_summary))
+
+          path = Path("tests/whats-new-release-structure.test.ts")
+          text = path.read_text()
+          old_test = "Redesigned What’s New into a release-aware, feature-by-feature product presentation"
+          new_test = "Redesigned What’s New into a polished feature-by-feature update experience"
+          if old_test not in text:
+              raise SystemExit("Expected changelog test copy not found")
+          path.write_text(text.replace(old_test, new_test))
           PY
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run tests/source-ui-and-whats-new.test.ts tests/whats-new-release-structure.test.ts
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Run What’s New tests
-        run: npx vitest run tests/source-ui-and-whats-new.test.ts tests/whats-new-release-structure.test.ts
-
-      - name: Commit finalized release copy and remove helper
+      - name: Commit final release copy
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/temp-finalize-whats-new.yml
-          git add lib/changelog.ts app/changelog/page.tsx lib/whats-new.ts
-          git commit -m "Polish changelog and What’s New release copy"
+          git config user.name "dp-resources-release-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/changelog.ts app/changelog/page.tsx lib/whats-new.ts tests/whats-new-release-structure.test.ts
+          git commit -m "chore: finalize What's New and changelog copy"
           git push origin main
