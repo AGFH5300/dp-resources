@@ -48,3 +48,5 @@ The Practice Builder loading shell was refreshed after the import to use the sam
 All previously failing release, identity, tutorial, and client-boundary regression files pass individually. The remaining issue is a Vitest process-exit stall when all 159 files share one invocation; final validation is testing deterministic shards so CI can complete reliably.
 
 Runner diagnostic: all shard-1 assertions completed before timeout, confirming the remaining stall is worker-process teardown rather than a failing test. The thread pool is being validated as the CI-safe runner mode.
+
+CI diagnostic is isolating the specific shard-1 test responsible for Vitest process teardown stalling.
