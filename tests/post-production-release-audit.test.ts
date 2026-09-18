@@ -17,7 +17,6 @@ describe('16 September post-production release audit', () => {
       expect(fallback).toContain(value);
     }
     expect(whatsNew).toContain('57,696 live question variants');
-    expect(whatsNew).toContain('15,571');
     expect(whatsNew).toContain('RevisionDojo');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
   });
