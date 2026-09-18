@@ -127,12 +127,14 @@ describe('Settings & Account Centre', () => {
     );
   });
 
-  it('keeps What’s New current after the guided onboarding release', () => {
+  it('keeps What’s New current while preserving guided onboarding in release history', () => {
+    expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
+    expect(whatsNew).toContain("dateLabel: '18 September 2026'");
+    expect(whatsNew).toContain('57,740 live question variants');
+    expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
-    expect(whatsNew).toContain('11,763 RevisionDojo questions added');
-    expect(whatsNew).toContain('Take a guided tour of DP Resources');
-    expect(whatsNew).toContain('Replay the tutorial anytime');
-    expect(whatsNew).toContain('Clearer and more reliable practice');
+    expect(whatsNew).toContain('Learn DP Resources on the real interface');
+    expect(whatsNew).toContain('Practice that keeps moving');
     expect(whatsNew).not.toContain('Save your IB academic profile');
   });
 

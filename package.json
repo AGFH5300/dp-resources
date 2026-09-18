@@ -18,7 +18,7 @@
     "question-bank:optimize-assets": "node scripts/optimize-question-bank-assets.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "node scripts/run-tests.mjs",
     "security:client-bundle": "node scripts/check-client-bundle-secrets.mjs"
   },
   "dependencies": {
