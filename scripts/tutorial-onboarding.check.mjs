@@ -35,6 +35,7 @@ const appHeader = read('components/app-header.tsx');
 const instantLibraryBrowser = read('app/library/instant-library-browser.tsx');
 const accountMenu = read('components/account-menu.tsx');
 const whatsNew = read('components/whats-new-dialog.tsx');
+const whatsNewController = read('components/whats-new/use-whats-new-controller.ts');
 const settingsPage = read('app/settings/page.tsx');
 const practiceBuilderLoading = read('app/question-bank/build/loading.tsx');
 const schema = read('supabase/schema.sql');
@@ -242,9 +243,10 @@ describe('interactive tutorial onboarding', () => {
   });
 
   it('keeps What’s New from competing with the first-login tutorial', () => {
-    expect(whatsNew).toContain('TUTORIAL_ACTIVE_STORAGE_KEY');
-    expect(whatsNew).toContain('TUTORIAL_CHECKING_STORAGE_KEY');
-    expect(whatsNew).toContain('TUTORIAL_OPENED_EVENT');
-    expect(whatsNew).toContain('TUTORIAL_CHECK_COMPLETE_EVENT');
+    expect(whatsNewController).toContain('TUTORIAL_ACTIVE_STORAGE_KEY');
+    expect(whatsNewController).toContain('TUTORIAL_CHECKING_STORAGE_KEY');
+    expect(whatsNewController).toContain('TUTORIAL_OPENED_EVENT');
+    expect(whatsNewController).toContain('TUTORIAL_CHECK_COMPLETE_EVENT');
+    expect(whatsNew).toContain('useWhatsNewController');
   });
 });
