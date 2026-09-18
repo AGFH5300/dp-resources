@@ -32,7 +32,7 @@ for (let index = 0; index < tests.length; index += 1) {
 
   const result = spawnSync(
     process.execPath,
-    [vitestBin, 'run', relative, '--pool=threads', '--maxWorkers=1'],
+    [vitestBin, 'run', relative],
     {
       cwd: process.cwd(),
       stdio: 'inherit',
