@@ -16,19 +16,28 @@ function collectTests(directory) {
 }
 
 const tests = collectTests(resolve('tests'));
+const priorityTests = [
+  resolve('tests/tutorial-onboarding.test.ts'),
+  resolve('tests/account-settings.test.ts'),
+  resolve('tests/post-production-release-audit.test.ts'),
+];
+const orderedTests = [
+  ...priorityTests.filter((path) => tests.includes(path)),
+  ...tests.filter((path) => !priorityTests.includes(path)),
+];
 const vitestBin = resolve('node_modules/vitest/vitest.mjs');
 
-if (!tests.length) {
+if (!orderedTests.length) {
   console.error('No test files found.');
   process.exit(1);
 }
 
-console.log(`Running ${tests.length} test files in isolated Vitest processes.`);
+console.log(`Running ${orderedTests.length} test files in isolated Vitest processes.`);
 
-for (let index = 0; index < tests.length; index += 1) {
-  const testFile = tests[index];
+for (let index = 0; index < orderedTests.length; index += 1) {
+  const testFile = orderedTests[index];
   const relative = testFile.slice(process.cwd().length + 1);
-  console.log(`\n[${index + 1}/${tests.length}] ${relative}`);
+  console.log(`\n[${index + 1}/${orderedTests.length}] ${relative}`);
 
   const result = spawnSync(
     process.execPath,
@@ -61,4 +70,4 @@ for (let index = 0; index < tests.length; index += 1) {
   }
 }
 
-console.log(`\nAll ${tests.length} test files passed.`);
+console.log(`\nAll ${orderedTests.length} test files passed.`);
