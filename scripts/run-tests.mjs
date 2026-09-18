@@ -17,7 +17,6 @@ function collectTests(directory) {
 
 const tests = collectTests(resolve('tests'));
 const priorityTests = [
-  resolve('tests/tutorial-onboarding.test.ts'),
   resolve('tests/account-settings.test.ts'),
   resolve('tests/post-production-release-audit.test.ts'),
 ];
@@ -32,7 +31,23 @@ if (!orderedTests.length) {
   process.exit(1);
 }
 
-console.log(`Running ${orderedTests.length} test files in isolated Vitest processes.`);
+console.log('Running standalone tutorial onboarding regression check.');
+const tutorialResult = spawnSync(
+  process.execPath,
+  [resolve('scripts/tutorial-onboarding.check.mjs')],
+  {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    timeout: PER_FILE_TIMEOUT_MS,
+    env: process.env,
+  },
+);
+if (tutorialResult.error || tutorialResult.signal || tutorialResult.status !== 0) {
+  console.error('Tutorial onboarding regression check failed.');
+  process.exit(tutorialResult.status ?? 1);
+}
+
+console.log(`Running ${orderedTests.length} Vitest files in isolated processes.`);
 
 for (let index = 0; index < orderedTests.length; index += 1) {
   const testFile = orderedTests[index];
