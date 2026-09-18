@@ -67,9 +67,22 @@ describe('source UI and release notes', () => {
     expect(media).toContain('Replay video');
     expect(media).toContain('Question variants by source');
     expect(media).toContain('Source coverage can overlap');
-    for (const count of ['57,696', '15,571', '13,374', '13,190', '12,169', '4,173', '302']) {
+    for (const count of [
+      '57,740',
+      '57,696',
+      '15,571',
+      '13,374',
+      '13,190',
+      '12,169',
+      '4,173',
+      '302',
+      '44',
+    ]) {
       expect(media).toContain(count);
     }
+    expect(media).toContain('Save My Exams');
+    expect(media).toContain('Kinematics source coverage');
+    expect(media).toContain('No variant overlap between these two source sets');
     expect(navigation).toContain('Previous feature');
     expect(navigation).toContain('Next feature');
     expect(navigation).toContain('Done');
@@ -86,13 +99,17 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('export type WhatsNewRelease');
     expect(whatsNew).toContain('showWhatsNew: boolean');
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
+    expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
+    expect(whatsNew).toContain("dateLabel: '18 September 2026'");
+    expect(whatsNew).toContain('57,740 live question variants');
+    expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
-    expect(whatsNew).toContain("dateLabel: '16 September 2026'");
-    expect(whatsNew).toContain('57,696 live question variants');
     expect(whatsNew).toContain('Physics A.1–A.5, now with CBS');
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
     expect(whatsNew).toContain('Practice that keeps moving');
-    expect(whatsNew).toContain("cta: { label: 'Try it', href: '/question-bank' }");
+    expect(whatsNew).toContain(
+      "cta: { label: 'Open Question Bank', href: '/question-bank' }",
+    );
   });
 
   it('persists viewed releases at account level with a local fallback', () => {
@@ -111,6 +128,19 @@ describe('source UI and release notes', () => {
     expect(client).toContain('readLocalViewedReleaseIds');
     expect(client).toContain('writeLocalViewedReleaseIds');
     expect(client).toContain('fetchAccountViewedReleaseIds');
+  });
+
+  it('records the 18 September Kinematics expansion in both public changelog sources', () => {
+    const page = read('app/changelog/page.tsx');
+    const history = read('lib/changelog.ts');
+    const note = 'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants';
+
+    expect(page).toContain('release-2026-09-18-sme-a1-kinematics');
+    expect(page).toContain(note);
+    expect(history).toContain("'2026-09-18': [");
+    expect(history).toContain(note);
+    expect(page).toContain('57,740 ready variants');
+    expect(history).toContain('57,740 ready variants');
   });
 
   it('curates the complete 16 September public release in both changelog sources', () => {

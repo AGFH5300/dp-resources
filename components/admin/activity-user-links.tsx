@@ -245,13 +245,18 @@ export function AdminActivityUserLinksBridge() {
                   id="activity-user-modal-title"
                   className="truncate text-lg font-semibold text-[color:var(--dp-navy)]"
                 >
-                  {detail?.user.alias ||
+                  {detail?.user.fullName ||
+                    detail?.user.alias ||
                     (detail?.user.username ? `@${detail.user.username}` : openEmail)}
                 </h3>
                 <p className="mt-1 text-sm text-slate-600">
                   {[
-                    detail?.user.fullName,
                     detail?.user.username ? `@${detail.user.username}` : null,
+                    detail?.user.alias &&
+                    detail.user.alias !== detail.user.fullName &&
+                    detail.user.alias !== detail.user.username
+                      ? detail.user.alias
+                      : null,
                     openEmail,
                   ]
                     .filter(Boolean)

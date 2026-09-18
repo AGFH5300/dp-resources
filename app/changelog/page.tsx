@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-18-sme-a1-kinematics',
+    summary:
+      'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—while consolidating 42 new questions with 2 existing matches; the live Question Bank now contains 57,740 ready variants.',
+    date: '2026-09-18T11:20:00.000Z',
+  },
+  {
     id: 'release-2026-09-17-whats-new-experience',
     summary:
       'Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices.',

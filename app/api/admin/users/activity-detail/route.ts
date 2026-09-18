@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   if (userError) return noStore({ error: userError.message }, { status: 500 });
   if (!user) return noStore({ error: 'User not found.' }, { status: 404 });
 
-  const [{ data: profile }, { data: aliasRow }] = await Promise.all([
+  const [{ data: profile }, { data: aliasRow }, authLookup] = await Promise.all([
     adminSb
       .from('dp_resource_profiles')
       .select('username,full_name')
@@ -42,7 +42,20 @@ export async function GET(req: Request) {
       .select('alias')
       .eq('user_id', user.id)
       .maybeSingle(),
+    adminSb.auth.admin.getUserById(user.id),
   ]);
+
+  const authMetadata = authLookup.data.user?.user_metadata ?? {};
+  const metadataUsername =
+    typeof authMetadata.username === 'string' && authMetadata.username.trim()
+      ? authMetadata.username.trim()
+      : null;
+  const metadataFullName =
+    typeof authMetadata.full_name === 'string' && authMetadata.full_name.trim()
+      ? authMetadata.full_name.trim()
+      : typeof authMetadata.name === 'string' && authMetadata.name.trim()
+        ? authMetadata.name.trim()
+        : null;
 
   const memberClient = await createClient();
   const resources = await memberClient.rpc('dp_admin_resource_usage_for_user', {
@@ -58,8 +71,8 @@ export async function GET(req: Request) {
       email: user.email,
       role: user.role,
       joinedAt: user.created_at,
-      username: profile?.username || null,
-      fullName: profile?.full_name || null,
+      username: profile?.username || metadataUsername,
+      fullName: profile?.full_name || metadataFullName,
       alias: aliasRow?.alias || null,
     },
     range,

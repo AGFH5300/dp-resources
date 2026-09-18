@@ -45,15 +45,32 @@ function MediaUnavailable() {
   );
 }
 
-function QuestionBankIllustration({ alt }: { alt: string }) {
-  const sourceVariants = [
-    ['RevisionDojo', '15,571'],
-    ['Exam-Mate', '13,374'],
-    ['PESTLE', '13,190'],
-    ['Revision Town', '12,169'],
-    ['Revision Village', '4,173'],
-    ['CBS', '302'],
-  ] as const;
+function QuestionBankIllustration({
+  alt,
+  current = false,
+}: {
+  alt: string;
+  current?: boolean;
+}) {
+  const sourceVariants = current
+    ? ([
+        ['RevisionDojo', '15,571'],
+        ['Exam-Mate', '13,374'],
+        ['PESTLE', '13,190'],
+        ['Revision Town', '12,169'],
+        ['Revision Village', '4,173'],
+        ['CBS', '302'],
+        ['Save My Exams', '44'],
+      ] as const)
+    : ([
+        ['RevisionDojo', '15,571'],
+        ['Exam-Mate', '13,374'],
+        ['PESTLE', '13,190'],
+        ['Revision Town', '12,169'],
+        ['Revision Village', '4,173'],
+        ['CBS', '302'],
+      ] as const);
+  const totalVariants = current ? '57,740' : '57,696';
 
   return (
     <div
@@ -88,7 +105,11 @@ function QuestionBankIllustration({ alt }: { alt: string }) {
             </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+          <div
+            className={`mt-4 grid grid-cols-2 gap-2 sm:gap-3 ${
+              current ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
+            }`}
+          >
             {sourceVariants.map(([source, count]) => (
               <div
                 key={source}
@@ -110,7 +131,7 @@ function QuestionBankIllustration({ alt }: { alt: string }) {
           <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-4 text-white sm:px-5">
             <div>
               <p className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                57,696
+                {totalVariants}
               </p>
               <p className="mt-1 text-xs text-white/70">
                 total unique live variants
@@ -175,6 +196,100 @@ function PhysicsIllustration({ alt }: { alt: string }) {
             <p className="text-lg font-semibold text-[color:var(--dp-heading)]">137</p>
             <p className="text-xs text-[color:var(--dp-muted-text)]">HL variants</p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KinematicsCoverageIllustration({ alt }: { alt: string }) {
+  return (
+    <div
+      className="relative flex h-full min-h-64 items-center justify-center overflow-hidden p-5 sm:min-h-96 sm:p-9"
+      role="img"
+      aria-label={alt}
+    >
+      <div className="w-full max-w-3xl rounded-[1.4rem] border border-white/70 bg-white/92 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-slate-950/88 sm:p-7">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              IB Physics
+            </p>
+            <p className="mt-1 text-xl font-semibold text-[color:var(--dp-heading)]">
+              Kinematics source coverage
+            </p>
+          </div>
+          <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200">
+            346 variants
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/30 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-blue-800 dark:text-blue-200">
+                Save My Exams
+              </p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-200">
+                A.1
+              </span>
+            </div>
+            <p className="mt-5 text-4xl font-semibold tracking-tight text-[color:var(--dp-heading)]">
+              44
+            </p>
+            <p className="mt-1 text-xs text-[color:var(--dp-muted-text)]">
+              Kinematics variants
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-xl bg-white/80 px-2 py-2 dark:bg-slate-950/70">
+                <p className="font-semibold text-[color:var(--dp-heading)]">30</p>
+                <p className="text-[10px] text-[color:var(--dp-muted-text)]">MCQ</p>
+              </div>
+              <div className="rounded-xl bg-white/80 px-2 py-2 dark:bg-slate-950/70">
+                <p className="font-semibold text-[color:var(--dp-heading)]">14</p>
+                <p className="text-[10px] text-[color:var(--dp-muted-text)]">
+                  long-response
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                CBS
+              </p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-600 shadow-sm dark:bg-slate-950 dark:text-slate-300">
+                A.1–A.5
+              </span>
+            </div>
+            <p className="mt-5 text-4xl font-semibold tracking-tight text-[color:var(--dp-heading)]">
+              302
+            </p>
+            <p className="mt-1 text-xs text-[color:var(--dp-muted-text)]">
+              Physics variants
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-xl bg-white px-2 py-2 dark:bg-slate-950">
+                <p className="font-semibold text-[color:var(--dp-heading)]">165</p>
+                <p className="text-[10px] text-[color:var(--dp-muted-text)]">SL</p>
+              </div>
+              <div className="rounded-xl bg-white px-2 py-2 dark:bg-slate-950">
+                <p className="font-semibold text-[color:var(--dp-heading)]">137</p>
+                <p className="text-[10px] text-[color:var(--dp-muted-text)]">HL</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-3 text-white">
+          <div>
+            <p className="text-sm font-semibold">346 unique variants</p>
+            <p className="mt-0.5 text-[10px] text-white/65">
+              No variant overlap between these two source sets
+            </p>
+          </div>
+          <Layers3 className="size-5 shrink-0 text-white/70" aria-hidden />
         </div>
       </div>
     </div>
@@ -304,8 +419,14 @@ function Illustration({ media }: { media: WhatsNewIllustrationMedia }) {
   if (media.variant === 'question-bank') {
     return <QuestionBankIllustration alt={media.alt} />;
   }
+  if (media.variant === 'question-bank-current') {
+    return <QuestionBankIllustration alt={media.alt} current />;
+  }
   if (media.variant === 'physics-coverage') {
     return <PhysicsIllustration alt={media.alt} />;
+  }
+  if (media.variant === 'kinematics-coverage') {
+    return <KinematicsCoverageIllustration alt={media.alt} />;
   }
   if (media.variant === 'guided-tour') {
     return <GuidedTourIllustration alt={media.alt} />;

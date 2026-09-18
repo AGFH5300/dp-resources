@@ -41,8 +41,19 @@ describe('Admin Activity user links', () => {
   it('loads analytics through an admin-only no-store endpoint', () => {
     expect(detailRoute).toContain('await requireAdmin()');
     expect(detailRoute).toContain(".from('dp_admin_user_aliases')");
+    expect(detailRoute).toContain('auth.admin.getUserById(user.id)');
+    expect(detailRoute).toContain('authLookup.data.user?.user_metadata');
+    expect(detailRoute).toContain('profile?.username || metadataUsername');
+    expect(detailRoute).toContain('profile?.full_name || metadataFullName');
     expect(detailRoute).toContain(".rpc('dp_admin_resource_usage_for_user'");
     expect(detailRoute).toContain("Cache-Control', 'private, no-store, max-age=0'");
+  });
+
+  it('shows the full name as the primary identity with username and email beneath it', () => {
+    expect(bridgeSource).toContain('detail?.user.fullName ||');
+    expect(bridgeSource).toContain('`@${detail.user.username}`');
+    expect(bridgeSource).toContain('detail.user.alias !== detail.user.fullName');
+    expect(bridgeSource).toContain('openEmail');
   });
 
   it('mounts the bridge behind Suspense in the shared Admin layout', () => {
