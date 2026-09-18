@@ -61,16 +61,16 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     features: [
       {
         id: 'revisiondojo-question-bank',
-        title: '11,763 more questions to practise',
+        title: '57,696 live question variants',
         description:
-          'RevisionDojo is now a first-class Question Bank source, adding 11,763 distinct questions across 15,571 course and question variants. Filter by RevisionDojo in both Question Bank and Practice Builder whenever you want to practise from that source.',
+          'The Question Bank now has 57,696 unique live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. The source totals show variant coverage; some variants carry more than one source, so the overall total is deduplicated.',
         badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'question-bank',
-          alt: 'A DP Resources Question Bank view highlighting RevisionDojo, 11,763 questions and source filtering.',
+          alt: 'A static Question Bank coverage snapshot showing live variant counts for RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS, plus 57,696 total unique live variants.',
         },
-        cta: { label: 'Try it', href: '/question-bank' },
+        cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
       {
         id: 'cbs-physics-coverage',

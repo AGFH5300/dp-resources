@@ -65,6 +65,11 @@ describe('source UI and release notes', () => {
     expect(media).toContain('requestFullscreen');
     expect(media).toContain('webkitEnterFullscreen');
     expect(media).toContain('Replay video');
+    expect(media).toContain('Question variants by source');
+    expect(media).toContain('Source coverage can overlap');
+    for (const count of ['57,696', '15,571', '13,374', '13,190', '12,169', '4,173', '302']) {
+      expect(media).toContain(count);
+    }
     expect(navigation).toContain('Previous feature');
     expect(navigation).toContain('Next feature');
     expect(navigation).toContain('Done');
@@ -83,7 +88,7 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain("dateLabel: '16 September 2026'");
-    expect(whatsNew).toContain('11,763 more questions to practise');
+    expect(whatsNew).toContain('57,696 live question variants');
     expect(whatsNew).toContain('Physics A.1–A.5, now with CBS');
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
     expect(whatsNew).toContain('Practice that keeps moving');

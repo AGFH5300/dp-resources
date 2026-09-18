@@ -4,14 +4,12 @@ import {
   BookOpen,
   Check,
   CirclePlay,
-  Filter,
   Layers3,
   Maximize2,
   MousePointer2,
   Pause,
   Play,
   RotateCcw,
-  Search,
   SlidersHorizontal,
   Volume2,
   VolumeX,
@@ -48,6 +46,15 @@ function MediaUnavailable() {
 }
 
 function QuestionBankIllustration({ alt }: { alt: string }) {
+  const sourceVariants = [
+    ['RevisionDojo', '15,571'],
+    ['Exam-Mate', '13,374'],
+    ['PESTLE', '13,190'],
+    ['Revision Town', '12,169'],
+    ['Revision Village', '4,173'],
+    ['CBS', '302'],
+  ] as const;
+
   return (
     <div
       className="relative flex h-full min-h-64 items-center justify-center overflow-hidden p-5 sm:min-h-96 sm:p-9"
@@ -66,47 +73,52 @@ function QuestionBankIllustration({ alt }: { alt: string }) {
               Question Bank
             </span>
           </div>
-          <Search className="size-4 text-slate-400" aria-hidden />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            Live coverage
+          </span>
         </div>
-        <div className="grid gap-4 p-4 sm:grid-cols-[0.72fr_1.28fr] sm:p-6">
-          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-              <Filter className="size-4" aria-hidden /> Sources
-            </div>
-            <div className="mt-4 space-y-2">
-              {['RevisionDojo', 'CBS', 'IB Questionbank'].map((source, index) => (
-                <div
-                  key={source}
-                  className={`flex items-center justify-between rounded-xl border px-3 py-2 text-xs ${
-                    index === 0
-                      ? 'border-blue-300 bg-blue-50 font-semibold text-blue-800 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
-                      : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300'
-                  }`}
-                >
-                  <span>{source}</span>
-                  {index === 0 ? <Check className="size-3.5" aria-hidden /> : null}
-                </div>
-              ))}
-            </div>
+
+        <div className="p-4 sm:p-6">
+          <div>
+            <p className="text-sm font-semibold text-[color:var(--dp-heading)]">
+              Question variants by source
+            </p>
+            <p className="mt-1 text-[11px] text-[color:var(--dp-muted-text)]">
+              Source coverage can overlap
+            </p>
           </div>
-          <div className="flex flex-col justify-between rounded-2xl bg-[color:var(--dp-navy)] p-5 text-white">
-            <div>
-              <p className="text-xs font-medium text-white/65">RevisionDojo</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
-                11,763
-              </p>
-              <p className="mt-1 text-xs text-white/70">distinct questions</p>
-            </div>
-            <div className="mt-8 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-lg font-semibold">15,571</p>
-                <p className="text-[11px] text-white/60">
-                  course / question variants
+
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+            {sourceVariants.map(([source, count]) => (
+              <div
+                key={source}
+                className="rounded-2xl border border-slate-200/80 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <p className="text-[10px] font-medium leading-4 text-slate-500 dark:text-slate-400">
+                  {source}
+                </p>
+                <p className="mt-1 text-lg font-semibold tracking-tight text-[color:var(--dp-heading)] sm:text-xl">
+                  {count}
+                </p>
+                <p className="text-[10px] text-[color:var(--dp-muted-text)]">
+                  variants
                 </p>
               </div>
-              <div className="flex size-10 items-center justify-center rounded-xl bg-white/10">
-                <Layers3 className="size-5" aria-hidden />
-              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-4 text-white sm:px-5">
+            <div>
+              <p className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                57,696
+              </p>
+              <p className="mt-1 text-xs text-white/70">
+                total unique live variants
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-right text-[10px] leading-4 text-white/55">
+              <Layers3 className="size-4 shrink-0" aria-hidden />
+              <span>Deduplicated across sources</span>
             </div>
           </div>
         </div>
