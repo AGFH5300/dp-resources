@@ -1,6 +1,6 @@
 {
   "schema": "dp_external_content_index_state_v1",
-  "updatedAt": "2026-09-17T08:43:15.093Z",
+  "updatedAt": "2026-09-18T08:19:05.368Z",
   "signalIds": [
     "exam-mate-topical-count-238260",
     "exam-mate-topical-count-238265",
@@ -8,6 +8,7 @@
     "exam-mate-topical-count-238646",
     "exam-mate-topical-count-238655",
     "exam-mate-topical-count-238746",
+    "exam-mate-topical-count-239024",
     "exam-mate-yearly-count-49135",
     "exam-mate-yearly-count-49204",
     "mortar-pestle-page-fd227d709609ba18",
@@ -16,11 +17,12 @@
     "revision-town-page-date-15-sep-2026",
     "revision-town-page-date-16-sep-2026",
     "revision-town-page-date-17-sep-2026",
+    "revision-town-page-date-18-sep-2026",
     "revision-village-november-2026-prediction-exams"
   ],
   "sources": {
     "exam_mate": {
-      "scannedAt": "2026-09-17T08:43:09.461Z",
+      "scannedAt": "2026-09-18T08:18:58.628Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -29,7 +31,7 @@
           "status": 200,
           "etag": null,
           "lastModified": null,
-          "htmlSha256": "d95e7f72ce45ad02b1987fb478254cbd448d28a1a0ee183abf3202fd090306eb",
+          "htmlSha256": "2e6d86f186a2d0b4fb006641cb53586905222e0ee3b420f6f90c289a1202a3a7",
           "catalogFingerprint": "2dfa32140fd0b44c9b0af64c6474d3a6ebf6a3f5b6f891b2f5f611e678e00107",
           "itemCount": 8
         }
@@ -102,16 +104,16 @@
       ]
     },
     "revision_village": {
-      "scannedAt": "2026-09-17T08:43:09.949Z",
+      "scannedAt": "2026-09-18T08:18:59.278Z",
       "captureMode": "metadata-only",
       "pages": [
         {
           "requestedUrl": "https://www.revisionvillage.com/prediction-exams/",
           "finalUrl": "https://www.revisionvillage.com/prediction-exams/",
           "status": 200,
-          "etag": "\"4rbio2euex8j3k\"",
+          "etag": "\"wse09x9dbd8j3k\"",
           "lastModified": null,
-          "htmlSha256": "5fe97bca095804f1492bb6ed00e703e478c3632bea955e8c234c8ad08679eee4",
+          "htmlSha256": "b6644552845415429457a11c55bdb9959578f5a7561648825b803a5daa9bbbfd",
           "catalogFingerprint": "805d6211e1f8e1071630e3cea592f043c19105cdf892d25ec7fc70b1d154bc4c",
           "itemCount": 67
         },
@@ -119,9 +121,9 @@
           "requestedUrl": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
           "finalUrl": "https://www.revisionvillage.com/blog/internal-assessment-resources/",
           "status": 200,
-          "etag": "\"8u2k3ssmqb2hto\"",
+          "etag": "\"ay2lpt5t2o2hto\"",
           "lastModified": null,
-          "htmlSha256": "be21eac758c52e0197f27fe10284f8d37346b4a82b978800af8573069bdf3352",
+          "htmlSha256": "5a57ace7c3d0c033609a93c5ac07f180a35f861e73f5289e164c365047bc984c",
           "catalogFingerprint": "12c877c14b46db77b026e051aca703ceebd1d580c81f7f65e72343966305bde2",
           "itemCount": 44
         }
@@ -722,16 +724,16 @@
       ]
     },
     "revision_town": {
-      "scannedAt": "2026-09-17T08:43:10.140Z",
+      "scannedAt": "2026-09-18T08:19:00.217Z",
       "captureMode": "metadata-only",
       "pages": [
         {
           "requestedUrl": "https://revisiontown.com/ib/",
           "finalUrl": "https://revisiontown.com/ib/",
           "status": 200,
-          "etag": "\"299-1789598294;br\"",
+          "etag": "\"12149-1789719540;br\"",
           "lastModified": null,
-          "htmlSha256": "44cfaa0cd95ba4eeb962780eb3c41d2dfd4c3218ed3670dc5519e468b2c92903",
+          "htmlSha256": "03444fa6383caacbf02ffbfe8a623f9e0eea6a04b8ebba89bc1dad2c28a2c3d8",
           "catalogFingerprint": "4934283a3111c357fa95b393cf7cfd64cd01d77c5bf454ed7325fbfb7ebfa71a",
           "itemCount": 203
         },
@@ -739,9 +741,9 @@
           "requestedUrl": "https://revisiontown.com/ib-mathematics/",
           "finalUrl": "https://revisiontown.com/ib-mathematics/",
           "status": 200,
-          "etag": "\"880-1789604022;br\"",
+          "etag": "\"11113-1789704129;br\"",
           "lastModified": null,
-          "htmlSha256": "7a6db0d98c7e89112cf6705d0cbe3bf440ea1c3f744adb2f92402e1835e60615",
+          "htmlSha256": "434ef27828f3f3f8a72f6dcf64d179adb4f79f85f6a7d8a87481b92d110e42e3",
           "catalogFingerprint": "297b181f731b5c66e9f796e9cb6af65c156c756f42776f2eeed69d68a1d6a34b",
           "itemCount": 198
         }
@@ -2374,7 +2376,7 @@
       ]
     },
     "mortar_and_pestle": {
-      "scannedAt": "2026-09-17T08:43:10.309Z",
+      "scannedAt": "2026-09-18T08:19:00.453Z",
       "captureMode": "fingerprint-only",
       "pages": [
         {
@@ -2382,8 +2384,8 @@
           "finalUrl": "https://pestle.pirateib.su/app/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 06:24:57 GMT",
-          "htmlSha256": "6f6d18e22ea4fa2e7fdfaec59164e4a85f3b93f0c54910106000bbe89410396b",
+          "lastModified": "Fri, 18 Sep 2026 08:19:00 GMT",
+          "htmlSha256": "2948899f16bcab7e649a26234a00c6fe08d590af962888ee341994616269e181",
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
           "itemCount": 0
         }
@@ -2391,7 +2393,7 @@
       "items": []
     },
     "save_my_exams": {
-      "scannedAt": "2026-09-17T08:43:15.092Z",
+      "scannedAt": "2026-09-18T08:19:05.365Z",
       "captureMode": "metadata-only",
       "pages": [
         {
@@ -2399,8 +2401,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/",
           "status": 200,
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 21:37:12 GMT",
-          "htmlSha256": "a122c5b2d0d54893ea3e5668da4a07ac81368da11402f3b8569aa968485329a5",
+          "lastModified": "Fri, 18 Sep 2026 02:35:28 GMT",
+          "htmlSha256": "c01189581f585c8d77173bce3dfaa265331743bd644c554cd33cd83a56cc9849",
           "catalogFingerprint": "d7406a8aae87218559aa7f64f4f1a37d26818302e5710be4a7571f3ecb5e3304",
           "itemCount": 1864
         },
@@ -2409,8 +2411,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/maths/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 08:43:11 GMT",
-          "htmlSha256": "874e97c528b078c14d11e232815f65f69260bd205b3e12ac23e543dfd2652e84",
+          "lastModified": "Thu, 17 Sep 2026 23:33:32 GMT",
+          "htmlSha256": "19b783021ec2cf9aec4a6bdd3027182da12bac76200241eee0a64bba9ae9cd22",
           "catalogFingerprint": "fbafd7b2566fcd3768b23383c53cb415762586879f78b4fd3718f8eb32065545",
           "itemCount": 1804
         },
@@ -2419,8 +2421,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/maths/ib/aa/21/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 22:42:19 GMT",
-          "htmlSha256": "720bcb0691a577b3838f9ced480ef5075656d2f34ae5bbce80fefd61dc65776d",
+          "lastModified": "Thu, 17 Sep 2026 20:24:22 GMT",
+          "htmlSha256": "45e2fa86e83e1df4e5bcf3224a9691715eba6007919c2139623d6935a6c62d71",
           "catalogFingerprint": "eb476511dca34c95af888da792df410a71f91459ee628620de411dc4c0f74304",
           "itemCount": 1816
         },
@@ -2429,8 +2431,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/business/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 08:43:11 GMT",
-          "htmlSha256": "d9cb504abe026685cfaf442750fff97de3b95f782d4a514e63004f1873cd95a9",
+          "lastModified": "Fri, 18 Sep 2026 08:19:01 GMT",
+          "htmlSha256": "878856eb8979dc6cd825b3b3f539cbe40722eda0435a4f4295c265825a363bb7",
           "catalogFingerprint": "113d0b1c79f736b3d145da1d0736297cc106147744538b58cb2e9a4e19032978",
           "itemCount": 1803
         },
@@ -2439,8 +2441,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/chemistry/ib/23/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 08:43:12 GMT",
-          "htmlSha256": "56bd1e6390ded81e5913fe976de153de16534281d35c4c81422acaff15fc89dd",
+          "lastModified": "Fri, 18 Sep 2026 08:19:02 GMT",
+          "htmlSha256": "6a0c13142eaefa7f785107d42b435c7919e122b4896f9f097076a5291fee49f5",
           "catalogFingerprint": "88cb484f12e7bbe6c039a707ea6242196afc4afc82b7371db434814ab2d674d0",
           "itemCount": 1820
         },
@@ -2449,8 +2451,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/biology/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Wed, 16 Sep 2026 21:00:39 GMT",
-          "htmlSha256": "ecc3491bcf9094435d6e355305c537c0a00113b92567146f992c8736b633e281",
+          "lastModified": "Fri, 18 Sep 2026 08:19:03 GMT",
+          "htmlSha256": "0725cb92a81180035b507895464f1672e99be3ad5d49f3ff7b57a7b6eeb5e067",
           "catalogFingerprint": "5f48dcbaf725e2e7aab09bb3f3cc1367f053f5703da062039d995fe6d5fbe290",
           "itemCount": 1802
         },
@@ -2459,8 +2461,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/physics/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 08:43:13 GMT",
-          "htmlSha256": "a5ca8798f3739e750786f9c846e2fb8c20f8c4e3b92c9db2acf76bd8d95bfb18",
+          "lastModified": "Thu, 17 Sep 2026 21:29:35 GMT",
+          "htmlSha256": "f91e98067a9d2a4bde725e9ce7c6a3ab3de5f8deebaef38e274200aeda978c14",
           "catalogFingerprint": "ac0a4045a7540eb75679acb64c87a5b4a4231f6a4f588d6e4910082a805d12bc",
           "itemCount": 1802
         },
@@ -2469,8 +2471,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/economics/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 08:43:14 GMT",
-          "htmlSha256": "3e0a699a789c37af608bf3041e1336990a451035c7aef8f91b5c975aa9c69298",
+          "lastModified": "Fri, 18 Sep 2026 08:19:04 GMT",
+          "htmlSha256": "9be6f8f236a1e8e6db6a2e5f053068c7f2760d7f85b271bd07b649bfab42d527",
           "catalogFingerprint": "5f218c2092349cf058ab835c5aa745817968671afe1b3399c4164ef18df92db4",
           "itemCount": 1802
         },
@@ -2479,8 +2481,8 @@
           "finalUrl": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/",
           "status": 200,
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 02:41:43 GMT",
-          "htmlSha256": "23d5c0f777bb90bb9acea450013d4918f4453fc029031e17c59e3b2c3d89f1e6",
+          "lastModified": "Fri, 18 Sep 2026 08:19:05 GMT",
+          "htmlSha256": "c71865644753fb22b12a74d58f1396172e27d8ae011da7d98e90d4429cc65611",
           "catalogFingerprint": "54a595c8cba88c5ee4ade9eb4d3986ea8cfae929fc5e1c4aab55c219f13280dd",
           "itemCount": 1804
         }
