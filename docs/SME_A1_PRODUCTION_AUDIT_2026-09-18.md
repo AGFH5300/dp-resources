@@ -40,3 +40,7 @@ After the import:
 The public SME question and asset staging tables were removed after verification. The import-only public staging RPC and the three private SME matching/staging tables were also removed. The final Supabase security advisor no longer reports any SME-specific function or staging-table finding.
 
 The profile-repair portion of the finalization migration backfills only missing public profiles whose username and full name can be recovered from the account's own Auth metadata without a username or email conflict. Conflicting legacy accounts are deliberately left untouched for manual identity resolution.
+
+## UI synchronization
+
+The Practice Builder loading shell was refreshed after the import to use the same reviewed source counts as production, including CBS and Save My Exams, so onboarding no longer presents stale placeholder source totals.
