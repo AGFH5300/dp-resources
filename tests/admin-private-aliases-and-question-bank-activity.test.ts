@@ -81,9 +81,11 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(changelog).toContain('Added one-click Question Bank filters');
     expect(changelog).toContain('Added DP Resources social sign-in and Connected Accounts support');
     expect(changelog).toContain('Added fullscreen support to the standard browser PDF fallback');
+    expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
+    expect(whatsNew).toContain("dateLabel: '18 September 2026'");
+    expect(whatsNew).toContain('57,740 live question variants');
+    expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
-    expect(whatsNew).toContain("dateLabel: '16 September 2026'");
-    expect(whatsNew).toContain('11,763 RevisionDojo questions added');
-    expect(whatsNew).toContain('Take a guided tour of DP Resources');
+    expect(whatsNew).toContain('Learn DP Resources on the real interface');
   });
 });

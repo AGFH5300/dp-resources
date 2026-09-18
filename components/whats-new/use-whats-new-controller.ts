@@ -39,13 +39,23 @@ function tutorialBlocksAutoOpen() {
   }
 }
 
-function previewReleaseFromLocation() {
-  if (process.env.NODE_ENV === 'production') return null;
+async function previewReleaseFromLocation() {
   try {
     const releaseId = new URLSearchParams(window.location.search).get(
       'previewWhatsNew',
     );
-    return getWhatsNewRelease(releaseId);
+    if (!releaseId) return null;
+
+    const response = await fetch(
+      `/api/account/whats-new/preview?releaseId=${encodeURIComponent(releaseId)}`,
+      { cache: 'no-store' },
+    );
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as { releaseId?: unknown };
+    return typeof payload.releaseId === 'string'
+      ? getWhatsNewRelease(payload.releaseId)
+      : null;
   } catch {
     return null;
   }
@@ -208,7 +218,8 @@ export function useWhatsNewController(autoOpen = true) {
         }
       }
 
-      const preview = previewReleaseFromLocation();
+      const preview = await previewReleaseFromLocation();
+      if (cancelled) return;
       if (preview) {
         showRelease(preview, 'preview');
         return;

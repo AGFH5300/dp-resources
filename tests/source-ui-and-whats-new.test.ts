@@ -36,6 +36,7 @@ describe('source UI and release notes', () => {
     const history = read('components/whats-new/whats-new-history.tsx');
     const client = read('lib/whats-new-client.ts');
     const accountMenu = read('components/account-menu.tsx');
+    const previewRoute = read('app/api/account/whats-new/preview/route.ts');
 
     expect(dialog).toContain('useWhatsNewController');
     expect(dialog).toContain('prefers-reduced-motion');
@@ -52,6 +53,10 @@ describe('source UI and release notes', () => {
     expect(controller).toContain('WHATS_NEW_RELEASES');
     expect(controller).toContain('latestAutoOpenRelease');
     expect(controller).toContain('previewWhatsNew');
+    expect(controller).not.toContain('process.env');
+    expect(controller).toContain('/api/account/whats-new/preview?releaseId=');
+    expect(previewRoute).toContain("process.env.NODE_ENV === 'production'");
+    expect(previewRoute).toContain('getWhatsNewRelease');
     expect(controller).toContain("router.push(href)");
     expect(controller).toContain('persistAccountViewedRelease');
     expect(controller).toContain("reason: 'history'");

@@ -16,8 +16,9 @@ describe('16 September post-production release audit', () => {
       expect(changelog).toContain(value);
       expect(fallback).toContain(value);
     }
-    expect(whatsNew).toContain('11,763 RevisionDojo questions added');
-    expect(whatsNew).toContain('15,571 course/question variants');
+    expect(whatsNew).toContain('57,696 live question variants');
+    expect(whatsNew).toContain('15,571');
+    expect(whatsNew).toContain('RevisionDojo');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
   });
 });

@@ -11,8 +11,9 @@ describe('post-production live-data release audit', () => {
     const audit = read('docs/POST_PRODUCTION_RELEASE_AUDIT_2026-09-16.md');
 
     for (const text of [
-      'CBS Physics A.1–A.5 added',
-      '606 redundant question rows cleaned up safely',
+      'Physics A.1–A.5, now with CBS',
+      '57,696 live question variants',
+      '44 new Save My Exams Kinematics variants',
     ]) expect(whatsNew).toContain(text);
 
     for (const text of [
