@@ -8,9 +8,9 @@ on:
       - 'docs/SME_A1_PRODUCTION_AUDIT_2026-09-18.md'
 
 jobs:
-  diagnose:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
@@ -20,27 +20,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: tutorial-onboarding
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/tutorial-onboarding.test.ts
-      - name: admin-private-aliases
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/admin-private-aliases-and-question-bank-activity.test.ts
-      - name: post-production-live-data
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/post-production-live-data-release-audit.test.ts
-      - name: post-production-release
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/post-production-release-audit.test.ts
-      - name: frontend-secret-boundary
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/frontend-secret-boundary.test.ts
-      - name: admin-activity-user-links
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/admin-activity-user-links.test.ts
-      - name: source-ui-and-whats-new
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/source-ui-and-whats-new.test.ts
-      - name: whats-new-release-structure
-        continue-on-error: true
-        run: timeout 25s npx vitest run tests/whats-new-release-structure.test.ts
+      - run: npm run typecheck
+      - name: Run complete suite with bounded workers
+        run: timeout 240s npx vitest run --maxWorkers=2
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run security:client-bundle
+      - run: npm audit --omit=dev --audit-level=high

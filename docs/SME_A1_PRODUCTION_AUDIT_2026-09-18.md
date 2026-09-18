@@ -45,4 +45,4 @@ The profile-repair portion of the finalization migration backfills only missing 
 
 The Practice Builder loading shell was refreshed after the import to use the same reviewed source counts as production, including CBS and Save My Exams, so onboarding no longer presents stale placeholder source totals. The related tutorial and release regressions are included in the final production validation.
 
-Diagnostic validation is being used to isolate the remaining repository test-runner stall before final sign-off.
+All previously failing release, identity, tutorial, and client-boundary regression files pass individually. Final validation is checking the complete Vitest suite with bounded worker concurrency to remove the suite-wide runner stall.
