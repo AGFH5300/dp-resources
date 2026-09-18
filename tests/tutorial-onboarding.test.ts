@@ -66,11 +66,17 @@ describe('interactive tutorial onboarding', () => {
   });
 
   it('keeps the Step 7 loading shell aligned with the live Sources list', () => {
-    expect(practiceBuilderLoading).toContain("{ label: 'Revision Village', count: 4_192 }");
-    expect(practiceBuilderLoading).toContain("{ label: 'Revision Town', count: 12_212 }");
-    expect(practiceBuilderLoading).toContain("{ label: 'PESTLE', count: 13_291 }");
-    expect(practiceBuilderLoading).toContain("{ label: 'Exam-Mate', count: 13_374 }");
-    expect(practiceBuilderLoading).toContain("{ label: 'RevisionDojo', count: 81 }");
+    for (const source of [
+      "{ label: 'RevisionDojo', count: 15_571 }",
+      "{ label: 'Exam-Mate', count: 13_374 }",
+      "{ label: 'PESTLE', count: 13_190 }",
+      "{ label: 'Revision Town', count: 12_169 }",
+      "{ label: 'Revision Village', count: 4_173 }",
+      "{ label: 'CBS', count: 302 }",
+      "{ label: 'Save My Exams', count: 44 }",
+    ]) {
+      expect(practiceBuilderLoading).toContain(source);
+    }
     expect(practiceBuilderLoading).toContain('source.count.toLocaleString()');
   });
 

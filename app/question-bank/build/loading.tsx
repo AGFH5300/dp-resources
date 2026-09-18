@@ -3,11 +3,13 @@ import { Layers3, SlidersHorizontal } from 'lucide-react';
 import { Nav } from '@/components/nav';
 
 const SOURCES = [
-  { label: 'Revision Village', count: 4_192 },
-  { label: 'Revision Town', count: 12_212 },
-  { label: 'PESTLE', count: 13_291 },
+  { label: 'RevisionDojo', count: 15_571 },
   { label: 'Exam-Mate', count: 13_374 },
-  { label: 'RevisionDojo', count: 81 },
+  { label: 'PESTLE', count: 13_190 },
+  { label: 'Revision Town', count: 12_169 },
+  { label: 'Revision Village', count: 4_173 },
+  { label: 'CBS', count: 302 },
+  { label: 'Save My Exams', count: 44 },
 ] as const;
 
 export default function LoadingPracticeBuilder() {
