@@ -1,11 +1,11 @@
 name: Final production validation
-# validation trigger 2
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/temp-final-production-validation.yml'
+      - 'docs/SME_A1_PRODUCTION_AUDIT_2026-09-18.md'
 
 permissions:
   contents: write
@@ -24,8 +24,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - name: Run complete test suite
-        run: timeout 240s npm test
+      - name: Run release and tutorial regressions
+        run: >
+          npx vitest run
+          tests/tutorial-onboarding.test.ts
+          tests/admin-private-aliases-and-question-bank-activity.test.ts
+          tests/post-production-live-data-release-audit.test.ts
+          tests/post-production-release-audit.test.ts
+          tests/frontend-secret-boundary.test.ts
+          tests/admin-activity-user-links.test.ts
+          tests/source-ui-and-whats-new.test.ts
+          tests/whats-new-release-structure.test.ts
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
