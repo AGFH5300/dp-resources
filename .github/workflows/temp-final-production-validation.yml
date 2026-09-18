@@ -21,8 +21,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - name: Run complete suite with bounded workers
-        run: timeout 240s npx vitest run --maxWorkers=2
+      - name: Test shard 1 of 4
+        run: timeout 90s npx vitest run --shard=1/4 --maxWorkers=2
+      - name: Test shard 2 of 4
+        run: timeout 90s npx vitest run --shard=2/4 --maxWorkers=2
+      - name: Test shard 3 of 4
+        run: timeout 90s npx vitest run --shard=3/4 --maxWorkers=2
+      - name: Test shard 4 of 4
+        run: timeout 90s npx vitest run --shard=4/4 --maxWorkers=2
       - run: npm run lint
       - run: npm run build
       - run: npm run security:client-bundle
