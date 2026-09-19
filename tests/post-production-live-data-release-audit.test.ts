@@ -17,19 +17,25 @@ describe('post-production live-data release audit', () => {
     ]) expect(whatsNew).toContain(text);
 
     for (const text of [
-      '341 source occurrences',
-      '217 distinct canonical questions',
-      '302 variants are live and ready',
-      '415 redundant canonical Question Bank rows',
-      '191 redundant canonical rows',
-      '12,306 visible questions',
-      '11,832 source IDs',
-      '11,763 distinct RevisionDojo questions',
+      '302 ready variants',
+      '415 confirmed duplicate Question Bank entries',
+      '191 duplicate Question Bank entries',
+      '11,763 RevisionDojo questions',
       '15,571 course/question variants',
-      '15,645 source links',
     ]) {
       expect(page).toContain(text);
       expect(fallback).toContain(text);
+    }
+
+    for (const internalText of [
+      '341 source occurrences',
+      '217 distinct canonical questions',
+      '15,645 source links',
+      'variant-source provenance',
+      'production import audit',
+    ]) {
+      expect(page).not.toContain(internalText);
+      expect(fallback).not.toContain(internalText);
     }
 
     for (const text of ['42,124 canonical questions', '57,776 variants', '302 ready / 0 quarantined']) {
