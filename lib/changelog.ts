@@ -61,10 +61,10 @@ const historicalSummaries: Record<string, string[]> = {
     'Added fullscreen support to the standard browser PDF fallback so non-prepared PDFs keep the same essential viewing option.',
   ],
   '2026-09-10': [
-    'Added a complete Settings & Account Centre for profile details, username changes with automatic availability checking, private profile pictures, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
-    'Added profile-picture editing with repositioning, crop preview, zoom and rotation, and fixed signed private avatars so they display correctly throughout the account interface.',
+    'Added a complete Settings & Account Centre for profile details, username changes with automatic availability checking, profile pictures, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
+    'Added profile-picture editing with repositioning, crop preview, zoom and rotation, and improved profile-picture reliability throughout the account interface.',
     'Added per-user controls for Library source tags, Library resource-type labels, Question Bank source tags, expanded source information, support notifications, and automatic What’s new release highlights.',
-    'Strengthened account security with current-password verification for sensitive changes, private avatar storage, safer account data synchronization, and refreshed production dependencies to clear high and critical security audit findings.',
+    'Strengthened account security with current-password verification for sensitive changes, safer profile-picture handling and more reliable account updates.',
     'Kept profile pictures stable while navigating between DP Resources pages by reusing the loaded avatar instead of repeatedly resetting and reloading it.',
   ],
   // The Settings work merged on 9 September was still under pre-production testing.
@@ -100,19 +100,19 @@ const historicalSummaries: Record<string, string[]> = {
     'Corrected legacy Mathematics option papers so Calculus, Discrete Mathematics, Sets, and Statistics questions remain distinct and link to the correct papers.',
     'Reorganised Mathematics so current AA and AI courses are shown clearly, while older courses are grouped inside one Legacy Mathematics archive with live ready-question counts.',
     'Consolidated duplicate and combined Question Bank topics and improved multi-topic classification so questions appear under every relevant filter.',
-    'Repaired the final damaged supporting image and verified that all imported Exam-Mate questions, markschemes, and protected assets render without unresolved references or stray text.',
+    'Repaired the final damaged supporting image and improved Exam-Mate question, markscheme and diagram rendering.',
   ],
   '2026-07-30': [
     'Fixed malformed mathematical notation in Question Bank card previews.',
     'Fixed long copyright and source notes so they wrap correctly instead of overflowing question cards.',
-    'Strengthened Question Bank privacy so protected diagrams and audio are not retained in browser caches.',
+    'Improved privacy for Question Bank diagrams and listening audio.',
   ],
   '2026-07-29': [
     'Improved homepage Question Bank button contrast and restored the compact question practice view with an optional fullscreen mode.',
     'Made the Question Bank reset dialog clearly show the selected reset option before confirmation.',
     'Restored instant single-answer checking, clarified correct and incorrect answer feedback, and made listening audio seekable.',
-    'Fixed supporting Question Bank images so verified markscheme, examiner-report, and content-reference diagrams render correctly.',
-    'Reduced Question Bank image sizes with verified lossless versions so diagrams load faster without reducing visual quality.',
+    'Fixed supporting Question Bank images so markscheme, examiner-report and related diagrams display correctly.',
+    'Reduced Question Bank image sizes so diagrams load faster without reducing visual quality.',
   ],
   '2026-07-28': [
     'Added quick search inside the current Library folder and all of its subfolders.',
@@ -129,10 +129,10 @@ const historicalSummaries: Record<string, string[]> = {
   '2026-07-24': [
     'Fixed image-based answer choices so diagrams inside Question Bank tables load instead of showing raw asset references.',
     'Made Question Bank operations easier to understand with clear totals, help buttons, consistent navigation, and course-correct formula and data booklet links.',
-    'Audited every Question Bank variant, corrected malformed marks and source formatting, hid incomplete questions until their missing material is available, and placed notification close buttons fully inside their toasts.',
+    'Improved Question Bank quality by correcting malformed marks and source formatting, hiding incomplete questions until their missing material is available, and fixing notification close-button placement.',
   ],
   '2026-07-23': [
-    'Expanded the Question Bank with audited PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports, and private diagrams.',
+    'Expanded the Question Bank with PESTLE questions across 14 subjects, including topic and subtopic browsing, markschemes, examiner reports and supporting diagrams.',
     'Improved question metadata so unavailable marks are identified clearly instead of being estimated.',
     'Made Question Bank filters compact and instant, added searchable topic menus and question reporting, and linked formula booklets to the native Library.',
     'Polished recent-question cards, added subject-specific icons, clarified older course collections, consolidated review flags into Saved questions, and improved markscheme formatting.',
@@ -144,7 +144,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Simplified Question Bank headers and repaired breadcrumb navigation between courses, subjects, and the main bank.',
     'Added colourful Question Bank difficulty and progress indicators, instant status feedback, readable image surfaces, and repaired search results.',
     'Rebuilt the Question Bank as an interactive practice workspace with selectable answers, immediate feedback, and in-page explanations.',
-    'Improved Question Bank formatting, dark-mode answer interactions, instant answer checking, and private solution-video links.',
+    'Improved Question Bank formatting, dark-mode answer interactions, instant answer checking and solution videos.',
     'Added guided self-assessment and progress tracking for written responses.',
     'Improved topic and subtopic filtering with custom menus, clearer dark-mode selection, and question search across every subject.',
   ],
@@ -235,7 +235,7 @@ function sentenceFromTitle(title: string) {
 }
 
 function isUserFacingTitle(title: string) {
-  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2)/i.test(
+  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2|backfill|asset pipeline|private asset|hotlink|provenance|canonical|sha-?256|object storage)/i.test(
     title,
   );
 }
