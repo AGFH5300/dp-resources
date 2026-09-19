@@ -175,10 +175,10 @@ function PrivateAssetsIllustration({ alt }: { alt: string }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              Question Bank assets
+              Question Bank visuals
             </p>
             <p className="mt-1 text-xl font-semibold text-[color:var(--dp-heading)]">
-              Private, verified and optimized
+              Clearer, faster diagrams
             </p>
           </div>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
@@ -188,9 +188,9 @@ function PrivateAssetsIllustration({ alt }: { alt: string }) {
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {[
-            ['1', 'Source captured', 'Imported diagrams are reconciled into the DP Resources asset archive.'],
-            ['2', 'Verified', 'Stored objects are checked before they are accepted for delivery.'],
-            ['3', 'Optimized', 'Smaller verified copies are served when compression is worthwhile.'],
+            ['1', 'More reliable', 'Question and markscheme diagrams now load more consistently.'],
+            ['2', 'Faster loading', 'Images are optimized to keep questions responsive.'],
+            ['3', 'Quality checked', 'Questions missing essential visuals stay out of live practice sets.'],
           ].map(([step, title, detail]) => (
             <div
               key={step}
@@ -211,12 +211,12 @@ function PrivateAssetsIllustration({ alt }: { alt: string }) {
 
         <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-4 text-white">
           <div>
-            <p className="text-2xl font-semibold tracking-tight">2,880</p>
-            <p className="mt-1 text-xs text-white/70">image references internalized</p>
+            <p className="text-2xl font-semibold tracking-tight">Smoother practice</p>
+            <p className="mt-1 text-xs text-white/70">Clear visuals with fewer interruptions</p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-semibold">No provider hotlinks</p>
-            <p className="mt-1 text-[10px] text-white/60">Question Bank delivery stays inside DP Resources</p>
+            <p className="text-sm font-semibold">Built for reliability</p>
+            <p className="mt-1 text-[10px] text-white/60">Incomplete visual questions are kept out of live sets</p>
           </div>
         </div>
       </div>
