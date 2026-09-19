@@ -7,18 +7,36 @@ export type FeaturedResource = {
   priority: number;
 };
 
+const SUPABASE_IN_CHUNK_SIZE = 80;
+
 export async function getFeaturedResourceMap(ids?: string[]) {
   try {
     const sb = createSupabaseAdminClient();
-    let query = sb
-      .from('dp_resource_featured_resources')
-      .select('drive_file_id,label,priority');
-    if (ids?.length) query = query.in('drive_file_id', ids);
-    const { data, error } = await query;
-    if (error) return new Map<string, FeaturedResource>();
-    return new Map(
-      (data || []).map((r: any) => [r.drive_file_id, r as FeaturedResource]),
-    );
+    if (!ids?.length) {
+      const { data, error } = await sb
+        .from('dp_resource_featured_resources')
+        .select('drive_file_id,label,priority');
+      if (error) return new Map<string, FeaturedResource>();
+      return new Map(
+        (data || []).map((row: any) => [
+          row.drive_file_id,
+          row as FeaturedResource,
+        ]),
+      );
+    }
+
+    const uniqueIds = [...new Set(ids.filter(Boolean))];
+    const rows: FeaturedResource[] = [];
+    for (let index = 0; index < uniqueIds.length; index += SUPABASE_IN_CHUNK_SIZE) {
+      const batch = uniqueIds.slice(index, index + SUPABASE_IN_CHUNK_SIZE);
+      const { data, error } = await sb
+        .from('dp_resource_featured_resources')
+        .select('drive_file_id,label,priority')
+        .in('drive_file_id', batch);
+      if (error) return new Map<string, FeaturedResource>();
+      rows.push(...((data || []) as FeaturedResource[]));
+    }
+    return new Map(rows.map((row) => [row.drive_file_id, row]));
   } catch {
     return new Map<string, FeaturedResource>();
   }
