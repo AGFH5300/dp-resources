@@ -80,7 +80,7 @@ describe('admin-private aliases and complete Activity tracking', () => {
     expect(changelog).toContain('Improved Question Bank reliability when source or course information is slow to load');
     expect(changelog).toContain('Added one-click Question Bank filters');
     expect(changelog).toContain('Added DP Resources social sign-in and Connected Accounts support');
-    expect(changelog).toContain('Added fullscreen support to the standard browser PDF fallback');
+    expect(changelog).toContain('Added fullscreen support to the regular PDF reader');
     expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
     expect(whatsNew).toContain('57,675 questions ready to practise');
