@@ -175,11 +175,11 @@ describe('source UI and release notes', () => {
     const history = read('lib/changelog.ts');
     for (const note of [
       'Added a 12-step interactive onboarding walkthrough',
-      'Made tutorial navigation substantially faster and steadier',
+      'Made tutorial navigation faster and steadier',
       'Polished Practice Builder in light mode',
-      'Improved Question Bank reliability when source or course counts are slow',
+      'Improved Question Bank reliability when source or course information is slow to load',
       'Fixed a duplicate CH0007 practice question',
-      'Expanded the Question Bank with 11,763 distinct RevisionDojo questions',
+      'Expanded the Question Bank with 11,763 RevisionDojo questions',
       'Improved Support and resource-report attachment controls in dark mode',
     ]) {
       expect(page).toContain(note);
