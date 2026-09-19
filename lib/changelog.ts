@@ -28,26 +28,26 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-09-19': [
-    'Improved Question Bank image reliability by moving 2,880 imported image references into the private DP Resources asset pipeline, serving verified compressed copies when smaller, and withholding incomplete variants instead of loading third-party images; 57,675 variants remain live.',
+    'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of live practice sets; 57,675 variants remain live.',
   ],
   '2026-09-18': [
-    'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—while consolidating 42 new questions with 2 existing matches; the live Question Bank now contains 57,740 ready variants.',
+    'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader source coverage to Kinematics; the Question Bank reached 57,740 live variants at this release.',
   ],
   '2026-09-17': [
     'Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices.',
   ],
   '2026-09-15': [
-    'Consolidated 415 redundant canonical Question Bank rows in the live Question Bank: 384 confirmed Revision Village/cross-source duplicates and 31 exact Pestle duplicates, while preserving provenance, variants, topic placements, assets, papers and videos, saved questions and user progress; 16 ambiguous Revision Village reference collisions were deliberately left separate.',
+    'Removed 415 confirmed duplicate Question Bank entries while preserving topic placement, media, saved questions and progress; uncertain matches were left separate.',
   ],
   '2026-09-16': [
-    'Added CBS Physics A.1–A.5 to the live Question Bank from 341 source occurrences, consolidated into 232 CBS source groups and 217 distinct canonical questions; 302 variants are live and ready (137 HL and 165 SL) with 310 CBS variant-source provenance links and zero remaining quarantined CBS variants.',
-    'Completed a second global Question Bank deduplication pass, consolidating 191 redundant canonical rows (42,189 to 41,998 before the CBS addition) while preserving 44,095 question-source and 58,714 variant-source provenance rows plus saved, progress and practice references; final audited duplicate and orphan checks were zero.',
-    'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source links after a full production import audit of 12,306 visible questions: 11,832 source IDs were accepted and 474 withheld, with 28 canonical merges and 3 empty placeholders removed; RevisionDojo source filtering is available in Question Bank and Practice Builder.',
+    'Added CBS Physics A.1–A.5 with 302 ready variants—137 HL and 165 SL—giving students broader topic coverage across both levels.',
+    'Removed another 191 duplicate Question Bank entries while preserving saved questions, progress and practice sets.',
+    'Expanded the Question Bank with 11,763 RevisionDojo questions across 15,571 course/question variants, with RevisionDojo source filtering available in Question Bank and Practice Builder.',
     'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
-    'Made tutorial navigation substantially faster and steadier with staged route preparation, persistent cross-page spotlighting, stable loading-shell targets, attached click cues, locked background interaction and a reliable Settings finale.',
+    'Made tutorial navigation faster and steadier across pages, with more reliable highlights, clearer click cues and a smoother finish in Settings.',
     'Polished Practice Builder in light mode with clearer selected and hover states, stronger checkmarks, readable clear and bulk controls, rounded fully-selected subject states, and improved eligible-question feedback.',
-    'Improved Question Bank reliability when source or course counts are slow by removing heavy parallel prefetches, handling timed-out optional counts without crashing, and reducing repeated source-count database work.',
-    'Fixed a duplicate CH0007 practice question while preserving its Revision Town and Revision Village provenance, and corrected imported answer markup so unsupported answer wrappers no longer leak into rendered explanations.',
+    'Improved Question Bank reliability when source or course information is slow to load, reducing interruptions while browsing and building practice sets.',
+    'Fixed a duplicate CH0007 practice question and cleaned up answer formatting so explanations display correctly.',
     'Improved Support and resource-report attachment controls in dark mode so attachment buttons, helper text, previews, selected files, errors and remove controls keep strong readable contrast.',
   ],
   '2026-09-12': [
