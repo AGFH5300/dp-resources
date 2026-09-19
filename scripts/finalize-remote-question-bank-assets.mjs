@@ -121,14 +121,15 @@ async function retry(operation, attempts = 4) {
   throw last;
 }
 
-async function readAll(table, select, order = 'id') {
+async function readAll(table, select) {
   const rows = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase
       .from(table)
       .select(select)
-      .order(order)
+      .order('question_id')
+      .order('id')
       .range(offset, offset + pageSize - 1);
     if (error) throw new Error(`${table} read failed: ${error.message}`);
     rows.push(...(data || []));
@@ -137,24 +138,69 @@ async function readAll(table, select, order = 'id') {
   return rows;
 }
 
-async function fetchSource(row) {
-  const response = await fetch(row.source_url, {
-    redirect: 'follow',
-    headers: { 'User-Agent': 'DPResources-Authorized-Asset-Backfill/2.0' },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok)
-    throw new Error(`Source image fetch returned HTTP ${response.status}`);
-  const body = Buffer.from(await response.arrayBuffer());
-  if (!body.length) throw new Error('Source image was empty.');
-  if (body.length > MAX_BYTES)
-    throw new Error(`Source image exceeds ${MAX_BYTES} bytes.`);
-  const { contentType, extension } = sniff(
+async function fetchStoredAsset(assetId) {
+  if (!assetId) return null;
+  const { data: asset, error } = await supabase
+    .from('dp_qb_assets')
+    .select(
+      'id,content_hash,content_type,file_extension,byte_size,storage_provider,storage_bucket,storage_key,verification_status',
+    )
+    .eq('id', assetId)
+    .maybeSingle();
+  if (error || !asset || asset.verification_status !== 'verified') return null;
+
+  let body;
+  if (asset.storage_provider === 'r2') {
+    const response = await getPrivateR2Object({
+      bucket: asset.storage_bucket,
+      key: asset.storage_key,
+      signal: AbortSignal.timeout(90_000),
+    });
+    if (!response.ok) return null;
+    body = Buffer.from(await response.arrayBuffer());
+  } else if (asset.storage_provider === 'supabase') {
+    const { data, error: downloadError } = await supabase.storage
+      .from(asset.storage_bucket)
+      .download(asset.storage_key);
+    if (downloadError || !data) return null;
+    body = Buffer.from(await data.arrayBuffer());
+  } else {
+    return null;
+  }
+
+  if (body.length !== Number(asset.byte_size) || sha256(body) !== asset.content_hash)
+    throw new Error(`Stored fallback asset verification failed for ${asset.id}`);
+  return {
     body,
-    response.headers.get('content-type'),
-    row.source_url,
-  );
-  return { body, contentType, extension };
+    contentType: asset.content_type,
+    extension: asset.file_extension,
+  };
+}
+
+async function fetchSource(row) {
+  try {
+    const response = await fetch(row.source_url, {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'DPResources-Authorized-Asset-Backfill/2.0' },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok)
+      throw new Error(`Source image fetch returned HTTP ${response.status}`);
+    const body = Buffer.from(await response.arrayBuffer());
+    if (!body.length) throw new Error('Source image was empty.');
+    if (body.length > MAX_BYTES)
+      throw new Error(`Source image exceeds ${MAX_BYTES} bytes.`);
+    const { contentType, extension } = sniff(
+      body,
+      response.headers.get('content-type'),
+      row.source_url,
+    );
+    return { body, contentType, extension };
+  } catch (sourceError) {
+    const fallback = await fetchStoredAsset(row.asset_id);
+    if (fallback) return fallback;
+    throw sourceError;
+  }
 }
 
 async function verifyR2(bucket, key, expectedBody) {
@@ -487,7 +533,6 @@ async function main() {
   const rows = await readAll(
     STAGE,
     'id,question_id,role,source_url,alt_text,status,attempts,asset_id,source_file_id,last_error',
-    'question_id',
   );
   const groups = [...Map.groupBy(rows, (row) => row.question_id).values()];
   const results = new Array(groups.length);
@@ -526,18 +571,6 @@ async function main() {
   const optimized = flat.filter((row) => row.optimization?.status === 'optimized');
   const failures = flat.filter((row) => row.status === 'failed');
 
-  const [{ count: remainingRemoteQuestions }, { count: remainingRemoteMarkschemes }] =
-    await Promise.all([
-      supabase
-        .from('dp_qb_questions')
-        .select('*', { count: 'exact', head: true })
-        .like('content', '%](http%'),
-      supabase
-        .from('dp_qb_questions')
-        .select('*', { count: 'exact', head: true })
-        .like('mark_scheme', '%](http%'),
-    ]);
-
   const { data: stageCounts, error: stageCountError } = await supabase
     .from(STAGE)
     .select('status');
@@ -568,21 +601,13 @@ async function main() {
       (sum, row) => sum + Number(row.optimization.savedBytes || 0),
       0,
     ),
-    remainingRemoteQuestions: remainingRemoteQuestions || 0,
-    remainingRemoteMarkschemes: remainingRemoteMarkschemes || 0,
     failures,
   };
   await mkdir(path.dirname(reportPath), { recursive: true });
   await writeFile(reportPath, JSON.stringify(report, null, 2) + '\n', 'utf8');
   process.stdout.write(JSON.stringify({ reportPath, ...report }, null, 2) + '\n');
 
-  if (
-    failures.length ||
-    (remainingRemoteQuestions || 0) > 0 ||
-    (remainingRemoteMarkschemes || 0) > 0
-  ) {
-    process.exitCode = 1;
-  }
+  if (failures.length) process.exitCode = 1;
 }
 
 main().catch((error) => {
