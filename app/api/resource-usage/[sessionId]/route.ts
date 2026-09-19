@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 function boundedDelta(value: unknown) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.min(300, Math.floor(parsed)));
+  return Math.max(0, Math.min(60, Math.floor(parsed)));
 }
 
 async function recordHeartbeat(sessionId: string, userId: string, body: any) {
