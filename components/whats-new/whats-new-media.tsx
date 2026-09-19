@@ -114,7 +114,7 @@ function QuestionBankIllustration({
         <div className="p-4 sm:p-6">
           <div>
             <p className="text-sm font-semibold text-[color:var(--dp-heading)]">
-              Question variants by source
+              Questions by source
             </p>
             <p className="mt-1 text-[11px] text-[color:var(--dp-muted-text)]">
               Coverage across available sources
@@ -150,12 +150,12 @@ function QuestionBankIllustration({
                 {totalVariants}
               </p>
               <p className="mt-1 text-xs text-white/70">
-                total unique live variants
+                questions ready to practise
               </p>
             </div>
             <div className="flex items-center gap-2 text-right text-[10px] leading-4 text-white/55">
               <Layers3 className="size-4 shrink-0" aria-hidden />
-              <span>Each live variant counted once</span>
+              <span>Each question counted once</span>
             </div>
           </div>
         </div>
@@ -338,11 +338,11 @@ function PhysicsIllustration({ alt }: { alt: string }) {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
             <p className="text-lg font-semibold text-[color:var(--dp-heading)]">165</p>
-            <p className="text-xs text-[color:var(--dp-muted-text)]">SL variants</p>
+            <p className="text-xs text-[color:var(--dp-muted-text)]">SL questions</p>
           </div>
           <div className="rounded-2xl bg-slate-100 px-4 py-3 dark:bg-slate-900">
             <p className="text-lg font-semibold text-[color:var(--dp-heading)]">137</p>
-            <p className="text-xs text-[color:var(--dp-muted-text)]">HL variants</p>
+            <p className="text-xs text-[color:var(--dp-muted-text)]">HL questions</p>
           </div>
         </div>
       </div>
@@ -368,7 +368,7 @@ function KinematicsCoverageIllustration({ alt }: { alt: string }) {
             </p>
           </div>
           <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200">
-            346 variants
+            346 questions
           </div>
         </div>
 
@@ -386,7 +386,7 @@ function KinematicsCoverageIllustration({ alt }: { alt: string }) {
               44
             </p>
             <p className="mt-1 text-xs text-[color:var(--dp-muted-text)]">
-              Kinematics variants
+              Kinematics questions
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2 text-center">
               <div className="rounded-xl bg-white/80 px-2 py-2 dark:bg-slate-950/70">
