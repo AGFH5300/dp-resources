@@ -3,22 +3,17 @@ import { useEffect, useRef } from 'react';
 
 export function ResourceUsageTracker({ fileId }: { fileId: string }) {
   const sessionRef = useRef<string | null>(null);
-  const lastActivity = useRef(Date.now());
+
   useEffect(() => {
     let stopped = false;
     let requestInFlight = false;
     let wasVisible = document.visibilityState === 'visible';
-    let wasFocused = document.hasFocus();
     let lastSubmittedAt = Date.now();
 
-    const active = () => {
-      lastActivity.current = Date.now();
-    };
-    const recentlyActive = () => Date.now() - lastActivity.current < 120_000;
-    const isActive = () => wasVisible && wasFocused && recentlyActive();
+    const isActive = () => wasVisible;
 
     async function start() {
-      if (sessionRef.current || stopped) return;
+      if (sessionRef.current || stopped || !isActive()) return;
       const res = await fetch('/api/resource-usage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,17 +27,19 @@ export function ResourceUsageTracker({ fileId }: { fileId: string }) {
     }
 
     async function heartbeat() {
+      if (!isActive()) return;
+
       if (!sessionRef.current) {
-        if (isActive()) void start();
+        void start();
         return;
       }
       if (requestInFlight) return;
 
       const submittedAt = Date.now();
-      const pageVisible = isActive();
-      const deltaSeconds = pageVisible
-        ? Math.max(0, Math.floor((submittedAt - lastSubmittedAt) / 1000))
-        : 0;
+      const deltaSeconds = Math.max(
+        0,
+        Math.floor((submittedAt - lastSubmittedAt) / 1000),
+      );
 
       requestInFlight = true;
       const response = await fetch(
@@ -51,8 +48,8 @@ export function ResourceUsageTracker({ fileId }: { fileId: string }) {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pageVisible,
-            wasActive: pageVisible,
+            pageVisible: true,
+            wasActive: true,
             deltaSeconds,
           }),
         },
@@ -97,34 +94,34 @@ export function ResourceUsageTracker({ fileId }: { fileId: string }) {
     }
 
     function onVisibilityChange() {
-      if (document.visibilityState === 'hidden') {
-        sendBeacon(false, wasVisible && wasFocused && recentlyActive());
+      const visible = document.visibilityState === 'visible';
+
+      if (!visible) {
+        sendBeacon(false, wasVisible);
         wasVisible = false;
         return;
       }
 
       wasVisible = true;
       lastSubmittedAt = Date.now();
-      active();
       if (!sessionRef.current) void start();
     }
 
-    function onFocus() {
-      wasFocused = true;
-      lastSubmittedAt = Date.now();
-      active();
-      if (!sessionRef.current) void start();
-    }
-
-    function onBlur() {
-      sendBeacon(false, wasVisible && wasFocused && recentlyActive());
-      wasFocused = false;
+    function onFullscreenChange() {
+      wasVisible = document.visibilityState === 'visible';
+      if (!wasVisible) return;
+      if (!sessionRef.current) {
+        void start();
+        return;
+      }
+      void heartbeat();
     }
 
     function onPageHide(event: PageTransitionEvent) {
-      const shouldCredit = wasVisible && wasFocused && recentlyActive();
+      const shouldCredit = wasVisible;
       if (event.persisted) {
         sendBeacon(false, shouldCredit);
+        wasVisible = false;
         return;
       }
       stopped = true;
@@ -134,41 +131,32 @@ export function ResourceUsageTracker({ fileId }: { fileId: string }) {
     function onPageShow() {
       stopped = false;
       wasVisible = document.visibilityState === 'visible';
-      wasFocused = document.hasFocus();
       lastSubmittedAt = Date.now();
-      active();
-      if (!sessionRef.current) void start();
+      if (wasVisible && !sessionRef.current) void start();
     }
 
     function end() {
       if (stopped && !sessionRef.current) return;
       stopped = true;
-      sendBeacon(true, wasVisible && wasFocused && recentlyActive());
+      sendBeacon(true, wasVisible);
     }
 
-    ['mousemove', 'keydown', 'pointerdown', 'scroll', 'touchstart'].forEach(
-      (eventName) =>
-        window.addEventListener(eventName, active, { passive: true }),
-    );
     document.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('blur', onBlur);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
     window.addEventListener('pagehide', onPageHide);
     window.addEventListener('pageshow', onPageShow);
     void start();
     const timer = window.setInterval(() => void heartbeat(), 10_000);
+
     return () => {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('pageshow', onPageShow);
-      ['mousemove', 'keydown', 'pointerdown', 'scroll', 'touchstart'].forEach(
-        (eventName) => window.removeEventListener(eventName, active),
-      );
       end();
     };
   }, [fileId]);
+
   return null;
 }
