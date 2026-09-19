@@ -8,8 +8,8 @@ describe('large Supabase filter hardening', () => {
     const attribution = read('lib/content-attribution.ts');
     expect(attribution).toContain('const SUPABASE_IN_CHUNK_SIZE = 80;');
     expect(attribution).toContain('const idChunks = chunks(ids);');
-    expect(attribution).toContain("chunks(variantIds).map((batch)");
-    expect(attribution).toContain("chunks(questionIds).map((batch)");
+    expect(attribution).toContain('chunks(variantIds)');
+    expect(attribution).toContain('chunks(questionIds)');
     expect(attribution).not.toContain(".in('drive_file_id', ids)");
     expect(attribution).not.toContain(".in('variant_id', variantIds)");
     expect(attribution).not.toContain(".in('question_id', questionIds)");
