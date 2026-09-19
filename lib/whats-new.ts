@@ -85,7 +85,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'physics-expansion',
         title: 'Physics coverage goes deeper',
         description:
-          'CBS now covers Physics A.1 through A.5 with 302 ready questions across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Questions that already exist stay merged so you do not see unnecessary duplicates.',
+          'CBS now covers Physics A.1 through A.5 with 302 ready questions across SL and HL, while Save My Exams adds 44 A.1 Kinematics questions: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Questions that already exist stay merged so you do not see unnecessary duplicates.',
         badge: 'NEW',
         media: {
           type: 'illustration',
