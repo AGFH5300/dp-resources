@@ -47,30 +47,46 @@ function MediaUnavailable() {
 
 function QuestionBankIllustration({
   alt,
-  current = false,
+  snapshot = '2026-09-16',
 }: {
   alt: string;
-  current?: boolean;
+  snapshot?: '2026-09-16' | '2026-09-18' | 'current';
 }) {
-  const sourceVariants = current
-    ? ([
-        ['RevisionDojo', '15,503'],
-        ['Exam-Mate', '13,374'],
-        ['PESTLE', '13,190'],
-        ['Revision Town', '12,172'],
-        ['Revision Village', '4,173'],
-        ['CBS', '302'],
-        ['Save My Exams', '44'],
-      ] as const)
-    : ([
-        ['RevisionDojo', '15,571'],
-        ['Exam-Mate', '13,374'],
-        ['PESTLE', '13,190'],
-        ['Revision Town', '12,169'],
-        ['Revision Village', '4,173'],
-        ['CBS', '302'],
-      ] as const);
-  const totalVariants = current ? '57,675' : '57,696';
+  const sourceVariants =
+    snapshot === 'current'
+      ? ([
+          ['RevisionDojo', '15,503'],
+          ['Exam-Mate', '13,374'],
+          ['PESTLE', '13,190'],
+          ['Revision Town', '12,172'],
+          ['Revision Village', '4,173'],
+          ['CBS', '302'],
+          ['Save My Exams', '44'],
+        ] as const)
+      : snapshot === '2026-09-18'
+        ? ([
+            ['RevisionDojo', '15,571'],
+            ['Exam-Mate', '13,374'],
+            ['PESTLE', '13,190'],
+            ['Revision Town', '12,169'],
+            ['Revision Village', '4,173'],
+            ['CBS', '302'],
+            ['Save My Exams', '44'],
+          ] as const)
+        : ([
+            ['RevisionDojo', '15,571'],
+            ['Exam-Mate', '13,374'],
+            ['PESTLE', '13,190'],
+            ['Revision Town', '12,169'],
+            ['Revision Village', '4,173'],
+            ['CBS', '302'],
+          ] as const);
+  const totalVariants =
+    snapshot === 'current'
+      ? '57,675'
+      : snapshot === '2026-09-18'
+        ? '57,740'
+        : '57,696';
 
   return (
     <div
@@ -107,7 +123,7 @@ function QuestionBankIllustration({
 
           <div
             className={`mt-4 grid grid-cols-2 gap-2 sm:gap-3 ${
-              current ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
+              sourceVariants.length >= 7 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
             }`}
           >
             {sourceVariants.map(([source, count]) => (
@@ -417,10 +433,13 @@ function PracticeIllustration({ alt }: { alt: string }) {
 
 function Illustration({ media }: { media: WhatsNewIllustrationMedia }) {
   if (media.variant === 'question-bank') {
-    return <QuestionBankIllustration alt={media.alt} />;
+    return <QuestionBankIllustration alt={media.alt} snapshot="2026-09-16" />;
   }
   if (media.variant === 'question-bank-current') {
-    return <QuestionBankIllustration alt={media.alt} current />;
+    return <QuestionBankIllustration alt={media.alt} snapshot="current" />;
+  }
+  if (media.variant === 'question-bank-sep18') {
+    return <QuestionBankIllustration alt={media.alt} snapshot="2026-09-18" />;
   }
   if (media.variant === 'physics-coverage') {
     return <PhysicsIllustration alt={media.alt} />;
