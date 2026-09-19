@@ -57,13 +57,37 @@ export type WhatsNewRelease = {
 
 export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
   {
+    id: '2026-09-19-question-bank-private-assets',
+    label: 'September 2026',
+    date: '2026-09-19',
+    dateLabel: '19 September 2026',
+    summary:
+      'Question Bank diagrams now load through DP Resources’ private asset pipeline, with verified compression and incomplete variants withheld instead of depending on third-party image hosts.',
+    showWhatsNew: true,
+    features: [
+      {
+        id: 'private-question-bank-assets',
+        title: 'Faster, private Question Bank diagrams',
+        description:
+          'DP Resources reconciled 2,880 imported image references into its private asset pipeline and serves verified optimized copies whenever they are meaningfully smaller. Questions whose source diagrams could not be recovered are withheld instead of loading images from third-party sites. The Question Bank currently has 57,675 ready variants.',
+        badge: 'IMPROVED',
+        media: {
+          type: 'illustration',
+          variant: 'question-bank-current',
+          alt: 'A current Question Bank coverage snapshot showing 57,675 ready variants across seven reviewed sources.',
+        },
+        cta: { label: 'Open Question Bank', href: '/question-bank' },
+      },
+    ],
+  },
+  {
     id: '2026-09-18-kinematics-source-expansion',
     label: 'September 2026',
     date: '2026-09-18',
     dateLabel: '18 September 2026',
     summary:
       'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 live question variants across seven reviewed sources.',
-    showWhatsNew: true,
+    showWhatsNew: false,
     features: [
       {
         id: 'question-bank-live-coverage',
