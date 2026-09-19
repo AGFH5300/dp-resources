@@ -37,6 +37,9 @@ describe('What’s New release structure', () => {
       '2026-09-19-september-deployment',
     );
     expect(latestAutoOpenRelease()?.features).toHaveLength(6);
+    expect(WHATS_NEW_RELEASES.map((release) => release.id)).toEqual([
+      '2026-09-19-september-deployment',
+    ]);
   });
 
   it('keeps the completed SME A.1 import reproducible and cleans import-only artifacts', () => {
