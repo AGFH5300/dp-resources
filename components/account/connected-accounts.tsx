@@ -211,7 +211,7 @@ export function ConnectedAccounts() {
             <div>
               <h3 className="text-base font-semibold text-slate-950 dark:text-white">Sign-in methods</h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Connected providers open this same DP Resources account.
+                Connected sign-in options open this same DP Resources account.
               </p>
             </div>
             {!loading ? (
@@ -238,7 +238,7 @@ export function ConnectedAccounts() {
                 </span>
               </div>
               <p className="mt-4 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                {passwordEnabled ? 'Your original password sign-in stays available as a reliable backup.' : 'This account currently relies on connected providers.'}
+                {passwordEnabled ? 'Your original password sign-in stays available as a reliable backup.' : 'This account currently uses a connected sign-in option.'}
               </p>
             </div>
 
@@ -277,12 +277,12 @@ export function ConnectedAccounts() {
                       {identity ? (
                         <span className="inline-flex items-center gap-1.5">
                           <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                          {date ? `Connected ${date}` : 'Verified provider identity'}
+                          {date ? `Connected ${date}` : 'Connected account'}
                         </span>
                       ) : available ? (
-                        'Link this provider without creating a second profile.'
+                        'Connect this sign-in option to your existing DP Resources account.'
                       ) : (
-                        'Provider credentials have not been configured yet.'
+                        'This sign-in option is not available yet.'
                       )}
                     </div>
 
@@ -338,7 +338,7 @@ export function ConnectedAccounts() {
                     Disconnect {confirmDisconnect.label}?
                   </h3>
                   <p className="mt-0.5 max-w-[18rem] truncate text-xs text-slate-500 dark:text-slate-400">
-                    {confirmDisconnect.email || 'Connected provider'}
+                    {confirmDisconnect.email || 'Connected account'}
                   </p>
                 </div>
               </div>
