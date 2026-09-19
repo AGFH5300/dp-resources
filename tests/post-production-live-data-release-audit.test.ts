@@ -12,16 +12,16 @@ describe('post-production live-data release audit', () => {
 
     for (const text of [
       'Physics A.1–A.5, now with CBS',
-      '57,696 live question variants',
-      '44 new Save My Exams Kinematics variants',
+      '57,696 ready questions',
+      '44 new Save My Exams Kinematics questions',
     ]) expect(whatsNew).toContain(text);
 
     for (const text of [
-      '302 ready variants',
+      '302 ready questions',
       '415 confirmed duplicate Question Bank entries',
       '191 duplicate Question Bank entries',
       '11,763 RevisionDojo questions',
-      '15,571 course/question variants',
+      'broader course coverage',
     ]) {
       expect(page).toContain(text);
       expect(fallback).toContain(text);
