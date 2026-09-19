@@ -19,13 +19,13 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-19-private-question-bank-assets',
     summary:
-      'Improved Question Bank image reliability by moving 2,880 imported image references into the private DP Resources asset pipeline, serving verified compressed copies when smaller, and withholding incomplete variants instead of loading third-party images; 57,675 variants remain live.',
+      'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of live practice sets; 57,675 variants remain live.',
     date: '2026-09-19T15:10:00.000Z',
   },
   {
     id: 'release-2026-09-18-sme-a1-kinematics',
     summary:
-      'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—while consolidating 42 new questions with 2 existing matches; the live Question Bank now contains 57,740 ready variants.',
+      'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader source coverage to Kinematics; the Question Bank reached 57,740 live variants at this release.',
     date: '2026-09-18T11:20:00.000Z',
   },
   {
@@ -37,25 +37,25 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-16-cbs-question-bank-import',
     summary:
-      'Added CBS Physics A.1–A.5 to the live Question Bank from 341 source occurrences, consolidated into 232 CBS source groups and 217 distinct canonical questions; 302 variants are live and ready (137 HL and 165 SL) with 310 CBS variant-source provenance links and zero remaining quarantined CBS variants.',
+      'Added CBS Physics A.1–A.5 with 302 ready variants—137 HL and 165 SL—giving students broader topic coverage across both levels.',
     date: '2026-09-16T18:21:18.000Z',
   },
   {
     id: 'release-2026-09-16-global-question-bank-dedupe',
     summary:
-      'Completed a second global Question Bank deduplication pass, consolidating 191 redundant canonical rows (42,189 to 41,998 before the CBS addition) while preserving 44,095 question-source and 58,714 variant-source provenance rows plus saved, progress and practice references; final audited duplicate and orphan checks were zero.',
+      'Removed another 191 duplicate Question Bank entries while preserving saved questions, progress and practice sets.',
     date: '2026-09-16T15:57:28.000Z',
   },
   {
     id: 'release-2026-09-15-question-bank-dedupe',
     summary:
-      'Consolidated 415 redundant canonical Question Bank rows in the live Question Bank: 384 confirmed Revision Village/cross-source duplicates and 31 exact Pestle duplicates, while preserving provenance, variants, topic placements, assets, papers and videos, saved questions and user progress; 16 ambiguous Revision Village reference collisions were deliberately left separate.',
+      'Removed 415 confirmed duplicate Question Bank entries while preserving topic placement, media, saved questions and progress; uncertain matches were left separate.',
     date: '2026-09-15T18:36:37.000Z',
   },
   {
     id: 'release-2026-09-16-revisiondojo-expansion',
     summary:
-      'Expanded the Question Bank with 11,763 distinct RevisionDojo questions across 15,571 course/question variants and 15,645 source links after a full production import audit of 12,306 visible questions: 11,832 source IDs were accepted and 474 withheld, with 28 canonical merges and 3 empty placeholders removed; RevisionDojo source filtering is available in Question Bank and Practice Builder.',
+      'Expanded the Question Bank with 11,763 RevisionDojo questions across 15,571 course/question variants, with RevisionDojo source filtering available in Question Bank and Practice Builder.',
     date: '2026-09-16T14:26:39.840Z',
   },
   {
@@ -67,7 +67,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-16-02',
     summary:
-      'Made tutorial navigation substantially faster and steadier with staged route preparation, persistent cross-page spotlighting, stable loading-shell targets, attached click cues, locked background interaction and a reliable Settings finale.',
+      'Made tutorial navigation faster and steadier across pages, with more reliable highlights, clearer click cues and a smoother finish in Settings.',
     date: '2026-09-16T12:52:00.000Z',
   },
   {
@@ -79,13 +79,13 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-16-04',
     summary:
-      'Improved Question Bank reliability when source or course counts are slow by removing heavy parallel prefetches, handling timed-out optional counts without crashing, and reducing repeated source-count database work.',
+      'Improved Question Bank reliability when source or course information is slow to load, reducing interruptions while browsing and building practice sets.',
     date: '2026-09-16T10:54:00.000Z',
   },
   {
     id: 'release-2026-09-16-05',
     summary:
-      'Fixed a duplicate CH0007 practice question while preserving its Revision Town and Revision Village provenance, and corrected imported answer markup so unsupported answer wrappers no longer leak into rendered explanations.',
+      'Fixed a duplicate CH0007 practice question and cleaned up answer formatting so explanations display correctly.',
     date: '2026-09-16T09:55:00.000Z',
   },
   {
@@ -151,7 +151,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-security-low-findings',
     summary:
-      'Strengthened site security with safer error handling, tighter browser script protections, a non-root production runtime, and pinned build automation dependencies.',
+      'Improved site security and reliability across error handling, browser protections and deployment safeguards.',
     date: '2026-09-03T05:55:16.000Z',
   },
   {
@@ -169,7 +169,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-24-question-bank-topic-dedupe',
     summary:
-      'Fixed duplicate Question Bank topics and subtopics across subjects by normalizing provider and syllabus prefixes consistently, including coded and lettered topic labels.',
+      'Fixed duplicate Question Bank topics and subtopics across subjects, including coded and lettered topic labels.',
     date: '2026-08-24T09:16:00.000Z',
   },
   {
@@ -253,19 +253,19 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-12-source-review-security',
     summary:
-      'Completed the Library source and resource-type review so reviewed attribution is used consistently and structural folders are treated as Library structure rather than unknown content.',
+      'Improved Library source and resource-type labels so folders are treated as navigation and labels appear on the resources they describe.',
     date: '2026-08-12T14:30:00.000Z',
   },
   {
     id: 'release-2026-08-12-frontend-secret-boundary',
     summary:
-      'Moved browser data access behind same-origin server routes, removed browser-exposed API-key dependencies, and added automatic client-bundle secret checks.',
+      'Improved site security by strengthening how browser requests are handled and adding automated checks against accidental exposure of sensitive configuration.',
     date: '2026-08-12T14:20:00.000Z',
   },
   {
     id: 'release-2026-08-11-qb-source-theme-fixes',
     summary:
-      'Fixed Question Bank dark-mode handling and source filters, improved Caps Lock refocus detection, and corrected source attribution using verified archive evidence.',
+      'Fixed Question Bank dark-mode handling and source filters, improved Caps Lock refocus detection, and corrected inaccurate source labels.',
     date: '2026-08-11T14:58:37.000Z',
   },
   {
@@ -283,19 +283,19 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-07-source-rollout-hardening',
     summary:
-      'Hardened source attribution so saved-question filtering and public source labels consistently use reviewed source data while unresolved provider names stay neutral.',
+      'Improved source labels and saved-question filtering so reviewed source information is shown consistently.',
     date: '2026-08-07T17:29:42.000Z',
   },
   {
     id: 'release-2026-08-06-unified-sources',
     summary:
-      'Added unified content-source attribution across the Question Bank and Resource Library, including source badges, filters, source browsing, Practice Builder source persistence, and review tools.',
+      'Added consistent source labels, filters and source browsing across the Question Bank and Resource Library, including Practice Builder.',
     date: '2026-08-06T16:42:19.000Z',
   },
   {
     id: 'release-2026-08-06-library-source-metadata',
     summary:
-      'Added reviewed Library source and resource-type metadata with inheritance and overrides while keeping the underlying Google Drive files unchanged.',
+      'Improved Library source and resource-type labels while keeping the existing resources unchanged.',
     date: '2026-08-06T16:40:00.000Z',
   },
   {
