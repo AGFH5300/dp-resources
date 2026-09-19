@@ -91,7 +91,7 @@ describe('source UI and release notes', () => {
     expect(media).toContain('Kinematics source coverage');
     expect(media).toContain('Clearer, faster diagrams');
     expect(media).toContain('One feature at a time');
-    expect(media).toContain('No variant overlap between these two source sets');
+    expect(media).toContain('Distinct coverage shown once');
     expect(navigation).toContain('Previous feature');
     expect(navigation).toContain('Next feature');
     expect(navigation).toContain('Done');
@@ -110,7 +110,7 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
     expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
-    expect(whatsNew).toContain('57,675 questions are ready to practise');
+    expect(whatsNew).toContain('57,675 questions ready to practise');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
     expect(whatsNew).toContain('44 new Save My Exams Kinematics questions');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
@@ -153,14 +153,14 @@ describe('source UI and release notes', () => {
     expect(page).toContain(note);
     expect(history).toContain("'2026-09-19': [");
     expect(history).toContain(note);
-    expect(page).toContain('57,675 questions are ready to practise');
-    expect(history).toContain('57,675 questions are ready to practise');
+    expect(page).toContain('57,675 questions ready to practise');
+    expect(history).toContain('57,675 questions ready to practise');
   });
 
   it('records the 18 September Kinematics expansion in both public changelog sources', () => {
     const page = read('app/changelog/page.tsx');
     const history = read('lib/changelog.ts');
-    const note = 'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants';
+    const note = 'Expanded Physics A.1 Kinematics with 44 Save My Exams questions';
 
     expect(page).toContain('release-2026-09-18-sme-a1-kinematics');
     expect(page).toContain(note);
