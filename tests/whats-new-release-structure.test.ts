@@ -82,8 +82,8 @@ describe('What’s New release structure', () => {
     expect(changelog).toContain(summary);
     expect(page).toContain('release-2026-09-19-private-question-bank-assets');
     expect(changelog).toContain("'2026-09-19': [");
-    expect(page).toContain('2,880 imported image references');
-    expect(changelog).toContain('2,880 imported image references');
+    expect(page).toContain('Improved Question Bank diagrams and markscheme visuals');
+    expect(changelog).toContain('Improved Question Bank diagrams and markscheme visuals');
   });
 
   it('records the visual What’s New redesign in both public changelog sources', () => {
