@@ -19,7 +19,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-19-private-question-bank-assets',
     summary:
-      'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of practice; 57,675 questions are ready to practise.',
+      'Improved Question Bank diagrams and markscheme visuals so they load faster and more reliably. Questions missing an essential visual stay out of practice until they are complete.',
     date: '2026-09-19T15:10:00.000Z',
   },
   {
@@ -139,7 +139,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-library-instant-navigation',
     summary:
-      'Made Library folder navigation near-instant with in-place cached transitions, improved Back and Forward navigation, and fixed transition crashes and excessive background loading requests.',
+      'Made Library folder navigation much faster and smoother, including more reliable Back and Forward navigation.',
     date: '2026-09-03T07:15:51.000Z',
   },
   {
@@ -157,7 +157,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-library-proactive-loading',
     summary:
-      'Made the Resource Library feel much faster by warming the Library before it is opened, preloading likely next folders in the background, and showing an immediate compact loading state instead of leaving users wondering whether a click worked.',
+      'Made the Resource Library feel much faster, with quicker first opens, faster next-folder navigation and clearer loading feedback.',
     date: '2026-09-03T05:20:00.000Z',
   },
   {
