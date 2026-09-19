@@ -65,14 +65,14 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     date: '2026-09-19',
     dateLabel: '19 September 2026',
     summary:
-      'A major DP Resources update: a much larger Question Bank, expanded Physics coverage, private optimized diagrams, guided onboarding, steadier practice and a redesigned What’s New experience.',
+      'A major DP Resources update: a much larger Question Bank, expanded Physics coverage, clearer and faster diagrams, guided onboarding, steadier practice and a redesigned What’s New experience.',
     showWhatsNew: true,
     features: [
       {
         id: 'question-bank-expansion',
         title: 'A much bigger Question Bank',
         description:
-          'This deployment brings RevisionDojo into the Question Bank at scale, adds CBS Physics and Save My Exams Kinematics, and expands reviewed coverage to seven sources. After the final asset-integrity audit, 57,675 unique variants are live and ready across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams.',
+          'This update brings a major Question Bank expansion, with RevisionDojo, CBS Physics and Save My Exams Kinematics joining the latest coverage. After final quality checks, 57,675 unique variants are live and ready across seven sources.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -96,14 +96,14 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
       },
       {
         id: 'private-question-bank-assets',
-        title: 'Diagrams now load from DP Resources',
+        title: 'Clearer, faster question diagrams',
         description:
-          'Imported question and markscheme diagrams are now served through DP Resources’ private asset pipeline instead of depending on provider websites. Verified compressed copies are used when meaningfully smaller, and image-dependent questions are withheld if a required source image cannot be recovered.',
+          'Question diagrams and markscheme visuals now load more reliably and efficiently. We also strengthened quality checks so questions missing an essential visual are kept out of live practice sets instead of appearing incomplete.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
           variant: 'private-assets',
-          alt: 'A private DP Resources asset pipeline showing verified and optimized Question Bank diagrams.',
+          alt: 'Question Bank diagram improvements focused on faster loading and more reliable display.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
