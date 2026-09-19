@@ -109,7 +109,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-13-private-attachment-security',
     summary:
-      'Protected submitted evidence with private storage, short-lived access links, file-size and content validation, file hashing, and malware scanning before attachments are accepted.',
+      'Improved attachment safety for submitted evidence with stronger validation, secure access and automatic malware checks.',
     date: '2026-09-13T18:49:38.000Z',
   },
   {
@@ -133,7 +133,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-resource-open-performance',
     summary:
-      'Made resource files open significantly faster by reusing Library metadata that is already loaded, starting preview work earlier, and reducing repeated server lookups without weakening access checks.',
+      'Made resource files open significantly faster by starting previews earlier and reducing repeated loading work.',
     date: '2026-09-03T09:04:23.000Z',
   },
   {
@@ -163,7 +163,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-library-hydration-reliability',
     summary:
-      'Fixed an intermittent first-load Library failure caused by server and browser date rendering differences, and reduced folder wait time with cached indexed folder views and parallel metadata loading.',
+      'Fixed an intermittent first-load Library failure and reduced folder wait times.',
     date: '2026-09-03T04:55:00.000Z',
   },
   {
@@ -307,7 +307,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-08-05-storage-cleanup',
     summary:
-      'Reduced Question Bank storage use, kept search responsive, and added automatic cleanup for interrupted or abandoned practice builds.',
+      'Improved Question Bank performance and added automatic cleanup for interrupted or abandoned practice builds.',
     date: '2026-08-05T13:36:26.000Z',
   },
   {
