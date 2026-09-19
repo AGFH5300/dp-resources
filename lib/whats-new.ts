@@ -25,7 +25,9 @@ export type WhatsNewIllustrationMedia = {
     | 'physics-coverage'
     | 'kinematics-coverage'
     | 'guided-tour'
-    | 'practice';
+    | 'practice'
+    | 'private-assets'
+    | 'whats-new-experience';
   alt: string;
 };
 
@@ -58,26 +60,91 @@ export type WhatsNewRelease = {
 
 export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
   {
-    id: '2026-09-19-question-bank-private-assets',
+    id: '2026-09-19-september-deployment',
     label: 'September 2026',
     date: '2026-09-19',
     dateLabel: '19 September 2026',
     summary:
-      'Question Bank diagrams now load through DP Resources’ private asset pipeline, with verified compression and incomplete variants withheld instead of depending on third-party image hosts.',
+      'A major DP Resources update: a much larger Question Bank, expanded Physics coverage, private optimized diagrams, guided onboarding, steadier practice and a redesigned What’s New experience.',
     showWhatsNew: true,
     features: [
       {
-        id: 'private-question-bank-assets',
-        title: 'Faster, private Question Bank diagrams',
+        id: 'question-bank-expansion',
+        title: 'A much bigger Question Bank',
         description:
-          'DP Resources reconciled 2,880 imported image references into its private asset pipeline and serves verified optimized copies whenever they are meaningfully smaller. Questions whose source diagrams could not be recovered are withheld instead of loading images from third-party sites. The Question Bank currently has 57,675 ready variants.',
-        badge: 'IMPROVED',
+          'This deployment brings RevisionDojo into the Question Bank at scale, adds CBS Physics and Save My Exams Kinematics, and expands reviewed coverage to seven sources. After the final asset-integrity audit, 57,675 unique variants are live and ready across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams.',
+        badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'question-bank-current',
-          alt: 'A current Question Bank coverage snapshot showing 57,675 ready variants across seven reviewed sources.',
+          alt: 'Current Question Bank coverage showing 57,675 live variants across seven reviewed sources.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
+      },
+      {
+        id: 'physics-expansion',
+        title: 'Physics coverage goes deeper',
+        description:
+          'CBS now covers Physics A.1 through A.5 with 302 ready variants across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Duplicate matches stay consolidated rather than appearing twice.',
+        badge: 'NEW',
+        media: {
+          type: 'illustration',
+          variant: 'kinematics-coverage',
+          alt: 'Physics coverage showing 44 Save My Exams A.1 Kinematics variants alongside 302 CBS Physics A.1 to A.5 variants.',
+        },
+        cta: { label: 'Explore Physics', href: '/question-bank' },
+      },
+      {
+        id: 'private-question-bank-assets',
+        title: 'Diagrams now load from DP Resources',
+        description:
+          'Imported question and markscheme diagrams are now served through DP Resources’ private asset pipeline instead of depending on provider websites. Verified compressed copies are used when meaningfully smaller, and image-dependent questions are withheld if a required source image cannot be recovered.',
+        badge: 'IMPROVED',
+        media: {
+          type: 'illustration',
+          variant: 'private-assets',
+          alt: 'A private DP Resources asset pipeline showing verified and optimized Question Bank diagrams.',
+        },
+        cta: { label: 'Open Question Bank', href: '/question-bank' },
+      },
+      {
+        id: 'guided-tour',
+        title: 'Learn DP Resources on the real interface',
+        description:
+          'A new 12-step guided walkthrough introduces Library, the IB Resource Library, Question Bank, Search, Practice Builder, source filters, Recent, Saved and Settings without replacing the real product with a demo. You can replay it anytime from Settings.',
+        badge: 'NEW',
+        media: {
+          type: 'illustration',
+          variant: 'guided-tour',
+          alt: 'A guided DP Resources walkthrough pointing to real navigation controls and showing step progress.',
+        },
+        cta: { label: 'Open Settings', href: '/settings' },
+      },
+      {
+        id: 'practice-reliability',
+        title: 'Practice feels clearer and steadier',
+        description:
+          'Practice Builder has clearer selection and hover states, stronger selected controls and more useful eligible-question feedback. Question Bank also handles slower source and course counts more gracefully, making the path from finding questions to starting practice more reliable.',
+        badge: 'IMPROVED',
+        media: {
+          type: 'illustration',
+          variant: 'practice',
+          alt: 'A DP Resources practice session showing clear selection and progress states.',
+        },
+        cta: { label: 'Build a practice set', href: '/question-bank/build' },
+      },
+      {
+        id: 'whats-new-redesign',
+        title: 'A better way to discover every update',
+        description:
+          'What’s New is now a feature-by-feature release experience with responsive slides, swipe, arrows, progress dots, keyboard navigation, media controls, Try it shortcuts, remembered viewed releases and a release history you can reopen anytime.',
+        badge: 'REDESIGNED',
+        media: {
+          type: 'illustration',
+          variant: 'whats-new-experience',
+          alt: 'The redesigned What’s New experience with feature slides, progress navigation and release history.',
+        },
+        cta: { label: 'View full changelog', href: '/changelog' },
       },
     ],
   },
