@@ -62,6 +62,13 @@ describe('reliable resource usage tracking', () => {
     expect(read('supabase/migrations/20260919191152_rollback_resource_usage_visible_time_tracking.sql')).toContain(
       'least(coalesce(p_delta_seconds, 0), 60)',
     );
+    const catchup = read(
+      'supabase/migrations/20260919201205_catch_up_resource_usage_before_visible_tracking_cutover.sql',
+    );
+    expect(catchup).toContain('private.dp_resource_usage_repair_cutover_20260920');
+    expect(catchup).toContain('greatest(');
+    expect(catchup).toContain('heartbeat_count::bigint * 20');
+    expect(catchup).toContain('7200::bigint');
   });
 });
 
