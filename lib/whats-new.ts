@@ -111,7 +111,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'guided-tour',
         title: 'Learn DP Resources on the real interface',
         description:
-          'A new 12-step guided walkthrough introduces Library, the IB Resource Library, Question Bank, Search, Practice Builder, source filters, Recent, Saved and Settings without replacing the real product with a demo. You can replay it anytime from Settings.',
+          'A new 12-step guided walkthrough introduces Library, the IB Resource Library, Question Bank, Search, Practice Builder, source filters, Recent, Saved and Settings. You can replay it anytime from Settings.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -124,7 +124,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'practice-reliability',
         title: 'Practice feels clearer and steadier',
         description:
-          'Practice Builder has clearer selection and hover states, stronger selected controls and more useful eligible-question feedback. Question Bank also handles slower source and course counts more gracefully, making the path from finding questions to starting practice more reliable.',
+          'Practice Builder has clearer selection and hover states, stronger selected controls and more useful question feedback. Question Bank browsing and practice setup also stay smoother when information takes longer to load.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',

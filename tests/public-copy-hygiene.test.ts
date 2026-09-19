@@ -1,35 +1,29 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(path, 'utf8');
 
+function collectTsxFiles(root: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = `${root}/${entry.name}`;
+    if (entry.isDirectory()) files.push(...collectTsxFiles(path));
+    else if (entry.isFile() && entry.name.endsWith('.tsx')) files.push(path);
+  }
+  return files;
+}
+
 const PUBLIC_COPY_FILES = [
+  ...collectTsxFiles('app'),
+  ...collectTsxFiles('components'),
   'lib/whats-new.ts',
-  'components/whats-new/whats-new-media.tsx',
-  'app/changelog/page.tsx',
   'lib/changelog.ts',
-  'components/question-bank/question-content.tsx',
-  'components/question-bank/local-practice-session-page.tsx',
-  'components/content-source-badge.tsx',
-  'app/settings/settings-centre.tsx',
-  'components/tutorial/tutorial-controller.tsx',
-  'app/library/page.tsx',
-  'components/account/connected-accounts.tsx',
-  'app/api/account/identities/route.ts',
-  'app/question-bank/page.tsx',
-  'app/question-bank/loading.tsx',
-  'components/question-bank/question-bank-join-modal.tsx',
-  'app/question-bank/join/[code]/page.tsx',
-  'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
-  'app/question-bank/build/page.tsx',
-  'app/question-bank/search/page.tsx',
-  'app/question-bank/[subjectSlug]/[courseSlug]/questions/[variantId]/page.tsx',
-  'app/recent/page.tsx',
-  'app/saved/page.tsx',
-  'components/question-bank/course-practice-workspace.tsx',
-  'app/resource/[fileId]/resource-preview.tsx',
-  'components/case-attachment-viewer.tsx',
-] as const;
+].filter(
+  (file) =>
+    !file.startsWith('app/admin/') &&
+    !file.startsWith('app/api/') &&
+    !file.startsWith('components/admin/'),
+);
 
 const INTERNAL_PHRASES = [
   'private asset pipeline',
@@ -84,9 +78,51 @@ const INTERNAL_PHRASES = [
   'legacy mathematics archive',
   'authenticated listening audio',
   'images are optimized',
+  'reconciled 2,880 imported image references',
+  'imported image references',
+  'verified optimized copies',
+  'private storage pipeline',
+  'third-party source websites',
+  'meaningfully smaller',
+  'source diagrams could not be recovered',
+  'source references that could not be recovered',
+  'withheld instead of loading',
+  'image references staged for reconciliation',
+  'upstream object',
+  'question-source rows',
+  'variant-source rows',
+  'quarantined variants',
+  'render status',
 ] as const;
 
 describe('public copy hygiene', () => {
+  it('keeps technical release summaries out of the public changelog', async () => {
+    const { isPublicChangelogEntry } = await import('../lib/public-changelog');
+    const blocked = [
+      'DP Resources reconciled 2,880 imported image references into its private asset pipeline.',
+      'Verified optimized copies are served from a private storage pipeline.',
+      'Questions with unrecovered source references were quarantined.',
+    ];
+
+    for (const summary of blocked) {
+      expect(
+        isPublicChangelogEntry({
+          id: 'test-release',
+          summary,
+          date: '2026-09-19T00:00:00.000Z',
+        }),
+      ).toBe(false);
+    }
+
+    expect(
+      isPublicChangelogEntry({
+        id: 'release-private-question-bank-assets',
+        summary: 'Improved Question Bank diagrams so they load faster and more reliably.',
+        date: '2026-09-19T00:00:00.000Z',
+      }),
+    ).toBe(true);
+  });
+
   it('keeps implementation and migration language out of student-facing surfaces', () => {
     for (const file of PUBLIC_COPY_FILES) {
       const source = read(file).toLowerCase();

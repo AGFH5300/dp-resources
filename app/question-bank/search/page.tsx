@@ -126,7 +126,7 @@ export default async function QuestionBankSearch({
               </div>
               <p>
                 {questionPreview(row.content_preview) ||
-                  'No question text in the source.'}
+                  'Question preview unavailable.'}
               </p>
               <small>
                 {row.subject_name} · {row.course_name} ·{' '}
