@@ -221,7 +221,7 @@ export default async function QuestionBankLanding() {
           <div>
             <h1>Question Bank</h1>
             <p>
-              Follow one course, build a custom session, or load a configuration
+              Follow one course, build a custom session, or load a practice set
               shared by another student.
             </p>
           </div>
