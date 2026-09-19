@@ -849,7 +849,7 @@ export function SettingsCentre() {
                       }))
                     }
                     title="Library source tags"
-                    description="Show the source/provider badge on Library resources when attribution is applicable."
+                    description="Show source badges on Library resources when available."
                   />
                   <PreferenceSwitch
                     checked={preferences.showLibraryResourceTypeLabels}
