@@ -147,14 +147,14 @@ describe('source UI and release notes', () => {
   it('records the 19 September private asset release in both public changelog sources', () => {
     const page = read('app/changelog/page.tsx');
     const history = read('lib/changelog.ts');
-    const note = 'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently';
+    const note = 'Improved Question Bank diagrams and markscheme visuals so they load faster and more reliably';
 
     expect(page).toContain('release-2026-09-19-private-question-bank-assets');
     expect(page).toContain(note);
     expect(history).toContain("'2026-09-19': [");
     expect(history).toContain(note);
-    expect(page).toContain('57,675 questions ready to practise');
-    expect(history).toContain('57,675 questions ready to practise');
+    expect(page).toContain('Questions missing an essential visual stay out of practice until they are complete');
+    expect(history).toContain('Questions missing an essential visual stay out of practice until they are complete');
   });
 
   it('records the 18 September Kinematics expansion in both public changelog sources', () => {
