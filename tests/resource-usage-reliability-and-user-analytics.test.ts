@@ -46,7 +46,7 @@ describe('reliable resource usage tracking', () => {
       'supabase/migrations/20260721073837_fix_resource_usage_tracking.sql',
     );
     const migration = read(
-      'supabase/migrations/20260919201000_finalize_resource_usage_visible_time_tracking.sql',
+      'supabase/migrations/20260919200423_finalize_resource_usage_visible_time_tracking.sql',
     );
 
     expect(original).toContain('v_elapsed_seconds <= 300');
