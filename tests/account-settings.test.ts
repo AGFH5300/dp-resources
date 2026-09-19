@@ -132,7 +132,7 @@ describe('Settings & Account Centre', () => {
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
     expect(whatsNew).toContain('57,675 questions ready to practise');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
-    expect(whatsNew).toContain('44 new Save My Exams Kinematics questions');
+    expect(whatsNew).toContain('44 Save My Exams Kinematics questions');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
     expect(whatsNew).toContain('Clearer, faster question diagrams');
