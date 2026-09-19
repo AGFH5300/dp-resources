@@ -658,7 +658,9 @@ export function QuestionContent({
   if (!normalizedSource && !fallbackAudio)
     return (
       <p className="dp-qb-empty-content" role="status">
-        This source occurrence contains no {kind === 'question' ? 'question' : 'markscheme'} text.
+        {kind === 'question'
+          ? 'This question is currently unavailable.'
+          : 'This markscheme is currently unavailable.'}
       </p>
     );
   return (
