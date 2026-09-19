@@ -9,10 +9,15 @@ describe('reliable resource usage tracking', () => {
 
     expect(tracker).toContain('deltaSeconds');
     expect(tracker).toContain('wasActive');
+    expect(tracker).toContain('const isActive = () => wasVisible');
+    expect(tracker).not.toContain('recentlyActive');
+    expect(tracker).not.toContain('document.hasFocus()');
+    expect(tracker).not.toContain("window.addEventListener('blur'");
     expect(tracker).toContain(
       'window.setInterval(() => void heartbeat(), 10_000)',
     );
     expect(tracker).toContain("document.addEventListener('visibilitychange'");
+    expect(tracker).toContain("document.addEventListener('fullscreenchange'");
     expect(tracker).toContain(
       "window.addEventListener('pagehide', onPageHide)",
     );
@@ -37,12 +42,17 @@ describe('reliable resource usage tracking', () => {
   });
 
   it('locks each session and grants the internal heartbeat only to service_role', () => {
-    const migration = read(
+    const original = read(
       'supabase/migrations/20260721073837_fix_resource_usage_tracking.sql',
     );
+    const migration = read(
+      'supabase/migrations/20260919190112_fix_resource_usage_visible_time_tracking.sql',
+    );
 
+    expect(original).toContain('v_elapsed_seconds <= 300');
     expect(migration).toContain('for update');
     expect(migration).toContain('security invoker');
+    expect(migration).toContain('least(coalesce(p_delta_seconds, 0), 300)');
     expect(migration).toContain('v_elapsed_seconds <= 300');
     expect(migration).toContain('v_requested_seconds,');
     expect(migration).toContain('v_elapsed_seconds,');
