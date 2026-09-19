@@ -198,7 +198,6 @@ export default async function CourseQuestionBank({
                   ·{' '}
                 </>
               ) : null}
-              {data.sourceQuestionCount.toLocaleString()} source occurrences ·{' '}
               {sidebarTopicGroups.length} topics
             </p>
           </div>
