@@ -12,34 +12,6 @@ type RendererProps = {
 };
 
 const QUESTION_IMAGE = /^!\[([^\]]*)\]\(question:([0-9a-f-]{36})\)/i;
-const REMOTE_MARKDOWN_IMAGE = /^!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)/i;
-const ALLOWED_REMOTE_IMAGE_HOSTS = new Set([
-  'pub-images.revisiondojo.com',
-  'cdn.mathpix.com',
-  'lh7-rt.googleusercontent.com',
-  'i.ibb.co',
-  'www.revisiondojo.com',
-  'open-api.revisiondojo.com',
-  '142c8bdb1fea8b57b0fb24ca54327b99.eu.r2.cloudflarestorage.com',
-  'files.prepable.com',
-  'chart-studio.plotly.com',
-  'curriculum-plus.s3.amazonaws.com',
-  'files.mastitest.com',
-  'cdn.sanity.io',
-  'pub-images.ai-solutions.org',
-]);
-
-function safeRemoteImageUrl(value: string) {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || !ALLOWED_REMOTE_IMAGE_HOSTS.has(url.hostname))
-      return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 const AUDIO_DIRECTIVE_SOURCE =
   ':audio\\{\\s*#?([0-9a-f-]{36})(?:\\s+aid=(?:"([^"]+)"|\'([^\']+)\'|([^\\s}]+)))?[^}]*\\}';
 
@@ -134,44 +106,6 @@ function inlineQuestionImage(
   );
 }
 
-function remoteQuestionImage(
-  altText: string,
-  rawUrl: string,
-  key: string,
-  inlineImage = false,
-) {
-  const url = safeRemoteImageUrl(rawUrl);
-  if (!url) return null;
-  const image = (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className={inlineImage ? 'max-h-72 max-w-full object-contain' : undefined}
-        src={url}
-        alt={altText || 'Question diagram'}
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
-      />
-    </>
-  );
-  if (inlineImage)
-    return (
-      <span
-        key={key}
-        className="dp-qb-inline-figure inline-flex max-w-full items-center justify-center align-middle"
-      >
-        {image}
-      </span>
-    );
-  return (
-    <figure key={key} className="dp-qb-figure">
-      {image}
-      {altText ? <figcaption>{altText}</figcaption> : null}
-    </figure>
-  );
-}
-
 function directiveNode(
   name: string,
   content: string,
@@ -232,21 +166,6 @@ function inline(
       continue;
     }
 
-    const remoteImage = source.slice(index).match(REMOTE_MARKDOWN_IMAGE);
-    if (remoteImage) {
-      const rendered = remoteQuestionImage(
-        remoteImage[1],
-        remoteImage[2],
-        `${keyPrefix}-remote-image-${key++}`,
-        true,
-      );
-      if (rendered) {
-        flush();
-        output.push(rendered);
-        index += remoteImage[0].length;
-        continue;
-      }
-    }
 
     const audio = audioDirectiveMatches(source.slice(index))[0];
     if (audio && source.slice(index).startsWith(audio.raw)) {
@@ -392,9 +311,7 @@ function imageBlock(
     );
   }
 
-  const remoteMatch = line.match(REMOTE_MARKDOWN_IMAGE);
-  if (!remoteMatch || remoteMatch[0].length !== line.length) return null;
-  return remoteQuestionImage(remoteMatch[1], remoteMatch[2], key);
+  return null;
 }
 
 function cleanTranscript(value: string) {
