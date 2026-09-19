@@ -20,6 +20,15 @@ type ResourceAssignmentRow = {
   source: SourceRow | SourceRow[] | null;
 };
 
+const SUPABASE_IN_CHUNK_SIZE = 80;
+
+function chunks<T>(values: T[], size = SUPABASE_IN_CHUNK_SIZE) {
+  const output: T[][] = [];
+  for (let index = 0; index < values.length; index += size)
+    output.push(values.slice(index, index + size));
+  return output;
+}
+
 const sourcePrecedence: Record<string, number> = {
   admin_override: 1,
   manual: 1,
@@ -42,24 +51,39 @@ export async function getResourceAttributionMap(
   if (!ids.length) return result;
 
   const sb = createSupabaseAdminClient();
-  const [{ data: sourceRows }, { data: typeRows }] = await Promise.all([
-    sb
-      .from('dp_resource_source_assignments')
-      .select(
-        'drive_file_id,source_id,is_primary,relationship,assignment_method,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
-      )
-      .in('drive_file_id', ids)
-      .neq('review_status', 'rejected'),
-    sb
-      .from('dp_resource_type_assignments')
-      .select(
-        'drive_file_id,review_status,resource_type:dp_resource_types(slug,display_name)',
-      )
-      .in('drive_file_id', ids)
-      .neq('review_status', 'rejected'),
+  const idChunks = chunks(ids);
+  const [sourceResults, typeResults] = await Promise.all([
+    Promise.all(
+      idChunks.map((batch) =>
+        sb
+          .from('dp_resource_source_assignments')
+          .select(
+            'drive_file_id,source_id,is_primary,relationship,assignment_method,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
+          )
+          .in('drive_file_id', batch)
+          .neq('review_status', 'rejected'),
+      ),
+    ),
+    Promise.all(
+      idChunks.map((batch) =>
+        sb
+          .from('dp_resource_type_assignments')
+          .select(
+            'drive_file_id,review_status,resource_type:dp_resource_types(slug,display_name)',
+          )
+          .in('drive_file_id', batch)
+          .neq('review_status', 'rejected'),
+      ),
+    ),
   ]);
+  const sourceError = sourceResults.find((response) => response.error)?.error;
+  if (sourceError) throw sourceError;
+  const typeError = typeResults.find((response) => response.error)?.error;
+  if (typeError) throw typeError;
+  const sourceRows = sourceResults.flatMap((response) => response.data ?? []);
+  const typeRows = typeResults.flatMap((response) => response.data ?? []);
 
-  const assignments = (sourceRows ?? []) as unknown as ResourceAssignmentRow[];
+  const assignments = sourceRows as unknown as ResourceAssignmentRow[];
   const byFile = new Map<string, ResourceAssignmentRow[]>();
   for (const row of assignments) {
     const current = byFile.get(row.drive_file_id) ?? [];
@@ -132,22 +156,36 @@ export async function getQuestionSourceMap(
   const result = new Map<string, QuestionPublicSource[]>();
   if (!variantIds.length) return result;
   const sb = createSupabaseAdminClient();
-  const [{ data: variantRows }, { data: questionRows }] = await Promise.all([
-    sb
-      .from('dp_qb_variant_sources')
-      .select(
-        'variant_id,source_id,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
-      )
-      .in('variant_id', variantIds)
-      .neq('review_status', 'rejected'),
-    sb
-      .from('dp_qb_question_sources')
-      .select(
-        'question_id,source_id,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
-      )
-      .in('question_id', questionIds)
-      .neq('review_status', 'rejected'),
+  const [variantResults, questionResults] = await Promise.all([
+    Promise.all(
+      chunks(variantIds).map((batch) =>
+        sb
+          .from('dp_qb_variant_sources')
+          .select(
+            'variant_id,source_id,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
+          )
+          .in('variant_id', batch)
+          .neq('review_status', 'rejected'),
+      ),
+    ),
+    Promise.all(
+      chunks(questionIds).map((batch) =>
+        sb
+          .from('dp_qb_question_sources')
+          .select(
+            'question_id,source_id,review_status,source:dp_content_sources(slug,display_name,short_label,attribution_label,display_order)',
+          )
+          .in('question_id', batch)
+          .neq('review_status', 'rejected'),
+      ),
+    ),
   ]);
+  const variantError = variantResults.find((response) => response.error)?.error;
+  if (variantError) throw variantError;
+  const questionError = questionResults.find((response) => response.error)?.error;
+  if (questionError) throw questionError;
+  const variantRows = variantResults.flatMap((response) => response.data ?? []);
+  const questionRows = questionResults.flatMap((response) => response.data ?? []);
   const questionToVariants = new Map<string, string[]>();
   for (const item of variants) {
     const current = questionToVariants.get(item.questionId) ?? [];
