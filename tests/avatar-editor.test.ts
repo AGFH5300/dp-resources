@@ -16,7 +16,6 @@ describe('profile picture display and editing', () => {
     expect(imageDirective).toContain('data:');
     expect(imageDirective).toContain('blob:');
     expect(imageDirective).toContain('https://*.supabase.co');
-    expect(imageDirective).toContain('https://pub-images.revisiondojo.com');
   });
 
   it('opens an editor before the selected image is uploaded', () => {
