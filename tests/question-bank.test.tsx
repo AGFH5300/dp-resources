@@ -321,6 +321,27 @@ describe('controlled question renderer', () => {
     expect(output).toContain('/api/question-bank/assets/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });
 
+  it('renders allowlisted remote source images used by imported explanations', () => {
+    const output = renderToStaticMarkup(
+      <QuestionContent
+        kind="markscheme"
+        source={'Explanation graph\n\n![](https://pub-images.revisiondojo.com/plots/example.png)'}
+      />,
+    );
+    expect(output).toContain(
+      'src="https://pub-images.revisiondojo.com/plots/example.png"',
+    );
+    expect(output).toContain('referrerPolicy="no-referrer"');
+  });
+
+  it('does not render remote Markdown images from unapproved hosts', () => {
+    const output = renderToStaticMarkup(
+      <QuestionContent source={'![diagram](https://example.com/diagram.png)'} />,
+    );
+    expect(output).not.toContain('<img');
+    expect(output).toContain('https://example.com/diagram.png');
+  });
+
   it('never interprets residual source HTML', () => {
     const output = renderToStaticMarkup(
       <QuestionContent source={'<script>alert(1)</script><img src=x onerror=alert(2)>'} />,
