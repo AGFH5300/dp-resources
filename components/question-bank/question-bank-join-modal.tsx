@@ -55,8 +55,7 @@ export function QuestionBankJoinModal() {
               Join with a code
             </strong>
             <span className="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Load a permanent shared configuration, then use exact questions or
-              customize it for your own progress.
+              Load a shared practice set, then use the same questions or customize it for your own progress.
             </span>
           </span>
           <ArrowRight className="mt-1 size-5 text-amber-600 transition group-hover:translate-x-1 group-hover:text-amber-800 dark:text-amber-300" />
@@ -90,7 +89,7 @@ export function QuestionBankJoinModal() {
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   Enter the code shared with you. You can use the exact questions,
-                  generate a fresh set, or customize the configuration.
+                  generate a fresh set, or customize it.
                 </p>
               </div>
               <button
