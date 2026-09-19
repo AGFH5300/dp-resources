@@ -84,7 +84,7 @@ function inlineQuestionImage(
   if (!asset) {
     return (
       <span key={key} className="dp-qb-image-unavailable" role="status">
-        Referenced image is unavailable in the authorized archive.
+        This image is currently unavailable.
       </span>
     );
   }
@@ -294,7 +294,7 @@ function imageBlock(
     if (!asset)
       return (
         <p key={key} className="dp-qb-image-unavailable" role="status">
-          Referenced image is unavailable in the authorized archive.
+          This image is currently unavailable.
         </p>
       );
     return (
