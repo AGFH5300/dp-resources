@@ -151,7 +151,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-03-security-low-findings',
     summary:
-      'Improved site security and reliability across error handling, browser protections and deployment safeguards.',
+      'Improved site security and reliability across error handling, browser protections and release safeguards.',
     date: '2026-09-03T05:55:16.000Z',
   },
   {
