@@ -71,7 +71,7 @@ describe('source UI and release notes', () => {
     expect(media).toContain('webkitEnterFullscreen');
     expect(media).toContain('Replay video');
     expect(media).toContain('Questions by source');
-    expect(media).toContain('Source coverage can overlap');
+    expect(media).toContain('Coverage across available sources');
     for (const count of [
       '57,675',
       '57,696',
@@ -153,8 +153,8 @@ describe('source UI and release notes', () => {
     expect(page).toContain(note);
     expect(history).toContain("'2026-09-19': [");
     expect(history).toContain(note);
-    expect(page).toContain('57,675 questions ready to practise');
-    expect(history).toContain('57,675 questions ready to practise');
+    expect(page).toContain('57,675 questions are ready to practise');
+    expect(history).toContain('57,675 questions are ready to practise');
   });
 
   it('records the 18 September Kinematics expansion in both public changelog sources', () => {
@@ -211,7 +211,7 @@ describe('source UI and release notes', () => {
     expect(changelog).toContain("!curatedDates.has(entry.date.slice(0, 10))");
     expect(changelog).toContain('Made Library folder headers more compact');
     expect(changelog).toContain('Strengthened sign-in sessions and HTTPS transport');
-    expect(changelog).toContain('Added unified content-source attribution');
+    expect(changelog).toContain('Added consistent source labels, filters and source browsing');
     expect(changelogList).toContain('publicChangelogEntries(entries)');
     expect(publicFilter).toContain('INTERNAL_ONLY_PATTERNS');
     expect(publicFilter).toContain('production runtime');
