@@ -37,6 +37,16 @@ const INTERNAL_PHRASES = [
   'non-root production runtime',
   'provider and syllabus prefixes',
   'verified archive evidence',
+  'source occurrence',
+  'private diagrams',
+  'private solution-video links',
+  'production dependencies',
+  'security audit findings',
+  'protected assets render',
+  'protected diagrams and audio',
+  'content-reference diagrams',
+  'browser caches',
+  'audited every question bank variant',
 ] as const;
 
 describe('public copy hygiene', () => {
@@ -55,5 +65,8 @@ describe('public copy hygiene', () => {
     const renderer = read('components/question-bank/question-content.tsx');
     expect(renderer).toContain('This image is currently unavailable.');
     expect(renderer).not.toContain('authorized archive');
+    expect(renderer).not.toContain('source occurrence');
+    expect(renderer).toContain('This question is currently unavailable.');
+    expect(renderer).toContain('This markscheme is currently unavailable.');
   });
 });
