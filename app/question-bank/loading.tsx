@@ -12,7 +12,7 @@ export default function QuestionBankLoading() {
           <div>
             <h1>Question Bank</h1>
             <p>
-              Follow one course, build a custom session, or load a configuration
+              Follow one course, build a custom session, or load a practice set
               shared by another student.
             </p>
           </div>
@@ -79,8 +79,7 @@ export default function QuestionBankLoading() {
                   Join with a code
                 </strong>
                 <span className="mt-1 block text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Load a permanent shared configuration, then use exact questions
-                  or customize it for your own progress.
+                  Load a shared practice set, then use the same questions or customize it for your own progress.
                 </span>
               </span>
               <ArrowRight className="mt-1 size-5 text-amber-600 dark:text-amber-300" />
