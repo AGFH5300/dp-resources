@@ -46,13 +46,22 @@ describe('reliable resource usage tracking', () => {
       'supabase/migrations/20260721073837_fix_resource_usage_tracking.sql',
     );
     const migration = read(
-      'supabase/migrations/20260919190112_fix_resource_usage_visible_time_tracking.sql',
+      'supabase/migrations/20260919201000_finalize_resource_usage_visible_time_tracking.sql',
     );
 
     expect(original).toContain('v_elapsed_seconds <= 300');
     expect(migration).toContain('for update');
     expect(migration).toContain('security invoker');
     expect(migration).toContain('least(coalesce(p_delta_seconds, 0), 300)');
+    expect(migration).toContain('v_elapsed_seconds <= 300');
+    expect(migration).toContain('v_requested_seconds,');
+    expect(migration).toContain('v_elapsed_seconds,');
+    expect(migration).toContain('from public, anon, authenticated');
+    expect(migration).toContain('to service_role');
+    expect(migration).not.toContain('v_elapsed_seconds >= 10');
+    expect(read('supabase/migrations/20260919191152_rollback_resource_usage_visible_time_tracking.sql')).toContain(
+      'least(coalesce(p_delta_seconds, 0), 60)',
+    );
     expect(migration).toContain('v_elapsed_seconds <= 300');
     expect(migration).toContain('v_requested_seconds,');
     expect(migration).toContain('v_elapsed_seconds,');
