@@ -73,7 +73,7 @@ Compare ![PH0545a](question:${sourceFileIds[4]}) with the options above.`}
     );
 
     expect(output).toContain(
-      'Referenced image is unavailable in the authorized archive.',
+      'This image is currently unavailable.',
     );
     expect(output).not.toContain('question:11111111');
   });
