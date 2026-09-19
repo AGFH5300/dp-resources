@@ -120,6 +120,10 @@ describe('modern social authentication', () => {
     expect(route).toContain('password_enabled');
     expect(panel).not.toContain('One DP Resources account. Your choice of sign-in.');
     expect(panel).toContain('Sign-in methods');
+    expect(panel).toContain('This sign-in option is not available yet.');
+    expect(panel).not.toContain('Provider credentials');
+    expect(route).toContain('sign-in is not available yet.');
+    expect(route).not.toContain('sign-in is not configured yet.');
     expect(panel).toContain('ProviderLogo');
     expect(panel).toContain('border-2');
     expect(panel).toContain('Disconnect {confirmDisconnect.label}?');
