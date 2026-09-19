@@ -130,7 +130,7 @@ describe('Settings & Account Centre', () => {
   it('keeps What’s New current while preserving guided onboarding in release history', () => {
     expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
-    expect(whatsNew).toContain('57,675 questions are ready to practise');
+    expect(whatsNew).toContain('57,675 questions ready to practise');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
     expect(whatsNew).toContain('44 new Save My Exams Kinematics questions');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
