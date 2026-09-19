@@ -184,7 +184,7 @@ describe('Question Bank practice builder production readiness', () => {
     expect(storage).toContain('pageSize = 50');
     expect(storage).toContain('Math.ceil(session.totalCount / safePageSize)');
     expect(localPage).toContain('Queue page');
-    expect(localPage).toContain('only this page is hydrated from the server');
+    expect(localPage).toContain('questions grouped into pages for smoother browsing');
     expect(hydrationRoute).toContain('const MAX_PAGE_ITEMS = 100');
   });
 });
