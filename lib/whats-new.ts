@@ -72,7 +72,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'question-bank-expansion',
         title: 'A much bigger Question Bank',
         description:
-          'This update brings a major Question Bank expansion, with RevisionDojo, CBS Physics and Save My Exams Kinematics joining the latest coverage. There are now 57,675 live question variants across seven sources, giving you much more to practise from one place.',
+          'This update brings a major Question Bank expansion, with RevisionDojo, CBS Physics and Save My Exams Kinematics joining the latest coverage. There are now 57,675 questions ready to practise across seven sources, giving you much more to work with in one place.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -154,25 +154,25 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     date: '2026-09-18',
     dateLabel: '18 September 2026',
     summary:
-      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 ready questions across seven available sources.',
+      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 questions ready to practise across seven available sources.',
     showWhatsNew: false,
     features: [
       {
         id: 'question-bank-live-coverage',
-        title: '57,740 ready questions',
+        title: '57,740 questions ready to practise',
         description:
-          'The Question Bank now has 57,740 ready questions across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Some questions appear under more than one source, so the overall total counts each question once.',
+          'The Question Bank now has 57,740 questions ready to practise across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Some questions appear under more than one source, so the overall total counts each question once.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
           variant: 'question-bank-sep18',
-          alt: 'A static Question Bank coverage snapshot showing live variant counts across seven available sources, plus 57,740 total unique live variants.',
+          alt: 'A Question Bank coverage snapshot showing 57,740 questions ready to practise across seven available sources.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
       {
         id: 'sme-kinematics-expansion',
-        title: '44 new Save My Exams Kinematics questions',
+        title: '44 Save My Exams Kinematics questions',
         description:
           'Physics A.1 Kinematics now includes 30 multiple-choice and 14 long-response Save My Exams questions across Easy, Medium and Hard. Forty-two add new questions and two match questions already in the bank, avoiding duplicates. Questions without an official markscheme remain self-assessed.',
         badge: 'NEW',
@@ -196,14 +196,14 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     features: [
       {
         id: 'revisiondojo-question-bank',
-        title: '57,696 ready questions',
+        title: '57,696 questions ready to practise',
         description:
-          'The Question Bank reached 57,696 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. Some questions appear under more than one source, so the overall total counts each question once.',
+          'The Question Bank reached 57,696 questions ready to practise across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. Some questions appear under more than one source, so the overall total counts each question once.',
         badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'question-bank',
-          alt: 'A static Question Bank coverage snapshot showing live variant counts for RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS, plus 57,696 total unique live variants.',
+          alt: 'A Question Bank coverage snapshot showing 57,696 questions ready to practise across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
@@ -211,7 +211,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'cbs-physics-coverage',
         title: 'Physics A.1–A.5, now with CBS',
         description:
-          'CBS coverage is now live across Physics A.1 through A.5, with 302 ready questions spanning HL and SL. Topic and source filters make it much easier to go straight to the part of the course you want to practise.',
+          'CBS coverage is now live across Physics A.1 through A.5, with 302 ready questions across HL and SL. Topic and source filters make it much easier to go straight to the part of the course you want to practise.',
         badge: 'NEW',
         media: {
           type: 'illustration',
