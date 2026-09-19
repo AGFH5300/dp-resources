@@ -147,7 +147,7 @@ const STEPS: TutorialStep[] = [
     id: 'source-filters-try',
     title: 'Source filters',
     description:
-      'Choose one or more providers to restrict your practice set, or leave every source unchecked to use all available sources. You can try a checkbox here, or simply press Next without changing anything.',
+      'Choose one or more sources to narrow your practice set, or leave every source unchecked to use all available sources. You can try a checkbox here, or simply press Next without changing anything.',
     route: '/question-bank/build',
     target: SOURCE_TARGET,
     interactive: true,
