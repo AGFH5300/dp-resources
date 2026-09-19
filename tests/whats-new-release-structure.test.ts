@@ -34,7 +34,7 @@ describe('What’s New release structure', () => {
 
     expect(latestAutoOpenRelease()?.showWhatsNew).toBe(true);
     expect(latestAutoOpenRelease()?.id).toBe(
-      '2026-09-18-kinematics-source-expansion',
+      '2026-09-19-question-bank-private-assets',
     );
   });
 
@@ -69,7 +69,7 @@ describe('What’s New release structure', () => {
     }
   });
 
-  it('records the current Kinematics release in both public changelog sources', () => {
+  it('records the Kinematics and private-asset releases in both public changelog sources', () => {
     const page = read('app/changelog/page.tsx');
     const changelog = read('lib/changelog.ts');
     const summary =
@@ -79,6 +79,10 @@ describe('What’s New release structure', () => {
     expect(page).toContain(summary);
     expect(changelog).toContain("'2026-09-18': [");
     expect(changelog).toContain(summary);
+    expect(page).toContain('release-2026-09-19-private-question-bank-assets');
+    expect(changelog).toContain("'2026-09-19': [");
+    expect(page).toContain('2,880 imported image references');
+    expect(changelog).toContain('2,880 imported image references');
   });
 
   it('records the visual What’s New redesign in both public changelog sources', () => {
