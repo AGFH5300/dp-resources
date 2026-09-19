@@ -17,6 +17,12 @@ export const metadata: Metadata = publicPageMetadata({
 
 const latestReleaseNotes: ChangelogEntry[] = [
   {
+    id: 'release-2026-09-19-private-question-bank-assets',
+    summary:
+      'Improved Question Bank image reliability by moving 2,880 imported image references into the private DP Resources asset pipeline, serving verified compressed copies when smaller, and withholding incomplete variants instead of loading third-party images; 57,675 variants remain live.',
+    date: '2026-09-19T15:10:00.000Z',
+  },
+  {
     id: 'release-2026-09-18-sme-a1-kinematics',
     summary:
       'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—while consolidating 42 new questions with 2 existing matches; the live Question Bank now contains 57,740 ready variants.',
