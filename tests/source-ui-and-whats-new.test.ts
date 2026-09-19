@@ -89,7 +89,7 @@ describe('source UI and release notes', () => {
     }
     expect(media).toContain('Save My Exams');
     expect(media).toContain('Kinematics source coverage');
-    expect(media).toContain('Private, verified and optimized');
+    expect(media).toContain('Clearer, faster diagrams');
     expect(media).toContain('One feature at a time');
     expect(media).toContain('No variant overlap between these two source sets');
     expect(navigation).toContain('Previous feature');
@@ -116,7 +116,7 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain('Physics coverage goes deeper');
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
-    expect(whatsNew).toContain('Diagrams now load from DP Resources');
+    expect(whatsNew).toContain('Clearer, faster question diagrams');
     expect(whatsNew).toContain('A better way to discover every update');
     expect(whatsNew).toContain("href: '/question-bank/build'");
     expect(whatsNew).toContain("href: '/changelog'");
@@ -147,7 +147,7 @@ describe('source UI and release notes', () => {
   it('records the 19 September private asset release in both public changelog sources', () => {
     const page = read('app/changelog/page.tsx');
     const history = read('lib/changelog.ts');
-    const note = 'Improved Question Bank image reliability by moving 2,880 imported image references';
+    const note = 'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently';
 
     expect(page).toContain('release-2026-09-19-private-question-bank-assets');
     expect(page).toContain(note);
