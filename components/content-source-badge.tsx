@@ -6,7 +6,7 @@ import React from 'react';
 import { useAccountPreferences } from '@/lib/account-preferences-client';
 
 const SOURCE_TOOLTIP =
-  'Source identifies the collection or provider through which this resource was added to DP Resources and may not identify the original copyright owner.';
+  'Source shows the collection this resource is associated with in DP Resources.';
 
 function labelForSources(labels: string[]) {
   if (labels.length <= 2) return labels.join(' · ');
@@ -101,7 +101,7 @@ export function QuestionSourceInformation({
           </p>
         ) : null}
         {safeSources.some((source) => source.reviewStatus === 'under_review') ? (
-          <p>Source attribution is under review; no unverified provider is shown.</p>
+          <p>Source information is still being reviewed.</p>
         ) : null}
         <p className="text-xs text-slate-500">
           An indexed collection is where DP Resources obtained or indexed the
