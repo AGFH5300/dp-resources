@@ -73,11 +73,13 @@ describe('source UI and release notes', () => {
     expect(media).toContain('Question variants by source');
     expect(media).toContain('Source coverage can overlap');
     for (const count of [
-      '57,740',
+      '57,675',
       '57,696',
+      '15,503',
       '15,571',
       '13,374',
       '13,190',
+      '12,172',
       '12,169',
       '4,173',
       '302',
@@ -104,9 +106,10 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('export type WhatsNewRelease');
     expect(whatsNew).toContain('showWhatsNew: boolean');
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
+    expect(whatsNew).toContain("id: '2026-09-19-question-bank-private-assets'");
+    expect(whatsNew).toContain("dateLabel: '19 September 2026'");
+    expect(whatsNew).toContain('57,675 ready variants');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
-    expect(whatsNew).toContain("dateLabel: '18 September 2026'");
-    expect(whatsNew).toContain('57,740 live question variants');
     expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain('Physics A.1–A.5, now with CBS');
@@ -133,6 +136,19 @@ describe('source UI and release notes', () => {
     expect(client).toContain('readLocalViewedReleaseIds');
     expect(client).toContain('writeLocalViewedReleaseIds');
     expect(client).toContain('fetchAccountViewedReleaseIds');
+  });
+
+  it('records the 19 September private asset release in both public changelog sources', () => {
+    const page = read('app/changelog/page.tsx');
+    const history = read('lib/changelog.ts');
+    const note = 'Improved Question Bank image reliability by moving 2,880 imported image references';
+
+    expect(page).toContain('release-2026-09-19-private-question-bank-assets');
+    expect(page).toContain(note);
+    expect(history).toContain("'2026-09-19': [");
+    expect(history).toContain(note);
+    expect(page).toContain('57,675 variants remain live');
+    expect(history).toContain('57,675 variants remain live');
   });
 
   it('records the 18 September Kinematics expansion in both public changelog sources', () => {
