@@ -135,7 +135,7 @@ function SubjectCourseLinks({
             <span className="min-w-0 flex-1">
               <strong className="block text-sm">Legacy Mathematics</strong>
               <small className="mt-0.5 block text-xs text-slate-500">
-                {legacyQuestionCount.toLocaleString()} questions · 2009–2019 archive
+                {legacyQuestionCount.toLocaleString()} questions · 2009–2019 courses
               </small>
             </span>
             <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
