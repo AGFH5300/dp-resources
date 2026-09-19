@@ -89,6 +89,8 @@ describe('source UI and release notes', () => {
     }
     expect(media).toContain('Save My Exams');
     expect(media).toContain('Kinematics source coverage');
+    expect(media).toContain('Private, verified and optimized');
+    expect(media).toContain('One feature at a time');
     expect(media).toContain('No variant overlap between these two source sets');
     expect(navigation).toContain('Previous feature');
     expect(navigation).toContain('Next feature');
@@ -106,15 +108,19 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('export type WhatsNewRelease');
     expect(whatsNew).toContain('showWhatsNew: boolean');
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
-    expect(whatsNew).toContain("id: '2026-09-19-question-bank-private-assets'");
+    expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
-    expect(whatsNew).toContain('57,675 ready variants');
+    expect(whatsNew).toContain('57,675 unique variants are live and ready');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
     expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
-    expect(whatsNew).toContain('Physics A.1–A.5, now with CBS');
+    expect(whatsNew).toContain('Physics coverage goes deeper');
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
-    expect(whatsNew).toContain('Practice that keeps moving');
+    expect(whatsNew).toContain('Diagrams now load from DP Resources');
+    expect(whatsNew).toContain('A better way to discover every update');
+    expect(whatsNew).toContain("href: '/question-bank/build'");
+    expect(whatsNew).toContain("href: '/changelog'");
+    expect(whatsNew).toContain('Practice feels clearer and steadier');
     expect(whatsNew).toContain(
       "cta: { label: 'Open Question Bank', href: '/question-bank' }",
     );
