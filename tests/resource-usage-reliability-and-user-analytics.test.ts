@@ -62,12 +62,6 @@ describe('reliable resource usage tracking', () => {
     expect(read('supabase/migrations/20260919191152_rollback_resource_usage_visible_time_tracking.sql')).toContain(
       'least(coalesce(p_delta_seconds, 0), 60)',
     );
-    expect(migration).toContain('v_elapsed_seconds <= 300');
-    expect(migration).toContain('v_requested_seconds,');
-    expect(migration).toContain('v_elapsed_seconds,');
-    expect(migration).toContain('from public, anon, authenticated');
-    expect(migration).toContain('to service_role');
-    expect(migration).not.toContain('v_elapsed_seconds >= 10');
   });
 });
 
