@@ -79,8 +79,7 @@ export default async function SharedPracticeSetPage({
               Invalid practice-set code
             </h1>
             <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
-              That code does not match a shared practice configuration. Check the
-              characters and try again.
+              That code does not match a shared practice set. Check the characters and try again.
             </p>
             <PracticeCodeEntry autoFocus={false} />
             <Link
