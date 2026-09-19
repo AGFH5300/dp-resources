@@ -21,6 +21,7 @@ export type WhatsNewIllustrationMedia = {
   variant:
     | 'question-bank'
     | 'question-bank-current'
+    | 'question-bank-sep18'
     | 'physics-coverage'
     | 'kinematics-coverage'
     | 'guided-tour'
@@ -97,7 +98,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
-          variant: 'question-bank-current',
+          variant: 'question-bank-sep18',
           alt: 'A static Question Bank coverage snapshot showing live variant counts across seven reviewed sources, plus 57,740 total unique live variants.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
