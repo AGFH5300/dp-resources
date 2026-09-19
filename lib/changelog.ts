@@ -28,7 +28,7 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-09-19': [
-    'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of practice; 57,675 questions are ready to practise.',
+    'Improved Question Bank diagrams and markscheme visuals so they load faster and more reliably. Questions missing an essential visual stay out of practice until they are complete.',
   ],
   '2026-09-18': [
     'Expanded Physics A.1 Kinematics with 44 Save My Exams questions—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader Kinematics coverage; the Question Bank reached 57,740 ready questions at this release.',
@@ -58,7 +58,7 @@ const historicalSummaries: Record<string, string[]> = {
   '2026-09-11': [
     'Added DP Resources social sign-in and Connected Accounts support for Google, Microsoft and GitHub, including direct link and unlink controls in Account & sign-in settings.',
     'Improved first-time social sign-in so an unlinked Google, Microsoft or GitHub account can continue into the normal account-creation flow with the standard profile fields and live username availability checks.',
-    'Added fullscreen support to the standard browser PDF fallback so non-prepared PDFs keep the same essential viewing option.',
+    'Added fullscreen support to the regular PDF reader so every PDF keeps the same essential viewing option.',
   ],
   '2026-09-10': [
     'Added a complete Settings & Account Centre for profile details, username changes with automatic availability checking, profile pictures, email and password changes, notification controls, privacy information, and DP Resources display preferences.',
@@ -93,7 +93,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Added reusable practice-set codes so students can share named Question Bank sets and choose the same questions, progress-based questions, or full customization.',
     'Expanded the Practice Builder with subject-wide topic selection, fair maximum question allocation, large resumable queues, and independently scrolling panels.',
     'Cleaned duplicated Biology topic labels, improved availability speed, fixed fullscreen practice, and added clearer shared-code validation.',
-    'Fixed practice-set creation blockers by stabilizing question amounts, adding all-course controls, improving Join as an in-page modal, and cleaning imported language score labels.',
+    'Fixed practice-set creation blockers by stabilizing question amounts, adding all-course controls, improving Join as an in-page modal, and cleaning language score labels.',
   ],
   '2026-07-31': [
     'Expanded the Question Bank with 14,128 Exam-Mate questions plus markschemes, examiner reports and supporting diagrams.',
@@ -119,7 +119,7 @@ const historicalSummaries: Record<string, string[]> = {
     'Fixed the admin case inspector so replies, messages, and draft changes never carry over when switching between support tickets or resource reports.',
     'Corrected support notification counts, added General inquiry, improved Content feedback in dark mode, and added a bulk mark-as-read action.',
     'Added listening audio and exact-count, order-independent multiple-answer grading to the Question Bank.',
-    'Fixed listening-question audio placement, cleaned imported formatting, and kept later questions and answer choices in the correct order.',
+    'Fixed listening-question audio placement, cleaned formatting, and kept later questions and answer choices in the correct order.',
     'Improved multi-part listening questions so separate multiple-answer and single-answer sections stay interactive and independent.',
     'Kept signed-in users signed in when visiting Privacy or Terms and added direct Library return actions.',
   ],
@@ -203,7 +203,7 @@ const historicalSummaries: Record<string, string[]> = {
   '2026-07-06': [
     'Improved the Google Sheets preview and simplified the workbook experience.',
     'Added support conversations so replies and follow-ups can stay together.',
-    'Made Library navigation and resource indexing faster and more dependable.',
+    'Made Library navigation and finding resources faster and more dependable.',
   ],
   '2026-07-05': [
     'Restored reliable Word document previews and improved Google Sheets and filter controls.',
@@ -235,7 +235,7 @@ function sentenceFromTitle(title: string) {
 }
 
 function isUserFacingTitle(title: string) {
-  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2|backfill|asset pipeline|private asset|hotlink|provenance|canonical|sha-?256|object storage)/i.test(
+  return !/(admin|administrator|migration|deploy|deployment|render\b|supabase|docker|workflow|\bci\b|typecheck|lint|test suite|regression test|dependency|security advisory|database|moderation|audit|analytics|diagnostic|rate limit|background worker|cloudflare r2|backfill|asset pipeline|private asset|private storage|hotlink|provenance|canonical|sha-?256|object storage|reconcil(?:e|ed|ing|iation)|imported image|image references?|third[- ]party (?:site|source|image)|source references?|upstream object|quarantin(?:e|ed|ing)|(?:ready|live|unique) variants?|question-source|variant-source|verified (?:optimized|compressed) copies|meaningfully smaller)/i.test(
     title,
   );
 }
