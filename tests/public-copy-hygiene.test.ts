@@ -21,6 +21,14 @@ const PUBLIC_COPY_FILES = [
   'components/question-bank/question-bank-join-modal.tsx',
   'app/question-bank/join/[code]/page.tsx',
   'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
+  'app/question-bank/build/page.tsx',
+  'app/question-bank/search/page.tsx',
+  'app/question-bank/[subjectSlug]/[courseSlug]/questions/[variantId]/page.tsx',
+  'app/recent/page.tsx',
+  'app/saved/page.tsx',
+  'components/question-bank/course-practice-workspace.tsx',
+  'app/resource/[fileId]/resource-preview.tsx',
+  'components/case-attachment-viewer.tsx',
 ] as const;
 
 const INTERNAL_PHRASES = [
@@ -66,6 +74,16 @@ const INTERNAL_PHRASES = [
   'shared practice configuration',
   'permanent shared configuration',
   'deployment safeguards',
+  'ready variants',
+  'live variants',
+  'unique variants',
+  'physics variants',
+  'kine­matics variants'.replace('­', ''),
+  'supporting assets',
+  'raw asset references',
+  'legacy mathematics archive',
+  'authenticated listening audio',
+  'images are optimized',
 ] as const;
 
 describe('public copy hygiene', () => {
