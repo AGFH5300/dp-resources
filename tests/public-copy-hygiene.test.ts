@@ -47,6 +47,10 @@ const INTERNAL_PHRASES = [
   'content-reference diagrams',
   'browser caches',
   'audited every question bank variant',
+  'source occurrences',
+  'question variants by source',
+  'variants remain live',
+  'course/question variants',
 ] as const;
 
 describe('public copy hygiene', () => {
