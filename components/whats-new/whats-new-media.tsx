@@ -54,10 +54,10 @@ function QuestionBankIllustration({
 }) {
   const sourceVariants = current
     ? ([
-        ['RevisionDojo', '15,571'],
+        ['RevisionDojo', '15,503'],
         ['Exam-Mate', '13,374'],
         ['PESTLE', '13,190'],
-        ['Revision Town', '12,169'],
+        ['Revision Town', '12,172'],
         ['Revision Village', '4,173'],
         ['CBS', '302'],
         ['Save My Exams', '44'],
@@ -70,7 +70,7 @@ function QuestionBankIllustration({
         ['Revision Village', '4,173'],
         ['CBS', '302'],
       ] as const);
-  const totalVariants = current ? '57,740' : '57,696';
+  const totalVariants = current ? '57,675' : '57,696';
 
   return (
     <div
