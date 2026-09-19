@@ -285,8 +285,7 @@ export function LocalPracticeSessionPage({
                 removed before generation · only this page is hydrated from the server
               </p>
               <p className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <DatabaseZap className="size-4" /> The queue itself is not stored in
-                Supabase unless you explicitly save and share it.
+                <DatabaseZap className="size-4" /> This practice set stays on this device unless you explicitly save and share it.
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-64">
