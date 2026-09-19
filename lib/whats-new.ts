@@ -72,12 +72,12 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'question-bank-expansion',
         title: 'A much bigger Question Bank',
         description:
-          'This update brings a major Question Bank expansion, with RevisionDojo, CBS Physics and Save My Exams Kinematics joining the latest coverage. After final quality checks, 57,675 unique variants are live and ready across seven sources.',
+          'This update brings a major Question Bank expansion, with RevisionDojo, CBS Physics and Save My Exams Kinematics joining the latest coverage. There are now 57,675 live question variants across seven sources, giving you much more to practise from one place.',
         badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'question-bank-current',
-          alt: 'Current Question Bank coverage showing 57,675 live variants across seven reviewed sources.',
+          alt: 'Current Question Bank coverage showing 57,675 live variants across seven available sources.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
@@ -85,7 +85,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'physics-expansion',
         title: 'Physics coverage goes deeper',
         description:
-          'CBS now covers Physics A.1 through A.5 with 302 ready variants across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Duplicate matches stay consolidated rather than appearing twice.',
+          'CBS now covers Physics A.1 through A.5 with 302 ready variants across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Questions that already exist stay merged so you do not see unnecessary duplicates.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -154,19 +154,19 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     date: '2026-09-18',
     dateLabel: '18 September 2026',
     summary:
-      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 live question variants across seven reviewed sources.',
+      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 live question variants across seven available sources.',
     showWhatsNew: false,
     features: [
       {
         id: 'question-bank-live-coverage',
         title: '57,740 live question variants',
         description:
-          'The Question Bank now has 57,740 unique live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Source totals show coverage and can overlap; the overall total is deduplicated.',
+          'The Question Bank now has 57,740 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Some questions appear under more than one source, so the overall total counts each live variant once.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
           variant: 'question-bank-sep18',
-          alt: 'A static Question Bank coverage snapshot showing live variant counts across seven reviewed sources, plus 57,740 total unique live variants.',
+          alt: 'A static Question Bank coverage snapshot showing live variant counts across seven available sources, plus 57,740 total unique live variants.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
@@ -174,7 +174,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'sme-kinematics-expansion',
         title: '44 new Save My Exams Kinematics variants',
         description:
-          'Physics A.1 Kinematics now includes 30 multiple-choice and 14 long-response Save My Exams variants across Easy, Medium and Hard. Forty-two are new questions and two reuse existing matches so duplicates stay consolidated. Where a source paper does not include an official mark scheme, DP Resources keeps the question as self-assessed practice rather than inventing an answer.',
+          'Physics A.1 Kinematics now includes 30 multiple-choice and 14 long-response Save My Exams variants across Easy, Medium and Hard. Forty-two add new questions and two match questions already in the bank, avoiding duplicates. Questions without an official markscheme remain self-assessed.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -198,7 +198,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'revisiondojo-question-bank',
         title: '57,696 live question variants',
         description:
-          'The Question Bank reached 57,696 unique live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. The source totals show variant coverage; some variants carry more than one source, so the overall total is deduplicated.',
+          'The Question Bank reached 57,696 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. Some questions appear under more than one source, so the overall total counts each live variant once.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -237,7 +237,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'practice-reliability',
         title: 'Practice that keeps moving',
         description:
-          'Practice Builder selection states are clearer and Question Bank now handles slower source or course counts more gracefully. The result is a steadier path from finding a question to building and continuing a practice session.',
+          'Practice Builder selections are clearer, and Question Bank now stays steadier when parts of a page take longer to load. The result is a smoother path from finding a question to building and continuing a practice session.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
