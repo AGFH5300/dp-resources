@@ -19,13 +19,13 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-19-private-question-bank-assets',
     summary:
-      'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of live practice sets; 57,675 variants remain live.',
+      'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of practice; 57,675 questions are ready to practise.',
     date: '2026-09-19T15:10:00.000Z',
   },
   {
     id: 'release-2026-09-18-sme-a1-kinematics',
     summary:
-      'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader source coverage to Kinematics; the Question Bank reached 57,740 live variants at this release.',
+      'Expanded Physics A.1 Kinematics with 44 Save My Exams questions—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader Kinematics coverage; the Question Bank reached 57,740 ready questions at this release.',
     date: '2026-09-18T11:20:00.000Z',
   },
   {
@@ -37,7 +37,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-16-cbs-question-bank-import',
     summary:
-      'Added CBS Physics A.1–A.5 with 302 ready variants—137 HL and 165 SL—giving students broader topic coverage across both levels.',
+      'Added CBS Physics A.1–A.5 with 302 ready questions—137 HL and 165 SL—giving students broader topic coverage across both levels.',
     date: '2026-09-16T18:21:18.000Z',
   },
   {
@@ -55,7 +55,7 @@ const latestReleaseNotes: ChangelogEntry[] = [
   {
     id: 'release-2026-09-16-revisiondojo-expansion',
     summary:
-      'Expanded the Question Bank with 11,763 RevisionDojo questions across 15,571 course/question variants, with RevisionDojo source filtering available in Question Bank and Practice Builder.',
+      'Expanded the Question Bank with 11,763 RevisionDojo questions and broader course coverage, with RevisionDojo filtering available in Question Bank and Practice Builder.',
     date: '2026-09-16T14:26:39.840Z',
   },
   {
