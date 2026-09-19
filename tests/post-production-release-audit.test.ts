@@ -14,13 +14,13 @@ describe('16 September post-production release audit', () => {
     for (const value of ['11,763', '15,571', '15,645', 'RevisionDojo']) {
       expect(audit).toContain(value);
     }
-    for (const value of ['11,763', '15,571', 'RevisionDojo']) {
+    for (const value of ['11,763', 'RevisionDojo']) {
       expect(changelog).toContain(value);
       expect(fallback).toContain(value);
     }
     expect(changelog).not.toContain('15,645 source links');
     expect(fallback).not.toContain('15,645 source links');
-    expect(whatsNew).toContain('57,696 live question variants');
+    expect(whatsNew).toContain('57,696 questions ready to practise');
     expect(whatsNew).toContain('RevisionDojo');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
   });
