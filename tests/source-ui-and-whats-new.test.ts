@@ -70,7 +70,7 @@ describe('source UI and release notes', () => {
     expect(media).toContain('requestFullscreen');
     expect(media).toContain('webkitEnterFullscreen');
     expect(media).toContain('Replay video');
-    expect(media).toContain('Question variants by source');
+    expect(media).toContain('Questions by source');
     expect(media).toContain('Source coverage can overlap');
     for (const count of [
       '57,675',
@@ -110,9 +110,9 @@ describe('source UI and release notes', () => {
     expect(whatsNew).toContain('features: readonly WhatsNewFeature[]');
     expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
     expect(whatsNew).toContain("dateLabel: '19 September 2026'");
-    expect(whatsNew).toContain('57,675 unique variants are live and ready');
+    expect(whatsNew).toContain('57,675 questions are ready to practise');
     expect(whatsNew).toContain("id: '2026-09-18-kinematics-source-expansion'");
-    expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
+    expect(whatsNew).toContain('44 new Save My Exams Kinematics questions');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain('Physics coverage goes deeper');
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
@@ -153,8 +153,8 @@ describe('source UI and release notes', () => {
     expect(page).toContain(note);
     expect(history).toContain("'2026-09-19': [");
     expect(history).toContain(note);
-    expect(page).toContain('57,675 variants remain live');
-    expect(history).toContain('57,675 variants remain live');
+    expect(page).toContain('57,675 questions are ready to practise');
+    expect(history).toContain('57,675 questions are ready to practise');
   });
 
   it('records the 18 September Kinematics expansion in both public changelog sources', () => {
@@ -166,8 +166,8 @@ describe('source UI and release notes', () => {
     expect(page).toContain(note);
     expect(history).toContain("'2026-09-18': [");
     expect(history).toContain(note);
-    expect(page).toContain('57,740 ready variants');
-    expect(history).toContain('57,740 ready variants');
+    expect(page).toContain('57,740 ready questions');
+    expect(history).toContain('57,740 ready questions');
   });
 
   it('curates the complete 16 September public release in both changelog sources', () => {
