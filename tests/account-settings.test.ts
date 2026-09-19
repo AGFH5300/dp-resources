@@ -135,7 +135,7 @@ describe('Settings & Account Centre', () => {
     expect(whatsNew).toContain('44 new Save My Exams Kinematics variants');
     expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
     expect(whatsNew).toContain('Learn DP Resources on the real interface');
-    expect(whatsNew).toContain('Diagrams now load from DP Resources');
+    expect(whatsNew).toContain('Clearer, faster question diagrams');
     expect(whatsNew).toContain('A better way to discover every update');
     expect(whatsNew).toContain('Practice feels clearer and steadier');
     expect(whatsNew).not.toContain('Save your IB academic profile');
