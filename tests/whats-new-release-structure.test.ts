@@ -34,8 +34,9 @@ describe('What’s New release structure', () => {
 
     expect(latestAutoOpenRelease()?.showWhatsNew).toBe(true);
     expect(latestAutoOpenRelease()?.id).toBe(
-      '2026-09-19-question-bank-private-assets',
+      '2026-09-19-september-deployment',
     );
+    expect(latestAutoOpenRelease()?.features).toHaveLength(6);
   });
 
   it('keeps the completed SME A.1 import reproducible and cleans import-only artifacts', () => {
