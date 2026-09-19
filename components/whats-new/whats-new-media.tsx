@@ -164,6 +164,138 @@ function QuestionBankIllustration({
   );
 }
 
+function PrivateAssetsIllustration({ alt }: { alt: string }) {
+  return (
+    <div
+      className="relative flex h-full min-h-64 items-center justify-center overflow-hidden p-5 sm:min-h-96 sm:p-9"
+      role="img"
+      aria-label={alt}
+    >
+      <div className="w-full max-w-3xl rounded-[1.4rem] border border-white/70 bg-white/92 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-slate-950/88 sm:p-7">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              Question Bank assets
+            </p>
+            <p className="mt-1 text-xl font-semibold text-[color:var(--dp-heading)]">
+              Private, verified and optimized
+            </p>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+            DP Resources
+          </span>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {[
+            ['1', 'Source captured', 'Imported diagrams are reconciled into the DP Resources asset archive.'],
+            ['2', 'Verified', 'Stored objects are checked before they are accepted for delivery.'],
+            ['3', 'Optimized', 'Smaller verified copies are served when compression is worthwhile.'],
+          ].map(([step, title, detail]) => (
+            <div
+              key={step}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900"
+            >
+              <span className="flex size-8 items-center justify-center rounded-xl bg-white text-sm font-semibold text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300">
+                {step}
+              </span>
+              <p className="mt-4 text-sm font-semibold text-[color:var(--dp-heading)]">
+                {title}
+              </p>
+              <p className="mt-1 text-[11px] leading-5 text-[color:var(--dp-muted-text)]">
+                {detail}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-4 text-white">
+          <div>
+            <p className="text-2xl font-semibold tracking-tight">2,880</p>
+            <p className="mt-1 text-xs text-white/70">image references internalized</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold">No provider hotlinks</p>
+            <p className="mt-1 text-[10px] text-white/60">Question Bank delivery stays inside DP Resources</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WhatsNewExperienceIllustration({ alt }: { alt: string }) {
+  return (
+    <div
+      className="relative flex h-full min-h-64 items-center justify-center overflow-hidden p-5 sm:min-h-96 sm:p-9"
+      role="img"
+      aria-label={alt}
+    >
+      <div className="w-full max-w-3xl overflow-hidden rounded-[1.4rem] border border-white/70 bg-white/92 shadow-[0_24px_70px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-slate-950/88">
+        <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-800">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
+              What’s New
+            </p>
+            <p className="mt-1 text-lg font-semibold text-[color:var(--dp-heading)]">
+              One feature at a time
+            </p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+            4 / 6
+          </span>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-[1.2fr_0.8fr] sm:p-6">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950">
+              <CirclePlay className="size-10 text-blue-600 dark:text-blue-300" aria-hidden />
+            </div>
+            <p className="mt-4 text-base font-semibold text-[color:var(--dp-heading)]">
+              Visual release stories
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--dp-muted-text)]">
+              Screens, illustrations and video can explain each update without turning the release into a wall of text.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {['Swipe or use arrows', 'Try it shortcuts', 'Viewed releases remembered', 'Replay from release history'].map(
+              (label) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  {label}
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-slate-200/80 px-5 py-4 dark:border-slate-800">
+          <div className="flex gap-1.5" aria-hidden>
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <span
+                key={index}
+                className={`h-1.5 rounded-full ${
+                  index === 3
+                    ? 'w-6 bg-blue-600 dark:bg-blue-300'
+                    : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+            Try it →
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PhysicsIllustration({ alt }: { alt: string }) {
   return (
     <div
@@ -437,6 +569,12 @@ function Illustration({ media }: { media: WhatsNewIllustrationMedia }) {
   }
   if (media.variant === 'question-bank-current') {
     return <QuestionBankIllustration alt={media.alt} snapshot="current" />;
+  }
+  if (media.variant === 'private-assets') {
+    return <PrivateAssetsIllustration alt={media.alt} />;
+  }
+  if (media.variant === 'whats-new-experience') {
+    return <WhatsNewExperienceIllustration alt={media.alt} />;
   }
   if (media.variant === 'question-bank-sep18') {
     return <QuestionBankIllustration alt={media.alt} snapshot="2026-09-18" />;
