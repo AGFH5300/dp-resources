@@ -27,6 +27,9 @@ type GitHubCommit = {
 };
 
 const historicalSummaries: Record<string, string[]> = {
+  '2026-09-19': [
+    'Improved Question Bank image reliability by moving 2,880 imported image references into the private DP Resources asset pipeline, serving verified compressed copies when smaller, and withholding incomplete variants instead of loading third-party images; 57,675 variants remain live.',
+  ],
   '2026-09-18': [
     'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—while consolidating 42 new questions with 2 existing matches; the live Question Bank now contains 57,740 ready variants.',
   ],
