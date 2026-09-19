@@ -138,7 +138,7 @@ function QuestionBankIllustration({
                   {count}
                 </p>
                 <p className="text-[10px] text-[color:var(--dp-muted-text)]">
-                  variants
+                  questions
                 </p>
               </div>
             ))}
@@ -189,8 +189,8 @@ function PrivateAssetsIllustration({ alt }: { alt: string }) {
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {[
             ['1', 'More reliable', 'Question and markscheme diagrams now load more consistently.'],
-            ['2', 'Faster loading', 'Images are optimized to keep questions responsive.'],
-            ['3', 'Quality checked', 'Questions missing essential visuals stay out of live practice sets.'],
+            ['2', 'Faster loading', 'Diagrams now appear more quickly while you practise.'],
+            ['3', 'Quality checked', 'Questions with a missing essential visual stay out of practice until they are complete.'],
           ].map(([step, title, detail]) => (
             <div
               key={step}
@@ -216,7 +216,7 @@ function PrivateAssetsIllustration({ alt }: { alt: string }) {
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold">Built for reliability</p>
-            <p className="mt-1 text-[10px] text-white/60">Incomplete visual questions are kept out of live sets</p>
+            <p className="mt-1 text-[10px] text-white/60">Incomplete questions stay out of practice</p>
           </div>
         </div>
       </div>
@@ -415,7 +415,7 @@ function KinematicsCoverageIllustration({ alt }: { alt: string }) {
               302
             </p>
             <p className="mt-1 text-xs text-[color:var(--dp-muted-text)]">
-              Physics variants
+              Physics questions
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2 text-center">
               <div className="rounded-xl bg-white px-2 py-2 dark:bg-slate-950">
@@ -432,7 +432,7 @@ function KinematicsCoverageIllustration({ alt }: { alt: string }) {
 
         <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[color:var(--dp-navy)] px-4 py-3 text-white">
           <div>
-            <p className="text-sm font-semibold">346 unique variants</p>
+            <p className="text-sm font-semibold">346 questions</p>
             <p className="mt-0.5 text-[10px] text-white/65">
               Distinct coverage shown once
             </p>
