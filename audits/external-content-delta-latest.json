@@ -1,6 +1,6 @@
 {
   "schema": "dp_external_content_delta_v1",
-  "generatedAt": "2026-09-18T08:19:05.365Z",
+  "generatedAt": "2026-09-19T08:06:49.809Z",
   "baselinePath": "audits/external-content-watch-baseline-20260909.json",
   "previousStatePath": "audits/external-content-index-state.json",
   "sourcePolicy": {
@@ -13,34 +13,18 @@
   "candidateSignals": [
     {
       "source": "exam_mate",
-      "id": "exam-mate-topical-count-239024",
+      "id": "exam-mate-topical-count-239142",
       "status": "candidate",
       "kind": "catalog_count",
-      "label": "239024 topical past-paper questions",
+      "label": "239142 topical past-paper questions",
       "url": "https://www.exam-mate.com/"
-    },
-    {
-      "source": "revision_town",
-      "id": "revision-town-page-date-18-sep-2026",
-      "status": "candidate",
-      "kind": "page_refresh_marker",
-      "label": "IB hub page marker: 18 Sep 2026",
-      "url": "https://revisiontown.com/ib/"
-    },
-    {
-      "source": "revision_town",
-      "id": "revision-town-page-date-18-sep-2026",
-      "status": "candidate",
-      "kind": "page_refresh_marker",
-      "label": "IB hub page marker: 18 Sep 2026",
-      "url": "https://revisiontown.com/ib-mathematics/"
     }
   ],
   "sources": {
     "exam_mate": {
       "displayName": "Exam-Mate",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-18T08:18:58.628Z",
+      "scannedAt": "2026-09-19T08:06:41.684Z",
       "pages": [
         {
           "requestedUrl": "https://www.exam-mate.com/",
@@ -50,7 +34,7 @@
           "description": "exam-mate is an exam preparation tool containing a bank of IGCSE, A-Level, IB, AQA and OCR Topical questions and yearly past papers exams. With exam-mate you are able to build online exams easily using our question bank database.",
           "etag": null,
           "lastModified": null,
-          "htmlSha256": "2e6d86f186a2d0b4fb006641cb53586905222e0ee3b420f6f90c289a1202a3a7",
+          "htmlSha256": "a4448002fba4cce919da71ab93f59c8c7952953ddc2071636dde736de999ecb5",
           "headings": [
             {
               "level": 1,
@@ -92,10 +76,10 @@
       "removedItems": [],
       "signals": [
         {
-          "id": "exam-mate-topical-count-239024",
+          "id": "exam-mate-topical-count-239142",
           "status": "candidate",
           "kind": "catalog_count",
-          "label": "239024 topical past-paper questions",
+          "label": "239142 topical past-paper questions",
           "url": "https://www.exam-mate.com/"
         },
         {
@@ -110,7 +94,7 @@
     "revision_village": {
       "displayName": "Revision Village",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-18T08:18:59.278Z",
+      "scannedAt": "2026-09-19T08:06:42.394Z",
       "pages": [
         {
           "requestedUrl": "https://www.revisionvillage.com/prediction-exams/",
@@ -214,7 +198,7 @@
     "revision_town": {
       "displayName": "Revision Town",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-18T08:19:00.217Z",
+      "scannedAt": "2026-09-19T08:06:43.023Z",
       "pages": [
         {
           "requestedUrl": "https://revisiontown.com/ib/",
@@ -394,7 +378,7 @@
     "mortar_and_pestle": {
       "displayName": "Mortar and Pestle",
       "captureMode": "fingerprint-only",
-      "scannedAt": "2026-09-18T08:19:00.453Z",
+      "scannedAt": "2026-09-19T08:06:43.202Z",
       "pages": [
         {
           "requestedUrl": "https://pestle.pirateib.su/app/",
@@ -403,8 +387,8 @@
           "title": "Mortar & Pestle | The Next Generation of Question Grinding",
           "description": "Practice IB Exam-Style Questions, create topic-wise tests, and much more!",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:00 GMT",
-          "htmlSha256": "2948899f16bcab7e649a26234a00c6fe08d590af962888ee341994616269e181",
+          "lastModified": "Sat, 19 Sep 2026 06:08:31 GMT",
+          "htmlSha256": "56d9f39254093c36754c4e4265d6a31932d6c33c3671f1b1f32944d2e531722d",
           "headings": [],
           "itemCount": 0,
           "catalogFingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
@@ -428,7 +412,7 @@
     "save_my_exams": {
       "displayName": "Save My Exams",
       "captureMode": "metadata-only",
-      "scannedAt": "2026-09-18T08:19:05.365Z",
+      "scannedAt": "2026-09-19T08:06:49.809Z",
       "pages": [
         {
           "requestedUrl": "https://www.savemyexams.com/dp/",
@@ -437,8 +421,8 @@
           "title": "IB Revision Notes, Past Papers & Exam Questions",
           "description": "All the course specific IB revision resources you need to ace your exams. Discover IB revision notes, past papers, exam questions, flashcards & more.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 02:35:28 GMT",
-          "htmlSha256": "c01189581f585c8d77173bce3dfaa265331743bd644c554cd33cd83a56cc9849",
+          "lastModified": "Sat, 19 Sep 2026 06:50:40 GMT",
+          "htmlSha256": "bdeeae6a44884522cff1339cfa555de5c8d142ed798902716ad3e3973a11b149",
           "headings": [
             {
               "level": 1,
@@ -659,8 +643,8 @@
           "title": "IB Maths Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Maths Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 23:33:32 GMT",
-          "htmlSha256": "19b783021ec2cf9aec4a6bdd3027182da12bac76200241eee0a64bba9ae9cd22",
+          "lastModified": "Sat, 19 Sep 2026 08:06:43 GMT",
+          "htmlSha256": "d4c3abaa61f18781ad5dcb79de1d6dc976f53a4a676300a487d72893196d91b9",
           "headings": [
             {
               "level": 1,
@@ -701,8 +685,8 @@
           "title": "DP IB Analysis & Approaches (AA) Mock Exams",
           "description": "Increase your exam confidence with these DP IB Analysis & Approaches (AA) mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 20:24:22 GMT",
-          "htmlSha256": "45e2fa86e83e1df4e5bcf3224a9691715eba6007919c2139623d6935a6c62d71",
+          "lastModified": "Sat, 19 Sep 2026 08:06:45 GMT",
+          "htmlSha256": "512579501f135821cb0fe4d0f128be4d3f8dccd14f3ca20a0ad46c6336268fc1",
           "headings": [
             {
               "level": 1,
@@ -719,8 +703,8 @@
           "title": "IB Business Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Business Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:01 GMT",
-          "htmlSha256": "878856eb8979dc6cd825b3b3f539cbe40722eda0435a4f4295c265825a363bb7",
+          "lastModified": "Sat, 19 Sep 2026 08:06:46 GMT",
+          "htmlSha256": "7849a81bd96f3fd44f6daa734678c162ffe5f75147271fe2bbdefccab54d08ac",
           "headings": [
             {
               "level": 1,
@@ -761,8 +745,8 @@
           "title": "DP IB Chemistry Mock Exams",
           "description": "Increase your exam confidence with these DP IB Chemistry mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:02 GMT",
-          "htmlSha256": "6a0c13142eaefa7f785107d42b435c7919e122b4896f9f097076a5291fee49f5",
+          "lastModified": "Sat, 19 Sep 2026 06:25:06 GMT",
+          "htmlSha256": "9d0762fa3c094b39fef2317a5d0502bd75174fe2e6de81cd7311473877163b6f",
           "headings": [
             {
               "level": 1,
@@ -779,8 +763,8 @@
           "title": "IB Biology Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Biology Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:03 GMT",
-          "htmlSha256": "0725cb92a81180035b507895464f1672e99be3ad5d49f3ff7b57a7b6eeb5e067",
+          "lastModified": "Sat, 19 Sep 2026 08:06:47 GMT",
+          "htmlSha256": "230122d3a1ff7ae0b959021ea933e511b4ee2630de6cbafd17a24979c00ea53f",
           "headings": [
             {
               "level": 1,
@@ -821,8 +805,8 @@
           "title": "IB Physics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Physics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Thu, 17 Sep 2026 21:29:35 GMT",
-          "htmlSha256": "f91e98067a9d2a4bde725e9ce7c6a3ab3de5f8deebaef38e274200aeda978c14",
+          "lastModified": "Sat, 19 Sep 2026 08:06:48 GMT",
+          "htmlSha256": "99db8e89cf6948b3649e59cd8125e44360dac3b39ac9bb890a52c7462636c358",
           "headings": [
             {
               "level": 1,
@@ -863,8 +847,8 @@
           "title": "IB Economics Mock Exams | Full Practice Exams, Marked with AI, Mark Schemes and Solutions",
           "description": "IB Economics Mock Exams for DP. Clear and structured resources to guide you through key topics.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:04 GMT",
-          "htmlSha256": "9be6f8f236a1e8e6db6a2e5f053068c7f2760d7f85b271bd07b649bfab42d527",
+          "lastModified": "Sat, 19 Sep 2026 08:06:49 GMT",
+          "htmlSha256": "5a2c7416959517fa3a86bfe7a0e344bb2d4ea59002398250cb342185983b7de3",
           "headings": [
             {
               "level": 1,
@@ -905,23 +889,64 @@
           "title": "DP IB Psychology Mock Exams",
           "description": "Increase your exam confidence with these DP IB Psychology mock exams, written by teachers and examiners.",
           "etag": null,
-          "lastModified": "Fri, 18 Sep 2026 08:19:05 GMT",
-          "htmlSha256": "c71865644753fb22b12a74d58f1396172e27d8ae011da7d98e90d4429cc65611",
+          "lastModified": "Sat, 19 Sep 2026 05:50:26 GMT",
+          "htmlSha256": "a2e46200b44595be2df69e68636b4be5bb3a2c084f75713a9ac247b5aff0b5e3",
           "headings": [
             {
               "level": 1,
               "text": "DP IB Psychology Mock Exams"
             }
           ],
-          "itemCount": 1804,
-          "catalogFingerprint": "54a595c8cba88c5ee4ade9eb4d3986ea8cfae929fc5e1c4aab55c219f13280dd"
+          "itemCount": 1799,
+          "catalogFingerprint": "9e539948f61da37269e45eebff889676303f30b4c9a15a2e93b3f5bb77da92ef"
         }
       ],
-      "itemCount": 1937,
+      "itemCount": 1932,
       "newItemCount": 0,
-      "removedItemCount": 0,
+      "removedItemCount": 5,
       "newItems": [],
-      "removedItems": [],
+      "removedItems": [
+        {
+          "key": "c67a09f252947c1f8f47cbd2a23e1e23",
+          "source": "save_my_exams",
+          "kind": "catalog_resource",
+          "text": "Course Resources",
+          "url": "https://www.savemyexams.com/dp/psychology/ib/25/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "5b52c5cdb434a2ff5f5e1a5801aa91f8",
+          "source": "save_my_exams",
+          "kind": "catalog_resource",
+          "text": "Strengths & Weaknesses",
+          "url": "https://www.savemyexams.com/dp/psychology/ib/25/hl/strengths-and-weaknesses/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "239bf5bcc3ce8c903c61dfdcfa083484",
+          "source": "save_my_exams",
+          "kind": "paper_or_practice",
+          "text": "Past Papers",
+          "url": "https://www.savemyexams.com/dp/psychology/ib/past-papers/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "28951748cfa0ad2a6913ff95ca4095b4",
+          "source": "save_my_exams",
+          "kind": "question_bank_or_exam_questions",
+          "text": "Exam Questions",
+          "url": "https://www.savemyexams.com/dp/psychology/ib/25/hl/topic-questions/health-and-wellbeing/mental-health-disorders/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        },
+        {
+          "key": "4a901aefa76e7ea41013e9bfee4877d0",
+          "source": "save_my_exams",
+          "kind": "revision_notes",
+          "text": "Revision Notes",
+          "url": "https://www.savemyexams.com/dp/psychology/ib/25/hl/revision-notes/health-and-wellbeing/mental-health-disorders/genetic-inheritance-and-major-depressive-disorder-mdd/",
+          "discoveredOn": "https://www.savemyexams.com/dp/psychology/ib/25/mock-exams/"
+        }
+      ],
       "signals": []
     }
   }
