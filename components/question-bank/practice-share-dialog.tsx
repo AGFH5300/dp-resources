@@ -248,9 +248,8 @@ export function PracticeShareDialog({
                 </p>
                 {includesExactQueue ? (
                   <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
-                    The exact {configuredQuestionCount.toLocaleString()}-question queue
-                    and order will be copied from this device into the permanent share.
-                    Ordinary unshared sessions remain local only.
+                    This shared set will keep the same {configuredQuestionCount.toLocaleString()} questions
+                    in the same order. Your answers and progress are not included.
                   </p>
                 ) : null}
                 {loading && localSession ? (
