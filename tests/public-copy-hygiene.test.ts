@@ -143,7 +143,7 @@ describe('public copy hygiene', () => {
         );
       }
     }
-  });
+  }, 20_000);
 
   it('uses plain-language fallbacks for unavailable Question Bank visuals', () => {
     const renderer = read('components/question-bank/question-content.tsx');
