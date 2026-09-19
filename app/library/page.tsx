@@ -78,8 +78,7 @@ export default async function Library({
               Resources are not available yet.
             </h1>
             <p className="mt-2 text-slate-600">
-              The library is ready, but Google Drive has not been configured for
-              this deployment.
+              The Library is temporarily unavailable. Please try again later.
             </p>
           </div>
         ) : crumbs.length ? (
