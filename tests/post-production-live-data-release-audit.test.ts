@@ -12,8 +12,8 @@ describe('post-production live-data release audit', () => {
 
     for (const text of [
       'Physics A.1–A.5, now with CBS',
-      '57,696 ready questions',
-      '44 new Save My Exams Kinematics questions',
+      '57,696 questions ready to practise',
+      '44 Save My Exams Kinematics questions',
     ]) expect(whatsNew).toContain(text);
 
     for (const text of [
