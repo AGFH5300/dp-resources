@@ -28,10 +28,10 @@ type GitHubCommit = {
 
 const historicalSummaries: Record<string, string[]> = {
   '2026-09-19': [
-    'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of live practice sets; 57,675 variants remain live.',
+    'Improved Question Bank diagrams and markscheme visuals so they load more reliably and efficiently, while keeping questions with missing essential visuals out of practice; 57,675 questions are ready to practise.',
   ],
   '2026-09-18': [
-    'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader source coverage to Kinematics; the Question Bank reached 57,740 live variants at this release.',
+    'Expanded Physics A.1 Kinematics with 44 Save My Exams questions—30 multiple-choice and 14 long-response across Easy, Medium and Hard—bringing broader Kinematics coverage; the Question Bank reached 57,740 ready questions at this release.',
   ],
   '2026-09-17': [
     'Redesigned What’s New into a polished feature-by-feature update experience with responsive slides, swipe, keyboard and progress navigation, Try it shortcuts, release history, and viewed-state syncing across devices.',
@@ -40,9 +40,9 @@ const historicalSummaries: Record<string, string[]> = {
     'Removed 415 confirmed duplicate Question Bank entries while preserving topic placement, media, saved questions and progress; uncertain matches were left separate.',
   ],
   '2026-09-16': [
-    'Added CBS Physics A.1–A.5 with 302 ready variants—137 HL and 165 SL—giving students broader topic coverage across both levels.',
+    'Added CBS Physics A.1–A.5 with 302 ready questions—137 HL and 165 SL—giving students broader topic coverage across both levels.',
     'Removed another 191 duplicate Question Bank entries while preserving saved questions, progress and practice sets.',
-    'Expanded the Question Bank with 11,763 RevisionDojo questions across 15,571 course/question variants, with RevisionDojo source filtering available in Question Bank and Practice Builder.',
+    'Expanded the Question Bank with 11,763 RevisionDojo questions and broader course coverage, with RevisionDojo filtering available in Question Bank and Practice Builder.',
     'Added a 12-step interactive onboarding walkthrough across Library, the IB Resource Library, Question Bank, global Search, Practice Builder, source filters, Recent, Saved and Settings, with replay available from Settings.',
     'Made tutorial navigation faster and steadier across pages, with more reliable highlights, clearer click cues and a smoother finish in Settings.',
     'Polished Practice Builder in light mode with clearer selected and hover states, stronger checkmarks, readable clear and bulk controls, rounded fully-selected subject states, and improved eligible-question feedback.',
