@@ -117,7 +117,7 @@ function QuestionBankIllustration({
               Question variants by source
             </p>
             <p className="mt-1 text-[11px] text-[color:var(--dp-muted-text)]">
-              Source coverage can overlap
+              Coverage across available sources
             </p>
           </div>
 
@@ -155,7 +155,7 @@ function QuestionBankIllustration({
             </div>
             <div className="flex items-center gap-2 text-right text-[10px] leading-4 text-white/55">
               <Layers3 className="size-4 shrink-0" aria-hidden />
-              <span>Deduplicated across sources</span>
+              <span>Each live variant counted once</span>
             </div>
           </div>
         </div>
@@ -434,7 +434,7 @@ function KinematicsCoverageIllustration({ alt }: { alt: string }) {
           <div>
             <p className="text-sm font-semibold">346 unique variants</p>
             <p className="mt-0.5 text-[10px] text-white/65">
-              No variant overlap between these two source sets
+              Distinct coverage shown once
             </p>
           </div>
           <Layers3 className="size-5 shrink-0 text-white/70" aria-hidden />
