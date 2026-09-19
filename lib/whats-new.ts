@@ -77,7 +77,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         media: {
           type: 'illustration',
           variant: 'question-bank-current',
-          alt: 'Current Question Bank coverage showing 57,675 live variants across seven available sources.',
+          alt: 'Current Question Bank coverage showing 57,675 ready questions across seven available sources.',
         },
         cta: { label: 'Open Question Bank', href: '/question-bank' },
       },
@@ -85,12 +85,12 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'physics-expansion',
         title: 'Physics coverage goes deeper',
         description:
-          'CBS now covers Physics A.1 through A.5 with 302 ready variants across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Questions that already exist stay merged so you do not see unnecessary duplicates.',
+          'CBS now covers Physics A.1 through A.5 with 302 ready questions across SL and HL, while Save My Exams adds 44 A.1 Kinematics variants: 30 multiple-choice and 14 long-response across Easy, Medium and Hard. Questions that already exist stay merged so you do not see unnecessary duplicates.',
         badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'kinematics-coverage',
-          alt: 'Physics coverage showing 44 Save My Exams A.1 Kinematics variants alongside 302 CBS Physics A.1 to A.5 variants.',
+          alt: 'Physics coverage showing 44 Save My Exams A.1 Kinematics questions alongside 302 CBS Physics A.1 to A.5 questions.',
         },
         cta: { label: 'Explore Physics', href: '/question-bank' },
       },
@@ -154,14 +154,14 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     date: '2026-09-18',
     dateLabel: '18 September 2026',
     summary:
-      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 live question variants across seven available sources.',
+      'Physics A.1 Kinematics now includes Save My Exams coverage, bringing the Question Bank to 57,740 ready questions across seven available sources.',
     showWhatsNew: false,
     features: [
       {
         id: 'question-bank-live-coverage',
-        title: '57,740 live question variants',
+        title: '57,740 ready questions',
         description:
-          'The Question Bank now has 57,740 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Some questions appear under more than one source, so the overall total counts each live variant once.',
+          'The Question Bank now has 57,740 ready questions across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village, CBS and Save My Exams. Some questions appear under more than one source, so the overall total counts each question once.',
         badge: 'IMPROVED',
         media: {
           type: 'illustration',
@@ -172,14 +172,14 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
       },
       {
         id: 'sme-kinematics-expansion',
-        title: '44 new Save My Exams Kinematics variants',
+        title: '44 new Save My Exams Kinematics questions',
         description:
-          'Physics A.1 Kinematics now includes 30 multiple-choice and 14 long-response Save My Exams variants across Easy, Medium and Hard. Forty-two add new questions and two match questions already in the bank, avoiding duplicates. Questions without an official markscheme remain self-assessed.',
+          'Physics A.1 Kinematics now includes 30 multiple-choice and 14 long-response Save My Exams questions across Easy, Medium and Hard. Forty-two add new questions and two match questions already in the bank, avoiding duplicates. Questions without an official markscheme remain self-assessed.',
         badge: 'NEW',
         media: {
           type: 'illustration',
           variant: 'kinematics-coverage',
-          alt: 'A static Physics coverage snapshot showing 44 Save My Exams A.1 Kinematics variants alongside 302 CBS Physics A.1 to A.5 variants.',
+          alt: 'A static Physics coverage snapshot showing 44 Save My Exams A.1 Kinematics questions alongside 302 CBS Physics A.1 to A.5 questions.',
         },
         cta: { label: 'Explore Physics', href: '/question-bank' },
       },
@@ -196,9 +196,9 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
     features: [
       {
         id: 'revisiondojo-question-bank',
-        title: '57,696 live question variants',
+        title: '57,696 ready questions',
         description:
-          'The Question Bank reached 57,696 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. Some questions appear under more than one source, so the overall total counts each live variant once.',
+          'The Question Bank reached 57,696 live variants across RevisionDojo, Exam-Mate, PESTLE, Revision Town, Revision Village and CBS. Some questions appear under more than one source, so the overall total counts each question once.',
         badge: 'NEW',
         media: {
           type: 'illustration',
@@ -211,7 +211,7 @@ export const WHATS_NEW_RELEASES: readonly WhatsNewRelease[] = [
         id: 'cbs-physics-coverage',
         title: 'Physics A.1–A.5, now with CBS',
         description:
-          'CBS coverage is now live across Physics A.1 through A.5, with 302 ready variants spanning HL and SL. Topic and source filters make it much easier to go straight to the part of the course you want to practise.',
+          'CBS coverage is now live across Physics A.1 through A.5, with 302 ready questions spanning HL and SL. Topic and source filters make it much easier to go straight to the part of the course you want to practise.',
         badge: 'NEW',
         media: {
           type: 'illustration',
