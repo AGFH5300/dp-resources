@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     return json({ error: 'That account provider is not available yet.' }, 400);
   }
   if (!isDirectProviderConfigured(provider)) {
-    return json({ error: `${publicProvider.label} sign-in is not configured yet.` }, 400);
+    return json({ error: `${publicProvider.label} sign-in is not available yet.` }, 400);
   }
 
   const admin = createSupabaseAdminClient();
