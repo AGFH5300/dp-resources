@@ -11,10 +11,15 @@ describe('post-production live-data release audit', () => {
     const audit = read('docs/POST_PRODUCTION_RELEASE_AUDIT_2026-09-16.md');
 
     for (const text of [
-      'Physics A.1–A.5, now with CBS',
-      '57,696 questions ready to practise',
-      '44 Save My Exams Kinematics questions',
+      'Physics coverage goes deeper',
+      '57,675 questions ready to practise',
+      'RevisionDojo, CBS Physics and Save My Exams Kinematics',
+      '302 ready questions',
+      '44 A.1 Kinematics questions',
     ]) expect(whatsNew).toContain(text);
+
+    expect(whatsNew).not.toContain("id: '2026-09-18-kinematics-source-expansion'");
+    expect(whatsNew).not.toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
 
     for (const text of [
       '302 ready questions',

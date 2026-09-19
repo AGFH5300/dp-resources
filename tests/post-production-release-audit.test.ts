@@ -20,8 +20,9 @@ describe('16 September post-production release audit', () => {
     }
     expect(changelog).not.toContain('15,645 source links');
     expect(fallback).not.toContain('15,645 source links');
-    expect(whatsNew).toContain('57,696 questions ready to practise');
+    expect(whatsNew).toContain('57,675 questions ready to practise');
     expect(whatsNew).toContain('RevisionDojo');
-    expect(whatsNew).toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
+    expect(whatsNew).toContain("id: '2026-09-19-september-deployment'");
+    expect(whatsNew).not.toContain("id: '2026-09-16-revisiondojo-guided-onboarding'");
   });
 });
