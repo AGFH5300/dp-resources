@@ -17,7 +17,6 @@ const PUBLIC_COPY_FILES = [
   ...collectTsxFiles('app'),
   ...collectTsxFiles('components'),
   'lib/whats-new.ts',
-  'lib/changelog.ts',
 ].filter(
   (file) =>
     !file.startsWith('app/admin/') &&
@@ -124,10 +123,22 @@ describe('public copy hygiene', () => {
   });
 
   it('keeps implementation and migration language out of student-facing surfaces', () => {
-    for (const file of PUBLIC_COPY_FILES) {
-      const source = read(file).toLowerCase();
+    const publicSources = [
+      ...PUBLIC_COPY_FILES.map((file) => ({
+        label: file,
+        source: read(file).toLowerCase(),
+      })),
+      {
+        label: 'lib/changelog.ts public summaries',
+        source: read('lib/changelog.ts')
+          .split('function sentenceFromTitle')[0]
+          .toLowerCase(),
+      },
+    ];
+
+    for (const { label, source } of publicSources) {
       for (const phrase of INTERNAL_PHRASES) {
-        expect(source, `${file} should not expose "${phrase}"`).not.toContain(
+        expect(source, `${label} should not expose "${phrase}"`).not.toContain(
           phrase.toLowerCase(),
         );
       }
