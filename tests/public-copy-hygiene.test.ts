@@ -13,6 +13,14 @@ const PUBLIC_COPY_FILES = [
   'components/content-source-badge.tsx',
   'app/settings/settings-centre.tsx',
   'components/tutorial/tutorial-controller.tsx',
+  'app/library/page.tsx',
+  'components/account/connected-accounts.tsx',
+  'app/api/account/identities/route.ts',
+  'app/question-bank/page.tsx',
+  'app/question-bank/loading.tsx',
+  'components/question-bank/question-bank-join-modal.tsx',
+  'app/question-bank/join/[code]/page.tsx',
+  'app/question-bank/[subjectSlug]/[courseSlug]/page.tsx',
 ] as const;
 
 const INTERNAL_PHRASES = [
@@ -51,6 +59,13 @@ const INTERNAL_PHRASES = [
   'question variants by source',
   'variants remain live',
   'course/question variants',
+  'google drive has not been configured',
+  'this deployment',
+  'provider credentials',
+  'sign-in is not configured',
+  'shared practice configuration',
+  'permanent shared configuration',
+  'deployment safeguards',
 ] as const;
 
 describe('public copy hygiene', () => {
