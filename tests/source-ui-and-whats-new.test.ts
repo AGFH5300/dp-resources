@@ -144,7 +144,7 @@ describe('source UI and release notes', () => {
     expect(client).toContain('fetchAccountViewedReleaseIds');
   });
 
-  it('records the 19 September private asset release in both public changelog sources', () => {
+  it('records the 19 September diagram reliability release in both public changelog sources', () => {
     const page = read('app/changelog/page.tsx');
     const history = read('lib/changelog.ts');
     const note = 'Improved Question Bank diagrams and markscheme visuals so they load faster and more reliably';
