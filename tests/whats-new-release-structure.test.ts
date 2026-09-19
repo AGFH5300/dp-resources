@@ -74,7 +74,7 @@ describe('What’s New release structure', () => {
     const page = read('app/changelog/page.tsx');
     const changelog = read('lib/changelog.ts');
     const summary =
-      'Expanded Physics A.1 Kinematics with 44 Save My Exams question variants';
+      'Expanded Physics A.1 Kinematics with 44 Save My Exams questions';
 
     expect(page).toContain('release-2026-09-18-sme-a1-kinematics');
     expect(page).toContain(summary);
