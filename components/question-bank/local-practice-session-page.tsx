@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  DatabaseZap,
   HardDrive,
   Layers3,
   Loader2,
@@ -189,14 +188,14 @@ export function LocalPracticeSessionPage({
             <HardDrive className="size-6" />
           </div>
           <h1 className="mt-5 text-2xl font-semibold text-slate-950 dark:text-slate-50">
-            Local practice session unavailable
+            Practice session unavailable
           </h1>
           <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">
             {error || 'This practice session is not available on this device.'}
           </p>
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-            Ordinary practice queues stay in this browser to avoid filling the shared
-            production database. Shared practice codes remain available across devices.
+            Practice sets created normally stay on the device where you made them.
+            Shared practice codes can be opened on other devices.
           </p>
           <Link
             href="/question-bank/build"
@@ -278,14 +277,14 @@ export function LocalPracticeSessionPage({
                 </span>
               </div>
               <h1 className="mt-2 text-2xl font-semibold text-[color:var(--dp-navy)]">
-                Your custom question queue
+                Your custom question set
               </h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 {blockCount} selected block{blockCount === 1 ? '' : 's'} · duplicates
-                removed before generation · only this page is hydrated from the server
+                removed automatically · questions grouped into pages for smoother browsing
               </p>
-              <p className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <DatabaseZap className="size-4" /> This practice set stays on this device unless you explicitly save and share it.
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                This practice set stays on this device unless you explicitly save and share it.
               </p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-64">
