@@ -90,7 +90,7 @@ const historicalSummaries: Record<string, string[]> = {
   ],
   '2026-08-01': [
     'Made custom practice questions expand to the full page width, preserved each member’s in-progress builder configuration, and fixed Max all when restrictive filters leave some topics empty.',
-    'Added reusable practice-set codes so students can share named Question Bank configurations and choose exact questions, progress-based questions, or full customization.',
+    'Added reusable practice-set codes so students can share named Question Bank sets and choose the same questions, progress-based questions, or full customization.',
     'Expanded the Practice Builder with subject-wide topic selection, fair maximum question allocation, large resumable queues, and independently scrolling panels.',
     'Cleaned duplicated Biology topic labels, improved availability speed, fixed fullscreen practice, and added clearer shared-code validation.',
     'Fixed practice-set creation blockers by stabilizing question amounts, adding all-course controls, improving Join as an in-page modal, and cleaning imported language score labels.',
